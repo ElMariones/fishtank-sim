@@ -60,7 +60,7 @@ New contributors and agents should start with [AGENTS.md](AGENTS.md), then [impl
 
 React + TypeScript + Vite. Pure seeded genetics and pedigree core. Procedural Canvas fish shared between live tank and portraits. A versioned Web Worker runs fixed-step visual motion. The persistent clock integrates visible, background and protected offline time without activating unimplemented biology. Versioned command replay, transactional IndexedDB backups and a single-writer browser lock protect local worlds.
 
-M2 (FS-201–206) is implemented and verified, and five human observers scored 54/60 in the M1 resemblance study (FS-111). Life stages/care, PixiJS and an authoritative database-backed market remain planned. See the [M2 runtime report](docs/research/M2-RUNTIME-AND-RECOVERY.md) and [human resemblance results](docs/research/FS-111-HUMAN-RESEMBLANCE.md).
+M2 (FS-201–206) is complete. Five human observers scored 54/60 in the M1 resemblance study (FS-111), meeting M1's human-resemblance gate. Life stages/care, PixiJS and an authoritative database-backed market remain planned. See the [M2 runtime report](docs/research/M2-RUNTIME-AND-RECOVERY.md) and [human resemblance results](docs/research/FS-111-HUMAN-RESEMBLANCE.md).
 
 ## Repository status
 

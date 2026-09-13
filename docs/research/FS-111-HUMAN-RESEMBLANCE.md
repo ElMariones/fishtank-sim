@@ -1,6 +1,6 @@
 # FS-111 human resemblance study
 
-**Status:** complete · **Observers:** 5 of 5 · **Trials:** 60 of 60 (20 per mode)  
+**Status:** complete, pushed `6a69695` · **Observers:** 5 of 5 · **Trials:** 60 of 60 (20 per mode)  
 **Trial set:** `study-v1-12x4` · genome v1 · development v2 · anatomy v2 · renderer v3
 
 The user supplied five anonymous result records on 13 September 2026. The project stores answers and response times only; no name, account, device information or invented cue was added. Every score below was recomputed from the frozen trial answers rather than trusting the submitted summaries, which matched.

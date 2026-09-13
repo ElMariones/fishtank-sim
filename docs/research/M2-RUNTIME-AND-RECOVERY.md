@@ -1,7 +1,7 @@
 # M2 runtime and recovery
 
 **Recorded:** 13 September 2026  
-**Status:** FS-201/203/204 pushed as `bd175ed`; FS-202/205/206 reviewed, fixed and re-verified, awaiting push  
+**Status:** FS-201/203/204 pushed as `bd175ed`; FS-202/205/206 pushed as `6a69695` after review fixes  
 **Models:** genome v1 · development v2 · anatomy v2 · renderer v3 · runtime v1 · save schema v2 · motion protocol v1
 
 ## Delivered behavior

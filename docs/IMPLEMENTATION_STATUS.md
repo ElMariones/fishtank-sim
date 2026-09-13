@@ -1,6 +1,6 @@
 # Implementation status
 
-**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–110 and FS-112 are pushed; FS-111's five-observer pool (54/60, above chance in every mode) is verified and awaiting push. M2 FS-201/203/204 are DONE (`bd175ed`); FS-202/205/206 are reviewed, fixed and verified, awaiting push.
+**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`).
 
 ## Delivered
 
@@ -115,4 +115,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**Push and mark FS-111 and FS-202/205/206 DONE.** M1's roadmap gate and M2 are then complete; FS-301’s unit-aware water model is the next scheduled task.
+**M1's roadmap gate and M2 are complete.** After any queued user requests, the next scheduled task is FS-301’s unit-aware water model.
