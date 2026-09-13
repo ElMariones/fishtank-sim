@@ -1,5 +1,5 @@
 import type { Fish } from '../core/types';
-import { MOTION_PROTOCOL, type FromMotionWorker, type ToMotionWorker } from './protocol';
+import { MOTION_PROTOCOL, type FromMotionWorker, type PlaybackSpeed, type ToMotionWorker } from './protocol';
 
 type WorkerFactory = () => Worker;
 type Callbacks = {
@@ -15,13 +15,15 @@ export class MotionWorkerClient {
   private initial: Extract<ToMotionWorker, { type: 'initialize' }> | null = null;
   constructor(private readonly factory: WorkerFactory, private readonly callbacks: Callbacks) {}
 
-  start(fish: Fish[], tick: number, speed: 0 | 1 | 2 | 4) {
-    this.initial = { type: 'initialize', protocol: MOTION_PROTOCOL, fish, tick, speed };
+  start(fish: Fish[], tick: number, speed: PlaybackSpeed, planted = false) {
+    this.initial = { type: 'initialize', protocol: MOTION_PROTOCOL, fish, tick, speed, planted };
     this.spawn(false);
   }
   synchronize(fish: Fish[]) { this.post({ type: 'synchronize', protocol: MOTION_PROTOCOL, fish }); if (this.initial) this.initial.fish = fish; }
-  playback(speed: 0 | 1 | 2 | 4) { this.post({ type: 'playback', protocol: MOTION_PROTOCOL, speed }); if (this.initial) this.initial.speed = speed; }
+  playback(speed: PlaybackSpeed) { this.post({ type: 'playback', protocol: MOTION_PROTOCOL, speed }); if (this.initial) this.initial.speed = speed; }
+  environment(planted: boolean) { this.post({ type: 'environment', protocol: MOTION_PROTOCOL, planted }); if (this.initial) this.initial.planted = planted; }
   feed() { this.post({ type: 'feed', protocol: MOTION_PROTOCOL }); }
+  startle(x: number, y: number) { this.post({ type: 'startle', protocol: MOTION_PROTOCOL, x, y }); }
   simulateFaultForTest() { this.post({ type: 'simulate-fault', protocol: MOTION_PROTOCOL }); }
   restart() { this.restarts = 0; this.spawn(true); }
   destroy() {

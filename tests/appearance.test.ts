@@ -132,6 +132,13 @@ describe('FS-113 genome v2 appearance', () => {
     expect(applyCommand(v2Parents, breed).fish.slice(6).every(fish => fish.genome.version === 2)).toBe(true);
   });
 
+  it('renders both inherited calico dot colors rather than silently dropping the second', () => {
+    const fixture = APPEARANCE_VISUAL_FIXTURES.find(f => f.phenotype.appearance.motifs.some(m => m.kind === 'calico'))!;
+    const ornament = buildOrnament(fixture.phenotype, fixture.birthSeed, anatomyFor(fixture.phenotype));
+    expect(ornament.body.find(layer => layer.tone === 'dot0')?.shapes.length).toBeGreaterThan(0);
+    expect(ornament.body.find(layer => layer.tone === 'dot1')?.shapes.length).toBeGreaterThan(0);
+  });
+
   it('builds finite, bounded and deterministic ornament geometry for every appearance fixture', () => {
     const points = (shape: OrnamentShape) => shape.type === 'polygon' || shape.type === 'polyline' ? shape.points : [{ x: shape.x, y: shape.y }];
     for (const fixture of APPEARANCE_VISUAL_FIXTURES) {

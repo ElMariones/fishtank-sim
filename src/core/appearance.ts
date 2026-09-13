@@ -14,6 +14,15 @@ export const SCALE_TYPES: readonly ScaleType[] = ['smooth', 'fine', 'mirror', 'n
 export const BODY_MOTIFS: readonly (BodyMotif | null)[] = [null, 'spots', 'stripes', 'marble', 'calico', 'rosettes'];
 export const FIN_MOTIFS: readonly (FinMotif | null)[] = [null, 'spots', 'bands', 'edge', 'tips', 'flame'];
 
+/** Human-readable allele identity, distinct from dominance and the expressed phenotype. */
+export function appearanceAlleleLabel(locus: string, allele: number): string {
+  const names: Partial<Record<string, readonly (string | null)[]>> = {
+    base_color: BASE_COLORS, accent_color: ACCENT_COLORS, dot_color: DOT_COLORS, iris_color: IRIS_COLORS,
+    scale_type: SCALE_TYPES, body_motif: BODY_MOTIFS, fin_motif: FIN_MOTIFS,
+  };
+  return names[locus] ? names[locus]![allele] ?? 'classic' : `level ${allele}`;
+}
+
 /** Genome v1 fish are read as homozygous for these alleles, in APPEARANCE_LOCI order. */
 export const APPEARANCE_BASELINE: readonly number[] = [0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 0, 0];
 

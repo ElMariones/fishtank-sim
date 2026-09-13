@@ -5,7 +5,7 @@ import { clamp, hash, random } from './random';
 import type { BodyMotif, FinMotif, Phenotype } from './types';
 
 /**
- * Development v3 ornament geometry (FS-113) in body-length units: body motifs, scales, shimmer sparkles and tail/dorsal
+ * Development v4 ornament geometry in body-length units: body motifs, scales, shimmer sparkles and tail/dorsal
  * patterns. Inherited appearance chooses kinds, colors, density, size and contrast; the birth seed only scatters the
  * texture. Tones are resolved to colors by the renderer. The classic appearance produces an empty ornament.
  */
@@ -84,10 +84,16 @@ function motifLayers(kind: BodyMotif, p: Phenotype, alpha: number, seed: number,
       return [veins];
     }
     case 'calico': {
-      const layers = (['accent', p.black >= 0.08 ? 'dark' : 'light', dotTones(p)[0]] as Tone[]).map(tone => layer(tone, alpha));
+      const layers = (['accent', p.black >= 0.08 ? 'dark' : 'light', ...dotTones(p)] as Tone[]).map(tone => layer(tone, alpha));
       for (let i = 0, total = count(10, 26); i < total; i++) {
         const rx = size(0.016, 0.03) * (0.6 + rng() * 0.8);
-        layers[i % 3].shapes.push({ type: 'ellipse', ...surface.place(rng(), 0.08 + rng() * 0.84), rx, ry: rx * (0.45 + rng() * 0.55), angle: rng() * Math.PI });
+        const point = surface.place(rng(), 0.08 + rng() * 0.84), ry = rx * (0.45 + rng() * 0.55), phase = rng() * Math.PI;
+        // Uneven flecks rather than identical ellipses; every inherited dot color participates.
+        const points = Array.from({ length: 16 }, (_, j) => {
+          const angle = j / 16 * Math.PI * 2, edge = 0.8 + 0.16 * Math.sin(angle * 3 + phase) + rng() * 0.08;
+          return { x: point.x + Math.cos(angle) * rx * edge, y: point.y + Math.sin(angle) * ry * edge };
+        });
+        layers[i % layers.length].shapes.push({ type: 'polygon', points });
       }
       return layers;
     }
@@ -96,7 +102,12 @@ function motifLayers(kind: BodyMotif, p: Phenotype, alpha: number, seed: number,
       for (let i = 0, total = count(5, 14); i < total; i++) {
         const point = surface.place(0.04 + rng() * 0.92, 0.2 + rng() * 0.6), r = radius * (0.75 + rng() * 0.5);
         centres.shapes.push({ type: 'circle', ...point, r: r * 0.5 });
-        rings.shapes.push({ type: 'circle', ...point, r });
+        // Broken, lobed rings read as rosettes, rather than perfectly circular targets.
+        const phase = rng() * Math.PI * 2;
+        for (let arc = 0; arc < 3; arc++) rings.shapes.push({ type: 'polyline', points: Array.from({ length: 10 }, (_, j) => {
+          const angle = phase + arc * Math.PI * 2 / 3 + j / 9 * 1.65, radius = r * (0.86 + 0.14 * Math.sin(angle * 5 + phase));
+          return { x: point.x + Math.cos(angle) * radius, y: point.y + Math.sin(angle) * radius * 0.8 };
+        }) });
       }
       return [centres, rings];
     }
@@ -146,8 +157,12 @@ function scaleLayers(p: Phenotype, a: Anatomy): OrnamentLayer[] {
   switch (type) {
     case 'fine': return [arcs('shade', 0.2, r * 0.18)];
     case 'net': return [arcs('dark', 0.42, r * 0.28)];
-    case 'armor': return [arcs('gold', 0.5, r * 0.2)];
-    case 'pearl': return [{ ...layer('light', 0.5), shapes: centres.map((c): OrnamentShape => ({ type: 'circle', ...c, r: r * 0.34 })) }];
+    case 'armor': return [
+      { ...layer('shade', 0.2), shapes: centres.map((c): OrnamentShape => ({ type: 'polygon', points: [
+        { x: c.x - r * 0.6, y: c.y }, { x: c.x, y: c.y - r * 0.6 }, { x: c.x + r * 0.8, y: c.y }, { x: c.x, y: c.y + r * 0.6 },
+      ] })) }, arcs('gold', 0.5, r * 0.15),
+    ];
+    case 'pearl': return [arcs('shade', 0.16, r * 0.12), { ...layer('light', 0.5), shapes: centres.map((c): OrnamentShape => ({ type: 'ellipse', x: c.x - r * 0.15, y: c.y - r * 0.12, rx: r * 0.34, ry: r * 0.24, angle: -0.4 })) }];
   }
 }
 

@@ -277,3 +277,9 @@ Two simultaneous buyers, duplicate command retries, rollback on debit/transfer f
 ## 5. Evidence format
 
 For a test report record task ID, source/model version, command or user journey, fixture/seed, environment, expected outcome, actual outcome, limitations, and relevant artifacts. Tests should verify domain promises or meaningful failure conditions, not mirror implementation line for line.
+
+## FS-303 and requested breeding/appearance improvements
+
+13 September 2026. npm run check: 101 tests in 16 files, strict TypeScript and Vite production build passed. git diff --check passed. See [full evidence and limits](research/FS-303-BEHAVIOR-AND-BREEDING.md).
+
+Browser: in-app Chromium, isolated port 5174 QA world. Verified compound targets, per-tank empty state, leader selection, categorical copy odds, favorite-safe sale including a favorite changed during review, persistence after reload, feeding state in inspector, appearance gallery and desktop/mobile planner (375 x 812, no horizontal overflow). The final fresh browser load had no console errors. A transient Vite hot-reload error occurred between two source edits and disappeared after both files were updated. The browser CLI and standalone Playwright were unavailable, so the in-app browser was used. Other FS-303 transitions are covered by deterministic scenario tests, not claimed as separately observed browser journeys. The normal port 5173 save was untouched.

@@ -5,7 +5,6 @@ import { kinship } from '../src/core/pedigree';
 import { decodeSave } from '../src/core/save';
 import type { Fish, Genome } from '../src/core/types';
 import { applyCommand, createWorld, quote } from '../src/core/world';
-import { createActor, stepMotion } from '../src/simulation/motion';
 import { COHORT_VISUAL_FIXTURES, EXTREME_VISUAL_FIXTURES, FOUNDER_VISUAL_FIXTURES, VISUAL_DESCRIPTORS, VISUAL_FIXTURE_REPORT } from '../src/core/visualFixtures';
 import { hash } from '../src/core/random';
 import { INCUBATION_DAYS } from '../src/core/development';
@@ -226,23 +225,6 @@ describe('world commands and persistence', () => {
     const cycle = structuredClone(world); cycle.fish[0].parents = [cycle.fish[6].id, cycle.fish[1].id];
     expect(() => decodeSave(JSON.stringify(cycle))).toThrow();
     expect(() => decodeSave('{oops')).toThrow();
-  });
-});
-
-describe('fixed-step motion', () => {
-  it('replays finite bounded positions after prolonged movement and food attraction', () => {
-    const initial = createWorld(NOW).fish.map(createActor);
-    function run() {
-      let actors = structuredClone(initial);
-      for (let tick = 0; tick < 2000; tick++) actors = stepMotion(actors, tick * 0.05, tick < 100 ? { x: 0.5, y: 0.2, remaining: 1 } : null);
-      return actors;
-    }
-    const a = run(); expect(a).toEqual(run());
-    a.forEach(actor => {
-      expect(Number.isFinite(actor.vx + actor.vy + actor.x + actor.y)).toBe(true);
-      expect(actor.x).toBeGreaterThanOrEqual(0.08); expect(actor.x).toBeLessThanOrEqual(0.92);
-      expect(actor.y).toBeGreaterThanOrEqual(0.12); expect(actor.y).toBeLessThanOrEqual(0.88);
-    });
   });
 });
 

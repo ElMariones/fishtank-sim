@@ -22,14 +22,18 @@ describe('FS-202 motion worker lifecycle', () => {
       () => { const worker = new FakeWorker(); workers.push(worker); return worker as unknown as Worker; },
       { onMessage() {}, onStatus(status) { statuses.push(status); } },
     );
-    client.start(fish, 12, 2);
-    expect(workers[0].messages[0]).toMatchObject({ type: 'initialize', protocol: 1, tick: 12, speed: 2 });
-    workers[0].send({ type: 'ready', protocol: 1, ids: fish.map(f => f.id), tick: 12 });
+    client.start(fish, 12, 2, true);
+    expect(workers[0].messages[0]).toMatchObject({ type: 'initialize', protocol: 2, tick: 12, speed: 2, planted: true });
+    workers[0].send({ type: 'ready', protocol: 2, ids: fish.map(f => f.id), tick: 12 });
     expect(statuses).toEqual(['ready']);
+    client.environment(false); client.feed(); client.startle(0.4, 0.6);
+    expect(workers[0].messages.slice(1).map(message => message.type)).toEqual(['environment', 'feed', 'startle']);
     workers[0].fail();
     expect(workers[0].terminated).toBe(true);
     expect(workers).toHaveLength(2);
-    workers[1].send({ type: 'ready', protocol: 1, ids: fish.map(f => f.id), tick: 12 });
+    // The restarted worker keeps the latest environment.
+    expect(workers[1].messages[0]).toMatchObject({ type: 'initialize', planted: false });
+    workers[1].send({ type: 'ready', protocol: 2, ids: fish.map(f => f.id), tick: 12 });
     expect(statuses).toEqual(['ready', 'recovering', 'recovered']);
     workers[1].fail('second fault');
     expect(statuses.at(-1)).toBe('failed');
@@ -48,7 +52,7 @@ describe('FS-202 motion worker lifecycle', () => {
     );
     client.start([], 0, 0);
     workers[0].fail();
-    workers[0].send({ type: 'frame', protocol: 1, tick: 9, transforms: new Float32Array(), stepMs: 0 });
+    workers[0].send({ type: 'frame', protocol: 2, tick: 9, transforms: new Float32Array(), states: new Uint8Array(), reasons: new Uint8Array(), leaders: new Int16Array(), food: new Float32Array(), stepMs: 0 });
     expect(messages).toEqual([]);
     client.destroy();
   });

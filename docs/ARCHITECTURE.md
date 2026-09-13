@@ -18,7 +18,7 @@ src/
     patternResemblance.ts Standard-body marking masks, overlap/separation metrics and seeded family study
     appearance.ts   Genome v2 Color/Ornament expression, founder weights and founder-stock rarity descriptions
     ornament.ts     Development v3 motif, scale, sparkle and tail/dorsal pattern geometry in body-length units
-    descriptors.ts  Fourteen visible descriptors normalized against development ranges
+    descriptors.ts  Fourteen legacy visible descriptors normalized against development ranges
     collection.ts   Device-local collection preferences, goal ranking, sorting, cohorts and goal leaders
     selectionExperiment.ts Seeded ten-generation truncation selection vs random mating, with pedigree F and gate
     resemblanceStudy.ts Blind parent-pair trial set, display modes, computational observer and answer scoring
@@ -42,7 +42,7 @@ src/
     motionClient.ts Lifecycle, cleanup, one automatic restart and manual recovery
     time.ts         Shared tick segments, event boundaries and protected offline window
   rendering/
-    fish.ts         Canvas renderer v4: anatomy v2, markings, color palettes and cached ornament paths
+    fish.ts         Canvas renderer v5: anatomy v2, markings, color palettes and cached ornament paths
     tankLayout.ts   Shared tank pose transform and fish-shaped picking
   ui/
     App.tsx         Lab controls, command runtime, inspector and paginated collection
@@ -272,7 +272,7 @@ The step uses only basic arithmetic, so saved doubles match across browsers.
 
 ## 7. Worker and renderer protocol
 
-Motion protocol v1 accepts initialize, fish synchronization, playback, feed, benchmark and shutdown messages. The worker replies with ready/entity maps, frames, benchmark results and faults. Entity IDs establish stable frame order; every fish occupies four `Float32` values: normalized x/y and vx/vy. Each frame allocates and transfers a new buffer, so the worker never reads a detached source. SharedArrayBuffer and cross-origin isolation are unnecessary.
+Motion protocol v2 accepts initialize, fish synchronization, playback, environment, feed, startle, benchmark and shutdown messages. Frames also transfer behavior state/reason bytes, leader indices and pellet coordinates. Utility desires and transient drives live in behavior.ts, separately from saved life state. The worker replies with ready/entity maps, frames, benchmark results and faults. Entity IDs establish stable frame order; every fish occupies four `Float32` values: normalized x/y and vx/vy. Each frame allocates and transfers a new buffer, so the worker never reads a detached source. SharedArrayBuffer and cross-origin isolation are unnecessary.
 
 The worker owns 20 Hz steering and its transient actors. Canvas keeps transforms in refs, paints with `requestAnimationFrame`, and does not put coordinates in React state. Switching tanks deliberately creates a deterministic visual trajectory from fish IDs; persistent lifecycle ticks are unaffected. Fish that join the visible tank get an actor on the next frame. Playback pauses while the document is hidden. React cleanup sends shutdown and terminates the worker. The client attempts one automatic restart, then exposes a visible manual restart after a repeated failure.
 

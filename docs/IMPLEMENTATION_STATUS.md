@@ -2,6 +2,10 @@
 
 **Updated:** 13 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`) and FS-302 (life stages and growth, `5821f46`) are DONE.
 
+## Current continuation — verified, push pending
+
+FS-303 utility behavior and user requests FS-114 (compound breeding planner and favorite-safe bulk sales) and FS-115 (Genome 2 inspection/ornament refinement) are implemented. See [behavior and breeding evidence](research/FS-303-BEHAVIOR-AND-BREEDING.md). FS-304 is next; FS-305–307 remain open.
+
 ## Delivered
 
 - Complete planning package: GDD, genetics, architecture, UX, balance, roadmap, task backlog, decision log and continuation guide.
@@ -40,7 +44,7 @@
 - FS-113 (user request): genome v2 appends Color and Ornament chromosomes. They add body, accent, dot and eye colors (with blends and two-tone eyes), fine multicolor spots, tiger stripes, marbling, calico, rosettes and motif mixes, five scale types, shimmer, and tail and dorsal patterns, with body motifs that can reach the fins. About one founder in four shows a new feature, and striking variants stay under 1%. Genome v1 fish keep their exact look, and FS-101–111 fixtures are unchanged. The inspector lists appearance with founder-stock rarity, and Visual fixtures shows 15 variants and a founder survey. See [FS-113 appearance genetics](research/FS-113-APPEARANCE-GENETICS.md).
 - FS-301: world save v2 gives every tank a unit-aware, one-compartment water model: litres, temperature, dissolved oxygen, ammonia nitrogen and uneaten food, with biofilter and aeration. It advances through the shared clock in fixed half-game-hour steps; visible, background, offline and replayed intervals agree exactly, and a mass-balance ledger backs zero, overload and recovery fixtures. Residents load the water at their adult genetic potential. The aquarium shows read-only oxygen, ammonia and stocking bands. World v1 saves migrate with default water. See [FS-301 water model](research/FS-301-WATER-MODEL.md).
 - FS-302: world save v3 gives every fish a life state (age, current length, condition). Breeding lays eggs that hatch after 3 game days. Fry and juveniles grow logistically toward their genetic adult length, reaching adulthood in about 18–30 game days in good water, slower under low oxygen, ammonia or crowding. Condition carries recent conditions forward, so deficits and recovery take days. Development runs once per game day through the shared clock, including offline and replay. The tank draws fish at current size and counts incubating eggs; cards and the inspector show stage, age and condition beside adult potential. Eggs cannot breed or be sold. Older saves migrate as young adults. See [FS-302 life stages](research/FS-302-LIFE-STAGES.md).
-- 91 automated tests; production build; Chrome verification of worker load/cleanup/faults, two-tab takeover, offline limits, transaction recovery, migration and 10,000-record import/restore, with the runtime journeys repeated in the in-app Chromium pane after the M2 review fixes.
+- 101 automated tests; production build; Chrome verification of worker load/cleanup/faults, two-tab takeover, offline limits, transaction recovery, migration and 10,000-record import/restore, with the runtime journeys repeated in the in-app Chromium pane after the M2 review fixes.
 
 ## Prototype shortcuts and limitations
 
@@ -51,14 +55,14 @@
 | Pattern inheritance | Placement inherited from haplotype blocks (73% sibling separation, computed); common haplotypes are shared by chance; ellipse shapes; symmetry is a spread proxy, not bilateral matching; all five observers misread one markings trial. FS-113 motif positions come from the birth seed, while kind, colors, density and contrast are inherited, and people have not judged them | FS-601 |
 | Selection balance | Keeping 4 + 4 parents saturates v1 traits within 4–7 generations and drives pedigree F to about 0.8, with only the expected-F figure as a warning | FS-403 FS-605 |
 | Research data | Five anonymous records pooled in-repo by hand; no cue notes, observer context or remote collection | FS-705 |
-| Collection preferences | Goal, sort and favorites are device-local and not in exported saves; filters and parent picks reset on reload; the Parents filter groups every clutch of a pair | FS-203–204 |
+| Collection preferences | Up to four compound goals, sort and favorites are device-local and not in exported saves; filters and parent picks reset on reload; the Parents filter groups every clutch of a pair | FS-203–204 |
 | World size | 10,000 records and 480 living fish; tested large snapshot round trip about 755 ms, with validation still on the main thread; pathological pedigrees can require quadratic ancestor-pair work | FS-405 FS-702 |
 | Life stages | Eggs, fry, juveniles, adults and an elderly label with age, growth and condition; drawings keep adult shape and pigment at current size; no hunger, health, disease or death | FS-305 FS-306 |
-| Behavior | No true feeding consumption, courtship, territorial utility, shelter use or learned memory | FS-303 |
+| Behavior | Visual pellet consumption and utility cruise/forage/eat/hide/school; no persistent nutrition, courtship, territorial utility or learned memory | FS-303 |
 | Curiosity/life-history genes | growth_rate, longevity, metabolism and oxygen_demand are active; fertility and curiosity remain display-only | FS-303 FS-401 |
 | Breeding | Eggs cannot breed, but the lab bypasses maturity, courtship, shared habitat, cost and cooldown; fixed 20 eggs | FS-401–402 |
 | Environment | One-compartment water per tank (litres, temperature, oxygen, ammonia, food) with read-only bands; poor water slows growth but does not harm fish; no pH, nitrite/nitrate, light or plant uptake; no care controls | FS-305 |
-| Decorations | Plants are cosmetic toggle; no placement or collision footprint | FS-304 FS-503 |
+| Decorations | Plants provide visual cover targets; no placement or collision footprint | FS-304 FS-503 |
 | Economy | Free breeding/tanks make profit farming trivial, and batch sale makes it faster; stock is generated at purchase; sale quotes ignore appearance and current size; no real market | FS-501–502 |
 | Batch management | Batch sale only; no batch move/rehome, and selection does not persist across tank or archive views | FS-406 |
 | Rarity | Only founder-stock rarity labels for appearance (FS-113); no measured reference population or global service | FS-603 FS-805 |

@@ -127,4 +127,10 @@ M8 total: 40–60 days. Provider costs and moderation operations require separat
 
 ## Suggested next-agent task
 
-M1's roadmap gate, M2 (`6a69695`), the FS-113 appearance request (`2436fbf`), the FS-301 water model (`4f61d8b`) and FS-302 life stages (`5821f46`) are pushed. Continue M3 with FS-303: utility behavior with inspectable reasons. Health decay and feeding effects stay with FS-305.
+M1's roadmap gate, M2 (`6a69695`), the FS-113 appearance request (`2436fbf`), the FS-301 water model (`4f61d8b`) and FS-302 life stages (`5821f46`) are pushed. FS-303 is now verified, pending push; next is FS-304 spatial hashing and footprints. Health decay and feeding effects stay with FS-305.
+
+## Current user-requested additions — verified, push pending
+
+- FS-114: compound breeding goals, candidate search across/all tanks, adult previews, copy odds, capacity feedback, and favorite/egg-safe bulk sales. Evidence: [FS-303 and breeding report](research/FS-303-BEHAVIOR-AND-BREEDING.md).
+- FS-115: Genome 2 allele inspection, calico color correction, organic rosettes/flecks and distinct pearl/armor scale textures; unchanged inheritance and classic v1 fixtures.
+- FS-303 implementation and tests reviewed and completed; mark DONE only after push. FS-304–307 remain open.

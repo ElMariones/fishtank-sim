@@ -33,11 +33,11 @@ Original notes are in source/original-concept.txt. Do not treat the original not
 
 ## 4. Working code and important constraints
 
-Genetics use 48 loci with two array copies. Indices matter. Genotype changes, expression changes, and renderer changes have different compatibility consequences; avoid silently changing the appearance of existing saved fish.
+Genetics use 48 legacy loci, or 60 loci in genome v2, with two phased array copies. Indices matter. Genotype changes, expression changes, and renderer changes have different compatibility consequences; avoid silently changing the appearance of existing saved fish.
 
 Mutations are 0.003 **per copy**. There are 96 transmitted copies, so about one quarter of lab births carry a small de novo mutation. This is a research setting.
 
-The current portrait is adult potential, not current life stage. Life-history values in phenotype are not yet integrated. Food is a temporary attraction target. The plant button is cosmetic. Lab credits are local NPC plumbing, not a balanced economy.
+The current portrait is adult potential, not current life stage. Growth, longevity, metabolism and oxygen demand are integrated. Food uses transient worker pellets; persistent nutrition is still inactive. The plant button changes visual cover targets; plants have no obstacle footprint yet. Lab credits are local NPC plumbing, not a balanced economy.
 
 Geometry lives in `src/core/anatomy.ts` (anatomy v2). The Canvas renderer draws it, portraits frame from its bounds, and the tank uses `src/rendering/tankLayout.ts` for both drawing and picking. Change anchors there and extend `tests/anatomy.test.ts`; do not add renderer-only geometry exceptions.
 
@@ -63,7 +63,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> FS-302 (`5821f46`) is complete. Continue with FS-303. Read GDD §8, architecture §7 and the FS-202 and FS-302 reports. Keep behavior in the motion worker as transient visual state, and separate desire selection from steering. Expose each fish's current state and reason to the inspector. Behavior must not be saved or change biology, and visual motion speed must not alter persistent biology. M1 FS-111 pooled five observers (54/60); the unanimously missed markings trial-9 is a follow-up, not a blocker.
+> FS-303 utility behavior and the compound breeding/Genome 2 improvements are verified (push pending). Continue with FS-304 spatial hashing and shelter/obstacle footprints. Read GDD §8, architecture §7 and the FS-202 and FS-302 reports. Keep behavior in the motion worker as transient visual state, and separate desire selection from steering. Expose each fish's current state and reason to the inspector. Behavior must not be saved or change biology, and visual motion speed must not alter persistent biology. M1 FS-111 pooled five observers (54/60); the unanimously missed markings trial-9 is a follow-up, not a blocker.
 
 ## 7. Subsequent task briefs
 

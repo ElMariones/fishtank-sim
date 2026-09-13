@@ -178,7 +178,7 @@ Each state exposes a short explanation in the inspector: “Foraging · hungry,�
 
 **No universal fitness score:** a fish may excel in a display tank and perform poorly in strong current. Show habitat-specific suitability and its contributors.
 
-The current lab implements only wandering, local separation/cohesion, inherited movement modifiers, and a food attraction target. Curiosity is inspectable but does not yet select behavior.
+The current lab implements utility cruise/forage/eat/hide/school, visual pellet consumption, startle response, plant cover targets, inherited movement modifiers and inspectable reasons. Persistent feeding and obstacle geometry remain planned. Curiosity is inspectable but does not yet select behavior.
 
 ## 9. Tank simulation and decoration
 

@@ -3,16 +3,22 @@ import { anatomyFor } from '../core/anatomy';
 import type { Fish, Tank } from '../core/types';
 import { drawFish } from '../rendering/fish';
 import { fishPose, pickActor, visualGrowth } from '../rendering/tankLayout';
+import { BEHAVIOR_STATES, type BehaviorSummary } from '../simulation/behavior';
 import { createActor, type Actor } from '../simulation/motion';
 import { MotionWorkerClient } from '../simulation/motionClient';
-import { TRANSFORM_STRIDE, type FromMotionWorker } from '../simulation/protocol';
+import { TRANSFORM_STRIDE, type FromMotionWorker, type PlaybackSpeed } from '../simulation/protocol';
 import { TICK_MS } from '../simulation/time';
 
-type Props = { fish: Fish[]; tank: Tank; selectedId: string; onSelect: (id: string) => void; paused: boolean; speed: number; feedSignal: number };
+type Props = {
+  fish: Fish[]; tank: Tank; selectedId: string; onSelect: (id: string) => void; paused: boolean; speed: number; feedSignal: number;
+  /** Called when the selected fish's behavior state, reasons or leader change; null when it is not swimming here. */
+  onBehavior?: (behavior: BehaviorSummary | null) => void;
+};
 type WorkerState = { status: 'starting' | 'ready' | 'recovering' | 'recovered' | 'failed'; message: string };
+type BehaviorFrame = { states: Uint8Array; reasons: Uint8Array; leaders: Int16Array };
 const workerFactory = () => new Worker(new URL('../simulation/motionWorker.ts', import.meta.url), { type: 'module', name: 'fishtank-motion' });
 // A hidden page paints nothing, so visual motion pauses there instead of spending worker time.
-const playbackSpeed = (props: Props) => document.hidden || props.paused ? 0 : props.speed as 1 | 2 | 4;
+const playbackSpeed = (props: Props): PlaybackSpeed => document.hidden || props.paused ? 0 : props.speed as PlaybackSpeed;
 
 export function TankCanvas(props: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -21,15 +27,32 @@ export function TankCanvas(props: Props) {
   const workerIds = useRef<string[]>(props.fish.map(fish => fish.id));
   const client = useRef<MotionWorkerClient | null>(null);
   const simulationTime = useRef(0);
-  const foodUntil = useRef(0);
+  const pellets = useRef<Float32Array>(new Float32Array());
+  const behaviorFrame = useRef<BehaviorFrame | null>(null);
+  const reported = useRef('');
+  const lastFeedSignal = useRef(props.feedSignal);
   const [workerState, setWorkerState] = useState<WorkerState>({ status: 'starting', message: '' });
   latest.current = props;
+
+  /** Report the selected fish's current behavior when it differs from the last report. */
+  const reportBehavior = () => {
+    const { selectedId, onBehavior } = latest.current, frame = behaviorFrame.current;
+    const index = frame ? workerIds.current.indexOf(selectedId) : -1;
+    const summary: BehaviorSummary | null = frame && index >= 0 && index < frame.states.length ? {
+      state: BEHAVIOR_STATES[frame.states[index]] ?? 'cruise', reasons: frame.reasons[index],
+      leaderId: frame.leaders[index] >= 0 ? workerIds.current[frame.leaders[index]] ?? null : null,
+    } : null;
+    const key = summary ? `${selectedId}:${summary.state}:${summary.reasons}:${summary.leaderId}` : `${selectedId}:none`;
+    if (key !== reported.current) { reported.current = key; onBehavior?.(summary); }
+  };
 
   useEffect(() => {
     const receive = (message: FromMotionWorker) => {
       if (message.type === 'ready' || message.type === 'entities') workerIds.current = message.ids;
       if (message.type !== 'frame') return;
       simulationTime.current = message.tick * TICK_MS / 1000;
+      pellets.current = message.food;
+      behaviorFrame.current = { states: message.states, reasons: message.reasons, leaders: message.leaders };
       const byId = new Map(actors.current.map(actor => [actor.id, actor]));
       const fishById = new Map(latest.current.fish.map(fish => [fish.id, fish]));
       actors.current = workerIds.current.flatMap((id, index) => {
@@ -40,6 +63,7 @@ export function TankCanvas(props: Props) {
         const offset = index * TRANSFORM_STRIDE;
         return [{ ...actor, x: message.transforms[offset], y: message.transforms[offset + 1], vx: message.transforms[offset + 2], vy: message.transforms[offset + 3] }];
       });
+      reportBehavior();
     };
     const motion = new MotionWorkerClient(workerFactory, {
       onMessage: receive,
@@ -47,7 +71,8 @@ export function TankCanvas(props: Props) {
     });
     client.current = motion;
     actors.current = props.fish.map(createActor);
-    motion.start(props.fish, 0, playbackSpeed(props));
+    behaviorFrame.current = null;
+    motion.start(props.fish, 0, playbackSpeed(props), props.tank.planted);
     const fault = () => { if (import.meta.env.DEV) motion.simulateFaultForTest(); };
     window.addEventListener('fishtank:simulate-worker-fault', fault);
     return () => {
@@ -59,6 +84,7 @@ export function TankCanvas(props: Props) {
   }, [props.tank.id]);
 
   useEffect(() => { client.current?.synchronize(props.fish); }, [props.fish]);
+  useEffect(() => { client.current?.environment(props.tank.planted); }, [props.tank.planted]);
   useEffect(() => {
     const apply = () => client.current?.playback(playbackSpeed(latest.current));
     apply();
@@ -66,10 +92,11 @@ export function TankCanvas(props: Props) {
     return () => document.removeEventListener('visibilitychange', apply);
   }, [props.paused, props.speed]);
   useEffect(() => {
-    if (!props.feedSignal) return;
-    foodUntil.current = simulationTime.current + 8;
-    client.current?.feed();
+    if (props.feedSignal !== lastFeedSignal.current) client.current?.feed();
+    lastFeedSignal.current = props.feedSignal;
   }, [props.feedSignal]);
+  // A new selection reads the latest frame at once, even while the aquarium is paused.
+  useEffect(() => { reportBehavior(); }, [props.selectedId]);
 
   useEffect(() => {
     const canvas = canvasRef.current, ctx = canvas?.getContext('2d');
@@ -102,9 +129,10 @@ export function TankCanvas(props: Props) {
         const x = (i * 137.3 + Math.sin(time * 0.2 + i) * 10) % width, y = height - ((i * 53.7 + time * (3 + i % 3)) % height);
         ctx.fillStyle = '#d6fff126'; ctx.beginPath(); ctx.arc(x, y, 0.7 + i % 2, 0, Math.PI * 2); ctx.fill();
       }
-      if (time < foodUntil.current) {
+      const food = pellets.current;
+      if (food.length) {
         ctx.fillStyle = '#dab36b';
-        for (let i = 0; i < 14; i++) { ctx.beginPath(); ctx.arc(width * 0.5 + Math.sin(i * 9) * 45, height * 0.24 + Math.cos(i * 7) * 18, 2, 0, Math.PI * 2); ctx.fill(); }
+        for (let i = 0; i < food.length; i += 2) { ctx.beginPath(); ctx.arc(food[i] * width, food[i + 1] * height, 2.2, 0, Math.PI * 2); ctx.fill(); }
       }
       const fishById = new Map(current.fish.map(fish => [fish.id, fish]));
       for (const actor of actors.current) {
@@ -134,9 +162,11 @@ export function TankCanvas(props: Props) {
     <canvas ref={canvasRef} className="tank-canvas" role="img" aria-label={`${props.tank.name}, ${props.fish.length} swimming fish. Select a fish using the collection below.`}
       onClick={event => {
         const rect = event.currentTarget.getBoundingClientRect(), byId = new Map(props.fish.map(fish => [fish.id, fish]));
-        const id = pickActor(actors.current, rect.width, rect.height, event.clientX - rect.left, event.clientY - rect.top, 6,
+        const x = event.clientX - rect.left, y = event.clientY - rect.top;
+        const id = pickActor(actors.current, rect.width, rect.height, x, y, 6,
           actor => visualGrowth(byId.get(actor.id)?.life.lengthCm ?? actor.phenotype.adultLengthCm, actor.phenotype.adultLengthCm));
-        if (id) props.onSelect(id);
+        // Clicking open water taps the glass: nearby fish are startled, and shy ones look for cover.
+        if (id) props.onSelect(id); else client.current?.startle(x / rect.width, y / rect.height);
       }} />
     {workerState.status === 'recovering' || workerState.status === 'recovered' || workerState.status === 'failed' ? <div className={`worker-state ${workerState.status}`} role="status">
       {workerState.status === 'recovering' ? 'Aquarium motion stopped; restarting it…' : workerState.status === 'recovered' ? 'Aquarium motion recovered.' : `Aquarium motion is paused. ${workerState.message}`}

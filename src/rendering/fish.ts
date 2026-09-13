@@ -113,7 +113,7 @@ function paint(ctx: CanvasRenderingContext2D, layers: readonly PreparedLayer[]) 
   }
 }
 
-/** Renderer v4: anatomy v2 geometry, development v2 markings and development v3 color and ornament. No inheritance, mutation, or identity decisions belong here. */
+/** Renderer v5: anatomy v2, classic markings and development v4 ornament. No inheritance, mutation, or identity decisions belong here. */
 export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: number, size: number, time = 0) {
   const a = anatomyFor(p);
   const l = size * p.length, h = l * p.depth;

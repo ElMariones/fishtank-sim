@@ -38,3 +38,28 @@ footer a{display:inline-flex;align-items:center;min-height:24px}
 .locus.absent code{opacity:.45}
 .appearance-list{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:3px;font-size:.72rem}.appearance-list li{display:flex;flex-wrap:wrap;gap:4px 6px}.appearance-list span{color:#9fb5ab}.appearance-list em{font-style:normal;color:#f0d88f}
 .water-status{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:0 0 12px}.water-chip{font-size:.72rem;padding:3px 9px;border-radius:999px;border:1px solid #4f7d68;color:#cae8d5;background:#17352d;text-transform:none}.water-chip.low,.water-chip.elevated,.water-chip.heavy{border-color:#b69a52;color:#f0d88f;background:#332f20}.water-chip.critical,.water-chip.high,.water-chip.overstocked{border-color:#c0799b;color:#ffc3de;background:#3a2230}.water-status small{color:#8fa79c;font-size:.68rem}
+/* Breeding planner: compact controls, adult previews, and explicit inheritance evidence. */
+.breeding-planner { margin-top: 22px; display: grid; gap: 14px; }
+.planner-heading, .planner-tools { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.planner-heading span, .planner-tools span { font-size: .8rem; color: #a9bdb5; }
+.planner-trait { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+.breeding-planner label { display: grid; gap: 6px; font-size: .78rem; color: #b5c8bd; min-width: 0; }
+.breeding-planner select, .breeding-planner input { width: 100%; min-width: 0; min-height: 42px; }
+.planner-scope, .planner-parents { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.planner-scope { padding-top: 14px; border-top: 1px solid #ffffff18; }
+.planner-parent, .planner-odds { background: #071e2380; border: 1px solid #a3c9b526; border-radius: 12px; padding: 14px; min-width: 0; }
+.planner-preview { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 8px; align-items: center; margin: 14px 0; }
+.planner-preview canvas { width: 90px; height: 72px; }
+.planner-preview small, .planner-preview b { display: block; margin-top: 5px; font-size: .73rem; overflow-wrap: anywhere; }
+.planner-preview b, .planner-odds b { color: #b8d9ac; }
+.planner-preview small, .planner-odds small { color: #a7bbb1; }
+.planner-odds p { font-size: .8rem; }
+@media (max-width: 680px) {
+  .planner-parents, .planner-scope { grid-template-columns: 1fr; }
+  .planner-trait { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .planner-trait > label:first-child { grid-column: 1 / -1; }
+  .planner-preview { grid-template-columns: 90px minmax(0, 1fr); }
+}
+
+.locus.appearance-locus { grid-template-columns: minmax(0,1fr) minmax(4.5em,.65fr) minmax(4.5em,.65fr); }
+.appearance-locus code small { display: block; font-size: .7em; overflow-wrap: anywhere; color: #b4cdbc; }
