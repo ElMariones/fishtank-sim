@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CHROMOSOMES, LOCI, label } from '../core/catalog';
 import { express, fingerprint, heterozygosity } from '../core/genetics';
+import { MARKING_BLOCKS, MARKING_VISIBLE_ALPHA } from '../core/pattern';
 import { kinship } from '../core/pedigree';
 import { decodeSave, SAVE_KEY } from '../core/save';
 import type { Fish, World } from '../core/types';
@@ -199,7 +200,10 @@ export function App() {
           {tab === 'Genome' ? <div className="genome-view"><div className="genome-fingerprint"><span>Genome checksum</span><code>{fingerprint(fish.genome)}</code></div><p className="help-copy">Two phased copies per locus. A0–A5 are allele IDs. Most blend; A5/A5 at the metallic switch expresses strong metallic color.</p>{CHROMOSOMES.map((chromosome, chromosomeIndex) => <div className="chromosome" key={chromosome}><h3>{String(chromosomeIndex + 1).padStart(2, '0')} / {chromosome}</h3>{LOCI.slice(chromosomeIndex * 6, chromosomeIndex * 6 + 6).map((locus, j) => {
             const i = chromosomeIndex * 6 + j, mutation = fish.mutations.some(m => m.locus === i);
             return <div className={`locus ${mutation ? 'mutated' : ''}`} key={locus}><span>{label(locus)}{mutation ? ' *' : ''}</span><code>A{fish.genome.maternal[i]}</code><code>A{fish.genome.paternal[i]}</code></div>;
-          })}</div>)}<p className="help-copy">* A new mutation in this fish. No global rarity is measured in this offline lab.</p></div> : null}
+          })}</div>)}<p className="help-copy">* A new mutation in this fish. No global rarity is measured in this offline lab.</p><div className="marking-blocks"><h3>Inherited marking blocks</h3><p className="help-copy">Each pair of neighbouring Pigments or Pattern loci on one chromosome copy places one marking. Siblings that inherit the same copy share it; a crossover or mutation inside the pair moves it.</p><ol>{p.markings.map((anchor, index) => {
+            const visible = (anchor.layer === 'dark' ? p.black : p.red) * (1 - p.translucency) >= MARKING_VISIBLE_ALPHA, drawn = index < p.frequency;
+            return <li key={anchor.key} className={drawn && visible ? '' : 'muted'}><span className={`marking-swatch ${anchor.layer}`} aria-hidden="true" /><span>{MARKING_BLOCKS[anchor.block].label}<small>A{anchor.alleles[0]}·A{anchor.alleles[1]} · {anchor.origin === 'both' ? 'on both copies (bolder)' : anchor.origin === 'maternal' ? 'copy from mother' : 'copy from father'}</small></span><span>{anchor.layer === 'dark' ? 'Dark' : 'Warm'}{!drawn ? ' · not drawn' : !visible ? ' · too faint' : ''}</span></li>;
+          })}</ol></div></div> : null}
           {tab === 'Family' ? <div className="family-view"><p className="help-copy">Select any relative to inspect them. Living fish bring their aquarium into view; sold fish retain an archived profile.</p><h3>Parents</h3>{fish.parents ? fish.parents.map(id => <Relative key={id} fish={world.fish.find(f => f.id === id)!} onSelect={select} />) : <p className="empty-copy">Founder · no recorded parents.</p>}<div className="family-self">{fish.name}<small>Generation {fish.generation}</small></div><h3>Offspring</h3>{world.fish.filter(f => f.parents?.includes(fish.id)).map(child => <Relative key={child.id} fish={child} onSelect={select} />)}{!world.fish.some(f => f.parents?.includes(fish.id)) ? <p className="empty-copy">Their story is just beginning.</p> : null}<p className="help-copy">Pedigree F uses recorded ancestry and assumes unrelated founders. It is different from heterozygosity.</p></div> : null}
         </> : <p className="empty-copy">Select a fish from the aquarium or collection.</p>}
       </aside>

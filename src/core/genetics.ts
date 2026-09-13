@@ -1,4 +1,5 @@
 import { CROSSOVER_RATE, FOUNDER_WEIGHTS, LOCI, MUTATION_RATE, type Locus } from './catalog';
+import { markingAnchors } from './pattern';
 import { clamp, hash, random } from './random';
 import type { Genome, Mutation, Phenotype } from './types';
 
@@ -31,7 +32,7 @@ export function inherit(mother: Genome, father: Genome, seed: number, mutationRa
   return { genome: { version: 1, maternal: gamete(mother, 'maternal'), paternal: gamete(father, 'paternal') }, mutations };
 }
 
-/** Development v1: adult genetic potential; age/environmental expression is a later milestone. */
+/** Development v2: adult genetic potential plus inherited marking anchors; age/environmental expression is a later milestone. */
 export function express(genome: Genome): Phenotype {
   const g = (name: Locus) => {
     const i = LOCI.indexOf(name);
@@ -66,6 +67,7 @@ export function express(genome: Genome): Phenotype {
     fertility: 0.3 + 0.6 * g('fertility'),
     speed: (0.035 + g('thrust') * 0.055) / (1 + tail * 0.7 + depth * 0.35),
     turning: 0.7 + g('turning') * 1.4, activity: g('activity'), social: g('sociability'), bold: g('boldness'), curious: g('curiosity'),
+    markings: markingAnchors(genome),
   };
 }
 

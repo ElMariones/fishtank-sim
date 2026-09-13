@@ -109,7 +109,7 @@ Mutation events currently store locus index, received copy, prior allele, and ne
 |---|---|---|---|
 | Small effect | Adjacent additive allele | Tune per transmitted copy | Already implemented at lab rate |
 | Regulatory | Pigment/fin/head expression gain | Separate weighted transition table | Stable phenotype descriptors |
-| Pattern | Frequency/warp/edge or developmental pattern seed structure | Per relevant locus copy | Measured parent-child resemblance |
+| Pattern | Frequency/warp/edge or developmental pattern seed structure | Per relevant locus copy | Partly present: an ordinary small mutation at a Pigments/Pattern locus already moves one inherited marking (development v2); a dedicated class awaits FS-105 resemblance results |
 | Structural | Bounded fin/tail/barbel topology variant | Start around 1e-4 per tracked birth for the entire class | Anatomy validation and visual fixtures |
 | Major developmental | Compatible multi-structure template | Later, lower event rate | Long-term population experiments |
 | Meta-mutability | Region-specific rate modifier with clamps | Deferred | Economy and mutation discovery pacing stable |
@@ -140,18 +140,20 @@ For an additive locus, n = (maternal allele ID + paternal allele ID) / 10. Below
 | 3 | dorsal_height | 0.035–0.275 multiplied by fin gain | Render |
 | 3 | pectoral_length | 0.06–0.32 multiplied by fin gain | Render |
 | 3 | fin_pigment | Threshold between neutral and pigmented fins | Render |
-| 4 | red | Warm-layer opacity, multiplied by pigment gain | Render |
-| 4 | yellow | Warm-layer hue and base tint | Render |
-| 4 | black | Dark-layer opacity; suppressed by switch | Render |
-| 4 | white | Base lightness | Render |
-| 4 | reflectivity | Baseline metallic response up to 0.45 | Render |
-| 4 | translucency | Bounded pigment transparency proxy 0–0.35 | Render |
-| 5 | pattern_frequency | 3–16 main pigment patches | Render |
-| 5 | pattern_scale | Patch radius factor 0.05–0.20 | Render |
-| 5 | pattern_warp | Patch aspect variation | Render |
-| 5 | pattern_symmetry | Compresses vertical placement spread; not true bilateral matching yet | Render |
-| 5 | pattern_edge | Hard versus softened patch edges | Render |
-| 5 | speckle | 0–55 small flecks | Render |
+| 4 | red | Warm-layer opacity, multiplied by pigment gain | Render, marking block |
+| 4 | yellow | Warm-layer hue and base tint | Render, marking block |
+| 4 | black | Dark-layer opacity; suppressed by switch | Render, marking block |
+| 4 | white | Base lightness | Render, marking block |
+| 4 | reflectivity | Baseline metallic response up to 0.45 | Render, marking block |
+| 4 | translucency | Bounded pigment transparency proxy 0–0.35 | Render, marking block |
+| 5 | pattern_frequency | 3–16 main pigment patches | Render, marking block |
+| 5 | pattern_scale | Patch radius factor 0.05–0.20 | Render, marking block |
+| 5 | pattern_warp | Patch aspect variation | Render, marking block |
+| 5 | pattern_symmetry | Compresses vertical placement spread; not true bilateral matching yet | Render, marking block |
+| 5 | pattern_edge | Hard versus softened patch edges | Render, marking block |
+| 5 | speckle | 0–55 small flecks | Render, marking block |
+
+"Marking block" (development v2): on each homolog, adjacent pairs of these loci (red + yellow, black + white, reflectivity + translucency, pattern frequency + scale, warp + symmetry, edge + speckle) form a two-locus haplotype whose allele pair also chooses one inherited marking anchor. Their numeric effects above are unchanged.
 | 6 | size_1 | 45% contribution to size potential | Potential |
 | 6 | growth_rate | 0.5–1.5 growth multiplier | Potential only |
 | 6 | longevity | 8–32 game-year potential | Potential only |
@@ -242,7 +244,7 @@ Phenotype owns anatomy, material/pigment descriptors, physiological potential, a
 
 ## 9. Procedural pattern and morphology plan
 
-Current Canvas renderer constructs a Bézier body, fins and rays, eye/pupil, mouth/barbels, and seeded pigment patches. Birth-seed placement is independent between siblings, while patch count, scale, edge, hue and distribution tendencies are inherited. This can weaken family resemblance and is an explicit research risk.
+Current Canvas renderer v3 draws the anatomy v2 body, fins and rays, eye/pupil and mouth/barbels, plus development v2 inherited markings. Marking placement now comes from phased two-locus haplotype blocks on the Pigments and Pattern chromosomes (three blocks per homolog). Each block haplotype defines one anchor's body position, size, angle, layer and priority; identical homolog blocks merge into one bolder anchor. `pattern_frequency` selects how many anchors (plus inherited satellites) are drawn, and the birth seed adds only small jitter. A crossover inside a block or a mutation at either of its loci moves that marking. Measured sibling separation rose from 52% (independent placement) to 73%; see [FS-103 inherited markings](research/FS-103-INHERITED-MARKINGS.md). Remaining risks: chance sharing of common haplotypes, ellipse-only shapes and no true bilateral symmetry.
 
 Next renderer:
 

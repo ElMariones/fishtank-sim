@@ -17,5 +17,5 @@ export const MUTATION_RATE = 0.003; // Per transmitted copy, NOT per offspring.
 export const CROSSOVER_RATE = 0.12; // Switch probability at each adjacent boundary.
 export const FOUNDER_WEIGHTS = [0.1, 0.22, 0.32, 0.24, 0.1, 0.02];
 /** Appearance pipeline versions. Lab records do not store per-fish model versions yet (see ADR-018). */
-export const MODEL_VERSIONS = { genome: 1, development: 1, anatomy: 2, renderer: 2 } as const;
+export const MODEL_VERSIONS = { genome: 1, development: 2, anatomy: 2, renderer: 3 } as const;
 export const label = (name: string) => name.replaceAll('_', ' ').replace(/^./, c => c.toUpperCase());

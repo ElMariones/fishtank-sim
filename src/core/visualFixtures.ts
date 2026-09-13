@@ -1,6 +1,7 @@
 import { anatomyFor, insideBody, portraitFrame, silhouettePoints, validateAnatomy } from './anatomy';
 import { LOCI, MODEL_VERSIONS, type Locus } from './catalog';
 import { express, fingerprint, founderGenome, inherit } from './genetics';
+import { markingMask, maskSimilarity, separation, type PatternModel } from './patternResemblance';
 import { clamp, hash, random } from './random';
 import type { Genome, Phenotype } from './types';
 import { createWorld } from './world';
@@ -60,6 +61,8 @@ export type VisualCohortFixture = {
   descriptors: Record<VisualDescriptorKey, CohortDescriptorSummary>;
 };
 
+const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1);
+
 export function measureDescriptors(phenotype: Phenotype): NormalizedVisualDescriptors {
   return Object.fromEntries(VISUAL_DESCRIPTORS.map(({ key, min, max }) => [
     key,
@@ -100,7 +103,7 @@ function cohort(id: string, label: string, motherIndex: number, fatherIndex: num
     const values = children.map(child => child.normalized[key]);
     return [key, {
       mother: mother.normalized[key], father: father.normalized[key],
-      minimum: Math.min(...values), mean: values.reduce((sum, value) => sum + value, 0) / values.length,
+      minimum: Math.min(...values), mean: mean(values),
       maximum: Math.max(...values),
     }];
   })) as Record<VisualDescriptorKey, CohortDescriptorSummary>;
@@ -226,6 +229,20 @@ export function anatomySweep(randomSamples = 400): AnatomySweepReport {
   return { anatomyVersion: MODEL_VERSIONS.anatomy, samples: subjects.length, randomSamplesPerSource: randomSamples, legacy, legacyAffected, invalid, portraitClipped, eyeRadiusLimited, eyeMoved };
 }
 
+export type FixturePatternComparison = { model: PatternModel; siblingMean: number; crossCohortMean: number; parentChildMean: number; siblingSeparation: number };
+
+/** Visible-marking overlap within and across the two frozen FS-101 cohorts, for independent and inherited placement. */
+export function fixturePatternComparison(): FixturePatternComparison[] {
+  return (['independent', 'inherited'] as const).map(model => {
+    const mask = (fixture: VisualFixtureSubject) => markingMask(fixture.phenotype, fixture.birthSeed, model);
+    const cohorts = COHORT_VISUAL_FIXTURES.map(fixture => ({ parents: [mask(fixture.mother), mask(fixture.father)], children: fixture.children.map(mask) }));
+    const siblings = cohorts.flatMap(({ children }) => children.flatMap((child, i) => children.slice(i + 1).map(other => maskSimilarity(child, other))));
+    const cross = cohorts[0].children.flatMap(child => cohorts[1].children.map(other => maskSimilarity(child, other)));
+    const parentChild = cohorts.flatMap(({ parents, children }) => children.flatMap(child => parents.map(parent => maskSimilarity(child, parent))));
+    return { model, siblingMean: mean(siblings), crossCohortMean: mean(cross), parentChildMean: mean(parentChild), siblingSeparation: separation(siblings, cross) };
+  });
+}
+
 export const VISUAL_FIXTURE_REPORT = {
   fixtureVersion: VISUAL_FIXTURE_VERSION,
   genomeVersion: MODEL_VERSIONS.genome,
@@ -242,7 +259,7 @@ export const VISUAL_FIXTURE_REPORT = {
   knownFindings: [
     'Morphology and pigment parameter ranges are inherited and measurable in normalized descriptor space.',
     'Anatomy v2 anchors eyes, fin roots, rays, gill and mouth to the measured outline. An eye that cannot fit a shallow head is limited, and the limit is listed.',
-    'Patch positions are regenerated from each birth seed, so siblings do not yet inherit recognizable marking placement.',
+    'Development v2 derives marking anchors from phased pigment and pattern haplotype blocks; the birth seed only jitters them. Siblings share placement in proportion to the chromosome copies they share.',
     'The six v1 extremes and six anatomy stress cases are valid allele states, not new tail or body topology.',
   ],
 } as const;

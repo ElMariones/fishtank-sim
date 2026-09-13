@@ -1,6 +1,6 @@
 # Testing and verification
 
-**Latest recorded run:** 13 September 2026 (FS-102), Windows 11, Node 22.18.0, npm 10.9.3. FS-101 runs used Node 24.11.1 and npm 11.6.2; FS-101 is pushed as `fe138d4`.
+**Latest recorded run:** 13 September 2026 (FS-103), Windows 11, Node 22.18.0, npm 10.9.3. FS-101 runs used Node 24.11.1 and npm 11.6.2; FS-101 is pushed as `fe138d4`.
 
 ## 1. Commands
 
@@ -10,7 +10,7 @@ npm test
 npm run build
 ```
 
-Vitest runs every `tests/*.test.ts` file: `core.test.ts` and `anatomy.test.ts`. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **26 tests**, and all passed. The production build passed.
+Vitest runs every `tests/*.test.ts` file: `core.test.ts`, `anatomy.test.ts` and `pattern.test.ts`. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **32 tests**, and all passed. The production build passed.
 
 ## 2. Automated coverage
 
@@ -21,7 +21,7 @@ Vitest runs every `tests/*.test.ts` file: `core.test.ts` and `anatomy.test.ts`. 
 | Mendelian segregation | 10,000 seeded offspring; recessive locus frequencies within 2 percentage points of 25/50/25 |
 | Linkage | 10,000 synthetic marker crosses; adjacent boundary switch frequency within 2 points of 0.12 |
 | Mutation | Forced mutations produce 96 matching log entries, valid alleles and no boundary no-op |
-| Expression | All-zero, all-five, heterozygous extremes and 1,000 founders have finite positive anatomy/speed |
+| Expression | All-zero, all-five, heterozygous extremes and 1,000 founders have finite positive anatomy/speed and 6–12 finite in-range marking anchors |
 | Tradeoff | Changing tail length alone decreases speed as specified |
 | Selection | Ten selected generations increase mean body depth by more than 0.08 compared with starting pool |
 | Pedigree | Unrelated, self, full siblings, half siblings, parent-offspring, cousins, sold ancestors and input reordering |
@@ -39,6 +39,11 @@ Vitest runs every `tests/*.test.ts` file: `core.test.ts` and `anatomy.test.ts`. 
 | Anatomy regression | 558-phenotype sweep: v1 rules show defects (including eye overhang), anatomy v2 shows none; founder outline endpoints unchanged; eye limits listed as adjustments; unconstrained fixtures keep their exact eye radius |
 | Portrait framing | Every fixture at 260 × 140 and 600 × 330, fitted and shared-scale: no sampled silhouette point outside the canvas; shared scale keeps a 1.6 vs 0.7 body length ratio visible |
 | Picking | Tank pose inverse round-trips; body centre and caudal fin hit; a point two body lengths away misses; the top-most overlapping fish wins |
+| Marking blocks | Anchors use only loci 18–29, are unchanged when maternal and paternal arrays swap, merge a homozygous block into one anchor, and change exactly one anchor when a block allele mutates |
+| Marking transmission | 400 mutation-free children: more than 85% of anchors match a parental block haplotype (0.12 internal crossover predicts about 88%) |
+| Marking placement | Deterministic and finite; body coordinates in range; a different birth seed moves a patch by at most 0.06 along and 0.16 across the body |
+| Pattern resemblance | 24 × 10 seeded families: inherited sibling separation above 68% and at least 15 points above independent placement (which stays below 58%); parent separation above 66%; FS-101 cohorts above 75% versus independent below 60% |
+| Resemblance metrics | Jaccard overlap and rank separation reference cases, including ties and empty masks |
 
 These statistical checks use fixed seeds and wide tolerances to catch implementation regressions. They do not establish biological validity or rigorous randomness certification.
 
@@ -88,6 +93,14 @@ Environment: local Vite dev server, in-app Chromium browser pane, the pane's own
 - At 375 × 812: document width 375 (no overflow), checkbox rows 40 px tall, inspector title shows "♀ Female".
 - Console error count did not change during the journey.
 - The aquarium's animation loop prevents the pane's screenshot tool from settling. For one visual check, `requestAnimationFrame` was stubbed from the console and the page was reloaded afterwards; no source was changed.
+
+### FS-103 inherited marking verification
+
+Environment: local Vite dev server, in-app Chromium browser pane.
+
+- **Visual fixtures** header reads "development v2 · anatomy v2 · renderer v3"; the summary shows "73% sibling marking separation".
+- **Inherited marking structure** tables match the Node test run: sibling overlap 21% → 42%, unrelated child overlap 19% → 29%, sibling separation 52% → 73%, parent separation 53% → 72%; FS-101 cohorts 51% → 82%.
+- Opening the surface added no console errors.
 
 ## 4. Required next verification
 

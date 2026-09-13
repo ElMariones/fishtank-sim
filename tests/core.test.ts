@@ -73,8 +73,11 @@ describe('genetics invariants', () => {
   it('produces finite positive anatomy from extremes and varied founders', () => {
     const genomes = [uniform(0), uniform(5), uniform(0, 5), ...Array.from({ length: 1000 }, (_, i) => founderGenome(i))];
     for (const genome of genomes) {
-      const p = express(genome);
-      expect(Object.values(p).every(Number.isFinite)).toBe(true);
+      const p = express(genome), { markings, ...numeric } = p;
+      expect(Object.values(numeric).every(Number.isFinite)).toBe(true);
+      expect(markings.length).toBeGreaterThanOrEqual(6);
+      expect(markings.length).toBeLessThanOrEqual(12);
+      expect(markings.every(m => [m.u, m.v, m.size, m.angle, m.priority].every(Number.isFinite) && m.u > 0 && m.u < 1 && Math.abs(m.v) < 1)).toBe(true);
       expect(p.length).toBeGreaterThan(0); expect(p.depth).toBeGreaterThan(0);
       expect(p.speed).toBeGreaterThan(0);
     }
