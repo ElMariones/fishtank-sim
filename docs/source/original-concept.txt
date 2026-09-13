@@ -1,0 +1,1107 @@
+This concept has a very strong core loop because **genetics can be the actual engine of the entire game** rather than a cosmetic breeding system. A fish born in generation 1 could genuinely become the ancestor of some bizarre lineage you are still breeding 150 generations later.
+
+I would start with koi, but design the genetics so that “koi” is merely the **ancestral genome**. Given enough generations, selective breeding and mutation could create something that barely resembles a koi at all.
+
+## The core fantasy
+
+The game starts simply:
+
+**Tank → fish live → feed/grow → inspect → breed → offspring inherit/mutate → select interesting offspring → create bloodlines → sell/trade → build better tanks → repeat.**
+
+But underneath that simple loop there is a fairly serious evolutionary simulation.
+
+You might begin with this:
+
+> **Koi #0001 — “Haru”**
+> White/orange standard koi, 31 cm, ordinary fins, normal eyes.
+
+Twenty generations later, one branch of Haru's descendants might have:
+
+> **Haru XX-17 — “Emperor”**
+> 94 cm long, huge forehead, extremely deep body, metallic ivory scales, branching scarlet pattern, four barbels, tiny black eyes, triple flowing tail, no dorsal fin.
+
+And another lineage descended from exactly the same original fish might be:
+
+> **Haru XX-42 — “Needle”**
+> 46 cm, extremely elongated eel-like body, silver transparent scales, huge blue eyes, long pointed snout, forked tail, exceptionally fast.
+
+Their family trees would prove that both came from the same mundane koi.
+
+That would be the magic of the game.
+
+---
+
+# The genome
+
+I would **not** make genetics something like:
+
+```text
+Color = Red
+Tail = Long
+Eyes = Blue
+```
+
+That becomes Pokémon breeding very quickly.
+
+Instead, make a fish genome consist of perhaps **50–100 genetic loci**, with two alleles at each locus because the fish is diploid.
+
+So something conceptually like:
+
+```text
+Chromosome 1
+BODY_DEPTH       A3 / A7
+BODY_LENGTH      A2 / A2
+HEAD_RATIO       A1 / A4
+SPINE_CURVE      A6 / A1
+
+Chromosome 2
+MELANIN          A8 / A3
+XANTHOPHORE      A2 / A5
+IRIDOPHORE       A1 / A1
+PATTERN_SCALE    A7 / A4
+...
+```
+
+But those genes **interact**.
+
+`BODY_LENGTH` should not directly mean "long fish."
+
+Instead:
+
+**Genome → developmental parameters → phenotype → rendered fish**
+
+This distinction lets you create enormous variation.
+
+With only **40 loci and six possible alleles per locus**, a diploid organism already has roughly:
+
+**7.7 × 10⁵² possible genotypes.**
+
+And your system can go much further because many traits can be continuous rather than discrete.
+
+---
+
+# Koi Genome v1
+
+I'd divide its genome roughly like this:
+
+| Genetic system   | Example traits                                              |
+| ---------------- | ----------------------------------------------------------- |
+| Skeleton         | vertebral count, body length, body depth, curvature, taper  |
+| Head             | head length, forehead slope, cheek width, snout shape       |
+| Mouth            | width, protrusion, orientation, lip thickness               |
+| Barbels          | number, length, thickness, orientation                      |
+| Eyes             | size, separation, vertical position, iris color, pupil size |
+| Body             | muscularity, fat storage, abdominal depth                   |
+| Scales           | size, reflectivity, transparency, thickness                 |
+| Pigmentation     | red, yellow, black, white, silver, gold                     |
+| Pattern          | spots, islands, stripes, patches, speckles, gradients       |
+| Pattern geometry | scale, frequency, symmetry, rotation, distortion            |
+| Dorsal fin       | position, size, height, ray count                           |
+| Pectoral fins    | length, width, angle, symmetry                              |
+| Pelvic fins      | position, size, shape                                       |
+| Tail             | length, spread, fork depth, lobe size, ray count            |
+| Growth           | adult size, juvenile growth, longevity                      |
+| Metabolism       | hunger, growth efficiency, oxygen requirement               |
+| Movement         | acceleration, maximum speed, turning radius                 |
+| Behavior         | aggression, sociability, fear, curiosity                    |
+| Breeding         | fertility, maturity age, clutch size                        |
+| Mate preference  | colors/shapes the fish finds attractive                     |
+| Health           | disease resistance, deformity tolerance                     |
+| Mutation         | stability of different genome regions                       |
+
+And eventually there could be genes affecting genes.
+
+That is where things get interesting.
+
+---
+
+# Morphology should be continuous
+
+Instead of five predefined body shapes, represent the body through parameters.
+
+Imagine the fish's central skeleton as a spline:
+
+```text
+head ──●──●──●──●──●──●── tail
+```
+
+The genome controls things like:
+
+```text
+bodyLength
+bodyDepth
+headDepth
+tailPeduncleWidth
+bellyCurve
+backCurve
+headLength
+snoutLength
+```
+
+Your renderer then creates the body around that skeleton.
+
+A normal koi might be:
+
+```text
+length        0.52
+depth         0.31
+headRatio     0.19
+tailWidth     0.16
+spineCurve    0.03
+```
+
+A highly evolved lineage could become:
+
+```text
+length        0.91
+depth         0.12
+headRatio     0.09
+tailWidth     0.08
+spineCurve    0.15
+```
+
+And suddenly it looks like a long, thin river predator.
+
+Another:
+
+```text
+length        0.46
+depth         0.78
+headRatio     0.33
+tailWidth     0.27
+```
+
+becomes an enormous-headed, almost disk-shaped fish.
+
+That gives us **actual morphological evolution**, not merely switching sprites.
+
+---
+
+# The really powerful part: procedural color genetics
+
+Color should probably be one of the deepest systems.
+
+Instead of storing a fish as:
+
+> Orange with white spots
+
+store several biological pigment layers.
+
+For example:
+
+**Melanophores** → black/brown
+**Xanthophores** → yellow/orange
+**Erythrophores** → red
+**Iridophores** → metallic/silver/blue effects
+**Leucophores** → white
+
+The genome determines the amount and distribution of each.
+
+Then another collection of genes defines a **procedural pattern generator**.
+
+For instance:
+
+```text
+pattern_frequency
+pattern_scale
+pattern_rotation
+pattern_symmetry
+pattern_noise
+pattern_warp
+edge_softness
+spot_bias
+stripe_bias
+head_expression
+fin_expression
+belly_expression
+```
+
+You can use reaction-diffusion/noise/Voronoi-like functions to generate markings.
+
+This means two orange-and-white koi can still have **completely unique markings**.
+
+And because the pattern parameters themselves are inherited, children visually resemble their parents.
+
+That's extremely important.
+
+A player should eventually be able to look at a fish and think:
+
+> That pattern definitely comes from my Akagawa bloodline.
+
+---
+
+# Genetics shouldn't always be obvious
+
+Suppose this allele exists:
+
+```text
+METALLIC_SCALES
+
+M0 = none
+M1 = weak metallic
+M2 = metallic
+M3 = strong metallic
+```
+
+Perhaps `M3` is recessive.
+
+You breed:
+
+```text
+Father: M3 / M0
+Mother: M3 / M0
+```
+
+Neither looks metallic.
+
+Their offspring can be:
+
+```text
+25% M0/M0
+50% M0/M3
+25% M3/M3
+```
+
+Suddenly one quarter express brilliant metallic scales.
+
+This gives players a reason to inspect genomes and preserve apparently mediocre fish.
+
+You could even have **unknown alleles** initially shown as:
+
+```text
+Scale Reflectivity
+? / ?
+```
+
+and reveal them through sequencing, breeding experiments or a laboratory upgrade.
+
+---
+
+# Dominance, codominance and polygenic traits
+
+Different genes should behave differently.
+
+Some are **dominant/recessive**.
+
+Some are **codominant**, so both show.
+
+Some have **incomplete dominance**, where the hybrid is intermediate.
+
+And many important things like size shouldn't come from one magical `BIG_GENE`.
+
+Adult size could be influenced by:
+
+```text
+SIZE1
+SIZE2
+SIZE3
+SIZE4
+GROWTH_HORMONE
+METABOLISM
+SEX
+FOOD
+TEMPERATURE
+HEALTH
+```
+
+A fish's genome might predict:
+
+> Genetic adult length: 78–91 cm
+
+but poor feeding might result in it only reaching 67 cm.
+
+So genotype and phenotype are not identical.
+
+---
+
+# Environmental effects
+
+This becomes particularly useful for the aquarium gameplay.
+
+Two genetically identical siblings raised in different tanks might develop differently.
+
+Water quality could affect health and growth. Temperature could affect metabolism. Population density could increase stress. Diet could influence growth and coloration. Available swimming space could affect muscular development.
+
+Therefore the inspection page could show:
+
+```text
+Genetic potential
+████████████████░░ 88%
+
+Development achieved
+██████████████░░░░ 74%
+```
+
+This means tank management actually matters without altering the fish's DNA.
+
+---
+
+# Mutations
+
+Most offspring should inherit recognizable combinations of their parents.
+
+But every birth has a small chance of mutation.
+
+There should be several mutation classes.
+
+| Mutation             | Example                            |
+| -------------------- | ---------------------------------- |
+| Point mutation       | slightly larger eye                |
+| Regulatory mutation  | much stronger red pigmentation     |
+| Pattern mutation     | fragmented markings                |
+| Structural mutation  | elongated tail                     |
+| Development mutation | dorsal fin suppressed              |
+| Duplication          | extra fin rays/barbels             |
+| Major mutation       | split tail / unusual body topology |
+
+Most mutations are tiny.
+
+Occasionally something happens where you immediately think:
+
+> **What the hell happened to this fish?**
+
+Those moments become exciting.
+
+---
+
+# Structural mutations are how we eventually escape “koi”
+
+This is where I'd deliberately bend strict biology for gameplay.
+
+Normal traits modify existing structures.
+
+Very rare **developmental genes** can change topology.
+
+For example:
+
+```text
+TAIL_SPLIT
+TAIL_LOBE_DUPLICATION
+DORSAL_SUPPRESSION
+PECTORAL_DUPLICATION
+BARBEL_DUPLICATION
+EYE_DISPLACEMENT
+JAW_PROTRUSION
+VERTEBRA_DUPLICATION
+SCALE_SUPPRESSION
+```
+
+Once these exist in a lineage, subsequent generations can modify the new structure.
+
+So perhaps a mutation produces a tiny second tail lobe.
+
+At first it looks ugly.
+
+You breed it.
+
+Twenty generations later you've created:
+
+**four enormous symmetrical flowing tail lobes.**
+
+That's exactly the sort of emergent discovery I would want the game to create.
+
+---
+
+# Don't make “rarity” purely arbitrary
+
+I'd actually have **three kinds of rarity**.
+
+### Genetic rarity
+
+How frequently an allele exists in the entire game population.
+
+```text
+ALBINO-7
+Global allele frequency: 0.038%
+```
+
+### Phenotypic rarity
+
+How unusual this particular combination of visible features is.
+
+```text
+Phenotype uniqueness
+Top 0.17%
+```
+
+### Lineage rarity
+
+How many living descendants carry a particular mutation.
+
+```text
+Crown-Tail mutation
+
+Known living carriers: 14
+Your fish descended from original mutation carrier #843992.
+```
+
+That makes rare genetics feel genuinely rare.
+
+And if the marketplace is multiplayer, allele rarity could become **dynamic**.
+
+If everyone starts breeding giant metallic fish, they become less valuable.
+
+Something previously ignored might become fashionable and expensive.
+
+---
+
+# Fish inspection
+
+Clicking a fish should freeze/follow it and slide in something beautiful rather than simply opening a spreadsheet.
+
+I'd imagine:
+
+**large animated fish preview**
+
+then beneath/alongside it:
+
+| Tab        | Information                          |
+| ---------- | ------------------------------------ |
+| Overview   | name, sex, age, value, health, tank  |
+| Appearance | dimensions, colors, morphology       |
+| Genetics   | chromosomes, alleles, mutations      |
+| Family     | parents, siblings, mates, offspring  |
+| History    | birth, tanks, owners, competitions   |
+| Behavior   | personality and observed tendencies  |
+| Market     | estimated value and comparable sales |
+
+Something like:
+
+```text
+KAZE
+♂ Male
+
+Born
+14 May, Year 6
+
+Age
+2 years, 143 days
+
+Generation
+G17
+
+Parents
+Hoshi G16 × Momo G15
+
+Length
+68.4 cm
+
+Weight
+6.72 kg
+
+Genetic Diversity
+82%
+
+Inbreeding
+3.1%
+
+Rare Alleles
+7
+
+Mutations
+2
+
+Estimated Value
+₣ 18,420
+```
+
+And of course:
+
+**Name: `Kaze` ✎**
+
+should be editable.
+
+---
+
+# The family tree could become one of the best parts of the game
+
+Click:
+
+**Family**
+
+And you get something like:
+
+```text
+                    ┌─ Akira
+          ┌─ Hoshi ─┤
+          │         └─ Sumi
+Kaze ─────┤
+          │         ┌─ Ren
+          └─ Momo ──┤
+                    └─ Yuki
+```
+
+But rendered visually with little portraits of every fish.
+
+Click **Hoshi**.
+
+If Hoshi is alive:
+
+> Camera travels to Tank #4 and highlights him.
+
+If Hoshi was sold:
+
+> Shows his archived profile and current owner if public.
+
+If Hoshi is dead:
+
+> Shows historical record.
+
+You could navigate **50 generations backward** through your bloodline.
+
+And every fish should permanently retain a tiny generated portrait so family trees remain visually recognizable without storing full simulation data.
+
+---
+
+# Every fish needs an identity
+
+Under the hood, every fish gets a permanent immutable ID:
+
+```text
+FSH-A91F-8472-CC18
+```
+
+Then mutable name:
+
+```text
+"Kaze"
+```
+
+And a genome hash:
+
+```text
+Genome
+7A81-DDA4-22CF-191E
+```
+
+This becomes valuable when you eventually introduce trading because the fish has provenance.
+
+Imagine inspecting something in the marketplace:
+
+> **Sakura Emperor II**
+
+and seeing:
+
+```text
+Generation: 84
+
+Founder:
+FSH-000001 — Haru
+
+Original Crown Tail mutation:
+FSH-283119 — Kintaro
+
+Previous owners:
+3
+
+Children:
+47
+
+Grandchildren:
+382
+```
+
+Suddenly individual fish have history.
+
+---
+
+# Personality genes
+
+Don't let the fish simply wander randomly.
+
+Each fish should have inherited behavioral tendencies:
+
+| Trait            | Low ← → High                         |
+| ---------------- | ------------------------------------ |
+| Boldness         | timid → fearless                     |
+| Sociability      | solitary → schooling                 |
+| Aggression       | peaceful → territorial               |
+| Curiosity        | passive → investigative              |
+| Food drive       | restrained → ravenous                |
+| Activity         | lazy → hyperactive                   |
+| Depth preference | bottom → surface                     |
+| Human affinity   | avoids glass → approaches player     |
+| Mate selectivity | indiscriminate → extremely selective |
+
+The behavior simulation then uses these as weights.
+
+A shy fish might hide among rocks.
+
+A social fish follows others.
+
+An aggressive male might chase rivals.
+
+A curious fish investigates new decorations.
+
+A fish conditioned to associate your cursor with food might actually swim toward it.
+
+Then your tank starts feeling **alive**.
+
+---
+
+# Mating should use actual attraction
+
+One idea I really like is giving fish **mate-preference genes**.
+
+For example a fish might genetically prefer:
+
+```text
++ large size
++ high red coverage
++ long tails
+- dark pigmentation
+```
+
+Another might prefer:
+
+```text
++ metallic scales
++ small body
++ unusual patterns
+```
+
+So putting one male and one female together doesn't automatically guarantee breeding.
+
+They interact.
+
+Courtship happens.
+
+Compatibility matters.
+
+This introduces **sexual selection**, meaning traits can evolve simply because the fish themselves prefer them.
+
+Then you can watch evolutionary pressures emerge without the player explicitly choosing everything.
+
+---
+
+# Natural selection inside the tank
+
+Extreme morphology should have consequences.
+
+A fish with an absurdly huge tail:
+
+> beautiful
+> terrible acceleration
+> high oxygen cost
+
+Gigantic eyes:
+
+> excellent visual detection
+> vulnerable to injury
+
+Huge body:
+
+> impressive
+> eats enormous amounts
+> needs more tank space
+
+Tiny streamlined body:
+
+> fast
+> lower market presence
+> perhaps lower egg production
+
+Albino:
+
+> rare
+> sensitive to bright lighting
+
+Extreme inbreeding:
+
+> allows traits to stabilize
+> increases harmful recessive expression
+
+Therefore breeding becomes optimization rather than simply:
+
+> bigger number = better fish.
+
+---
+
+# Inbreeding could be fascinating
+
+Because you're maintaining family trees, calculate an actual **inbreeding coefficient**.
+
+Brother × sister?
+
+Dangerous.
+
+Distant cousins?
+
+Manageable.
+
+Outcross with unrelated fish?
+
+Restores genetic diversity.
+
+This creates a real reason to buy fish from other players.
+
+You might have created an incredible:
+
+> Dragon Tail / Gold / Giant Head
+
+bloodline.
+
+But after thirty generations your genetic diversity has collapsed.
+
+So now you're searching the marketplace for:
+
+> unrelated carrier of compatible Dragon Tail allele.
+
+That makes the marketplace deeply connected to genetics.
+
+---
+
+# Tanks become part of the simulation
+
+I'd allow players eventually to own dozens.
+
+Something like:
+
+```text
+Main Display Tank
+Breeding Tank
+Nursery #1
+Nursery #2
+Mutation Line A
+Gold Line
+Giant Line
+Experimental Tank
+Quarantine
+```
+
+Drag fish between tanks.
+
+Each tank has:
+
+**size, temperature, filtration, oxygenation, lighting, substrate, plants, hiding places, flow and population capacity.**
+
+Decorations shouldn't just be cosmetic either.
+
+Plants provide hiding places.
+
+Strong current rewards athletic fish.
+
+Caves affect territorial fish.
+
+Open water encourages schooling.
+
+Lighting changes visual presentation and potentially behavior.
+
+---
+
+# Babies are where this game will become addictive
+
+If two prized fish mate, I wouldn't immediately reveal everything.
+
+Imagine:
+
+> **143 eggs laid**
+
+Then:
+
+> **118 fertilized**
+
+Then:
+
+> **96 hatch**
+
+You see tiny fry.
+
+They're hard to distinguish initially.
+
+As they grow, pigmentation appears.
+
+Suddenly:
+
+> Wait... that one has the father's giant tail.
+
+Then another develops a completely new metallic pattern.
+
+And you're moving promising juveniles into another tank.
+
+This creates exactly the “one more generation” loop we want.
+
+---
+
+# But don't simulate 10,000 fish at full fidelity
+
+This is important technically.
+
+You could potentially own thousands of fish, but only **currently visible tanks need complete real-time simulation**.
+
+A tank on-screen:
+
+```text
+60 FPS rendering
+10–20 simulation ticks/sec
+full behavioral AI
+collision
+feeding
+schooling
+```
+
+An inactive tank can be mathematically simulated:
+
+```text
+growth
+hunger
+health
+breeding
+aging
+birth/death
+```
+
+perhaps once every few seconds or when reopened.
+
+That makes huge populations practical.
+
+---
+
+# Marketplace
+
+Eventually I would make the market look almost like livestock auctions.
+
+Search filters could include things like:
+
+```text
+Generation
+Sex
+Age
+Adult size
+Body ratio
+Pattern
+Pigments
+Mutation
+Specific allele
+Heterozygous carrier
+Lineage
+Inbreeding
+Fertility
+Market rarity
+Price
+```
+
+This means advanced players might literally search:
+
+> Female
+> Crown Tail carrier
+> recessive Gold-4 carrier
+> under 7% inbreeding
+> unrelated to Bloodline FSH-A822
+
+That's when your breeding simulation becomes truly deep.
+
+---
+
+# Market value
+
+I wouldn't simply derive price from rarity.
+
+Something approximately like:
+
+**market value = morphology desirability × phenotype rarity × genetic rarity × health × age × fertility × lineage prestige × current fashion × proven offspring**
+
+That last part could be fantastic.
+
+A fish might originally sell for:
+
+**₣2,500**
+
+Then one of its offspring wins competitions or produces a famous mutation.
+
+Suddenly the parent becomes:
+
+> Proven breeder
+
+and might now be worth:
+
+**₣38,000.**
+
+---
+
+# The visual rendering approach I would choose
+
+For the first version, I would **absolutely make Fishtank Sim 2D**, perhaps with beautiful pseudo-3D lighting.
+
+Not sprite-based though.
+
+I'd build fish procedurally using:
+
+**skeleton spline → body mesh → fins → eyes/mouth → scale/pattern shader**
+
+Probably with **PixiJS/WebGL**.
+
+This lets the same underlying fish smoothly morph from:
+
+normal koi → fat koi → slender fish → monster-headed fish → long-tail fish
+
+without requiring thousands of hand-drawn assets.
+
+The actual pattern can be shader/procedurally generated from the genetic parameters.
+
+With good lighting, bubbles, caustics, plant movement and glass distortion, it could look gorgeous while still supporting hundreds of individually generated fish.
+
+---
+
+# Architecture I'd use
+
+For the eventual web implementation, something along these lines would make sense:
+
+| Layer                   | Technology                             |
+| ----------------------- | -------------------------------------- |
+| Application UI          | React + TypeScript                     |
+| Tank rendering          | PixiJS / WebGL                         |
+| Simulation              | TypeScript in Web Worker               |
+| Genetics engine         | deterministic TypeScript module        |
+| Local saves             | IndexedDB                              |
+| UI state                | Zustand or similar                     |
+| Procedural patterns     | GLSL shaders                           |
+| Family tree             | custom graph / React Flow style system |
+| Backend later           | PostgreSQL/Supabase                    |
+| Multiplayer marketplace | authoritative backend                  |
+| Genome storage          | compact binary/typed arrays            |
+| Randomness              | seeded PRNG                            |
+
+The important architectural separation would be:
+
+```text
+Genome
+   ↓
+Development
+   ↓
+Phenotype
+   ↓
+Physical attributes
+   ↓
+Renderer
+
+Genome + phenotype
+   ↓
+Behavior traits
+   ↓
+Simulation AI
+```
+
+The renderer should **never decide what a fish is**.
+
+It merely visualizes the phenotype generated by genetics.
+
+That will save us enormous pain later.
+
+---
+
+# One feature I would add from day one: genome seeds
+
+Every fish could essentially be reproducible from:
+
+```text
+Fish ID
+Genome
+Birth seed
+Development history
+```
+
+That means the visual fish doesn't need to be stored as an image.
+
+You reconstruct it deterministically.
+
+It also means marketplace fish can't mysteriously change appearance because the same genome generates the same underlying animal.
+
+---
+
+# Evolution becomes the endgame
+
+And this is where I think **Fishtank Sim could become much more interesting than a normal aquarium game**.
+
+The player starts with recognizable domestic koi.
+
+There doesn't need to be an arbitrary tech tree saying:
+
+> Unlock Alien Fish.
+
+Instead, the player creates them.
+
+After hundreds of generations your aquarium could contain something like:
+
+```text
+ANCESTOR — Generation 0
+
+     ordinary koi
+         ↓
+  deeper-bodied koi
+         ↓
+  large-head lineage
+         ↓
+ metallic mutation
+         ↓
+ double-tail mutation
+         ↓
+ long-fin selection
+         ↓
+ scale-loss mutation
+         ↓
+ eye enlargement
+         ↓
+ selective gigantism
+         ↓
+
+GENERATION 137
+
+1.3-meter ivory fish
+transparent skin
+massive forehead
+four flowing crimson tails
+tiny metallic scales around its head
+blue telescopic eyes
+six barbels
+```
+
+And the incredible thing is:
+
+**you can click Family → Family → Family → Family and literally trace how it happened.**
+
+There was never an “Ivory Dragon Fish” item programmed into the game.
+
+**The genetics system created it.**
+
+That is the idea I would build the entire project around.
+
+---
+
+## One more mechanic I'd strongly consider: named bloodlines
+
+At some point the player can officially register a genetic line:
+
+> **The Matsumoto Crimson Dragon Line**
+
+The game records its founder and genome.
+
+Future descendants show:
+
+```text
+Bloodline
+Matsumoto Crimson Dragon
+
+Founder
+Akai, G23
+
+Line purity
+87.4%
+
+Generations removed
+12
+```
+
+Players could therefore become known not simply for owning valuable fish, but for **creating entire genetic lineages**.
+
+A marketplace listing saying:
+
+> **Pure G9 Crimson Dragon female**
+
+could eventually mean something within the game's economy.
+
+---
+
+For the first actual prototype, I would **not build tanks, shops, decorations and marketplace first**. I would build one screen containing **two parent koi + a “Breed” button + 20 offspring**, and concentrate almost entirely on the **Genome → Phenotype → procedural fish renderer**.
+
+Once we can breed two orange koi and get twenty children that visibly look related but genetically unique—and then breed those children for ten generations and visibly push body shape, head, tail, eyes and pattern into crazy directions—we'll know that the central technology of **Fishtank Sim** works. Everything else can then be built around that foundation.
