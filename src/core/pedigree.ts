@@ -1,17 +1,29 @@
 import type { Fish } from './types';
 
-/** Tabular numerator relationship matrix. Unknown founders assumed unrelated, non-inbred. */
-export function kinship(fish: Fish[], first: string, second: string): number {
-  const sorted = [...fish].sort((a, b) => a.generation - b.generation || a.id.localeCompare(b.id));
-  const indices = new Map(sorted.map((f, i) => [f.id, i]));
-  const a = sorted.map(() => new Float64Array(sorted.length));
-  for (let i = 0; i < sorted.length; i++) {
-    const parents = sorted[i].parents;
-    const m = parents ? indices.get(parents[0]) : undefined;
-    const p = parents ? indices.get(parents[1]) : undefined;
-    for (let j = 0; j < i; j++) a[i][j] = a[j][i] = ((m === undefined ? 0 : a[m][j]) + (p === undefined ? 0 : a[p][j])) / 2;
-    a[i][i] = 1 + (m === undefined || p === undefined ? 0 : a[m][p] / 2);
+/** Exact recorded-pedigree kinship. Founders are unrelated and non-inbred.
+ * Explicit stack and memoized diagonal terms avoid deep call stacks and repeated work.
+ * Only required ancestor pairs are evaluated, with no generational cutoff.
+ */
+export function kinship(fish: readonly Fish[], first: string, second: string): number {
+  const byId = new Map(fish.map(f => [f.id, f]));
+  type Pair = [Fish | undefined, Fish | undefined];
+  const ordered = ([a, b]: Pair): Pair => a && b && (a.generation < b.generation || (a.generation === b.generation && a.id < b.id)) ? [b, a] : [a, b];
+  const key = ([a, b]: Pair) => `${a?.id ?? ''}|${b?.id ?? ''}`;
+  const root = ordered([byId.get(first), byId.get(second)]);
+  const stack: Pair[] = [root], memo = new Map<string, number>();
+  while (stack.length) {
+    const pair = stack.at(-1)!, [a, b] = pair, id = key(pair);
+    if (memo.has(id)) { stack.pop(); continue; }
+    if (!a || !b) { memo.set(id, 0); continue; }
+    if (!a.parents) { memo.set(id, a.id === b.id ? 0.5 : 0); continue; }
+    const parents = a.parents.map(parent => byId.get(parent));
+    const dependencies: Pair[] = a.id === b.id
+      ? [ordered([parents[0], parents[1]])]
+      : [ordered([parents[0], b]), ordered([parents[1], b])];
+    const missing = dependencies.find(dependency => !memo.has(key(dependency)));
+    if (missing) { stack.push(missing); continue; }
+    memo.set(id, a.id === b.id ? (1 + memo.get(key(dependencies[0]))!) / 2
+      : (memo.get(key(dependencies[0]))! + memo.get(key(dependencies[1]))!) / 2);
   }
-  const i = indices.get(first), j = indices.get(second);
-  return i === undefined || j === undefined ? 0 : a[i][j] / 2;
+  return memo.get(key(root))!;
 }

@@ -20,17 +20,23 @@ src/
     collection.ts   Device-local collection preferences, goal ranking, sorting, cohorts and goal leaders
     selectionExperiment.ts Seeded ten-generation truncation selection vs random mating, with pedigree F and gate
     resemblanceStudy.ts Blind parent-pair trial set, display modes, computational observer and answer scoring
-    pedigree.ts     Exact tabular relationship matrix for the bounded lab
+    pedigree.ts     Exact memoized ancestry-pair queries with an explicit stack
     world.ts        Validated world commands and local NPC transactions
-    save.ts         Versioned save schema and reference validation
+    save.ts         Legacy world-v1 schema and reference validation
+    runtime.ts      Versioned command envelope, integer tick, event IDs and checkpoint replay
     visualFixtures.ts Frozen FS-101 fixtures, anatomy stress cases and v1-vs-v2 anatomy sweep
+  persistence/
+    database.ts     IndexedDB current/two backups, transaction/read-back and stale-writer checks
+    session.ts      Serialized commits and legacy migration
   simulation/
     motion.ts       Pure 20 Hz steering step, independent of React/Canvas
   rendering/
     fish.ts         Canvas renderer v2: draws anatomy v2 and pigment layers
     tankLayout.ts   Shared tank pose transform and fish-shaped picking
   ui/
-    App.tsx         Lab controls, local persistence, inspector and collection
+    App.tsx         Lab controls, command runtime, inspector and paginated collection
+    Startup.tsx     Validated async loading before interactive controls
+    SavePanel.tsx   Export, import review, retry and backup recovery
     TankCanvas.tsx  Frame loop, visual aquarium and selection
     FishPortrait.tsx Shared procedural renderer at portrait scale, fitted or shared-scale framing
     VisualFixtureLab.tsx Deterministic fixture, anatomy and marking-resemblance comparison surface
@@ -48,7 +54,7 @@ tests/
 
 Core modules import neither React nor browser globals. The Canvas renderer receives a phenotype, seed, size and animation time; it obtains geometry from the pure anatomy module, so tests validate the same eye, fin and tail anchors that are drawn and the tank uses one pose transform for drawing and picking. Motion has its own actors and reads genetic movement parameters. The app owns persisted entities and selected UI state.
 
-There is currently **no backend, Web Worker, IndexedDB, WebGL mesh, life-stage scheduler, authentication, or online market**. These are planned boundaries, not existing infrastructure.
+There is currently **no backend, Web Worker, WebGL mesh, life-stage scheduler, authentication, or online market**. These are planned boundaries, not existing infrastructure.
 
 ## 2. Stack decisions
 
@@ -58,9 +64,9 @@ There is currently **no backend, Web Worker, IndexedDB, WebGL mesh, life-stage s
 | Renderer | Canvas 2D procedural paths | PixiJS mesh/shaders after core proof | Validate phenotype contract without GPU setup overhead |
 | Genetics | Pure synchronous TypeScript | Same core in worker/server | Share one tested rule implementation |
 | Motion | 20 Hz main-thread step | Worker with render interpolation | Keep expensive updates away from UI |
-| Persistence | Versioned localStorage snapshot | IndexedDB transactions and migrations | Lab is small; larger worlds need async structured storage |
+| Persistence | IndexedDB snapshot/replay transactions, two backups and v1 migration | Worker-assisted incremental persistence and writer lease | Larger archives need async storage and explicit recovery |
 | State | React state + motion refs | UI store only if needed | Avoid global subscription to every swimming coordinate |
-| Genealogy | Local matrix and clickable relatives | Indexed ancestor graph + incremental kinship cache | Preserve history without loading the entire universe |
+| Genealogy | Exact memoized ancestor queries and paginated relatives | Worker query + incremental kinship cache | Preserve history without world-sized matrix allocation |
 | Backend | None | Authoritative HTTP service + PostgreSQL | Durable transactions and trusted online ownership |
 | Shared simulation | None | Tick/event jobs on server | Browser cannot be online-market authority |
 
@@ -151,6 +157,16 @@ Do not store one duplicated ancestor tree per fish. Parent edges form a directed
 
 The lab clones the small world, validates, applies a command and swaps state. This provides simple atomic rejection. Move this boundary to a transaction/reducer architecture before population size makes full clones costly.
 
+### Implemented M2 foundation contract
+
+`src/core/runtime.ts` wraps the unchanged `World` v1 in `Runtime` save schema v2/runtime v1. It stores world ID, integer tick, monotonic revision, a checkpoint and fewer than 64 command events. The actual envelope is `{protocol: 1, worldId, commandId, expectedRevision, issuedAtTick, payload}`. Actor authentication is not meaningful in this local sandbox and is deferred to the online authority.
+
+Command IDs are `worldId:revision`, events are `worldId:event:revision`. The domain parses payloads before cloning or mutation. Exact recent retries return the current runtime; conflicting content and stale revisions reject. Every 64 commands the current state becomes the replay checkpoint; older IDs remain stale, so compaction cannot duplicate births or credits. This is bounded recovery history, not the permanent FS-404 life-event journal. Import validates both worlds, replays the ordered events, and checks the resulting snapshot/tick/revision. Property order has no semantic meaning.
+
+The UI samples a monotonic 50 ms clock when committing a command. This supplies deterministic replay ordering; autonomous active/background/offline integration is **FS-205**, not a shipped lifecycle. Motion controls still affect visual swimming only.
+
+The following envelope describes future server-authoritative work:
+
 ### Target command envelope
 
 ```ts
@@ -236,20 +252,13 @@ Renderer interface: initialize, resize, updatePhenotypes, updateTransforms, setS
 
 ## 8. Persistence and migrations
 
-Lab v1 uses localStorage at `fishtank-sim.lab.v1`. Save decoding validates shape, allele bounds, unique IDs, tank membership, pedigree roles/generation, capacities, and next-ID monotonicity. Malformed/unsupported data is preserved; a temporary world is allowed without overwriting it. Export downloads JSON. Import UI is not implemented yet.
+The current IndexedDB database `fishtank-sim` (version 1), object store `snapshots`, holds `current`, `backup1` and `backup2`. Each entry carries raw runtime-v2 JSON, an independent commit token and a saved timestamp. The session serializes writes; each transaction checks the token, rotates valid backups, writes current and verifies read-back before completion. An aborted transaction leaves all three slots unchanged. Browser storage can still be evicted or denied; exports remain necessary for portable copies. See the [IndexedDB transaction specification](https://www.w3.org/TR/IndexedDB/).
 
-Next:
+Startup validates saved data before exposing controls. With no IndexedDB current/backup, it migrates legacy world v1 from `fishtank-sim.lab.v1` and retains those original localStorage bytes after commit. An unreadable current snapshot, missing current with backups, or invalid legacy save opens a temporary session with autosave blocked. Explicit recovery preserves unreadable current records under `preserved-<token>` before replacing them. They remain in the store; the panel exposes current/two backups and the preserved localStorage source for export.
 
-1. Introduce a persistence interface with load, commit, export, importPreview, importCommit and recovery.
-2. Write IndexedDB snapshots and event batches transactionally.
-3. Maintain two known-good rotating checkpoints plus the current state.
-4. Keep legacy localStorage untouched until a validated import and read-back succeed.
-5. Reject future versions safely; back up pre-migration data.
-6. Validate IDs, DAG, money bounds, fish capacity and versioned phenotype consistency.
-7. Enforce one writer per world across tabs, using a lock/session lease and visible read-only fallback.
-8. Make save failures persistent UI warnings; provide export.
+Saves accepts a file or pasted JSON, validates v1/v2, shows record/living/tank/credit counts, then requires the user's explicit replacement action. This is a product action, not an agent approval requirement. A prior valid current becomes a recovery backup. Malformed/future saves cannot replace it. Commands pause during explicit save/replacement. Device-local goal/favorite preferences remain outside world exports, as the panel explains.
 
-A JSON parse success is not a valid save. Do not blindly assert TypeScript types over user-controlled data.
+Compare-and-swap blocks stale writes from another tab and preserves the unsaved session for export. A proactive single-writer lease and worker-fault recovery remain **FS-206**. Save validation and command replay still run on the main thread; the 10,000-record fixture (two world copies in its runtime checkpoint) took about 755 ms for commit/load/validation on the recorded Chrome run. FS-202 should move expensive work away from UI input.
 
 ## 9. Online boundaries
 
@@ -282,13 +291,13 @@ Targets are hypotheses until a named machine and browser are recorded:
 - Archive test: 50,000 records with bounded three-generation navigation and pagination.
 - 100-generation offline genetic stress experiment without invalid phenotypes.
 
-Lab limits remain eight tanks × 60 residents and 1,000 total records. They are safety boundaries, not proof of those target budgets.
+Lab limits are eight tanks × 60 residents, 480 living fish and 10,000 total records. They are safety boundaries, not proof of those target budgets.
 
 Measure simulation step duration, render duration, entities, triangles, shader count, material-cache bytes, save transaction time, pedigree-query duration, catch-up duration, and command rejection reasons. Use local diagnostics by default; no telemetry transmission is implemented.
 
 ## 11. Delivery and repository practices
 
-Run npm ci, npm test, npm run build. Static output is dist/. A public deployment or remote push has not been performed. No environment variables or hosted services are required for the lab.
+Run npm ci, npm test, npm run build. Static output is dist/. Changes are pushed to GitHub main after verification; no public deployment has been performed. No environment variables or hosted services are required for the lab.
 
 Add continuous integration for supported Node, unit tests and build. Add browser automation only after stable controls and a reproducible test harness exist. Source assets must have known licenses. Google Fonts currently supplies optional typefaces; system fonts are fallbacks. Self-host approved fonts when offline asset independence becomes a requirement.
 

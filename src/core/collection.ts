@@ -22,7 +22,7 @@ const schema = z.object({
   version: z.literal(1),
   goal: z.object({ descriptor: z.enum(descriptorKeys), direction: z.enum(['higher', 'lower']) }).nullable(),
   sort: z.enum(COLLECTION_SORTS),
-  favorites: z.array(z.string().regex(/^FSH-\d{6}$/)).max(1000),
+  favorites: z.array(z.string().regex(/^FSH-\d{6}$/)).max(10_000),
 });
 
 /** Parses stored preferences for this world. Unknown fish IDs and duplicates are dropped; anything invalid yields defaults. */

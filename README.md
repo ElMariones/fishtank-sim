@@ -31,11 +31,11 @@ The npm cache is configured inside this checkout for compatibility with the work
 3. Select a child, then open Family and choose a parent.
 4. Move interesting offspring to another aquarium and select them as the next parents.
 5. Use unrelated NPC stock for outcrossing. Selling preserves the fish’s family record.
-6. Export a JSON save to keep a portable copy. The app automatically reloads its device-local save.
+6. Open **Saves** to export, preview a v1/v2 import, or restore one of two backups. The app automatically reloads its validated IndexedDB save and preserves the original v1 localStorage data.
 
 Offspring are instant **adult genetic previews**. Feeding demonstrates attraction; it does not yet simulate nutrition. Motion speed does not age fish. The local NPC economy is intentionally unbalanced because lab breeding and tanks are free.
 
-Limits: 60 residents per tank, eight tanks, 1,000 total fish records including archives. A full twenty-fish cohort must fit before any birth is created.
+Limits: 60 residents per tank, eight tanks, 480 living fish and 10,000 total fish records including archives. A full twenty-fish cohort must fit before any birth is created.
 
 ## Project documents
 
@@ -58,10 +58,10 @@ New contributors and agents should start with [AGENTS.md](AGENTS.md), then [impl
 
 ## Technical foundation
 
-React + TypeScript + Vite. Pure seeded genetics and pedigree core. Procedural Canvas fish shared between live tank and portraits. Separate fixed-step visual motion. Versioned validated local saves.
+React + TypeScript + Vite. Pure seeded genetics and pedigree core. Procedural Canvas fish shared between live tank and portraits. Separate fixed-step visual motion. Versioned command replay and validated IndexedDB saves with transactional backups.
 
-The next major work is visual inheritance research, followed by a persistent simulation runtime and actual life stages/care. PixiJS, Web Workers, IndexedDB and an authoritative database-backed market are planned, not installed placeholder services.
+The next work is the M2 worker runtime and offline integration, plus M1 human resemblance sessions. Life stages/care, PixiJS and an authoritative database-backed market remain planned. See the [M1 review and M2 foundation report](docs/research/M1-REVIEW-M2-FOUNDATION.md).
 
 ## Repository status
 
-Created in a clone of [ElMariones/fishtank-sim](https://github.com/ElMariones/fishtank-sim), which was empty at the start of this work. The initial lab and FS-101 visual-fixture baseline were pushed to `main` as `fe138d4`; no public deployment was performed. No license has been selected; do not infer a public reuse license from repository visibility.
+Created in a clone of [ElMariones/fishtank-sim](https://github.com/ElMariones/fishtank-sim), which was empty at the start of this work. The lab is maintained on `main`; task completion and push references are tracked in [the backlog](docs/BACKLOG.md). No public deployment was performed. No license has been selected; do not infer a public reuse license from repository visibility.

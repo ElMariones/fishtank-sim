@@ -14,7 +14,8 @@ All planned values below are game hypotheses. They are not real aquarium-care re
 | Cohort | 20 | Accelerated research comparison |
 | Tank capacity | 60 fish | Temporary count limit; not volume/biomass |
 | Maximum tanks | 8 | Bounds local UI and saves |
-| Total record limit | 1,000 including sold fish | Bounds pedigree-matrix cost and save size |
+| Living fish limit | 480 across eight tanks | Sold fish free living capacity but retain ancestry |
+| Total record limit | 10,000 including sold fish | IndexedDB storage and bounded UI pages; actual quota can still fail |
 | Initial credits | 1,200 | Local NPC workflow demonstration |
 | Unrelated stock | 250 credits | Deterministically generated founder on purchase |
 | Lab sale quote | round(35 + 0.5 × sizeCm + 25 × metallic + 25 × tail) | No rarity/demand/age model |

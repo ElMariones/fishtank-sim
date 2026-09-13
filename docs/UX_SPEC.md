@@ -136,6 +136,12 @@ Notebook keeps player notes, favorite crosses, observed mutations and experiment
 | Listing race | Explain no longer available | No debit or partial transfer |
 | Browser visibility change | Pause visual work; lifecycle follows documented mode | No genetics reroll |
 
+### Implemented saves panel (FS-203/204)
+
+The save status is visible above the workspace on desktop and mobile. **Saves** offers export, preserved legacy export, retry, two backup previews and file/paste import. Imports validate completely before showing record/living/tank/credit counts and an explicit **Replace world with reviewed import** action. The current valid save rotates into backups. Invalid or future data is rejected without replacing the current world; unreadable stored data blocks automatic writes and is preserved during explicit recovery. Preferences remain device-local, stated beside the export controls.
+
+Large collection and offspring lists paginate at 60 rows (FS-112). Filters/search cover the full matching population; all residents of one tank fit on a single page. Pedigree F retains exact recorded ancestry without an age/depth cutoff.
+
 ## 11. Acceptance journeys
 
 - Keyboard-only: select, rename, choose parents, breed, inspect child, follow parent, transfer.
@@ -145,5 +151,7 @@ Notebook keeps player notes, favorite crosses, observed mutations and experiment
 - Capacity: reserve a cohort that would overflow; no fish/currency/IDs change.
 - Reduced motion: starts paused; controls remain usable.
 - Empty/invalid states: helpful instructions and no dead buttons.
+
+**Lab status (FS-106):** skip links lead to the collection and the inspector. Choosing a fish from a card by keyboard, or any relative in Family, moves focus to the inspector's name heading, and "↩ Collection" returns focus to that fish's card; pointer selection leaves focus where it was. On coarse pointers every button, select, link and checkbox row is at least 44 × 44 px. The header, trait rows, genome rows and inspector tabs reflow at 200% text without clipping or horizontal page overflow. The live canvas is not keyboard-focusable; the collection is the keyboard path to every fish. A screen-reader audit remains open (FS-704).
 
 The verification evidence for the current lab is tracked separately in [TESTING.md](TESTING.md).

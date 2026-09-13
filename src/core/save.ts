@@ -18,7 +18,7 @@ const schema = z.object({
 });
 
 export function decodeSave(raw: string): World {
-  if (raw.length > 5_000_000) throw new Error('Save is too large for this lab.');
+  if (raw.length > 12_000_000) throw new Error('Save is too large for this lab.');
   const world = schema.parse(JSON.parse(raw));
   const ids = new Map(world.fish.map(f => [f.id, f]));
   const tanks = new Set(world.tanks.map(t => t.id));

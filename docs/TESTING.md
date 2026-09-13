@@ -1,6 +1,6 @@
 # Testing and verification
 
-**Latest recorded run:** 13 September 2026 (FS-105), Windows 11, Node 22.18.0, npm 10.9.3. FS-101 runs used Node 24.11.1 and npm 11.6.2; FS-101 is pushed as `fe138d4`.
+**Latest recorded run:** 13 September 2026 (M1 continuation and M2 foundation), Windows 11, Node 24.11.1, npm 11.6.2, Google Chrome 153.0.8010.36 via bundled Playwright. All tests use independent fixtures or fresh browser contexts; no user lineage is reset.
 
 ## 1. Commands
 
@@ -10,7 +10,7 @@ npm test
 npm run build
 ```
 
-Vitest runs every `tests/*.test.ts` file: `core.test.ts`, `anatomy.test.ts`, `pattern.test.ts`, `collection.test.ts`, `selection.test.ts` and `resemblanceStudy.test.ts`. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **44 tests**, and all passed. The production build passed.
+Vitest runs every `tests/*.test.ts` file: `core.test.ts`, `anatomy.test.ts`, `pattern.test.ts`, `collection.test.ts`, `selection.test.ts` `resemblanceStudy.test.ts`, `limits.test.ts` and `runtime.test.ts`. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **53 tests**, and all passed. The production build passed.
 
 ## 2. Automated coverage
 
@@ -142,11 +142,48 @@ Environment: local Vite dev server, in-app Chromium browser pane.
 - **Selection experiment → Run experiment** finished in 882 ms: "6 / 6 traits beyond typical range", "Passed gate (needs 3)", "0 invalid anatomies in generation 10", "0.80 mean pedigree F after selection". Six trend cards drew selected and random curves, and the outcome table matched the Node results.
 - Console error count did not change.
 
+### FS-106 keyboard, text and touch verification
+
+Environment: in-app Chromium pane. Desktop checks used an emulated 1280 × 800 viewport; phone checks used the mobile preset (375 × 812, where `pointer: coarse` matched). "200% text" doubles the root font size, which scales every rem-based size.
+
+**Audit before fixes:**
+
+- **Keyboard:** 162 tab stops, 153 of them before the first inspector control.
+- **Touch targets under 44 px:** favorite stars 32 px, many buttons 36 px, selects and filter pills 40 px, checkboxes 18 px (inside 40 px label rows), footer link 15 px.
+- **200% text:** the fixed 86 px header overflowed by 18 px, trait labels clipped ("Sociability" 111 px in an 85 px column), and the page overflowed horizontally.
+
+**After fixes:**
+
+- The first two tab stops are "Skip to collection" and "Skip to inspector".
+- Activating a card by keyboard (`click` with `detail` 0) selected Fry 13 and focused the inspector heading "Fry 13". A pointer click (`detail` 1) on another card left focus on that card.
+- "↩ Collection" returned focus to the selected card (`#card-FSH-000020`).
+- Family → Haru focused the heading "Haru" instead of dropping focus when the relative button unmounted.
+- Rename by keyboard (form submit) reported "Fish name updated."; the original name was restored afterwards.
+- Breed by keyboard: the Breeding Studio tank button, then the focused **Breed 20 offspring** button, went from "0 / 60 fish" to "20 / 60 fish". Focus stayed on the button, and the status read "20 offspring born … Showing all offspring of Haru × Sumi, ranked by tail length."
+- 200% text at 1280 × 800: the header grew to 151 px with nothing spilling out; no trait, genome, fact, tab, tank or card text clipped on the Overview, Genome or Family tabs; document width 1,265 px (no horizontal overflow) once the inspector tabs could wrap.
+- Phone preset: 0 visible buttons, selects, links or checkbox rows smaller than 44 × 44 px; no horizontal document overflow at normal or doubled text. The tank selector scrolls horizontally by design.
+- Strict typecheck, tests and production build passed. Console error count did not change.
+
+### M1 continuation and M2 foundation verification
+
+**Commands:** `npm run check` (53 tests, strict TypeScript and production build passed); `node scripts/verify-m2.cjs` against the existing Vite server. The browser script uses `PLAYWRIGHT_MODULE` if Playwright is provided by a host bundle; otherwise it resolves an installed `playwright`. Set `FISHTANK_URL` to change the default `http://127.0.0.1:5173`. It creates fresh Chrome contexts and dedicated QA databases, never a persistent user browser profile. No dependency or lockfile change was required.
+
+- Core: 250 exact comparisons with the previous matrix on a seeded 300-record inbred pedigree; deep 300-generation and 10,000-record ancestry queries; living/record limits with atomic rejection; v1 migration preserves records; duplicate breed/sale commands never repeat effects; stale, conflicting, wrong-world and backwards-time commands reject; mixed rename/move/breed replay agrees; event/snapshot tampering rejects; compacted old IDs stay stale.
+- Browser: keyboard selection focuses the inspector, rename/breed/family navigation succeeds, and reload retains the renamed ancestor and 26 fish. Existing FS-106 focus/text/touch fixes are included in this release.
+- IndexedDB rotation produced current **Name 2**, previous **Name 1**, older **Name 0**. Injected transaction abort and `QuotaExceededError` during current write left all slots byte-for-byte unchanged; stale token rejection also left all slots unchanged. Quota was fault-injected, not measured by filling the user's disk. A live autosave failure showed a persistent warning, and **Retry save now** saved the in-memory world successfully after storage recovered.
+- A 10,000-record fixture round-tripped through IndexedDB and replay validation in **755 ms**; compact runtime JSON was **9,038,071 characters** (current world plus checkpoint). Exact sibling kinship was **0.25** in **1.8 ms**. These are one-run observations, not production performance guarantees; pathological pedigree cost and main-thread save work remain risks.
+- Reviewed import of that large fixture worked; archive next-page navigation kept **60 cards** rendered and ancestor family navigation kept **60 offspring rows** rendered. Restoring backup1 through the same preview/replacement flow returned to the original 26-fish world and ancestor name.
+- Malformed JSON and future schema imports rejected without a replacement button. Legacy v1 migration retained the exact raw localStorage value. An injected unsupported IndexedDB current snapshot remained untouched after reload, with a persistent recovery warning.
+- Desktop 1440 px and mobile 375 × 812: no horizontal overflow with 200% root text, including genome and save views; measured mobile button/select/link/file targets at least 44 × 44 px; no page errors. The save status was moved out of the hidden mobile sidebar.
+- Reproduction writes local artifacts under ignored `.artifacts/`: `m2-browser-evidence.json` and `m2-mobile.png`. The human study was not answered or counted as evidence.
+
+Limitations: no physical power-loss test, Firefox/WebKit matrix, proactive writer lock, worker workload or offline integration yet. Current ticks sample command time; this does not age fish. Exports contain world/replay data; collection preferences remain device-local.
+
 ## 4. Required next verification
 
 ### Visual inheritance / FS-101–107, FS-111
 
-Human resemblance sessions (at least five observers through Research → Resemblance study), readability under 200% text, touch, and keyboard-only journeys. Do not assert a perceptual result from computational observers or allele counts.
+Human resemblance sessions (at least five observers through Research → Resemblance study), plus later screen-reader and cross-browser audits. The current keyboard/text/touch journeys passed. Do not assert a perceptual result from computational observers or allele counts.
 
 ### Runtime / M2
 

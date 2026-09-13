@@ -25,12 +25,13 @@ M0 completion does not imply M1’s visual research gate has passed.
 | FS-103 | DONE | 2 | Genetics/rendering | FS-101 | Add inherited low-frequency pattern structure; sibling markings share recognizable family properties. Pushed `bf4598b`; evidence in [FS-103 inherited markings](research/FS-103-INHERITED-MARKINGS.md) |
 | FS-104 | DONE | 1 | UI | FS-003 | Cohort sorting and favorites; choose new parents without losing selected goal. Pushed `2c8f18c` |
 | FS-105 | DONE | 2 | Simulation/design | FS-102 FS-103 FS-104 | Ten-generation selection report plus small resemblance study; record outcomes and failures. Pushed `8180019`: selection report, computational observer and blind study harness; human sessions split to FS-111. Evidence in [FS-105 selection and resemblance](research/FS-105-SELECTION-AND-RESEMBLANCE.md) |
-| FS-106 | P1 | 1 | UI/accessibility | FS-104 | Keyboard, 200% text and touch pass for select/rename/breed/family |
-| FS-107 | P0 | 1 | Integration | FS-105 FS-106 | Resolve critical findings; publish local milestone evidence and updated contracts |
+| FS-106 | P1 | 1 | UI/accessibility | FS-104 | Keyboard, 200% text and touch pass for select/rename/breed/family; implemented and verified, awaiting push |
+| FS-107 | P0 | 1 | Integration | FS-105 FS-106 | Resolve critical findings; publish local milestone evidence and updated contracts; implemented and verified, awaiting push |
 | FS-108 | DONE | 0.25 | UI | FS-003 | User request: larger sex symbols, pink ♀ for female and blue ♂ for male, still paired with text for assistive technology. Pushed `621a3cb` |
 | FS-109 | DONE | 1 | UI/core | FS-003 | User request: select several residents in the collection (including shift-click ranges) and sell them in one reviewed batch; any invalid member rejects the whole sale with no credit or status change. Pushed `621a3cb` |
 | FS-110 | DONE | 0.25 | UI | FS-108 | User request: collection buttons to show all fish, only females or only males, with counts, in resident and archive views; changing the filter clears batch selection so a sale only covers visible fish. Pushed `c467a26` |
 | FS-111 | P0 | 0.5 | Design/QA | FS-105 | Run the in-app resemblance study with at least five observers (60 trials, 20 per mode); pool the copied result records and report accuracy per mode against 50% chance, with cues. This is the M1 human-resemblance evidence |
+| FS-112 | P1 | 1 | Core/UI | FS-109 | User request: raise the 1,000-record limit well beyond 1,000 and cap living (unsold) fish instead, so players can keep breeding while sold fish stay in the archive; kinship and large archive views must stay responsive; the record cap must fit reliable browser storage; implemented and verified, awaiting push |
 
 FS-108 to FS-110 were requested during M1 and are outside the 10-day base estimate. FS-111 splits the human part of FS-105 out because it needs real participants.
 
@@ -38,10 +39,10 @@ FS-108 to FS-110 were requested during M1 and are outside the 10-day base estima
 
 | ID | Pri | Days | Role | Depends | Task and acceptance |
 |---|---|---:|---|---|---|
-| FS-201 | P0 | 2 | Core | FS-107 | World tick, command/event IDs, versioned replay; repeated command cannot duplicate births |
+| FS-201 | P0 | 2 | Core | FS-107 | World tick, command/event IDs, versioned replay; repeated command cannot duplicate births; implemented and verified, awaiting push |
 | FS-202 | P0 | 3 | Runtime | FS-201 | Worker protocol with lifecycle cleanup; selection stays responsive during 200-fish synthetic workload |
-| FS-203 | P0 | 3 | Persistence | FS-201 | IndexedDB transactions, two backups, legacy migration and read-back; interrupted commit restores last good save |
-| FS-204 | P0 | 2 | UI/persistence | FS-203 | Validated import preview and export/recovery UI; malformed/future save never overwrites current world |
+| FS-203 | P0 | 3 | Persistence | FS-201 | IndexedDB transactions, two backups, legacy migration and read-back; interrupted commit restores last good save; implemented and verified, awaiting push |
+| FS-204 | P0 | 2 | UI/persistence | FS-203 | Validated import preview and export/recovery UI; malformed/future save never overwrites current world; implemented and verified, awaiting push |
 | FS-205 | P0 | 3 | Simulation | FS-201 FS-202 | Shared active/background integration and protected offline scheduler; event-boundary fixtures agree within tolerance |
 | FS-206 | P1 | 2 | Persistence/runtime | FS-203 FS-205 | Multi-tab writer lock, worker-fault recovery and quota handling; user sees and can recover from each fault |
 
@@ -124,4 +125,4 @@ M8 total: 40–60 days. Provider costs and moderation operations require separat
 
 ## Suggested next-agent task
 
-FS-101 to FS-104 and user requests FS-108 to FS-110 are complete and pushed. Continue with **FS-105**: the ten-generation selection report and a small resemblance study. Report computational observers separately from human observers and do not claim the human-resemblance gate without real participants. Preserve genome v1, locus order, fixture signatures, anatomy v2 and development v2; do not start a shop, backend or genome-v2 migration during this task.
+Continue **FS-202**, then **FS-205** and **FS-206**. Read [the M1 review and M2 foundation report](research/M1-REVIEW-M2-FOUNDATION.md) and preserve the runtime, replay and storage contracts. FS-111 remains open for five real human observers. The user's request authorizes M2 development while that research gate is pending; it does not establish a human-resemblance result.

@@ -286,7 +286,7 @@ Use rarity as a bounded input to an NPC/customer-specific desirability model. A 
 
 ## 11. Pedigree and diversity
 
-The lab constructs the numerator relationship matrix A in ancestor-before-descendant order:
+The lab evaluates exact recorded-pedigree kinship on demand. Its recurrence is equivalent to the numerator relationship matrix A:
 
 ```text
 A[i,j] = 0.5 × (A[mother(i),j] + A[father(i),j]) for j < i
@@ -296,11 +296,11 @@ kinship(i,j) = A[i,j] / 2
 F(child) = kinship(mother,father)
 ```
 
-Unknown founders are assumed unrelated and non-inbred. Parents always have lower generation than a child; saves must reject cycles or inconsistent generations. Sold fish remain in the matrix.
+Unknown founders are assumed unrelated and non-inbred. Parents always have lower generation than a child; saves must reject cycles or inconsistent generations. Sold fish remain in all ancestry queries.
 
 Heterozygosity = heterozygous loci / assayed loci. It is not “genetic diversity of the species” and it does not equal 1 − F. Alleles identical in state need not be identical by descent.
 
-The tabular matrix is O(N²) space/time and capped at 1,000 records in the lab. Production needs incremental/coancestry caching, ancestor subgraph queries, and bounded worker computations. Never build a million-by-million matrix.
+FS-112 uses memoized ancestor-pair queries with an explicit stack, including diagonal terms. It preserves all recorded generations without a depth cutoff and avoids allocating a world-sized matrix. Pathological pedigrees can still require O(N²) pairs; worker execution and cross-query caching remain future work. The lab caps permanent records at 10,000 and living fish at 480.
 
 ## 12. Validation gates
 
