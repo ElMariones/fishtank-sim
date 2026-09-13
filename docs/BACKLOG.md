@@ -24,7 +24,7 @@ M0 completion does not imply M1’s visual research gate has passed.
 | FS-102 | DONE | 2 | Rendering | FS-101 | Improve geometry anchors; no detached eyes/fins or clipped silhouettes at tested extremes. Pushed `b0fd927`; evidence in [FS-102 anatomy anchors](research/FS-102-ANATOMY-ANCHORS.md) |
 | FS-103 | DONE | 2 | Genetics/rendering | FS-101 | Add inherited low-frequency pattern structure; sibling markings share recognizable family properties. Pushed `bf4598b`; evidence in [FS-103 inherited markings](research/FS-103-INHERITED-MARKINGS.md) |
 | FS-104 | DONE | 1 | UI | FS-003 | Cohort sorting and favorites; choose new parents without losing selected goal. Pushed `2c8f18c` |
-| FS-105 | P0 | 2 | Simulation/design | FS-102 FS-103 FS-104 | Ten-generation selection report plus small resemblance study; record outcomes and failures |
+| FS-105 | DONE | 2 | Simulation/design | FS-102 FS-103 FS-104 | Ten-generation selection report plus small resemblance study; record outcomes and failures. Pushed `8180019`: selection report, computational observer and blind study harness; human sessions split to FS-111. Evidence in [FS-105 selection and resemblance](research/FS-105-SELECTION-AND-RESEMBLANCE.md) |
 | FS-106 | P1 | 1 | UI/accessibility | FS-104 | Keyboard, 200% text and touch pass for select/rename/breed/family |
 | FS-107 | P0 | 1 | Integration | FS-105 FS-106 | Resolve critical findings; publish local milestone evidence and updated contracts |
 | FS-108 | DONE | 0.25 | UI | FS-003 | User request: larger sex symbols, pink ♀ for female and blue ♂ for male, still paired with text for assistive technology. Pushed `621a3cb` |

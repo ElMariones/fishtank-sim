@@ -1,6 +1,6 @@
 # Implementation status
 
-**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab · **M1:** FS-101 DONE (`fe138d4`); FS-102 DONE (`b0fd927`); FS-103 DONE (`bf4598b`); FS-104 DONE (`2c8f18c`); FS-105 implemented (automated evidence and study harness), see the backlog for push status; FS-106, FS-107 and FS-111 (human observer sessions) open. User requests FS-108/FS-109 DONE (`621a3cb`) and FS-110 DONE (`c467a26`).
+**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab · **M1:** FS-101 DONE (`fe138d4`); FS-102 DONE (`b0fd927`); FS-103 DONE (`bf4598b`); FS-104 DONE (`2c8f18c`); FS-105 DONE (`8180019`; automated evidence and study harness); FS-106, FS-107 and FS-111 (human observer sessions) open. User requests FS-108/FS-109 DONE (`621a3cb`) and FS-110 DONE (`c467a26`).
 
 ## Delivered
 

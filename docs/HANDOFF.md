@@ -57,7 +57,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> Continue Fishtank Sim with task FS-105. Read AGENTS.md, docs/IMPLEMENTATION_STATUS.md, docs/BALANCE.md §4 (E-01, E-02), docs/research/FS-103-INHERITED-MARKINGS.md and docs/BACKLOG.md. Produce the ten-generation selection report (selected versus random-mating lines, and the typical-range gate for at least three descriptors) and a small resemblance study with an observer harness in full, silhouette-only and pattern-only modes. Report computational observers separately from any human results, and do not claim the M1 human-resemblance gate without real observers. Record outcomes and failures in a research note.
+> Continue Fishtank Sim with task FS-106, then FS-107. Read AGENTS.md, docs/IMPLEMENTATION_STATUS.md, docs/UX_SPEC.md §2 and §11, docs/research/FS-105-SELECTION-AND-RESEMBLANCE.md and docs/BACKLOG.md. Audit and fix keyboard order, 200% text and touch targets for select, rename, breed and family, and verify each journey in the browser. Then write the M1 review with pass/fail evidence. FS-111 (human resemblance sessions) needs real observers: do not mark it or the human criterion complete without their records.
 
 ## 7. Subsequent task briefs
 
