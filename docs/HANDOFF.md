@@ -63,7 +63,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> FS-303 utility behavior and the compound breeding/Genome 2 improvements are DONE, pushed as `e7aefc1`. The requested breeding disclosure and sticky desktop inspector are complete in the working tree; push their commit, then continue with FS-304 spatial hashing and shelter/obstacle footprints. Read GDD §8, architecture §7 and the FS-303 evidence. Keep behavior in the motion worker as transient visual state, and separate desire selection from steering. Expose each fish's current state and reason to the inspector. Behavior must not be saved or change biology, and visual motion speed must not alter persistent biology. M1 FS-111 pooled five observers (54/60); the unanimously missed markings trial-9 is a follow-up, not a blocker.
+> FS-303 utility behavior and the compound breeding/Genome 2 improvements are DONE, pushed as `e7aefc1`. The requested breeding disclosure and sticky desktop inspector are DONE, pushed as `c50e579`; continue with FS-304 spatial hashing and shelter/obstacle footprints. Read GDD §8, architecture §7 and the FS-303 evidence. Keep behavior in the motion worker as transient visual state, and separate desire selection from steering. Expose each fish's current state and reason to the inspector. Behavior must not be saved or change biology, and visual motion speed must not alter persistent biology. M1 FS-111 pooled five observers (54/60); the unanimously missed markings trial-9 is a follow-up, not a blocker.
 
 ## 7. Subsequent task briefs
 
