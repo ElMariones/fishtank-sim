@@ -45,6 +45,9 @@ export function App() {
   const [showArchived, setShowArchived] = useState(false);
   const [saleId, setSaleId] = useState<string | null>(null);
   const [view, setView] = useState<'aquarium' | 'fixtures'>('aquarium');
+  const [batchIds, setBatchIds] = useState<string[]>([]);
+  const [batchReview, setBatchReview] = useState(false);
+  const [lastBatchId, setLastBatchId] = useState<string | null>(null);
 
   useEffect(() => {
     if (initial.blocked) return;
@@ -60,6 +63,11 @@ export function App() {
   const prospectiveF = useMemo(() => kinship(world.fish, motherId, fatherId), [world.fish, motherId, fatherId]);
   const currentF = useMemo(() => fish?.parents ? kinship(world.fish, fish.parents[0], fish.parents[1]) : 0, [world.fish, fish]);
   const collection = (showArchived ? world.fish.filter(f => f.status === 'sold') : residents).filter(f => `${f.name} ${f.id}`.toLowerCase().includes(query.toLowerCase()));
+  // Batch selection only ever acts on living fish visible in the current collection view.
+  const batch = collection.filter(f => f.status === 'living' && batchIds.includes(f.id));
+  const batchTotal = batch.reduce((sum, f) => sum + quote(f), 0);
+
+  useEffect(() => { setBatchIds([]); setBatchReview(false); setLastBatchId(null); }, [tank.id, showArchived]);
 
   function run(command: Command, message: string): World | null {
     try {
@@ -83,6 +91,26 @@ export function App() {
   function breed() {
     const next = run({ type: 'breed', motherId, fatherId, tankId: tank.id, timestamp: new Date().toISOString() }, `${COHORT_SIZE} offspring born. Every fish inherited one recombined copy from each parent.`);
     if (next) { setSelectedId(next.fish[next.fish.length - COHORT_SIZE].id); setShowArchived(false); setQuery(''); }
+  }
+
+  /** Shift-click extends the last toggle across the visible collection, matching the new checked state. */
+  function toggleBatch(id: string, extend: boolean) {
+    const visible = collection.filter(f => f.status === 'living').map(f => f.id);
+    const checked = !batchIds.includes(id);
+    let affected = [id];
+    if (extend && lastBatchId && visible.includes(lastBatchId)) {
+      const [from, to] = [visible.indexOf(lastBatchId), visible.indexOf(id)].sort((a, b) => a - b);
+      affected = visible.slice(from, to + 1);
+    }
+    setBatchIds(checked ? [...new Set([...batchIds, ...affected])] : batchIds.filter(existing => !affected.includes(existing)));
+    setLastBatchId(id); setBatchReview(false);
+  }
+
+  function sellBatch() {
+    const count = batch.length, total = batchTotal;
+    if (run({ type: 'sell-batch', fishIds: batch.map(f => f.id) }, `${count} fish sold to the local NPC for ◈ ${total.toLocaleString()}. Their archived profiles remain in the family tree.`)) {
+      setBatchIds([]); setBatchReview(false); setSaleId(null);
+    }
   }
 
   return <div className="app-shell">
@@ -113,7 +141,7 @@ export function App() {
         <div className="habitat-toolbar"><span>Laboratory mode · offspring show adult genetic potential</span><button className="quiet" onClick={() => run({ type: 'decorate', tankId: tank.id }, 'Habitat appearance updated. Decoration effects are planned for the care simulation.')}>{tank.planted ? 'Remove plants' : 'Add plants'}</button></div>
         <section className="breeding-panel" aria-labelledby="breeding-title">
           <div className="breed-intro"><div className="eyebrow">THE NEXT GENERATION</div><h2 id="breeding-title">What will they inherit?</h2><p>Choose two parents. Discover twenty possibilities.</p></div>
-          <div className="parent-pickers"><label>Mother<select value={motherId} onChange={e => setMotherId(e.target.value)}><option value="">Select female</option>{living.filter(f => f.sex === 'F').map(f => <option key={f.id} value={f.id}>{f.name} · G{f.generation}</option>)}</select></label><span className="cross">×</span><label>Father<select value={fatherId} onChange={e => setFatherId(e.target.value)}><option value="">Select male</option>{living.filter(f => f.sex === 'M').map(f => <option key={f.id} value={f.id}>{f.name} · G{f.generation}</option>)}</select></label></div>
+          <div className="parent-pickers"><label><span className="picker-label">Mother <SexMark sex="F" decorative /></span><select value={motherId} onChange={e => setMotherId(e.target.value)}><option value="">Select female</option>{living.filter(f => f.sex === 'F').map(f => <option key={f.id} value={f.id}>♀ {f.name} · G{f.generation}</option>)}</select></label><span className="cross">×</span><label><span className="picker-label">Father <SexMark sex="M" decorative /></span><select value={fatherId} onChange={e => setFatherId(e.target.value)}><option value="">Select male</option>{living.filter(f => f.sex === 'M').map(f => <option key={f.id} value={f.id}>♂ {f.name} · G{f.generation}</option>)}</select></label></div>
           <div className="breed-action"><button className="primary" onClick={breed} disabled={!living.some(f => f.id === motherId) || !living.some(f => f.id === fatherId)}>Breed 20 offspring <span>↗</span></button><small>Expected pedigree F: {percent(prospectiveF)}</small></div>
           <p className="lab-note">Accelerated experiment: no maturity wait or courtship. Parents may be in different lab tanks. Births use the current tank’s free places.</p>
         </section>
@@ -124,9 +152,30 @@ export function App() {
             const next = run({ type: 'buy', tankId: tank.id, timestamp: new Date().toISOString() }, 'Unrelated founder stock introduced. This is a local NPC purchase.');
             if (next) { setSelectedId(next.fish.at(-1)!.id); setShowArchived(false); setQuery(''); }
           }}>＋ Unrelated stock <span>◈ {STOCK_PRICE}</span></button></div>
-          <div className="fish-grid">{collection.map(f => <button className={`fish-card ${f.id === selectedId ? 'selected' : ''}`} key={f.id} onClick={() => select(f.id)}>
-            <div className="fish-card-top"><span>G{f.generation}</span><span>{f.sex === 'F' ? '♀' : '♂'}</span></div><FishPortrait fish={f} /><div className="fish-card-bottom"><strong>{f.name}</strong><small>{f.status === 'sold' ? 'Archived' : `${express(f.genome).adultLengthCm.toFixed(0)} cm potential`}</small></div>
-          </button>)}</div>
+          {!showArchived && collection.length ? <div className="batch-bar" role="group" aria-label="Batch selection">
+            <span className="batch-summary">{batch.length ? <><strong>{batch.length}</strong> selected · ◈ {batchTotal.toLocaleString()}</> : 'Tick fish to sell several at once. Shift-click a second box to select a range.'}</span>
+            <div className="batch-actions">
+              <button className="quiet" onClick={() => { setBatchIds(collection.map(f => f.id)); setBatchReview(false); }}>Select all {collection.length}</button>
+              {batch.length ? <button className="quiet" onClick={() => { setBatchIds([]); setBatchReview(false); }}>Clear</button> : null}
+              {batch.length ? <button className="batch-sell" aria-expanded={batchReview} aria-controls="batch-review" onClick={() => setBatchReview(true)}>Review sale of {batch.length}</button> : null}
+            </div>
+          </div> : null}
+          {batchReview && batch.length ? <div className="batch-review" id="batch-review" role="region" aria-labelledby="batch-review-title">
+            <h3 id="batch-review-title">Sell {batch.length} fish to the local NPC for ◈ {batchTotal.toLocaleString()}?</h3>
+            <p>Their genomes and family links stay in the archive. Sold fish cannot breed, move or be sold again.</p>
+            <ul>{batch.map(f => <li key={f.id}><SexMark sex={f.sex} /><span>{f.name}<small>{f.id} · G{f.generation}</small></span><span>◈ {quote(f)}</span></li>)}</ul>
+            <div className="batch-review-actions"><button className="confirm" onClick={sellBatch}>Confirm sale of {batch.length}</button><button className="quiet" onClick={() => setBatchReview(false)}>Cancel</button></div>
+          </div> : null}
+          <div className="fish-grid">{collection.map(f => {
+            const inBatch = batch.some(member => member.id === f.id);
+            return <article className={`fish-card ${f.id === selectedId ? 'selected' : ''} ${inBatch ? 'batched' : ''}`} key={f.id}>
+              <button className="fish-card-main" aria-pressed={f.id === selectedId} onClick={() => select(f.id)}>
+                <div className="fish-card-top"><span>G{f.generation}</span><SexMark sex={f.sex} /></div><FishPortrait fish={f} /><div className="fish-card-bottom"><strong>{f.name}</strong><small>{f.status === 'sold' ? 'Archived' : `${express(f.genome).adultLengthCm.toFixed(0)} cm potential`}</small></div>
+              </button>
+              {f.status === 'living' ? <label className="batch-check"><input type="checkbox" checked={inBatch} aria-label={`Select ${f.name} for batch sale`}
+                onChange={event => toggleBatch(f.id, (event.nativeEvent as MouseEvent).shiftKey === true)} /><span aria-hidden="true">{inBatch ? 'Selected' : 'Select'}</span></label> : null}
+            </article>;
+          })}</div>
           {!collection.length ? <p className="empty-copy">No fish here match this view.</p> : null}
         </section>
       </main>
@@ -134,7 +183,7 @@ export function App() {
         {fish && p ? <>
           <div className="inspector-heading"><span className="eyebrow">SPECIMEN {fish.id.slice(4)}</span><span className="generation">G{fish.generation}</span></div>
           <div className="hero-portrait"><FishPortrait fish={fish} large /><span>{fish.status === 'sold' ? 'ARCHIVED SPECIMEN' : 'ADULT GENETIC PREVIEW'}</span></div>
-          <div className="fish-title"><h2>{fish.name}</h2><span>{fish.sex === 'F' ? '♀ Female' : '♂ Male'}</span></div>
+          <div className="fish-title"><h2>{fish.name}</h2><SexMark sex={fish.sex} withLabel /></div>
           <p className="fish-subtitle">Koi ancestry · {fish.parents ? 'Bred in your aquarium' : 'Founder stock'}</p>
           <div className="inspector-tabs" role="group" aria-label="Inspector views">{(['Overview', 'Genome', 'Family'] as const).map(t => <button key={t} aria-pressed={tab === t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
           {tab === 'Overview' ? <>
@@ -159,6 +208,15 @@ export function App() {
   </div>;
 }
 
+/** Colour-coded sex symbol (pink ♀, blue ♂). The text label keeps it readable without colour or sight. */
+function SexMark({ sex, withLabel = false, decorative = false }: { sex: Fish['sex']; withLabel?: boolean; decorative?: boolean }) {
+  const female = sex === 'F', text = female ? 'Female' : 'Male';
+  return <span className={`sex-mark ${female ? 'female' : 'male'}`} aria-hidden={decorative || undefined}>
+    <span className="sex-symbol" aria-hidden="true">{female ? '♀' : '♂'}</span>
+    {withLabel ? <span className="sex-label">{text}</span> : decorative ? null : <span className="visually-hidden">{text}</span>}
+  </span>;
+}
+
 function Relative({ fish, onSelect }: { fish: Fish; onSelect: (id: string) => void }) {
-  return <button className="relative" onClick={() => onSelect(fish.id)}><FishPortrait fish={fish} /><span><strong>{fish.name}</strong><small>G{fish.generation} · {fish.sex === 'F' ? 'Female' : 'Male'}{fish.status === 'sold' ? ' · Sold' : ''}</small></span><span>↗</span></button>;
+  return <button className="relative" onClick={() => onSelect(fish.id)}><FishPortrait fish={fish} /><span><strong>{fish.name}</strong><small>G{fish.generation} · <SexMark sex={fish.sex} withLabel />{fish.status === 'sold' ? ' · Sold' : ''}</small></span><span>↗</span></button>;
 }

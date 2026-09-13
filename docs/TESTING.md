@@ -10,7 +10,7 @@ npm test
 npm run build
 ```
 
-Vitest runs every `tests/*.test.ts` file: `core.test.ts` and `anatomy.test.ts`. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **25 tests**, and all passed. The production build passed.
+Vitest runs every `tests/*.test.ts` file: `core.test.ts` and `anatomy.test.ts`. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **26 tests**, and all passed. The production build passed.
 
 ## 2. Automated coverage
 
@@ -29,6 +29,7 @@ Vitest runs every `tests/*.test.ts` file: `core.test.ts` and `anatomy.test.ts`. 
 | Capacity | Cohort overflow rejected with no partial births or ID changes |
 | Parent eligibility | Same-parent misuse rejected; accelerated second generation supported |
 | Sale | Funds paid once, genome/pedigree retained, repeat sale and breeding archived parent rejected |
+| Batch sale | Four cohort members sold in one command: credits rise by the sum of their quotes, genomes and parents retained, save round-trips; empty, duplicate, already-sold and unknown members each reject the whole batch with no change |
 | Transfer/rename | Identity/genome preserved; invalid name/destination rejected |
 | NPC purchase | Funds deducted, new founder, immediate resale loses credits, insufficient funds rejected |
 | Save validation | Bad JSON, version, duplicates, IDs, tanks, cycles and allele bounds rejected |
@@ -74,6 +75,19 @@ Environment: local Vite dev server, in-app Chromium browser pane.
 - The comparison table lists renderer v1 rule failures (286 eye, 122 dorsal root, 858 pectoral root, 107 gill, 84 mouth, 243 tail ray, 26 portrait clip) against 0 for anatomy v2.
 - A clean reload followed by opening the surface added no console errors. The errors seen earlier were Fast Refresh warnings about a hook dependency list changing length while editing a mounted component; they did not recur on a fresh load.
 - **Shared scale** and **Fit each fish** are keyboard-reachable toggle buttons that expose `aria-pressed`.
+
+### FS-108 / FS-109 collection verification
+
+Environment: local Vite dev server, in-app Chromium browser pane, the pane's own device-local world (not a user save).
+
+- Bred Haru × Sumi: collection 26, 26 batch checkboxes. Computed sex symbol colours were pink `rgb(255, 140, 198)` and blue `rgb(109, 185, 255)` at 21.6 px. Father options read "♂ Sumi · G0" and similar.
+- Ticked Fry 7, then shift-ticked Fry 11: exactly Fry 7–11 were checked; summary "5 selected · ◈ 401".
+- **Review sale of 5** listed each name, ID, generation and quote under "Sell 5 fish to the local NPC for ◈ 401?".
+- **Confirm sale of 5**: credits 1,200 → 1,601, collection 26 → 21, sidebar "21 / 60 fish", selection cleared, review closed, and the status line reported the sale.
+- **View archive** listed Fry 7–11 with no checkboxes or batch bar.
+- At 375 × 812: document width 375 (no overflow), checkbox rows 40 px tall, inspector title shows "♀ Female".
+- Console error count did not change during the journey.
+- The aquarium's animation loop prevents the pane's screenshot tool from settling. For one visual check, `requestAnimationFrame` was stubbed from the console and the page was reloaded afterwards; no source was changed.
 
 ## 4. Required next verification
 

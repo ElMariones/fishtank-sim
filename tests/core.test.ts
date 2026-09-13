@@ -163,6 +163,23 @@ describe('world commands and persistence', () => {
     expect(decodeSave(JSON.stringify(next))).toEqual(next);
   });
 
+  it('sells a reviewed batch atomically and rejects any invalid member without partial sales', () => {
+    const world = applyCommand(createWorld(NOW), cross);
+    const members = world.fish.slice(6, 10), ids = members.map(f => f.id);
+    const sold = applyCommand(world, { type: 'sell-batch', fishIds: ids });
+    expect(sold.credits).toBe(world.credits + members.reduce((sum, f) => sum + quote(f), 0));
+    expect(sold.fish.filter(f => ids.includes(f.id)).every(f => f.status === 'sold')).toBe(true);
+    expect(sold.fish.filter(f => ids.includes(f.id)).map(f => [f.genome, f.parents])).toEqual(members.map(f => [f.genome, f.parents]));
+    expect(sold.fish.filter(f => f.status === 'sold')).toHaveLength(4);
+    expect(world.fish.every(f => f.status === 'living')).toBe(true);
+    expect(decodeSave(JSON.stringify(sold))).toEqual(sold);
+    const before = JSON.stringify(sold), living = sold.fish[12].id;
+    for (const fishIds of [[], [living, living], [living, ids[0]], [living, 'FSH-999999']]) {
+      expect(() => applyCommand(sold, { type: 'sell-batch', fishIds })).toThrow();
+    }
+    expect(JSON.stringify(sold)).toBe(before);
+  });
+
   it('moves and renames without altering identity, genome or pedigree', () => {
     const world = createWorld(NOW);
     const moved = applyCommand(world, { type: 'move', fishId: world.fish[0].id, tankId: 'tank-2' });

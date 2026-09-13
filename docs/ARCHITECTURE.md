@@ -158,6 +158,8 @@ type Result<T> =
 
 Representative commands: RenameFish, TransferFishBatch, ReserveClutch, CancelCourtship, PlaceDecoration, FeedTank, SetEquipment, RehomeFish, CreateListing, BuyListing, CancelListing. Each has declared preconditions, events, failure codes, and replay rules.
 
+The lab reducer currently implements `rename`, `move`, `breed`, `sell`, `sell-batch`, `buy`, `add-tank` and `decorate`. `sell-batch` validates every member (non-empty, unique, living) before paying for any of them, so one invalid member rejects the whole batch.
+
 **Breed:** validate eligible parents and current ownership; reserve cohort slots; commit courtship/clutch record; scheduler emits hatch events at an exact tick. Recheck relevant health/status rules at conception and handle interrupted courtship without losing reservations.
 
 **Move:** verify all selected fish, destination biomass, reservations, locks, and equipment suitability; commit all or none. Camera navigation is a separate UI action.

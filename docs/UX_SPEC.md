@@ -108,6 +108,8 @@ NPC shop is clearly labeled in solo play. A marketplace listing shows the actual
 
 Before selling, show fish name, price, destination type and irreversibility within the game; indicate that lineage history remains. Batch sale/rehome reviews count and selected names. After sale, focus can remain on the archived record.
 
+**Lab implementation (FS-109):** residents have a select checkbox; shift-click selects a range; "Select all" and "Clear" act on the visible collection. A review lists each selected name, ID, generation and quote plus the total before one atomic `sell-batch` command. Switching tank or archive view clears the selection. Batch rehoming is still planned (FS-406). Sex is shown as a larger pink ♀ or blue ♂ with a text label or hidden text, so colour is never the only cue (FS-108).
+
 For online fixed-price purchase, show pending state, then one authoritative receipt. If a listing changes or another buyer wins, refresh the specific listing and explain. Never optimistically create a tradeable fish before server confirmation.
 
 ## 9. Named lines and notebook

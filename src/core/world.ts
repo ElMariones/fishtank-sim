@@ -39,6 +39,7 @@ export type Command =
   | { type: 'move'; fishId: string; tankId: string }
   | { type: 'breed'; motherId: string; fatherId: string; tankId: string; timestamp: string }
   | { type: 'sell'; fishId: string }
+  | { type: 'sell-batch'; fishIds: string[] }
   | { type: 'buy'; tankId: string; timestamp: string }
   | { type: 'add-tank' }
   | { type: 'decorate'; tankId: string };
@@ -88,6 +89,13 @@ export function applyCommand(world: World, command: Command): World {
     case 'sell': {
       const fish = getFish(command.fishId);
       next.credits += quote(fish); fish.status = 'sold';
+      break;
+    }
+    case 'sell-batch': {
+      if (!command.fishIds.length) throw new Error('Select at least one fish to sell.');
+      if (new Set(command.fishIds).size !== command.fishIds.length) throw new Error('Each fish can only be sold once.');
+      const batch = command.fishIds.map(getFish); // Every member is validated before any sale is applied.
+      for (const fish of batch) { next.credits += quote(fish); fish.status = 'sold'; }
       break;
     }
     case 'buy': {
