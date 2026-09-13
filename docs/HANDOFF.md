@@ -43,7 +43,9 @@ Geometry lives in `src/core/anatomy.ts` (anatomy v2). The Canvas renderer draws 
 
 Genome v2 (FS-113) appends the Color and Ornament chromosomes; expression is in `src/core/appearance.ts` and ornament geometry in `src/core/ornament.ts`. Never rewrite stored genome v1 records: they read as the classic baseline. Keep v1 loci on the original random stream and research surfaces on genome v1. Breed and buy commands carry `genomeVersion`; journal entries without it must replay as genome v1, or existing saves fail validation.
 
-World save v2 (FS-301) gives every tank water. Advance time only through `advanceRuntime`. Water integrates in fixed absolute 25-tick steps using basic arithmetic, so replayed and live values stay identical; keep new time-integrated state to the same rules. A world v1 runtime rebases its checkpoint when loaded. Water does not yet affect fish.
+World save v2 (FS-301) gives every tank water. Advance time only through `advanceRuntime`. Water integrates in fixed absolute 25-tick steps using basic arithmetic, so replayed and live values stay identical; keep new time-integrated state to the same rules. Any older world version rebases its checkpoint when loaded (ADR-038). Water slows growth through condition but does not harm fish.
+
+World save v3 (FS-302) adds `life` to every fish: age in game days, current length and condition, updated once per absolute game-day boundary. Eggs cannot breed or be sold. Current size and genetic adult length are separate values; never substitute one for the other.
 
 The live Canvas’s transient actors are outside React state. Motion is deterministic for the same initial actors and tick sequence, but positions are not persisted; switching tanks reconstructs visual trajectories. Birth/genome outcomes do persist.
 

@@ -26,7 +26,8 @@ src/
     pedigree.ts     Exact memoized ancestry-pair queries with an explicit stack
     world.ts        Validated world commands and local NPC transactions
     water.ts        Water model v1: one-compartment oxygen/ammonia/food chemistry, fixed steps, ledger and status bands
-    habitat.ts      Resident load per tank, world advance through the shared clock and stocking bands
+    habitat.ts      Resident load per tank, world advance (water steps plus daily development) and stocking bands
+    development.ts  Life model v1: egg/fry/juvenile/adult/elderly stages, logistic growth, lagged condition and environment curves
     save.ts         Legacy world-v1 schema and reference validation
     runtime.ts      Versioned command envelope, integer tick, event IDs and checkpoint replay
     visualFixtures.ts Frozen FS-101 fixtures, anatomy stress cases and v1-vs-v2 anatomy sweep
@@ -63,6 +64,7 @@ tests/
   resemblancePool.test.ts Five-observer FS-111 pool, per-trial agreement and record validation
   appearance.test.ts Genome v2 stream isolation, dominance, founder rarity, mixed-version saves and ornament bounds
   water.test.ts    Zero/overload/recovery conservation fixtures, split-interval equality, habitat load, replay and world v1 migration
+  development.test.ts Hatching, healthy maturity range, declared-condition fixtures, condition history, egg rules and world v2 migration
   limits.test.ts   Living/record limits, deep and wide pedigree queries and atomic rejection
   runtime.test.ts  Command envelopes, retries, replay, compaction, migration and tamper rejection
   time.test.ts     Tick segments, shared tank clocks, offline cap and backwards clocks
@@ -85,7 +87,7 @@ There is currently **no backend, WebGL mesh, biological life-stage scheduler, au
 | State | React state + motion refs | UI store only if needed | Avoid global subscription to every swimming coordinate |
 | Genealogy | Exact memoized ancestor queries and paginated relatives | Worker query + incremental kinship cache | Preserve history without world-sized matrix allocation |
 | Backend | None | Authoritative HTTP service + PostgreSQL | Durable transactions and trusted online ownership |
-| Shared simulation | Persistent 50 ms clock, event-boundary integrator and fixed-step water model per tank (FS-301); no fish biology yet | Water, development and scheduled lifecycle events | One deterministic integrator must serve visible/background/offline modes |
+| Shared simulation | Persistent 50 ms clock, event-boundary integrator, fixed-step water per tank (FS-301) and daily life stages and growth (FS-302); no health yet | Water, development and scheduled lifecycle events | One deterministic integrator must serve visible/background/offline modes |
 
 React documents Vite as one option for a custom setup; Vite provides the React TypeScript build workflow. These choices fit this single-page research application, rather than implying every React app needs this stack. [React guidance](https://react.dev/learn/creating-a-react-app), [Vite guide](https://vite.dev/guide/).
 
@@ -257,7 +259,16 @@ Each step, in order:
 
 The step uses only basic arithmetic, so saved doubles match across browsers.
 
-`src/core/habitat.ts` sums living residents' load at adult genetic potential: mass = 0.0148 g × cm³, with metabolism and oxygen-demand loci. `advanceRuntime` advances every tank's water, visible or not. `decodeRuntime` replays to the snapshot tick and compares water too. Fish are not yet affected by water; health, growth and care controls belong to FS-302 and FS-305.
+`src/core/habitat.ts` sums living residents' load at adult genetic potential: mass = 0.0148 g × cm³, with metabolism and oxygen-demand loci. `advanceRuntime` advances every tank's water, visible or not. `decodeRuntime` replays to the snapshot tick and compares water too. Water does not harm fish; it slows development through condition (FS-302). Health and care controls belong to FS-305.
+
+### Implemented life model (FS-302)
+
+`src/core/development.ts` holds life model v1, and world save v3 stores each fish's `life`: age in game days, current length and condition.
+
+- **Advancing:** `advanceWorld` interleaves the fixed water steps with one development pass at every absolute game-day boundary. Residents load the water at their current mass, and each living fish develops from its tank's water and crowding at that boundary.
+- **Breeding:** breeding lays eggs. Eggs cannot breed or be sold, and goal leaders skip them; the lab still lets hatched fish breed until FS-401.
+- **Display:** the app previews the clock every five seconds without saving. The tank draws fish at their current size, with an eggs-incubating count, and cards and the inspector show stage, age and condition beside adult potential.
+- **Older saves:** older world versions are validated against records only and rebased with migrated young-adult life state (ADR-038).
 
 ## 7. Worker and renderer protocol
 

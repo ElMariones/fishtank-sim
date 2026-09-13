@@ -27,13 +27,13 @@ The npm cache is configured inside this checkout for compatibility with the work
 ## Try the lab
 
 1. Select a swimming fish or its collection card. Rename it and inspect its 48-locus genome.
-2. Choose a mother and father. Breed twenty offspring into the current tank.
+2. Choose a mother and father. Breed twenty eggs into the current tank and watch them hatch and grow.
 3. Select a child, then open Family and choose a parent.
 4. Move interesting offspring to another aquarium and select them as the next parents.
 5. Use unrelated NPC stock for outcrossing. Selling preserves the fish’s family record.
 6. Open **Saves** to export, preview a v1/v2 import, or restore one of two backups. The app automatically reloads its validated IndexedDB save and preserves the original v1 localStorage data.
 
-Offspring are instant **adult genetic previews**. Feeding demonstrates attraction; it does not yet simulate nutrition. Motion speed does not age fish. The local NPC economy is intentionally unbalanced because lab breeding and tanks are free.
+Offspring start as eggs. They hatch after 3 game days and grow toward their genetic adult length, faster in good water; one game day passes per real minute. Portraits still show **adult genetic potential**. Feeding demonstrates attraction; it does not yet simulate nutrition. Motion speed does not change growth. The local NPC economy is intentionally unbalanced because lab breeding and tanks are free.
 
 Limits: 60 residents per tank, eight tanks, 480 living fish and 10,000 total fish records including archives. A full twenty-fish cohort must fit before any birth is created.
 

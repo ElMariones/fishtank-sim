@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { anatomyFor } from '../core/anatomy';
 import type { Fish, Tank } from '../core/types';
 import { drawFish } from '../rendering/fish';
-import { fishPose, pickActor } from '../rendering/tankLayout';
+import { fishPose, pickActor, visualGrowth } from '../rendering/tankLayout';
 import { createActor, type Actor } from '../simulation/motion';
 import { MotionWorkerClient } from '../simulation/motionClient';
 import { TRANSFORM_STRIDE, type FromMotionWorker } from '../simulation/protocol';
@@ -110,7 +110,7 @@ export function TankCanvas(props: Props) {
       for (const actor of actors.current) {
         const fish = fishById.get(actor.id);
         if (!fish) continue;
-        const pose = fishPose(actor, width, height);
+        const pose = fishPose(actor, width, height, visualGrowth(fish.life.lengthCm, actor.phenotype.adultLengthCm));
         ctx.save(); ctx.translate(pose.x, pose.y);
         if (actor.id === current.selectedId) {
           const b = anatomyFor(actor.phenotype).bounds, length = pose.bodyLength;
@@ -133,8 +133,9 @@ export function TankCanvas(props: Props) {
   return <>
     <canvas ref={canvasRef} className="tank-canvas" role="img" aria-label={`${props.tank.name}, ${props.fish.length} swimming fish. Select a fish using the collection below.`}
       onClick={event => {
-        const rect = event.currentTarget.getBoundingClientRect();
-        const id = pickActor(actors.current, rect.width, rect.height, event.clientX - rect.left, event.clientY - rect.top);
+        const rect = event.currentTarget.getBoundingClientRect(), byId = new Map(props.fish.map(fish => [fish.id, fish]));
+        const id = pickActor(actors.current, rect.width, rect.height, event.clientX - rect.left, event.clientY - rect.top, 6,
+          actor => visualGrowth(byId.get(actor.id)?.life.lengthCm ?? actor.phenotype.adultLengthCm, actor.phenotype.adultLengthCm));
         if (id) props.onSelect(id);
       }} />
     {workerState.status === 'recovering' || workerState.status === 'recovered' || workerState.status === 'failed' ? <div className={`worker-state ${workerState.status}`} role="status">

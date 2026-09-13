@@ -1,10 +1,20 @@
 /** Genome v1 holds 48 loci per copy; genome v2 appends the 12 Color and Ornament loci (60 per copy). */
 export type Genome = { version: 1 | 2; maternal: number[]; paternal: number[] };
 export type Mutation = { locus: number; copy: 'maternal' | 'paternal'; from: number; to: number };
+/** Life model v1 state (FS-302). Age, size and condition accumulate on game-day boundaries; genetics only set the potential. */
+export type LifeState = {
+  model: 1;
+  /** Whole game days since the egg was laid, counted at absolute day boundaries. */
+  ageDays: number;
+  /** Current body length in cm; 0 while still an egg. */
+  lengthCm: number;
+  /** Developmental condition 0–1: a moving average of recent environment, so deficits and recovery both take days. */
+  condition: number;
+};
 export type Fish = {
   id: string; name: string; sex: 'F' | 'M'; genome: Genome; birthSeed: number;
   generation: number; parents: [string, string] | null; bornAt: string;
-  tankId: string; status: 'living' | 'sold'; mutations: Mutation[];
+  tankId: string; status: 'living' | 'sold'; mutations: Mutation[]; life: LifeState;
 };
 /** Water model v1 state for one tank (FS-301). Units are explicit; values are game approximations, not care advice. */
 export type WaterState = {
@@ -25,8 +35,8 @@ export type WaterState = {
   aerationPerDay: number;
 };
 export type Tank = { id: string; name: string; capacity: number; planted: boolean; water: WaterState };
-/** World v2 adds per-tank water (FS-301). World v1 saves migrate with default water. */
-export type World = { version: 2; seed: number; nextId: number; credits: number; fish: Fish[]; tanks: Tank[] };
+/** World v2 added per-tank water (FS-301); world v3 adds fish life state (FS-302). Older saves migrate with defaults. */
+export type World = { version: 3; seed: number; nextId: number; credits: number; fish: Fish[]; tanks: Tank[] };
 /**
  * Development v2 inherited marking anchor, derived from one phased two-locus haplotype block.
  * Body coordinates: u 0 = snout tip … 1 = peduncle; v −1 = dorsal edge … 1 = ventral edge.

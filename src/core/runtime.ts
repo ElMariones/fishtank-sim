@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { advanceWorld } from './habitat';
 import { decodeSave } from './save';
-import { applyCommand, commandSchema, type Command } from './world';
+import { applyCommand, commandSchema, WORLD_VERSION, type Command } from './world';
 import type { World } from './types';
 import { offlineWindow, TICK_MS, timelineSegments, type OfflineWindow } from '../simulation/time';
 
@@ -91,13 +91,14 @@ const runtimeSchema = z.object({
 
 /**
  * Validate both snapshot and replay, including IDs, order, model versions and resulting world. Replay advances to the
- * snapshot tick, so water integrated by clock checkpoints must agree as well. A world v1 snapshot predates water: its
- * tanks start with default water at the snapshot, and the journal folds into a new checkpoint there.
+ * snapshot tick, so water and development integrated by clock checkpoints must agree as well. A snapshot from an older
+ * world version predates some time-integrated state, so it is compared without water and life state; its migrated values
+ * start at that snapshot, and the journal folds into a new checkpoint there.
  */
 export function decodeRuntime(raw: string): Runtime {
   if (raw.length > MAX_SAVE_CHARACTERS) throw new Error('Save exceeds the import size limit.');
   const parsed = runtimeSchema.parse(JSON.parse(raw));
-  const legacyWorld = (parsed.world as { version?: unknown } | null)?.version === 1;
+  const legacyWorld = (parsed.world as { version?: unknown } | null)?.version !== WORLD_VERSION;
   const checkpoint = { ...parsed.checkpoint, world: decodeSave(JSON.stringify(parsed.checkpoint.world)) };
   let replayed: Runtime = { ...createRuntime(checkpoint.world, parsed.worldId), ...checkpoint, checkpoint };
   for (const event of parsed.events) {
@@ -108,7 +109,7 @@ export function decodeRuntime(raw: string): Runtime {
   const mismatch = new Error('Save snapshot does not agree with its replay journal.');
   if (replayed.revision !== parsed.revision || replayed.tick > parsed.tick) throw mismatch;
   replayed = advanceRuntime(replayed, parsed.tick);
-  const comparable = (candidate: World) => JSON.stringify(legacyWorld ? withoutWater(candidate) : candidate);
+  const comparable = (candidate: World) => JSON.stringify(legacyWorld ? recordsOnly(candidate) : candidate);
   if (comparable(decodeSave(JSON.stringify(replayed.world))) !== comparable(world)) throw mismatch;
   const simulation = parsed.simulation ?? { version: 1 as const, tankTicks: Object.fromEntries(world.tanks.map(tank => [tank.id, parsed.tick])) };
   const tankIds = new Set(world.tanks.map(tank => tank.id));
@@ -118,9 +119,13 @@ export function decodeRuntime(raw: string): Runtime {
   return { ...replayed, world, tick: parsed.tick, simulation };
 }
 
-/** The world v1 projection compared for pre-water snapshots. */
-function withoutWater(world: World) {
-  return { ...world, tanks: world.tanks.map(tank => ({ id: tank.id, name: tank.name, capacity: tank.capacity, planted: tank.planted })) };
+/** Identity, genome, pedigree, ownership and tank records without water or life state: what older snapshots can prove. */
+function recordsOnly(world: World) {
+  return {
+    ...world,
+    tanks: world.tanks.map(tank => ({ id: tank.id, name: tank.name, capacity: tank.capacity, planted: tank.planted })),
+    fish: world.fish.map(member => ({ ...member, life: null })),
+  };
 }
 
 /** Legacy v1 records retain their exact identity, genome, seed and parent links. */

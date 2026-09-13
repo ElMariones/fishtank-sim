@@ -3,7 +3,10 @@ import {
   cohortsOf, decodePreferences, DEFAULT_PREFERENCES, goalLeaders, goalValue, PREFERENCES_KEY, sortCollection, toggleFavorite, type LabPreferences,
 } from '../src/core/collection';
 import { measureDescriptors } from '../src/core/descriptors';
+import { INCUBATION_DAYS } from '../src/core/development';
 import { express } from '../src/core/genetics';
+import { advanceWorld } from '../src/core/habitat';
+import { TICKS_PER_GAME_DAY } from '../src/core/water';
 import { applyCommand, createWorld } from '../src/core/world';
 
 const NOW = '2026-09-13T12:00:00.000Z';
@@ -43,16 +46,20 @@ describe('FS-104 collection preferences and ordering', () => {
     expect(cohort.map(f => f.id)).toEqual(before);
   });
 
-  it('groups cohorts by parent pair and names goal leaders by sex among living fish', () => {
+  it('groups cohorts by parent pair and names goal leaders by sex among living, hatched fish', () => {
     const cohorts = cohortsOf(bred.fish);
     expect(cohorts.map(c => [c.motherId, c.fatherId, c.size])).toEqual([['FSH-000003', 'FSH-000004', 20], ['FSH-000001', 'FSH-000002', 20]]);
     const goal = { descriptor: 'depth', direction: 'higher' } as const;
-    const leaders = goalLeaders(bred.fish, goal);
+    // Eggs cannot breed, so they never lead; once hatched, the whole cohort competes.
+    const eggLeaders = goalLeaders(bred.fish, goal);
+    expect([eggLeaders.mother, eggLeaders.father].every(leader => leader !== null && leader.life.lengthCm > 0)).toBe(true);
+    const hatched = advanceWorld(bred, 0, INCUBATION_DAYS * TICKS_PER_GAME_DAY);
+    const leaders = goalLeaders(hatched.fish, goal);
     expect(leaders.mother?.sex).toBe('F');
     expect(leaders.father?.sex).toBe('M');
-    const bestFemale = Math.max(...bred.fish.filter(f => f.sex === 'F').map(f => goalValue(f, goal)));
+    const bestFemale = Math.max(...hatched.fish.filter(f => f.sex === 'F').map(f => goalValue(f, goal)));
     expect(goalValue(leaders.mother!, goal)).toBe(bestFemale);
-    const sold = applyCommand(bred, { type: 'sell', fishId: leaders.mother!.id });
+    const sold = applyCommand(hatched, { type: 'sell', fishId: leaders.mother!.id });
     expect(goalLeaders(sold.fish, goal).mother?.id).not.toBe(leaders.mother!.id);
   });
 });

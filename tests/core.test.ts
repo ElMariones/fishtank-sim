@@ -8,6 +8,9 @@ import { applyCommand, createWorld, quote } from '../src/core/world';
 import { createActor, stepMotion } from '../src/simulation/motion';
 import { COHORT_VISUAL_FIXTURES, EXTREME_VISUAL_FIXTURES, FOUNDER_VISUAL_FIXTURES, VISUAL_DESCRIPTORS, VISUAL_FIXTURE_REPORT } from '../src/core/visualFixtures';
 import { hash } from '../src/core/random';
+import { INCUBATION_DAYS } from '../src/core/development';
+import { advanceWorld } from '../src/core/habitat';
+import { TICKS_PER_GAME_DAY } from '../src/core/water';
 
 const NOW = '2026-09-13T12:00:00.000Z';
 const uniform = (maternal: number, paternal = maternal): Genome => ({ version: 1, maternal: Array(48).fill(maternal), paternal: Array(48).fill(paternal) });
@@ -152,7 +155,8 @@ describe('world commands and persistence', () => {
   it('rejects invalid parents and permits repeat generations in accelerated lab mode', () => {
     const world = createWorld(NOW);
     expect(() => applyCommand(world, { ...cross, fatherId: cross.motherId })).toThrow();
-    const next = applyCommand(world, cross);
+    // Eggs cannot breed; once hatched, the lab still lets fry breed without a maturity wait (M4 adds that check).
+    const next = advanceWorld(applyCommand(world, cross), 0, INCUBATION_DAYS * TICKS_PER_GAME_DAY);
     const m = next.fish.slice(6).find(f => f.sex === 'F')!, f = next.fish.slice(6).find(f => f.sex === 'M')!;
     const generation2 = applyCommand(next, { ...cross, motherId: m.id, fatherId: f.id, tankId: 'tank-2' });
     expect(generation2.fish.at(-1)!.generation).toBe(2);
@@ -171,7 +175,8 @@ describe('world commands and persistence', () => {
 
   it('sells a reviewed batch atomically and rejects any invalid member without partial sales', () => {
     const world = applyCommand(createWorld(NOW), cross);
-    const members = world.fish.slice(6, 10), ids = members.map(f => f.id);
+    // Newborn cohort members are eggs and cannot be sold, so the batch uses four founders.
+    const members = world.fish.slice(2, 6), ids = members.map(f => f.id);
     const sold = applyCommand(world, { type: 'sell-batch', fishIds: ids });
     expect(sold.credits).toBe(world.credits + members.reduce((sum, f) => sum + quote(f), 0));
     expect(sold.fish.filter(f => ids.includes(f.id)).every(f => f.status === 'sold')).toBe(true);
@@ -210,7 +215,7 @@ describe('world commands and persistence', () => {
   it('rejects malformed saves, duplicate IDs, missing tanks, cycles and invalid alleles', () => {
     const world = applyCommand(createWorld(NOW), cross);
     const invalid = [
-      { ...world, version: 3 },
+      { ...world, version: 4 },
       { ...world, nextId: 1 },
       { ...world, fish: [...world.fish, world.fish[0]] },
       { ...world, tanks: [] },

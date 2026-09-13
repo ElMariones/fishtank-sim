@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { measureDescriptors, VISUAL_DESCRIPTORS, type VisualDescriptorKey } from './descriptors';
+import { isEgg } from './development';
 import { express } from './genetics';
 import type { Fish } from './types';
 
@@ -77,8 +78,8 @@ export function cohortsOf(fish: readonly Fish[]): Cohort[] {
   return [...cohorts.values()].sort((a, b) => b.newest - a.newest);
 }
 
-/** Highest-ranked living fish of each sex for the goal: a convenience, not a universal "best match". */
+/** Highest-ranked living, hatched fish of each sex for the goal: a convenience, not a universal "best match". Eggs cannot breed. */
 export function goalLeaders(fish: readonly Fish[], goal: BreedingGoal): { mother: Fish | null; father: Fish | null } {
-  const ranked = sortCollection(fish.filter(f => f.status === 'living'), 'goal', goal);
+  const ranked = sortCollection(fish.filter(f => f.status === 'living' && !isEgg(f.life)), 'goal', goal);
   return { mother: ranked.find(f => f.sex === 'F') ?? null, father: ranked.find(f => f.sex === 'M') ?? null };
 }

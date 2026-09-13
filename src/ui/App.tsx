@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { describeAppearance } from '../core/appearance';
+import { daysToHatch, environmentFor, environmentLimits, INCUBATION_DAYS, isEgg, lifeStage, type LifeStage } from '../core/development';
 import { advanceWorld, stocking, tankLoad } from '../core/habitat';
 import { waterStatus } from '../core/water';
 import { ALL_LOCI, CHROMOSOMES, GENOME_VERSION, label } from '../core/catalog';
@@ -7,7 +8,7 @@ import {
   cohortsOf, decodePreferences, goalLeaders, goalValue, PREFERENCES_KEY, sortCollection, toggleFavorite, type BreedingGoal, type CollectionSort,
 } from '../core/collection';
 import { VISUAL_DESCRIPTORS, type VisualDescriptorKey } from '../core/descriptors';
-import { express, fingerprint, heterozygosity } from '../core/genetics';
+import { express, fingerprint, heterozygosity, metabolicPotential } from '../core/genetics';
 import { MARKING_BLOCKS, MARKING_VISIBLE_ALPHA } from '../core/pattern';
 import { kinship } from '../core/pedigree';
 import { advanceRuntime, commandEnvelope, executeCommand, TICK_MS } from '../core/runtime';
@@ -36,15 +37,22 @@ function readPreferences(world: World) {
   return decodePreferences(raw, new Set(world.fish.map(f => f.id)));
 }
 
-/** Read-only water readout (FS-301). It previews the shared clock up to now without saving; care controls arrive in FS-305. */
-function WaterStatus({ world, tick, origin, tankId }: { world: World; tick: number; origin: { time: number; tick: number }; tankId: string }) {
-  const [now, setNow] = useState(() => performance.now());
-  useEffect(() => {
-    const interval = window.setInterval(() => setNow(performance.now()), 5_000);
-    return () => window.clearInterval(interval);
-  }, []);
-  const liveTick = Math.max(tick, origin.tick + Math.floor((now - origin.time) / TICK_MS));
-  const tank = useMemo(() => advanceWorld(world, tick, liveTick).tanks.find(t => t.id === tankId), [world, tick, liveTick, tankId]);
+const STAGE_LABELS: Record<LifeStage, string> = { egg: 'Egg', fry: 'Fry', juvenile: 'Juvenile', adult: 'Adult', elderly: 'Elderly' };
+
+/** Current stage and size beside the genetic adult length, which remains only a potential (FS-302). */
+function lifeSummary(fish: Fish): string {
+  const potential = metabolicPotential(fish.genome), stage = lifeStage(fish.life, potential);
+  if (stage === 'egg') {
+    const days = daysToHatch(fish.life);
+    return `Egg · hatches in ${days} game day${days === 1 ? '' : 's'}`;
+  }
+  const length = fish.life.lengthCm;
+  return `${STAGE_LABELS[stage]} · ${length.toFixed(length < 10 ? 1 : 0)} of ${potential.adultLengthCm.toFixed(0)} cm`;
+}
+
+/** Read-only water readout (FS-301) for the live world preview; care controls arrive in FS-305. */
+function WaterStatus({ world, tankId }: { world: World; tankId: string }) {
+  const tank = world.tanks.find(t => t.id === tankId);
   const load = useMemo(() => tankLoad(world.fish, tankId), [world.fish, tankId]);
   // A hot-reloaded session can still hold a pre-water world in memory; decoded worlds always carry water.
   if (!tank?.water) return null;
@@ -53,16 +61,23 @@ function WaterStatus({ world, tick, origin, tankId }: { world: World; tick: numb
     <span className={`water-chip ${status.oxygen}`} title={`${tank.water.oxygenMgL.toFixed(1)} mg/L dissolved oxygen`}>Oxygen {status.oxygen}</span>
     <span className={`water-chip ${status.ammonia}`} title={`${tank.water.ammoniaMgL.toFixed(2)} mg/L ammonia nitrogen`}>Ammonia {status.ammonia}</span>
     <span className={`water-chip ${stock.level}`} title={`${load.biomassKg.toFixed(0)} kg of fish in ${(tank.water.volumeL / 1000).toFixed(0)} m³ of water`}>Stocking {stock.level}</span>
-    <small>Water model v1 · fish are not affected yet; care controls come later</small>
+    <small>Water model v1 · poor water slows growth; care controls come later</small>
   </div>;
 }
 
 export function App({ initial }: { initial: LoadedSession }) {
   const [runtime, setRuntime] = useState(initial.runtime);
-  const world = runtime.world;
   const runtimeRef = useRef(runtime);
   const saveBusy = useRef(false);
   const clockOrigin = useRef({ time: performance.now(), tick: runtime.tick });
+  // The display previews the shared clock up to now every five seconds without saving; commands advance the saved runtime.
+  const [clockNow, setClockNow] = useState(() => performance.now());
+  useEffect(() => {
+    const interval = window.setInterval(() => setClockNow(performance.now()), 5_000);
+    return () => window.clearInterval(interval);
+  }, []);
+  const liveTick = Math.max(runtime.tick, clockOrigin.current.tick + Math.floor((clockNow - clockOrigin.current.time) / TICK_MS));
+  const world = useMemo(() => advanceWorld(runtime.world, runtime.tick, liveTick), [runtime.world, runtime.tick, liveTick]);
   const [blocked, setBlocked] = useState(initial.blocked);
   const [showSaves, setShowSaves] = useState(false);
   const [preferences, setPreferences] = useState(() => readPreferences(initial.runtime.world));
@@ -132,7 +147,13 @@ export function App({ initial }: { initial: LoadedSession }) {
   const fish = world.fish.find(f => f.id === selectedId);
   const living = world.fish.filter(f => f.status === 'living');
   const residents = useMemo(() => world.fish.filter(f => f.tankId === tank.id && f.status === 'living'), [world.fish, tank.id]);
+  const swimmers = useMemo(() => residents.filter(f => !isEgg(f.life)), [residents]);
+  const breeders = living.filter(f => !isEgg(f.life));
   const p = useMemo(() => fish ? express(fish.genome) : null, [fish]);
+  const selectedLimits = useMemo(() => {
+    const home = fish?.status === 'living' ? world.tanks.find(t => t.id === fish.tankId) : undefined;
+    return home ? environmentLimits(environmentFor(home.water, stocking(tankLoad(world.fish, home.id), home.water).densityKgM3)) : [];
+  }, [fish, world]);
   const appearanceRows = useMemo(() => fish ? describeAppearance(fish.genome) : [], [fish]);
   const prospectiveF = useMemo(() => kinship(world.fish, motherId, fatherId), [world.fish, motherId, fatherId]);
   const currentF = useMemo(() => fish?.parents ? kinship(world.fish, fish.parents[0], fish.parents[1]) : 0, [world.fish, fish]);
@@ -194,7 +215,7 @@ export function App({ initial }: { initial: LoadedSession }) {
 
   function breed() {
     const pairText = ` Showing all offspring of ${fishName(motherId)} × ${fishName(fatherId)}${goal ? `, ranked by ${descriptorLabel.get(goal.descriptor)?.toLowerCase()}` : ''}.`;
-    const next = run({ type: 'breed', motherId, fatherId, tankId: tank.id, timestamp: new Date().toISOString(), genomeVersion: GENOME_VERSION }, `${COHORT_SIZE} offspring born. Every fish inherited one recombined copy from each parent.${pairText}`);
+    const next = run({ type: 'breed', motherId, fatherId, tankId: tank.id, timestamp: new Date().toISOString(), genomeVersion: GENOME_VERSION }, `${COHORT_SIZE} eggs laid. They hatch in ${INCUBATION_DAYS} game days and grow fastest in good water; each inherited one recombined copy from each parent.${pairText}`);
     if (next) {
       setSelectedId(next.fish[next.fish.length - COHORT_SIZE].id); setShowArchived(false); setQuery('');
       setCohortKey(`${motherId}×${fatherId}`); setFavoritesOnly(false); setSexFilter('all');
@@ -259,10 +280,10 @@ export function App({ initial }: { initial: LoadedSession }) {
       <main>
         {saveError && saveError !== 'Saving…' ? <p className="warning" role="alert">{saveError}</p> : null}
         <div className="tank-heading"><div><div className="eyebrow">AQUARIUM / {String(world.tanks.indexOf(tank) + 1).padStart(2, '0')}</div><h1>{tank.name}</h1></div><span className="count-tag">{residents.length} inhabitants</span></div>
-        <WaterStatus world={world} tick={runtime.tick} origin={clockOrigin.current} tankId={tank.id} />
+        <WaterStatus world={world} tankId={tank.id} />
         <section className="aquarium" aria-label="Live aquarium">
-          <TankCanvas fish={residents} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={speed} feedSignal={feedSignal} />
-          <div className="tank-overlay"><span>{paused ? 'PAUSED' : 'LIVE AQUARIUM'}</span><span>{tank.planted ? 'Planted habitat' : 'Open water'}</span></div>
+          <TankCanvas fish={swimmers} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={speed} feedSignal={feedSignal} />
+          <div className="tank-overlay"><span>{paused ? 'PAUSED' : 'LIVE AQUARIUM'}</span><span>{tank.planted ? 'Planted habitat' : 'Open water'}{residents.length > swimmers.length ? ` · ${residents.length - swimmers.length} eggs incubating` : ''}</span></div>
           {!residents.length ? <div className="empty-tank">A little room to evolve.<small>Move a fish here or introduce unrelated stock, which can carry new colors and patterns.</small></div> : null}
           <div className="tank-controls"><div><button aria-label={paused ? 'Resume aquarium' : 'Pause aquarium'} onClick={() => setPaused(v => !v)}>{paused ? '▶' : 'Ⅱ'}</button><button onClick={() => setSpeed(v => v === 1 ? 2 : v === 2 ? 4 : 1)} aria-label={`Motion speed ${speed} times`}>{speed}×</button></div><span>Click a fish to inspect</span><button className="feed-button" onClick={() => { setFeedSignal(v => v + 1); setNotice('Food draws fish toward the surface. Feeding is a behavior demo; care and growth arrive in a later milestone.'); }}>＋ Feed</button></div>
         </section>
@@ -278,9 +299,9 @@ export function App({ initial }: { initial: LoadedSession }) {
             {goal && leaders ? <div className="goal-leaders"><span>Leaders by {goalLabel.toLowerCase()}</span>{[leaders.mother, leaders.father].map(leader => leader ? <button key={leader.id} onClick={() => chooseLeader(leader)}>
               <SexMark sex={leader.sex} decorative />{leader.name}<span className="filter-count">{wholePercent(goalValue(leader, goal))}</span></button> : null)}</div> : <p className="goal-hint">Pick a visible trait to rank the collection and suggest parents. The goal stays while you choose new parents.</p>}
           </div>
-          <div className="parent-pickers"><label><span className="picker-label">Mother <SexMark sex="F" decorative /></span><select value={motherId} onChange={e => setMotherId(e.target.value)}><option value="">Select female</option>{living.filter(f => f.sex === 'F').map(f => <option key={f.id} value={f.id}>♀ {f.name} · G{f.generation}{goal ? ` · ${wholePercent(goalValue(f, goal))}` : ''}</option>)}</select></label><span className="cross">×</span><label><span className="picker-label">Father <SexMark sex="M" decorative /></span><select value={fatherId} onChange={e => setFatherId(e.target.value)}><option value="">Select male</option>{living.filter(f => f.sex === 'M').map(f => <option key={f.id} value={f.id}>♂ {f.name} · G{f.generation}{goal ? ` · ${wholePercent(goalValue(f, goal))}` : ''}</option>)}</select></label></div>
-          <div className="breed-action"><button className="primary" onClick={breed} disabled={!living.some(f => f.id === motherId) || !living.some(f => f.id === fatherId)}>Breed 20 offspring <span>↗</span></button><small>Expected pedigree F: {percent(prospectiveF)}</small></div>
-          <p className="lab-note">Accelerated experiment: no maturity wait or courtship. Parents may be in different lab tanks. Births use the current tank’s free places. Goal values are normalized adult genetic potential.</p>
+          <div className="parent-pickers"><label><span className="picker-label">Mother <SexMark sex="F" decorative /></span><select value={motherId} onChange={e => setMotherId(e.target.value)}><option value="">Select female</option>{breeders.filter(f => f.sex === 'F').map(f => <option key={f.id} value={f.id}>♀ {f.name} · G{f.generation}{goal ? ` · ${wholePercent(goalValue(f, goal))}` : ''}</option>)}</select></label><span className="cross">×</span><label><span className="picker-label">Father <SexMark sex="M" decorative /></span><select value={fatherId} onChange={e => setFatherId(e.target.value)}><option value="">Select male</option>{breeders.filter(f => f.sex === 'M').map(f => <option key={f.id} value={f.id}>♂ {f.name} · G{f.generation}{goal ? ` · ${wholePercent(goalValue(f, goal))}` : ''}</option>)}</select></label></div>
+          <div className="breed-action"><button className="primary" onClick={breed} disabled={!breeders.some(f => f.id === motherId) || !breeders.some(f => f.id === fatherId)}>Breed 20 offspring <span>↗</span></button><small>Expected pedigree F: {percent(prospectiveF)}</small></div>
+          <p className="lab-note">Offspring start as eggs, hatch after {INCUBATION_DAYS} game days and reach adulthood in roughly 25 more in good water (one game day per real minute). The lab still lets any hatched fish breed without courtship; maturity checks arrive in M4. Parents may be in different lab tanks. Eggs use the current tank’s free places. Goal values are normalized adult genetic potential.</p>
         </section>
         <div className="status-line" role="status" aria-live="polite">{notice}</div>
         <section className="collection" id="collection" tabIndex={-1} aria-labelledby="collection-title">
@@ -329,7 +350,7 @@ export function App({ initial }: { initial: LoadedSession }) {
                 <button className="favorite-toggle" aria-pressed={favorite} aria-label={`Favorite ${f.name}`} onClick={() => setPreferences(current => toggleFavorite(current, f.id))}>{favorite ? '★' : '☆'}</button><SexMark sex={f.sex} />
               </span></div>
               <button className="fish-card-main" id={`card-${f.id}`} aria-pressed={f.id === selectedId} onClick={event => select(f.id, event.detail === 0)}>
-                <FishPortrait fish={f} /><div className="fish-card-bottom"><strong>{f.name}</strong><small>{f.status === 'sold' ? 'Archived' : `${express(f.genome).adultLengthCm.toFixed(0)} cm potential`}</small>{goal ? <span className="goal-chip">{goalLabel} {wholePercent(goalValue(f, goal))}</span> : null}</div>
+                <FishPortrait fish={f} /><div className="fish-card-bottom"><strong>{f.name}</strong><small>{f.status === 'sold' ? 'Archived' : lifeSummary(f)}</small>{goal ? <span className="goal-chip">{goalLabel} {wholePercent(goalValue(f, goal))}</span> : null}</div>
               </button>
               {f.status === 'living' ? <label className="batch-check"><input type="checkbox" checked={inBatch} aria-label={`Select ${f.name} for batch sale`}
                 onChange={event => toggleBatch(f.id, (event.nativeEvent as MouseEvent).shiftKey === true)} /><span aria-hidden="true">{inBatch ? 'Selected' : 'Select'}</span></label> : null}
@@ -347,7 +368,7 @@ export function App({ initial }: { initial: LoadedSession }) {
           <div className="inspector-tabs" role="group" aria-label="Inspector views">{(['Overview', 'Genome', 'Family'] as const).map(t => <button key={t} aria-pressed={tab === t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
           {tab === 'Overview' ? <>
             <form className="rename-form" key={fish.id} onSubmit={event => { event.preventDefault(); const data = new FormData(event.currentTarget); run({ type: 'rename', fishId: fish.id, name: String(data.get('name')) }, 'Fish name updated.'); }}><label>Given name<input name="name" aria-label="Given name" defaultValue={fish.name} maxLength={32} required disabled={fish.status !== 'living'} /></label><button disabled={fish.status !== 'living'}>Save</button></form>
-            <dl className="facts"><div><dt>Born in the lab</dt><dd>{date(fish.bornAt)}</dd></div><div><dt>Adult length potential</dt><dd>{p.adultLengthCm.toFixed(1)} cm</dd></div>{goal ? <div><dt>Goal · {goalLabel}</dt><dd>{wholePercent(goalValue(fish, goal))}</dd></div> : null}<div><dt>Lab sale quote</dt><dd>◈ {quote(fish)}</dd></div><div><dt>Heterozygous loci</dt><dd>{percent(heterozygosity(fish.genome))}</dd></div><div><dt>Pedigree inbreeding F</dt><dd>{percent(currentF)}</dd></div><div><dt>New mutations at birth</dt><dd>{fish.mutations.length}</dd></div></dl>
+            <dl className="facts"><div><dt>Born in the lab</dt><dd>{date(fish.bornAt)}</dd></div><div><dt>Life stage</dt><dd>{lifeSummary(fish)}</dd></div><div><dt>Age</dt><dd>{fish.life.ageDays} game day{fish.life.ageDays === 1 ? '' : 's'}</dd></div><div><dt>Condition</dt><dd>{wholePercent(fish.life.condition)}{selectedLimits.length ? ` · limited by ${selectedLimits.join(', ')}` : ''}</dd></div><div><dt>Adult length potential</dt><dd>{p.adultLengthCm.toFixed(1)} cm</dd></div>{goal ? <div><dt>Goal · {goalLabel}</dt><dd>{wholePercent(goalValue(fish, goal))}</dd></div> : null}<div><dt>Lab sale quote</dt><dd>◈ {quote(fish)}</dd></div><div><dt>Heterozygous loci</dt><dd>{percent(heterozygosity(fish.genome))}</dd></div><div><dt>Pedigree inbreeding F</dt><dd>{percent(currentF)}</dd></div><div><dt>New mutations at birth</dt><dd>{fish.mutations.length}</dd></div></dl>
             <div className="trait-block"><div className="eyebrow">INHERITED TENDENCIES</div>{[['Sociability', p.social], ['Boldness', p.bold], ['Activity', p.activity], ['Curiosity', p.curious]].map(([name, value]) => <div className="trait" key={name}><span>{name}</span><meter min="0" max="1" value={Number(value)} aria-label={String(name)} /><span>{Math.round(Number(value) * 100)}</span></div>)}</div>
             <div className="trait-block appearance-block"><div className="eyebrow">APPEARANCE · GENOME V{fish.genome.version}</div>{fish.genome.version === 1 ? <p className="help-copy">Genome v1 fish carry no Color or Ornament chromosomes and keep the classic look. Their offspring carry both chromosomes, where a new mutation can appear.</p> : null}<dl className="appearance-traits">{appearanceRows.map(row => <div key={row.trait}><dt>{row.trait}</dt><dd>{row.value}{row.rarity ? <span className={`rarity ${row.rarity.replace(' ', '-')}`}>{row.rarity}</span> : null}</dd></div>)}</dl>{appearanceRows.some(row => row.rarity) ? <p className="help-copy">Rarity describes founder stock, not your aquarium or any global population.</p> : null}</div>
             {fish.status === 'living' ? <div className="fish-actions"><label>Move to aquarium<select aria-label="Move to aquarium" value={fish.tankId} onChange={event => {

@@ -1,5 +1,6 @@
 import { GENOME_VERSION, MUTATION_RATE, type GenomeVersion } from './catalog';
 import { express, founderGenome, inherit } from './genetics';
+import { adultLife, eggLife, isEgg } from './development';
 import { defaultWater } from './water';
 import { z } from 'zod';
 import { hash } from './random';
@@ -15,6 +16,8 @@ export const MAX_LIVING = MAX_TANKS * TANK_CAPACITY;
  */
 export const MAX_RECORDS = 10_000;
 export const STOCK_PRICE = 250;
+/** World v3: tanks carry water (FS-301) and fish carry life state (FS-302). */
+export const WORLD_VERSION = 3;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -23,14 +26,14 @@ const id = (n: number) => `FSH-${n.toString().padStart(6, '0')}`;
 const count = (n: number) => n.toLocaleString('en');
 
 function founder(world: World, name: string, sex: Fish['sex'], timestamp: string, version: GenomeVersion = GENOME_VERSION): Fish {
-  const birthSeed = hash(`${world.seed}:founder:${world.nextId}`);
-  return { id: id(world.nextId), name, sex, genome: founderGenome(birthSeed, version), birthSeed,
-    generation: 0, parents: null, bornAt: iso(timestamp), tankId: world.tanks[0].id, status: 'living', mutations: [] };
+  const birthSeed = hash(`${world.seed}:founder:${world.nextId}`), genome = founderGenome(birthSeed, version);
+  return { id: id(world.nextId), name, sex, genome, birthSeed,
+    generation: 0, parents: null, bornAt: iso(timestamp), tankId: world.tanks[0].id, status: 'living', mutations: [], life: adultLife(genome) };
 }
 
 /** New worlds use the current genome. Research fixtures pass genome version 1 to reproduce the frozen FS-101 founders. */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = GENOME_VERSION): World {
-  const world: World = { version: 2, seed, nextId: 1, credits: 1200, fish: [], tanks: [
+  const world: World = { version: 3, seed, nextId: 1, credits: 1200, fish: [], tanks: [
     { id: 'tank-1', name: 'The Koi Garden', capacity: TANK_CAPACITY, planted: true, water: defaultWater() },
     { id: 'tank-2', name: 'Breeding Studio', capacity: TANK_CAPACITY, planted: false, water: defaultWater() },
   ] };
@@ -108,6 +111,7 @@ export function applyCommand(world: World, command: Command): World {
     case 'breed': {
       const mother = getFish(command.motherId), father = getFish(command.fatherId);
       if (mother.id === father.id || mother.sex !== 'F' || father.sex !== 'M') throw new Error('Choose a female and a male.');
+      if (isEgg(mother.life) || isEgg(father.life)) throw new Error('Eggs cannot breed. Wait until they hatch.');
       room(COHORT_SIZE);
       space(command.tankId, COHORT_SIZE);
       // A pre-FS-113 command could only name genome v1 parents, which then produced genome v1 children.
@@ -117,13 +121,14 @@ export function applyCommand(world: World, command: Command): World {
         const result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, version);
         next.fish.push({ id: id(next.nextId), name: `Fry ${next.nextId}`, sex: hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M',
           ...result, birthSeed, generation: Math.max(mother.generation, father.generation) + 1,
-          parents: [mother.id, father.id], bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living' });
+          parents: [mother.id, father.id], bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', life: eggLife() });
         next.nextId++;
       }
       break;
     }
     case 'sell': {
       const fish = getFish(command.fishId);
+      if (isEgg(fish.life)) throw new Error('Eggs cannot be sold.');
       next.credits += quote(fish); fish.status = 'sold';
       break;
     }
@@ -131,6 +136,7 @@ export function applyCommand(world: World, command: Command): World {
       if (!command.fishIds.length) throw new Error('Select at least one fish to sell.');
       if (new Set(command.fishIds).size !== command.fishIds.length) throw new Error('Each fish can only be sold once.');
       const batch = command.fishIds.map(getFish); // Every member is validated before any sale is applied.
+      if (batch.some(member => isEgg(member.life))) throw new Error('Eggs cannot be sold.');
       for (const fish of batch) { next.credits += quote(fish); fish.status = 'sold'; }
       break;
     }

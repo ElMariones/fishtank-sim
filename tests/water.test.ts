@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { adultLife } from '../src/core/development';
 import { express, founderGenome, metabolicPotential } from '../src/core/genetics';
 import { advanceWorld, massKg, stocking, tankLoad } from '../src/core/habitat';
 import { random } from '../src/core/random';
@@ -121,22 +122,26 @@ describe('FS-301 water model', () => {
 });
 
 describe('FS-301 habitat load and persistent water', () => {
-  it('derives respiration and excretion from living residents at adult potential', () => {
+  it('derives respiration and excretion from living residents at their current size', () => {
     for (let seed = 0; seed < 200; seed++) {
       const genome = founderGenome(seed), phenotype = express(genome), potential = metabolicPotential(genome);
-      expect([potential.adultLengthCm, potential.metabolism]).toEqual([phenotype.adultLengthCm, phenotype.metabolism]);
+      expect([potential.adultLengthCm, potential.metabolism, potential.growth, potential.longevityYears])
+        .toEqual([phenotype.adultLengthCm, phenotype.metabolism, phenotype.growth, phenotype.longevity]);
     }
     const world = applyCommand(createWorld(NOW), breedStudio);
-    const garden = tankLoad(world.fish, 'tank-1'), studio = tankLoad(world.fish, 'tank-2');
-    expect([garden.fish, studio.fish]).toEqual([6, 20]);
-    expect(studio.oxygenMgPerDay).toBeGreaterThan(garden.oxygenMgPerDay);
+    const garden = tankLoad(world.fish, 'tank-1'), eggs = tankLoad(world.fish, 'tank-2');
+    expect([garden.fish, eggs.fish, eggs.biomassKg, eggs.oxygenMgPerDay]).toEqual([6, 20, 0, 0]);
+    const grown = world.fish.map(member => ({ ...member, life: adultLife(member.genome) }));
+    expect(tankLoad(grown, 'tank-2').oxygenMgPerDay).toBeGreaterThan(garden.oxygenMgPerDay);
     expect(tankLoad(applyCommand(world, { type: 'sell', fishId: 'FSH-000001' }).fish, 'tank-1').fish).toBe(5);
     expect(massKg(52)).toBeCloseTo(2.08, 2);
     expect(stocking(tankLoad([], 'tank-1'), defaultWater()).level).toBe('light');
   });
 
   it('advances every tank, including empty ones, through the shared clock and round-trips saves', () => {
-    const world = applyCommand(applyCommand(createWorld(NOW), breedStudio), { type: 'add-tank' });
+    const bred = applyCommand(applyCommand(createWorld(NOW), breedStudio), { type: 'add-tank' });
+    // Grown adults in the studio outweigh the six founders in the garden; the third tank stays empty.
+    const world = { ...bred, fish: bred.fish.map(member => member.tankId === 'tank-2' ? { ...member, life: adultLife(member.genome) } : member) };
     expect(advanceWorld(world, 0, WATER_STEP_TICKS - 1)).toBe(world);
     const later = advanceWorld(world, 0, 3 * DAY);
     expect(later.tanks[1].water.oxygenMgL).toBeLessThan(later.tanks[0].water.oxygenMgL);
@@ -170,9 +175,10 @@ describe('FS-301 habitat load and persistent water', () => {
     const legacy = JSON.parse(JSON.stringify(runtime));
     for (const stored of [legacy.world, legacy.checkpoint.world]) { stored.version = 1; for (const entry of stored.tanks) delete entry.water; }
     const decoded = decodeRuntime(JSON.stringify(legacy));
-    expect(decoded.world.version).toBe(2);
+    expect(decoded.world.version).toBe(3);
     expect(decoded.world.tanks.map(entry => entry.water)).toEqual([defaultWater(), defaultWater()]);
-    expect(decoded.world.fish).toEqual(runtime.world.fish);
+    const records = (world: typeof runtime.world) => world.fish.map(member => ({ ...member, life: null }));
+    expect(records(decoded.world)).toEqual(records(runtime.world));
     expect(decoded).toMatchObject({ tick: 900, revision: 1, events: [], checkpoint: { tick: 900, revision: 1 } });
     expect(() => executeCommand(decoded, command)).toThrow('Stale');
     const renamed = executeCommand(decoded, commandEnvelope(decoded, { type: 'rename', fishId: 'FSH-000007', name: 'Tide' }, 1000));

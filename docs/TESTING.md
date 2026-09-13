@@ -1,6 +1,6 @@
 # Testing and verification
 
-**Latest recorded run:** 13 September 2026 (FS-301 water model, after FS-113 appearance genetics, the M2 completion review and the FS-111 five-observer pool), Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium 152.0.7977.76 (Claude desktop browser pane). The earlier FS-202/205/206 run used Node 24.11.1, npm 11.6.2 and Google Chrome 153.0.8010.36 via bundled Playwright. Browser checks use independent fixtures, fresh browser contexts or the browser pane's own QA world; no user lineage is reset.
+**Latest recorded run:** 13 September 2026 (FS-302 life stages, after FS-301, FS-113, the M2 completion review and the FS-111 five-observer pool), Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium 152.0.7977.76 (Claude desktop browser pane). The earlier FS-202/205/206 run used Node 24.11.1, npm 11.6.2 and Google Chrome 153.0.8010.36 via bundled Playwright. Browser checks use independent fixtures, fresh browser contexts or the browser pane's own QA world; no user lineage is reset.
 
 ## 1. Commands
 
@@ -10,7 +10,7 @@ npm test
 npm run build
 ```
 
-Vitest runs every `tests/*.test.ts` file. The M2 additions are `runtime.test.ts`, `time.test.ts`, `motionClient.test.ts` and `limits.test.ts`; `resemblancePool.test.ts` validates human records; `appearance.test.ts` covers genome v2 appearance (FS-113); `water.test.ts` covers the FS-301 water model. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **84 tests**, and all passed. The production build passed.
+Vitest runs every `tests/*.test.ts` file. The M2 additions are `runtime.test.ts`, `time.test.ts`, `motionClient.test.ts` and `limits.test.ts`; `resemblancePool.test.ts` validates human records; `appearance.test.ts` covers genome v2 appearance (FS-113); `water.test.ts` covers the FS-301 water model; `development.test.ts` covers FS-302 life stages and growth. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **91 tests**, and all passed. The production build passed.
 
 ## 2. Automated coverage
 
@@ -51,6 +51,7 @@ Vitest runs every `tests/*.test.ts` file. The M2 additions are `runtime.test.ts`
 | Resemblance study kit | 12 fixed trials, 4 per mode, both answers used; every sibling allele within one mutation step of the answer pair; silhouette mode keeps morphology and hides pigment and markings; markings mode keeps markings on identical bodies; computational observer above 90% (silhouette) and 75% (markings) over 150 trials; per-mode scoring, Wilson intervals and stored-result validation |
 | Appearance (FS-113) | For 300 seeds, genome v1 loci, mutations and non-appearance phenotype are identical under genome v2. Chromosomes 9–10 transmit from the parent homologs. Dominance, blends, carrier and mixed strengths, recessive scales and rainbow dots are independent of phase. Founder weights sum to 1; 10,000 founders show a new feature in 20–34% of cases, with striking variants under 1%. Rarity descriptions are checked. Mixed v1/v2 saves round-trip, and wrong genome shapes reject. A legacy breed/buy journal replays as genome v1, and an explicit v1 child of v2 parents rejects. Ornament geometry is finite, bounded and deterministic |
 | Water model (FS-301) | Zero load keeps clean water saturated, and depleted oxygen recovers monotonically. Overload raises ammonia every day, drives oxygen critical and records unmet demand. Two 50% changes plus a typical load return good, clean water. Every fixture balances oxygen, ammonia and food against its ledger within 1e-7 relative, with nothing negative. Split intervals match a single integration exactly. Food decays into ammonia and oxygen demand. Inputs stay unmutated, and invalid time, food and water changes reject. Habitat load counts living residents and matches `express`. Every tank, empty ones included, advances. Replay reproduces saved water and rejects tampering. Fine and coarse advances agree. A world v1 runtime migrates with a rebased checkpoint, and invalid water rejects |
+| Life stages (FS-302) | Environment curves give 1 when healthy, 0.475 hypoxic, 0.5 at high ammonia and 0.667 crowded, with limits listed most severe first. A healthy egg hatches on day 3 and becomes an adult within 18–30 game days through fry and juvenile, never shrinking or passing its potential. At day 30 the same genome ranks healthy > crowded > ammonia > hypoxic. Condition lags the environment in both directions, and growth resumes after recovery. In the world, eggs hatch at the day boundary, biomass rises, founders only age, splits and replay agree, and tampered length rejects. Eggs cannot be sold, batch-sold or bred, atomically. World v2 saves and runtimes migrate as young adults, and invalid life state rejects. Goal leaders are never eggs |
 
 These statistical checks use fixed seeds and wide tolerances to catch implementation regressions. They do not establish biological validity or rigorous randomness certification.
 
@@ -239,6 +240,17 @@ The user supplied five anonymous complete `study-v1-12x4` result records; the fi
 - **Newer world:** a world created before FS-301 (6 founders, 16 kg) loaded with "Oxygen good" (8.4 mg/L), "Ammonia clean" (0.01 mg N/L) and "Stocking light".
 - **Found and fixed:** a hot-reloaded tab still holding a pre-water world threw "Cannot read properties of undefined (reading 'volumeL')" in the readout. The readout now skips a tank without water; freshly loaded pages rendered normally.
 - **Not verified:** water effects on fish (none exist), care controls (FS-305), and long real-time sessions beyond the five-minute clock checkpoint.
+
+### FS-302 life stages verification
+
+**Commands:** `npm run check` (91 tests, strict TypeScript and production build passed); `node scripts/check-docs.mjs`. Browser: in-app Chromium 152 against the local Vite server, in the pane's existing QA world saved as world v2. Older tests that sold or bred newborn cohorts now sell founders or hatch the eggs first, because eggs cannot be sold or bred.
+
+- **Loading:** the world loaded without a replay warning. Cards read "Adult · 50 of 50 cm", and the inspector read "Life stage Adult · 61 of 61 cm · Age 36 game days · Condition 100%".
+- **Breeding:** **＋ Add lab tank**, then breeding Haru × Sumi into Lineage Tank 3, showed "20 inhabitants", "Planted habitat · 20 eggs incubating", cards reading "Egg · hatches in 3 game days", and an inspector age of 0 game days. The saved snapshot was world v3 with 20 eggs.
+- **12 minutes offline:** a `savedAt` 12 minutes old gave "12 minutes of protected research time restored. Tank water and fish development kept going; health is not simulated yet." All 20 were fry, for example "Fry · 4.1 of 65 cm" at 12 game days with 100% condition. A screenshot showed them drawn small, with the selected fry labeled.
+- **25 more minutes offline:** all 20 were adults, for example "Adult · 63 of 65 cm" at 37 game days. The water read "Oxygen good" (7.7 mg/L), "Ammonia clean" (0.07 mg N/L) and "Stocking light" (70 kg).
+- **Console:** tabs still holding a pre-life world during hot reload threw "Cannot read properties of undefined (reading 'lengthCm')". A newly opened tab loaded the same world with no console errors.
+- **Not verified:** juvenile rendering (FS-306), feeding and nutrition (FS-305), health effects, and real-time hatching without an offline jump.
 
 ## 4. Required next verification
 

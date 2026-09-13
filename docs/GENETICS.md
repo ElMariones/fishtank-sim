@@ -155,8 +155,8 @@ For an additive locus, n = (maternal allele ID + paternal allele ID) / 10. Below
 
 "Marking block" (development v2): on each homolog, adjacent pairs of these loci (red + yellow, black + white, reflectivity + translucency, pattern frequency + scale, warp + symmetry, edge + speckle) form a two-locus haplotype whose allele pair also chooses one inherited marking anchor. Their numeric effects above are unchanged.
 | 6 | size_1 | 45% contribution to size potential | Potential |
-| 6 | growth_rate | 0.5–1.5 growth multiplier | Potential only |
-| 6 | longevity | 8–32 game-year potential | Potential only |
+| 6 | growth_rate | 0.5–1.5 growth multiplier | Growth (FS-302) |
+| 6 | longevity | 8–32 game-year potential | Elderly stage threshold (FS-302); no death |
 | 6 | metabolism | 0.6–1.6 demand multiplier | Water load (FS-301): respiration and excretion |
 | 6 | oxygen_demand | Size- and tail-dependent oxygen demand proxy | Water load (FS-301): respiration |
 | 6 | fertility | 0.3–0.9 potential | Potential only; lab births fixed at 20 |
@@ -262,6 +262,15 @@ visiblePigment = geneticPigment × pigmentMaturity × boundedDietResponse
 ```
 
 Treat this as a proposed approximation to validate, not a scientific fish growth law. Chronic development deficits need history, not merely today’s water quality. Returning to healthy conditions should improve future growth smoothly, not instantly shrink or expand an adult.
+
+**Implemented as life model v1 (FS-302):** `src/core/development.ts` stores `ageDays`, current `lengthCm` and `condition` for every fish in world save v3.
+
+- **Hatching:** eggs hatch at 0.6 cm after 3 game days.
+- **Growth:** logistic. Each game day adds 0.27 × growth potential × condition × L × (1 − L / adult length). That gives a real fry period and, at growth potential 1 and full condition, adulthood 18–30 game days after laying.
+- **Condition:** moves 25% of the way toward the day's environment factor, min(oxygen, ammonia) × crowding × nutrition, so deficits and recovery take days. Length never decreases.
+- **Stages:** derived, not stored. Fry below 10% of adult length, adult from 70%, elderly after the longevity potential in 365-day years.
+
+Nutrition stays at 1 until feeding exists (FS-305). Pigment maturity and juvenile rendering remain FS-306, so portraits still show adult potential.
 
 Phenotype owns anatomy, material/pigment descriptors, physiological potential, and behavior weights. Renderer only consumes phenotype. Persist development state and model versions. The same world snapshot, genome, seed, and version should reproduce the same parameters.
 

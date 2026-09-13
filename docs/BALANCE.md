@@ -43,6 +43,25 @@ Game-rule approximations in `src/core/water.ts`; not aquarium-care advice.
 | Ammonia bands | Clean < 0.5 mg N/L, elevated < 1.5, high above | Player labels |
 | Stocking bands | Light < 4 kg/m³, moderate < 8, heavy < 12, overstocked above | Soft warning only; no fish is lost |
 
+### Life model v1 (FS-302)
+
+Game rules in `src/core/development.ts`; not biological growth laws.
+
+| Parameter | Value | Reason / limitation |
+|---|---:|---|
+| Incubation | 3 game days | Inside the 2–4 day range above |
+| Hatch length | 0.6 cm | Visible fry after hatching |
+| Growth | Logistic: 0.27 per game day × growth potential (0.5–1.5) × condition | At potential 1 and full condition: adult 18–30 game days after laying (tested); slow growers take longer |
+| Stages | Fry below 10% of adult length; adult from 70%; elderly after longevity × 365 game days | Derived from length and age |
+| Condition | Moves 25% toward the day's environment factor each game day | Deficits and recovery take days |
+| Oxygen factor | 0.1 at 0 mg/L → 0.6 at 4 → 1 at 6 | Matches the water bands |
+| Ammonia factor | 1 at 0.5 mg N/L → 0.6 at 1.5 → 0.1 at 4 | Matches the water bands |
+| Crowding factor | 1 at 8 kg/m³ → 0.8 at 12 → 0.4 at 24 | Soft stocking pressure |
+| Nutrition | 1: lab residents count as fed | FS-305 adds feeding |
+| Stock and migrated fish | Young adults aged 30 game days at adult length potential | Matches how lab fish were always drawn |
+| Water load | Mass from current length | Eggs add no load |
+| Eggs | Cannot breed or be sold | GDD §5; the lab still lets hatched fish breed until FS-401 |
+
 ## 2. Proposed solo launch tuning
 
 | System | Initial experiment range | Measure |

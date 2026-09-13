@@ -14,7 +14,7 @@ describe('M2 versioned commands and replay', () => {
     const restored = decodeRuntime(JSON.stringify(born));
     expect(executeCommand(restored, command)).toBe(restored);
     expect(restored.world.fish).toHaveLength(26);
-    const sale = commandEnvelope(restored, { type: 'sell-batch', fishIds: restored.world.fish.slice(6).map(f => f.id) }, 11);
+    const sale = commandEnvelope(restored, { type: 'sell-batch', fishIds: restored.world.fish.slice(2, 6).map(f => f.id) }, 11);
     const sold = executeCommand(restored, sale);
     expect(executeCommand(sold, sale).world.credits).toBe(sold.world.credits);
     expect(decodeRuntime(JSON.stringify(sold))).toEqual(sold);

@@ -102,7 +102,7 @@ export function express(genome: Genome): Phenotype {
  * Size and metabolic potential from genome v1 loci using basic arithmetic only: cheap enough for every simulation advance
  * and identical on every browser. Values match express() for adult length and metabolism.
  */
-export function metabolicPotential(genome: Genome): { adultLengthCm: number; metabolism: number; oxygenDemand: number } {
+export function metabolicPotential(genome: Genome): { adultLengthCm: number; metabolism: number; oxygenDemand: number; growth: number; longevityYears: number } {
   const g = (name: Locus) => {
     const i = LOCI.indexOf(name);
     return (genome.maternal[i] + genome.paternal[i]) / 10;
@@ -113,6 +113,10 @@ export function metabolicPotential(genome: Genome): { adultLengthCm: number; met
     metabolism: 0.6 + g('metabolism'),
     /** Relative oxygen need from the oxygen_demand locus and tail drag, about 0.6–2.3. */
     oxygenDemand: (0.6 + g('oxygen_demand')) * (1 + tail * 0.3),
+    /** Growth-rate multiplier, 0.5–1.5. */
+    growth: 0.5 + g('growth_rate'),
+    /** Potential lifespan in game years, 8–32. */
+    longevityYears: 8 + 24 * g('longevity'),
   };
 }
 
