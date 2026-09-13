@@ -1,6 +1,6 @@
 # FS-301 water model
 
-**Recorded:** 13 September 2026  
+**Recorded:** 13 September 2026 · **Status:** DONE, pushed `4f61d8b`  
 **Models:** world save v2 · water model v1 · genome v2 · development v3 · anatomy v2 · renderer v4
 
 ## Scope

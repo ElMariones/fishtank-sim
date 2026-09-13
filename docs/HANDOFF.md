@@ -61,7 +61,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> M2 (`6a69695`) and the FS-113 appearance request (`2436fbf`) are complete. Continue with FS-301. Read the M2 runtime report, architecture §6–8, balance, and the M3 backlog. Define explicit water/oxygen/waste units and pure conservation fixtures before wiring UI. Use the existing shared tick integrator; do not make visual motion speed alter persistent biology. M1 FS-111 pooled five observers (54/60); the unanimously missed markings trial-9 is a follow-up, not a blocker.
+> FS-301 (`4f61d8b`) is complete. Continue with FS-302. Read the FS-301 water model report, genetics §9, balance and the M3 backlog. Integrate development through `advanceRuntime` on absolute game-day boundaries using basic arithmetic. Bump the world version with a checkpoint rebase, and show current size separately from genetic potential. Do not make visual motion speed alter persistent biology. M1 FS-111 pooled five observers (54/60); the unanimously missed markings trial-9 is a follow-up, not a blocker.
 
 ## 7. Subsequent task briefs
 
