@@ -27,8 +27,8 @@ M0 completion does not imply M1’s visual research gate has passed.
 | FS-105 | P0 | 2 | Simulation/design | FS-102 FS-103 FS-104 | Ten-generation selection report plus small resemblance study; record outcomes and failures |
 | FS-106 | P1 | 1 | UI/accessibility | FS-104 | Keyboard, 200% text and touch pass for select/rename/breed/family |
 | FS-107 | P0 | 1 | Integration | FS-105 FS-106 | Resolve critical findings; publish local milestone evidence and updated contracts |
-| FS-108 | P1 | 0.25 | UI | FS-003 | User request: larger sex symbols, pink ♀ for female and blue ♂ for male, still paired with text for assistive technology |
-| FS-109 | P1 | 1 | UI/core | FS-003 | User request: select several residents in the collection (including shift-click ranges) and sell them in one reviewed batch; any invalid member rejects the whole sale with no credit or status change |
+| FS-108 | DONE | 0.25 | UI | FS-003 | User request: larger sex symbols, pink ♀ for female and blue ♂ for male, still paired with text for assistive technology. Pushed `621a3cb` |
+| FS-109 | DONE | 1 | UI/core | FS-003 | User request: select several residents in the collection (including shift-click ranges) and sell them in one reviewed batch; any invalid member rejects the whole sale with no credit or status change. Pushed `621a3cb` |
 
 FS-108 and FS-109 were requested during M1 and are outside the 10-day base estimate.
 
