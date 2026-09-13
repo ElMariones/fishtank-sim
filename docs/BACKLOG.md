@@ -21,12 +21,16 @@ M0 completion does not imply M1’s visual research gate has passed.
 | ID | Pri | Days | Role | Depends | Task and acceptance |
 |---|---|---:|---|---|---|
 | FS-101 | DONE | 1 | Genetics/rendering | FS-002 | Freeze descriptor/seed fixtures; generate a reproducible cohort report and six extreme genome cases |
-| FS-102 | P0 | 2 | Rendering | FS-101 | Improve geometry anchors; no detached eyes/fins or clipped silhouettes at tested extremes |
+| FS-102 | DONE | 2 | Rendering | FS-101 | Improve geometry anchors; no detached eyes/fins or clipped silhouettes at tested extremes. Pushed `b0fd927`; evidence in [FS-102 anatomy anchors](research/FS-102-ANATOMY-ANCHORS.md) |
 | FS-103 | P0 | 2 | Genetics/rendering | FS-101 | Add inherited low-frequency pattern structure; sibling markings share recognizable family properties |
 | FS-104 | P1 | 1 | UI | FS-003 | Cohort sorting and favorites; choose new parents without losing selected goal |
 | FS-105 | P0 | 2 | Simulation/design | FS-102 FS-103 FS-104 | Ten-generation selection report plus small resemblance study; record outcomes and failures |
 | FS-106 | P1 | 1 | UI/accessibility | FS-104 | Keyboard, 200% text and touch pass for select/rename/breed/family |
 | FS-107 | P0 | 1 | Integration | FS-105 FS-106 | Resolve critical findings; publish local milestone evidence and updated contracts |
+| FS-108 | P1 | 0.25 | UI | FS-003 | User request: larger sex symbols, pink ♀ for female and blue ♂ for male, still paired with text for assistive technology |
+| FS-109 | P1 | 1 | UI/core | FS-003 | User request: select several residents in the collection (including shift-click ranges) and sell them in one reviewed batch; any invalid member rejects the whole sale with no credit or status change |
+
+FS-108 and FS-109 were requested during M1 and are outside the 10-day base estimate.
 
 ## M2 — 15 days
 
@@ -118,4 +122,4 @@ M8 total: 40–60 days. Provider costs and moderation operations require separat
 
 ## Suggested next-agent task
 
-FS-101 is complete and pushed. Continue with **FS-102**: improve geometry anchors against the frozen fixtures. Preserve the fixture signatures, genome v1, and renderer input contract; do not start a shop, backend or genome-v2 migration during this task.
+FS-101 and FS-102 are complete and pushed. Continue with **FS-103**: inherited low-frequency pattern structure, measured against the frozen FS-101 cohorts. Preserve genome v1, locus order, fixture signatures and the anatomy v2 contract; do not start a shop, backend or genome-v2 migration during this task.

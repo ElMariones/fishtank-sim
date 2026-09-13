@@ -12,9 +12,10 @@ The user explicitly allowed modifying the concept. Major adjustments are documen
 
 - Remote: https://github.com/ElMariones/fishtank-sim.git
 - Local workspace used: C:/Users/mario/Desktop/PROYECTOS/Fishtank Sim
-- Remote was empty when cloned; the initial source/documents and FS-101 baseline are now pushed to `main` as `fe138d4`.
-- Node 24.11.1 and npm 11.6.2 verified.
+- Remote was empty when cloned. `main` now carries the initial lab and FS-101 baseline (`fe138d4`) and FS-102 anatomy anchors (`b0fd927`). Check `git log` for later M1 work.
+- Verified with Node 24.11.1 / npm 11.6.2 (FS-101) and Node 22.18.0 / npm 10.9.3 (FS-102).
 - npm cache is checkout-local through .npmrc.
+- The `.git` directory may be owned by a different Windows account than the one running git. Pass `-c safe.directory=<checkout>` per command rather than changing global git configuration without the user’s consent.
 - No external accounts, database, secrets, deployment or env file required.
 - A local Vite session was started at http://127.0.0.1:5173; verify availability before starting a duplicate.
 
@@ -38,6 +39,8 @@ Mutations are 0.003 **per copy**. There are 96 transmitted copies, so about one 
 
 The current portrait is adult potential, not current life stage. Life-history values in phenotype are not yet integrated. Food is a temporary attraction target. The plant button is cosmetic. Lab credits are local NPC plumbing, not a balanced economy.
 
+Geometry lives in `src/core/anatomy.ts` (anatomy v2). The Canvas renderer draws it, portraits frame from its bounds, and the tank uses `src/rendering/tankLayout.ts` for both drawing and picking. Change anchors there and extend `tests/anatomy.test.ts`; do not add renderer-only geometry exceptions.
+
 The live Canvas’s transient actors are outside React state. Motion is deterministic for the same initial actors and tick sequence, but positions are not persisted; switching tanks reconstructs visual trajectories. Birth/genome outcomes do persist.
 
 Sales preserve the full fish record, including parent IDs and genome. The archive assumes sold fish are no longer locally living; online ownership/death states must be modeled separately later.
@@ -48,17 +51,17 @@ Save decoding must continue to reject invalid future schemas without overwriting
 
 Run npm test and npm run build after core/code changes. Browser verification should exercise the affected journey, not just inspect a screenshot. Read TESTING.md before broadening tests.
 
-Meaningful existing tests include Mendelian 1:2:1 segregation, linkage probability, mutation boundary transitions, pedigree fixtures, command atomicity, save validation and artificial selection. They do not prove art quality or realistic biology.
+Meaningful existing tests include Mendelian 1:2:1 segregation, linkage probability, mutation boundary transitions, pedigree fixtures, command atomicity, save validation, artificial selection and anatomy attachment/framing sweeps. They do not prove art quality or realistic biology.
 
-Update implementation status with changed behavior and limitations; update testing evidence with exact command/result/environment; change decision log if a contract or architecture choice moves. Avoid claiming a milestone gate passed just because tests are green.
+Update implementation status with changed behavior and limitations; update testing evidence with exact command/result/environment; change decision log if a contract or architecture choice moves. Avoid claiming a milestone gate passed just because tests are green. The user asked that backlog items be marked DONE only once their work is pushed.
 
 ## 6. Recommended next prompt
 
-> Continue Fishtank Sim with task FS-102. Read AGENTS.md, docs/IMPLEMENTATION_STATUS.md, docs/GENETICS.md, docs/research/FS-101-VISUAL-FIXTURES.md and docs/BACKLOG.md. Improve geometry anchors against the frozen FS-101 fixtures; no detached eyes/fins or clipped silhouettes at tested extremes. Keep genome v1, locus order, mutation semantics and saved fish identities stable. Run the appropriate checks, inspect the results, and preserve the fixture signatures. Do not build the market/backend or migrate genome v2 in this task.
+> Continue Fishtank Sim with task FS-103. Read AGENTS.md, docs/IMPLEMENTATION_STATUS.md, docs/GENETICS.md, docs/research/FS-101-VISUAL-FIXTURES.md, docs/research/FS-102-ANATOMY-ANCHORS.md and docs/BACKLOG.md. Add inherited low-frequency pattern structure so sibling markings share recognizable family properties, with birth-seed microvariation only for detail. Keep genome v1, locus order, mutation semantics, saved fish identities and FS-101 signatures stable; record the development/renderer model change. Measure sibling, parent-child and unrelated marking similarity before and after. Do not build the market/backend or migrate genome v2 in this task.
 
 ## 7. Subsequent task briefs
 
-**Rendering specialist, after FS-101:** implement FS-102/103 against frozen phenotype inputs. Own src/rendering and a fixture comparison view. Improve anatomical attachment and inherited pattern structure. Return paired seed images/measurements and intended visual differences. Do not alter inheritance.
+**Rendering specialist, after FS-102:** implement FS-103 against frozen phenotype inputs and the anatomy v2 contract. Own pattern development and a fixture comparison view. Return paired seed images/measurements and intended visual differences. Do not alter inheritance of existing loci.
 
 **Runtime specialist, after M1 gate:** implement FS-201/202 with protocol types agreed first. Own simulation and command/event timing. Preserve deterministic births, public command checks and renderer input contracts. Demonstrate worker cleanup and command retry behavior.
 
