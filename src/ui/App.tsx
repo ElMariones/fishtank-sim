@@ -13,6 +13,7 @@ import './styles.css';
 
 const percent = (n: number) => `${(n * 100).toFixed(1)}%`;
 const date = (timestamp: string) => new Date(timestamp).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+type SexFilter = 'all' | Fish['sex'];
 
 function load(): { world: World; warning: string; blocked: boolean } {
   try {
@@ -44,6 +45,7 @@ export function App() {
   const [fatherId, setFatherId] = useState(initial.world.fish.find(f => f.sex === 'M' && f.status === 'living')?.id ?? '');
   const [query, setQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
+  const [sexFilter, setSexFilter] = useState<SexFilter>('all');
   const [saleId, setSaleId] = useState<string | null>(null);
   const [view, setView] = useState<'aquarium' | 'fixtures'>('aquarium');
   const [batchIds, setBatchIds] = useState<string[]>([]);
@@ -63,12 +65,14 @@ export function App() {
   const p = useMemo(() => fish ? express(fish.genome) : null, [fish]);
   const prospectiveF = useMemo(() => kinship(world.fish, motherId, fatherId), [world.fish, motherId, fatherId]);
   const currentF = useMemo(() => fish?.parents ? kinship(world.fish, fish.parents[0], fish.parents[1]) : 0, [world.fish, fish]);
-  const collection = (showArchived ? world.fish.filter(f => f.status === 'sold') : residents).filter(f => `${f.name} ${f.id}`.toLowerCase().includes(query.toLowerCase()));
+  const viewFish = (showArchived ? world.fish.filter(f => f.status === 'sold') : residents).filter(f => `${f.name} ${f.id}`.toLowerCase().includes(query.toLowerCase()));
+  const collection = sexFilter === 'all' ? viewFish : viewFish.filter(f => f.sex === sexFilter);
+  const sexCounts = { all: viewFish.length, F: viewFish.filter(f => f.sex === 'F').length, M: viewFish.filter(f => f.sex === 'M').length };
   // Batch selection only ever acts on living fish visible in the current collection view.
   const batch = collection.filter(f => f.status === 'living' && batchIds.includes(f.id));
   const batchTotal = batch.reduce((sum, f) => sum + quote(f), 0);
 
-  useEffect(() => { setBatchIds([]); setBatchReview(false); setLastBatchId(null); }, [tank.id, showArchived]);
+  useEffect(() => { setBatchIds([]); setBatchReview(false); setLastBatchId(null); }, [tank.id, showArchived, sexFilter]);
 
   function run(command: Command, message: string): World | null {
     try {
@@ -153,6 +157,11 @@ export function App() {
             const next = run({ type: 'buy', tankId: tank.id, timestamp: new Date().toISOString() }, 'Unrelated founder stock introduced. This is a local NPC purchase.');
             if (next) { setSelectedId(next.fish.at(-1)!.id); setShowArchived(false); setQuery(''); }
           }}>＋ Unrelated stock <span>◈ {STOCK_PRICE}</span></button></div>
+          <div className="sex-filter" role="group" aria-label="Show fish by sex">
+            {(['all', 'F', 'M'] as const).map(value => <button key={value} aria-pressed={sexFilter === value} onClick={() => setSexFilter(value)}>
+              {value === 'all' ? 'All' : <><SexMark sex={value} decorative />{value === 'F' ? 'Females' : 'Males'}</>}<span className="filter-count">{sexCounts[value]}</span>
+            </button>)}
+          </div>
           {!showArchived && collection.length ? <div className="batch-bar" role="group" aria-label="Batch selection">
             <span className="batch-summary">{batch.length ? <><strong>{batch.length}</strong> selected · ◈ {batchTotal.toLocaleString()}</> : 'Tick fish to sell several at once. Shift-click a second box to select a range.'}</span>
             <div className="batch-actions">

@@ -102,6 +102,17 @@ Environment: local Vite dev server, in-app Chromium browser pane.
 - **Inherited marking structure** tables match the Node test run: sibling overlap 21% → 42%, unrelated child overlap 19% → 29%, sibling separation 52% → 73%, parent separation 53% → 72%; FS-101 cohorts 51% → 82%.
 - Opening the surface added no console errors.
 
+### FS-110 sex filter verification
+
+Environment: local Vite dev server, in-app Chromium browser pane, the pane's own device-local world (21 residents after the FS-109 check).
+
+- The filter group read "All 21 · ♀ Females 9 · ♂ Males 12", with **All** pressed (`aria-pressed="true"`).
+- One fish was ticked (1 selected), then **Females** was pressed: heading "Your collection 9", every card female, and the selection cleared to 0.
+- **Males**: heading 12, every card male.
+- **View archive** kept the Males filter: "Archived fish 1", counts All 5 · Females 4 · Males 1, and the card was male.
+- **Show residents** then **All** restored 21 fish.
+- Typecheck and 32 tests passed. One console error, `sexFilter is not defined`, came from Fast Refresh loading an intermediate edit; after a fresh reload the error count did not change.
+
 ## 4. Required next verification
 
 ### Visual inheritance / FS-101–107

@@ -24,6 +24,7 @@
 - FS-103 development v2 inherited markings: marking anchors from phased Pigments/Pattern haplotype blocks, birth-seed jitter only, renderer v3 body-space markings, an inspector list of each fish's marking blocks and their parental copy, and a seeded resemblance study (sibling separation 52% → 73%). See [FS-103 inherited markings](research/FS-103-INHERITED-MARKINGS.md).
 - FS-108 (user request): larger colour-coded sex symbols (pink ♀, blue ♂) with visible or hidden text, on collection cards, the inspector, relatives, the batch review and parent pickers.
 - FS-109 (user request): multi-select residents with shift-click ranges, select all and clear, a reviewed batch sale showing names, quotes and total, and one atomic `sell-batch` command.
+- FS-110 (user request): All / ♀ Females / ♂ Males filter buttons with live counts in the resident and archive collection views; changing the filter clears batch selection. Browser evidence in [TESTING.md](TESTING.md#fs-110-sex-filter-verification).
 - 32 automated tests (core, anatomy and pattern); production build; browser verification of representative interactions.
 
 ## Prototype shortcuts and limitations
