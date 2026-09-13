@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
+import { anatomyFor } from '../core/anatomy';
 import type { Fish, Tank } from '../core/types';
 import { drawFish } from '../rendering/fish';
+import { fishPose, pickActor } from '../rendering/tankLayout';
 import { createActor, stepMotion, type Actor, type Food } from '../simulation/motion';
 
 type Props = { fish: Fish[]; tank: Tank; selectedId: string; onSelect: (id: string) => void; paused: boolean; speed: number; feedSignal: number };
@@ -63,16 +65,18 @@ export function TankCanvas(props: Props) {
       for (const actor of actors.current) {
         const fish = fishById.get(actor.id);
         if (!fish) continue;
-        const size = Math.min(width / 10, 79) * (0.8 + actor.phenotype.adultLengthCm / 200);
-        ctx.save(); ctx.translate(actor.x * width, actor.y * height);
+        const pose = fishPose(actor, width, height);
+        ctx.save(); ctx.translate(pose.x, pose.y);
         if (actor.id === current.selectedId) {
+          const b = anatomyFor(actor.phenotype).bounds, l = pose.bodyLength;
+          ctx.save(); ctx.scale(pose.flip, 1); ctx.rotate(pose.angle);
           ctx.strokeStyle = '#c5efd275'; ctx.lineWidth = 1; ctx.setLineDash([3, 6]);
-          ctx.beginPath(); ctx.ellipse(0, 0, size * 1.05, size * 0.58, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
-          ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#d5ebdd'; ctx.fillText(fish.name, 0, -size * 0.68);
+          ctx.beginPath(); ctx.ellipse((b.minX + b.maxX) / 2 * l, (b.minY + b.maxY) / 2 * l, (b.maxX - b.minX) / 2 * l * 1.06, (b.maxY - b.minY) / 2 * l * 1.12, 0, 0, Math.PI * 2); ctx.stroke();
+          ctx.restore();
+          ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#d5ebdd'; ctx.fillText(fish.name, 0, -Math.max(-b.minY, b.maxY) * l * 1.15 - 6);
         }
-        ctx.scale(actor.vx > 0 ? -1 : 1, 1);
-        ctx.rotate(Math.atan2(actor.vy, Math.max(Math.abs(actor.vx), 0.01)) * (actor.vx > 0 ? -0.3 : 0.3));
-        drawFish(ctx, actor.phenotype, fish.birthSeed, size, time);
+        ctx.scale(pose.flip, 1); ctx.rotate(pose.angle);
+        drawFish(ctx, actor.phenotype, fish.birthSeed, pose.size, time);
         ctx.restore();
       }
       frame = requestAnimationFrame(render);
@@ -84,8 +88,7 @@ export function TankCanvas(props: Props) {
   return <canvas ref={canvasRef} className="tank-canvas" role="img" aria-label={`${props.tank.name}, ${props.fish.length} swimming fish. Select a fish using the collection below.`}
     onClick={event => {
       const rect = event.currentTarget.getBoundingClientRect();
-      const x = event.clientX - rect.left, y = event.clientY - rect.top;
-      const closest = actors.current.map(a => ({ id: a.id, d: Math.hypot(a.x * rect.width - x, a.y * rect.height - y) })).sort((a, b) => a.d - b.d)[0];
-      if (closest && closest.d < 80) props.onSelect(closest.id);
+      const id = pickActor(actors.current, rect.width, rect.height, event.clientX - rect.left, event.clientY - rect.top);
+      if (id) props.onSelect(id);
     }} />;
 }

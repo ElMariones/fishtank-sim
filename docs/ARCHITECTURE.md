@@ -9,28 +9,33 @@ The repository is a small React + TypeScript + Vite application. It is deliberat
 ```text
 src/
   core/
-    catalog.ts      Stable 48-locus ordering and lab constants
+    catalog.ts      Stable 48-locus ordering, lab constants and appearance model versions
     types.ts        Genome, fish, tank, world and phenotype contracts
     random.ts       Seeded PRNG, deterministic hash, clamping
     genetics.ts     Founder generation, meiosis, mutation, expression
+    anatomy.ts      Anatomy v2: phenotype → body-space outline, anchors, bounds, validation, framing
     pedigree.ts     Exact tabular relationship matrix for the bounded lab
     world.ts        Validated world commands and local NPC transactions
     save.ts         Versioned save schema and reference validation
+    visualFixtures.ts Frozen FS-101 fixtures, anatomy stress cases and v1-vs-v2 anatomy sweep
   simulation/
     motion.ts       Pure 20 Hz steering step, independent of React/Canvas
   rendering/
-    fish.ts         Canvas procedural geometry and pigment rendering
+    fish.ts         Canvas renderer v2: draws anatomy v2 and pigment layers
+    tankLayout.ts   Shared tank pose transform and fish-shaped picking
   ui/
     App.tsx         Lab controls, local persistence, inspector and collection
     TankCanvas.tsx  Frame loop, visual aquarium and selection
-    FishPortrait.tsx Shared procedural renderer at portrait scale
+    FishPortrait.tsx Shared procedural renderer at portrait scale, fitted or shared-scale framing
+    VisualFixtureLab.tsx Deterministic fixture and anatomy comparison surface
     styles.css     Responsive theme and layout
   main.tsx         React entry
 tests/
-  core.test.ts     Genetics, pedigree, commands, saves, motion, selection
+  core.test.ts     Genetics, pedigree, commands, saves, motion, FS-101 fixture pins
+  anatomy.test.ts  Anatomy attachment sweep, framing without clipping, picking transform
 ```
 
-Core modules import neither React nor browser globals. The Canvas renderer receives a phenotype, seed, size and animation time. Motion has its own actors and reads genetic movement parameters. The app owns persisted entities and selected UI state.
+Core modules import neither React nor browser globals. The Canvas renderer receives a phenotype, seed, size and animation time; it obtains geometry from the pure anatomy module, so tests validate the same eye, fin and tail anchors that are drawn and the tank uses one pose transform for drawing and picking. Motion has its own actors and reads genetic movement parameters. The app owns persisted entities and selected UI state.
 
 There is currently **no backend, Web Worker, IndexedDB, WebGL mesh, life-stage scheduler, authentication, or online market**. These are planned boundaries, not existing infrastructure.
 

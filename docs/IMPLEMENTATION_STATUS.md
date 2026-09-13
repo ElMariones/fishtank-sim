@@ -1,6 +1,6 @@
 # Implementation status
 
-**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab · **FS-101:** DONE and pushed (`fe138d4`).
+**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab · **M1:** FS-101 DONE (`fe138d4`); FS-102 implemented, see backlog for push status; FS-103–107 open.
 
 ## Delivered
 
@@ -20,13 +20,15 @@
 - Device-local autosave, versioned schema/reference validation, preserved invalid save fallback and JSON export.
 - Responsive desktop/phone layout, keyboard-accessible fish cards and reduced-motion initial pause.
 - FS-101 visual baseline: deterministic founder/cohort/extreme fixtures, normalized descriptor report, accessible comparison surface, and downloadable JSON report.
-- 20 automated core tests; production build; browser verification of representative interactions.
+- FS-102 anatomy v2: pure outline/anchor/bounds module shared by tank and portraits; eyes, fin roots, rays, gill and mouth attached to the measured outline; listed eye constraints; six anatomy stress fixtures; clipping-free fitted and shared-scale portraits; fish-shaped tank picking. See [FS-102 anatomy anchors](research/FS-102-ANATOMY-ANCHORS.md).
+- 25 automated tests (core and anatomy); production build; browser verification of representative interactions.
 
 ## Prototype shortcuts and limitations
 
 | Area | Current limitation | Next task(s) |
 |---|---|---|
-| Visual quality | Canvas reference art; silhouettes/patterns need resemblance studies; portrait is static | FS-102–107 |
+| Visual quality | Canvas reference art; anatomy attachment is validated, but pattern resemblance is unproven; portrait is static | FS-103–107 |
+| Anatomy limits | An eye that cannot fit a shallow head is drawn smaller (adjustment listed); no protruding eyes or extra structures | FS-601–602 |
 | Pattern inheritance | Parameters inherited, per-birth patch positions independent; symmetry is a spread proxy | FS-103 |
 | Life stages | All fish display adult potential immediately; no aging, growth, hunger, health, death or lifespan integration | FS-302 |
 | Behavior | No true feeding consumption, courtship, territorial utility, shelter use or learned memory | FS-303 |
@@ -39,27 +41,29 @@
 | Topology | No extra tail lobes/eyes/fins, scale geometry, or genome v2 | FS-601–602 |
 | Family | One-hop navigation, no graph layout or lineage registration; matrix O(N²) | FS-404–405 FS-604 |
 | History | Birth and pedigree stored; no append-only rename/move/sale journal or old portraits | FS-201 FS-404 |
+| Appearance versions | Lab fish store no per-record development/anatomy/renderer version; all fish re-render under the current model | FS-404 FS-601 |
 | Persistence | localStorage snapshots; no IndexedDB, import UI, migrations beyond v1, multi-tab lock or cloud sync | FS-203–206 |
 | Save recovery | Invalid saved text preserved; temporary session can export, but full recovery UI pending | FS-204 |
 | Performance | Main-thread motion; 60-per-tank/1000-record guardrails; no measured scale guarantee | FS-202 FS-701–702 |
-| Selection | Approximate distance hit test; no precise fish-shaped picking or animated camera travel | FS-102 |
+| Selection | Body and caudal-fin shaped picking with 6 px slop; dorsal/pectoral fins only through slop; no animated camera travel | FS-106 |
 | UI scale | Inspector stacks below collection on phones; long collections/relatives are not virtualized | FS-106 FS-404 |
 | Offline | Motion pauses while hidden; no closed-browser/offline lifecycle | FS-205 |
 | Online | No accounts, server, database, actual player listings, payments or external telemetry | M8 |
-| Delivery | Local files only; not committed/pushed or publicly deployed in this handoff | Future requested delivery action |
+| Delivery | Pushed to GitHub `main`; no public deployment or continuous integration | FS-706 |
 
 ## Evidence
 
-On Node 24.11.1, npm 11.6.2, Windows:
+**FS-102, 13 September 2026, Windows 11, Node 22.18.0, npm 10.9.3:**
 
-- npm test: **18 tests passed**.
+- npm test: **25 tests passed** (20 core, 5 anatomy).
 - npm run build: strict TypeScript and Vite production bundle passed.
-- Browser: aquarium renders; twenty offspring created; child renamed Ember; moved to Breeding Studio; Family selected Haru and focused The Koi Garden; Haru sold to local NPC and archived; reload retained fish counts and Ember’s name/location.
-- Browser console: no warnings/errors observed in that verification.
-- Phone viewport 390 × 844: tank, controls and breeding surface render; document has no horizontal overflow (tank selector intentionally scrolls).
+- Anatomy sweep, 858 phenotypes: renderer v1 anchor rules failed for all 858 (286 eye overhangs, 243 stray tail rays, 26 clipped portraits, among others). Anatomy v2 failed 0 attachment and 0 framing checks; it limited 51 eye radii and moved 76 eyes.
+- Browser (local Vite, in-app Chromium pane): Visual fixtures rendered genome v1 → development v1 → anatomy v2 → renderer v2, 0 / 858 anatomy failures, stress cards with listed adjustments, and the v1/v2 comparison table. After a clean reload, opening the surface added no console errors. The only errors seen were Fast Refresh hook-dependency warnings raised while editing a mounted component.
+
+**FS-101, 13 September 2026, Windows, Node 24.11.1, npm 11.6.2:** 20 tests and build passed. Browser: aquarium rendered; twenty offspring created; child renamed Ember; moved to Breeding Studio; Family selected Haru and focused The Koi Garden; Haru sold to local NPC and archived; reload retained fish counts and Ember's name/location; no console warnings/errors; 390 × 844 had no document overflow.
 
 No production-scale benchmark, complete accessibility audit, external user study, online transaction test, or 100-generation visual study has been completed.
 
 ## Next action
 
-**FS-102: improve geometry anchors against the frozen fixture set.** The lab now has a reproducible visual baseline, but it is not evidence that the design’s hardest visual problem is solved.
+**FS-103: inherited low-frequency pattern structure.** Anatomy anchors are now measurable and attached, but sibling marking placement is still independent per birth. This remains the main visible-inheritance risk.

@@ -258,6 +258,8 @@ Do not start with reaction-diffusion on every frame. Compare cached noise/Vorono
 
 Anatomy validators must ensure positive body dimensions, eye attachment, continuous mouth/head, fin roots inside body, bounded lobe counts, no NaNs, reasonable bounding boxes, and valid winding/indices. Reject or constrain unsupported expressions with logged diagnostics, never silently delete a fish.
 
+**Implemented in anatomy v2 (FS-102):** `src/core/anatomy.ts` samples the v1 body outline and anchors eye, gill, mouth, barbels, dorsal, pectoral and caudal structures to local body sections (steps 2–3 above, without a spline centreline yet). The validator checks finite values, positive thickness, an x-monotonic outline, the eye inside the head, fin/gill/mouth/barbel roots inside the body, rays on the trailing edge and bounds containing every drawn curve. An eye that cannot fit is moved back up to 0.04 BL and then drawn smaller; the adjustment is recorded, and the phenotype's eye value is unchanged. Lobe-count and mesh winding checks wait for topology templates (FS-602). Evidence: [FS-102 anatomy anchors](research/FS-102-ANATOMY-ANCHORS.md).
+
 ## 10. Rarity with honest scope
 
 ### Allele rarity

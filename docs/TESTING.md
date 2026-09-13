@@ -1,6 +1,6 @@
 # Testing and verification
 
-**Latest recorded run:** 13 September 2026, Windows, Node 24.11.1, npm 11.6.2. FS-101 is pushed as `fe138d4`.
+**Latest recorded run:** 13 September 2026 (FS-102), Windows 11, Node 22.18.0, npm 10.9.3. FS-101 runs used Node 24.11.1 and npm 11.6.2; FS-101 is pushed as `fe138d4`.
 
 ## 1. Commands
 
@@ -10,7 +10,7 @@ npm test
 npm run build
 ```
 
-Vitest runs tests/core.test.ts. Build first checks all app and test TypeScript under strict mode, then creates dist/. The current suite has **20 tests** and passed. The production build passed.
+Vitest runs every `tests/*.test.ts` file: `core.test.ts` and `anatomy.test.ts`. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **25 tests**, and all passed. The production build passed.
 
 ## 2. Automated coverage
 
@@ -34,6 +34,10 @@ Vitest runs tests/core.test.ts. Build first checks all app and test TypeScript u
 | Save validation | Bad JSON, version, duplicates, IDs, tanks, cycles and allele bounds rejected |
 | Motion | Two 2,000-tick runs agree, positions remain finite and in bounds |
 | Visual fixtures | Founder/cohort/extreme signatures, 14 normalized descriptors, bounded measurements |
+| Anatomy attachment | 58 fixtures, 8 corner genomes, 1,500 founder-distribution and 1,500 random A0/A5 genomes: finite x-monotonic outline, positive thickness, eye inside head, fin/gill/mouth/barbel roots inside the body, rays on the trailing edge, bounds contain every sampled curve |
+| Anatomy regression | 558-phenotype sweep: v1 rules show defects (including eye overhang), anatomy v2 shows none; founder outline endpoints unchanged; eye limits listed as adjustments; unconstrained fixtures keep their exact eye radius |
+| Portrait framing | Every fixture at 260 × 140 and 600 × 330, fitted and shared-scale: no sampled silhouette point outside the canvas; shared scale keeps a 1.6 vs 0.7 body length ratio visible |
+| Picking | Tank pose inverse round-trips; body centre and caudal fin hit; a point two body lengths away misses; the top-most overlapping fish wins |
 
 These statistical checks use fixed seeds and wide tolerances to catch implementation regressions. They do not establish biological validity or rigorous randomness certification.
 
@@ -60,6 +64,16 @@ This is a representative smoke check. Export download, every genome cell, every 
 - Confirmed the default desktop viewport and 390 × 844 viewport had no horizontal overflow; 56 fixture canvases and no Vite error overlay were present.
 - Captured no browser `warn` or `error` logs.
 - Confirmed the report explicitly labels independent patch placement as a limitation and does not claim the M1 resemblance gate has passed.
+
+### FS-102 anatomy verification
+
+Environment: local Vite dev server, in-app Chromium browser pane.
+
+- **Visual fixtures** reports genome v1 → development v1 → anatomy v2 → renderer v2 and shows "0 / 858 anatomy failures".
+- Six stress cards render with listed adjustments: shallow body with large high eyes (moved 0.04 BL, radius 0.060 → 0.036 BL), stub fork (moved 0.02 BL). The needle FS-101 extreme lists a 0.02 BL move.
+- The comparison table lists renderer v1 rule failures (286 eye, 122 dorsal root, 858 pectoral root, 107 gill, 84 mouth, 243 tail ray, 26 portrait clip) against 0 for anatomy v2.
+- A clean reload followed by opening the surface added no console errors. The errors seen earlier were Fast Refresh warnings about a hook dependency list changing length while editing a mounted component; they did not recur on a fresh load.
+- **Shared scale** and **Fit each fish** are keyboard-reachable toggle buttons that expose `aria-pressed`.
 
 ## 4. Required next verification
 
