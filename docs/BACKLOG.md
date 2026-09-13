@@ -29,7 +29,7 @@ M0 completion does not imply M1’s visual research gate has passed.
 | FS-107 | P0 | 1 | Integration | FS-105 FS-106 | Resolve critical findings; publish local milestone evidence and updated contracts |
 | FS-108 | DONE | 0.25 | UI | FS-003 | User request: larger sex symbols, pink ♀ for female and blue ♂ for male, still paired with text for assistive technology. Pushed `621a3cb` |
 | FS-109 | DONE | 1 | UI/core | FS-003 | User request: select several residents in the collection (including shift-click ranges) and sell them in one reviewed batch; any invalid member rejects the whole sale with no credit or status change. Pushed `621a3cb` |
-| FS-110 | P1 | 0.25 | UI | FS-108 | User request: collection buttons to show all fish, only females or only males, with counts, in resident and archive views; changing the filter clears batch selection so a sale only covers visible fish |
+| FS-110 | DONE | 0.25 | UI | FS-108 | User request: collection buttons to show all fish, only females or only males, with counts, in resident and archive views; changing the filter clears batch selection so a sale only covers visible fish. Pushed `c467a26` |
 
 FS-108 to FS-110 were requested during M1 and are outside the 10-day base estimate.
 
