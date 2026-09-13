@@ -107,6 +107,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [collectionPage, setCollectionPage] = useState(0);
   const [familyPage, setFamilyPage] = useState(0);
   const [focusRequest, setFocusRequest] = useState(0);
+  const [breedingOpen, setBreedingOpen] = useState(true);
   const inspectorHeading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -280,13 +281,18 @@ export function App({ initial }: { initial: LoadedSession }) {
           <div className="tank-controls"><div><button aria-label={paused ? 'Resume aquarium' : 'Pause aquarium'} onClick={() => setPaused(v => !v)}>{paused ? '▶' : 'Ⅱ'}</button><button onClick={() => setSpeed(v => v === 1 ? 2 : v === 2 ? 4 : 1)} aria-label={`Motion speed ${speed} times`}>{speed}×</button></div><span>Click a fish to inspect · click the water to startle</span><button className="feed-button" onClick={() => { setFeedSignal(v => v + 1); setNotice('Pellets sink through the water; hungry, bold fish reach them first. Feeding is still visual only: nutrition and water effects arrive with FS-305.'); }}>＋ Feed</button></div>
         </section>
         <div className="habitat-toolbar"><span>Laboratory mode · offspring show adult genetic potential</span><button className="quiet" onClick={() => run({ type: 'decorate', tankId: tank.id }, 'Habitat appearance updated. Decoration effects are planned for the care simulation.')}>{tank.planted ? 'Remove plants' : 'Add plants'}</button></div>
-        <section className="breeding-panel" aria-labelledby="breeding-title">
-          <div className="breed-intro"><div className="eyebrow">THE NEXT GENERATION</div><h2 id="breeding-title">What will they inherit?</h2><p>Choose two parents. Discover twenty possibilities.</p></div>
-          <BreedingPlanner fish={world.fish} tanks={world.tanks} goal={goal} motherId={motherId} fatherId={fatherId} onMother={setMotherId} onFather={setFatherId}
-            onGoal={(next: BreedingGoal | null) => setPreferences(current => ({ ...current, goal: next, sort: next ? 'goal' : current.sort === 'goal' ? 'newest' : current.sort }))} />
-          <div className="breed-action"><button className="primary" onClick={breed} disabled={!breeders.some(f => f.id === motherId) || !breeders.some(f => f.id === fatherId) || residents.length + COHORT_SIZE > tank.capacity}>Breed 20 offspring <span>↗</span></button><small>Expected pedigree F: {percent(prospectiveF)}</small></div>
-          <p className="help-copy">Clutch destination: {tank.name} · {tank.capacity - residents.length} free places · {COHORT_SIZE} required.</p>
-          <p className="lab-note">Offspring start as eggs, hatch after {INCUBATION_DAYS} game days and reach adulthood in roughly 25 more in good water (one game day per real minute). The lab still lets any hatched fish breed without courtship; maturity checks arrive in M4. Parents may be in different lab tanks. Eggs use the current tank’s free places. Goal values are normalized adult genetic potential.</p>
+        <section className={`breeding-panel ${breedingOpen ? 'is-open' : 'is-collapsed'}`} aria-labelledby="breeding-title">
+          <div className="breed-intro">
+            <div><div className="eyebrow">THE NEXT GENERATION</div><h2 id="breeding-title">What will they inherit?</h2><p>{breedingOpen ? 'Choose two parents. Discover twenty possibilities.' : goal ? `Goal active · ${goalLabel}` : 'Breeding planner is tucked away.'}</p></div>
+            <button className="breeding-toggle" aria-expanded={breedingOpen} aria-controls="breeding-options" onClick={() => setBreedingOpen(value => !value)}>{breedingOpen ? 'Hide options' : 'Open breeding options'}<span aria-hidden="true">{breedingOpen ? '⌃' : '⌄'}</span></button>
+          </div>
+          {breedingOpen ? <div id="breeding-options" className="breeding-options">
+            <BreedingPlanner fish={world.fish} tanks={world.tanks} goal={goal} motherId={motherId} fatherId={fatherId} onMother={setMotherId} onFather={setFatherId}
+              onGoal={(next: BreedingGoal | null) => setPreferences(current => ({ ...current, goal: next, sort: next ? 'goal' : current.sort === 'goal' ? 'newest' : current.sort }))} />
+            <div className="breed-action"><button className="primary" onClick={breed} disabled={!breeders.some(f => f.id === motherId) || !breeders.some(f => f.id === fatherId) || residents.length + COHORT_SIZE > tank.capacity}>Breed 20 offspring <span>↗</span></button><small>Expected pedigree F: {percent(prospectiveF)}</small></div>
+            <p className="help-copy">Clutch destination: {tank.name} · {tank.capacity - residents.length} free places · {COHORT_SIZE} required.</p>
+            <p className="lab-note">Offspring start as eggs, hatch after {INCUBATION_DAYS} game days and reach adulthood in roughly 25 more in good water (one game day per real minute). The lab still lets any hatched fish breed without courtship; maturity checks arrive in M4. Parents may be in different lab tanks. Eggs use the current tank’s free places. Goal values are normalized adult genetic potential.</p>
+          </div> : null}
         </section>
         <div className="status-line" role="status" aria-live="polite">{notice}</div>
         <section className="collection" id="collection" tabIndex={-1} aria-labelledby="collection-title">

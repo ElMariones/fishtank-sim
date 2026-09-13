@@ -4,7 +4,7 @@
 
 ## Current continuation — DONE, pushed `e7aefc1`
 
-FS-303 utility behavior and user requests FS-114 (compound breeding planner and favorite-safe bulk sales) and FS-115 (Genome 2 inspection/ornament refinement) are DONE, pushed `e7aefc1`. See [behavior and breeding evidence](research/FS-303-BEHAVIOR-AND-BREEDING.md). FS-304 is next; FS-305–307 remain open.
+FS-303 utility behavior and user requests FS-114 (compound breeding planner and favorite-safe bulk sales) and FS-115 (Genome 2 inspection/ornament refinement) are DONE, pushed `e7aefc1`. The requested planner collapse and sticky inspector follow-up is complete in the working tree and will be marked DONE after its push. See [behavior and breeding evidence](research/FS-303-BEHAVIOR-AND-BREEDING.md). FS-304 is next; FS-305–307 remain open.
 
 ## Delivered
 
@@ -128,4 +128,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**Continue M3 with FS-303 utility behavior.**
+**Continue M3 with FS-304 spatial hashing and shelter/obstacle footprints.**

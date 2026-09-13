@@ -63,3 +63,19 @@ footer a{display:inline-flex;align-items:center;min-height:24px}
 
 .locus.appearance-locus { grid-template-columns: minmax(0,1fr) minmax(4.5em,.65fr) minmax(4.5em,.65fr); }
 .appearance-locus code small { display: block; font-size: .7em; overflow-wrap: anywhere; color: #b4cdbc; }
+.breeding-panel { display: block; }
+.breeding-panel.is-collapsed { padding: 16px 22px; }
+.breed-intro { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.breed-intro > div { min-width: 0; }
+.breeding-toggle { display: inline-flex; align-items: center; gap: 10px; flex: 0 0 auto; background: #284037; border-color: #55765d; color: #d8ecd9; font-size: .75rem; }
+.breeding-toggle span { font-size: 1rem; line-height: 1; }
+.breeding-options { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 14px; }
+.breeding-options > .breeding-planner { grid-column: 1 / -1; }
+.breeding-options > .lab-note { grid-column: 1 / -1; }
+.inspector { position: sticky; top: 16px; align-self: start; max-height: calc(100vh - 32px); overflow-y: auto; overscroll-behavior: contain; }
+@media (max-width: 650px) {
+  .breed-intro { align-items: flex-start; }
+  .breeding-toggle { padding: 9px 10px; }
+  .breeding-panel.is-collapsed { padding: 14px 16px; }
+  .inspector { position: relative; top: auto; max-height: none; overflow: visible; }
+}
