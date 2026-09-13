@@ -11,10 +11,10 @@ Recorded 13 September 2026. Implementation pushed to `main` as `bd175ed`; FS-106
 | Selection beyond founder range | FS-105: six traits, eight selected lines each beyond range by generation 10 | Pass; early saturation and pedigree F near 0.8 remain balance findings |
 | Accessible lab interaction | FS-106 plus current keyboard/200% text/touch regression | Pass for recorded Chrome journeys |
 | Larger lineage archive | FS-112: 10,000 stored records; 480 living cap; exact ancestry queries and 60-row pages | Pass for recorded fixtures |
-| Human family recognition | No real observer records; FS-111 needs at least five people | Pending; do not claim the M1 gate passed |
+| Human family recognition | FS-111: five observers, 54/60; full 19/20, silhouette 20/20, markings 15/20 ([results](FS-111-HUMAN-RESEMBLANCE.md)) | Pass for the fixed trial set; markings are the weak channel |
 | 100-generation renderability and appearance-version preservation | FS-702 soak and per-fish appearance versions are future work | Pending broader core-proof criteria |
 
-The review is delivered; M1's perceptual release gate is still open. The user's request explicitly includes M2, so the deterministic persistence foundation proceeds while human research is pending. No shop, online market, care simulation or genome-v2 expansion was added.
+The review is delivered. At the user's request, M2 proceeded while human research was pending. FS-111 has since passed the human criterion with five observers, so M1's roadmap gate (selection shifts traits; people recognize family resemblance) is met. The 100-generation soak and per-fish appearance versions remain open core-proof items. No shop, online market, care simulation or genome-v2 expansion was added.
 
 ## Resolved findings
 
@@ -32,10 +32,6 @@ Large archives and broad child lists now render 60 records at a time. Whole-coll
 
 See [architecture](../ARCHITECTURE.md), ADR-022–025 in [decisions](../DECISIONS.md), and the exact runs in [testing](../TESTING.md#m1-continuation-and-m2-foundation-verification).
 
-## Remaining M2 work
+## Subsequent M2 completion
 
-1. **FS-202:** move command/simulation work behind a versioned worker protocol; clean up start/stop/restart and StrictMode lifetimes; measure selection under a 200-fish synthetic workload. Current Canvas motion and replay validation still use the main thread.
-2. **FS-205:** shared active/background integration and protected offline scheduler, negative clock/cap/event-boundary fixtures. Current tick is sampled at command commit, and no lifecycle or offline progression exists.
-3. **FS-206:** proactive multi-tab writer lease, visible read-only takeover flow, worker-fault recovery and full quota handling rehearsal. Compare-and-swap currently prevents stale saves, but does not lock editing in the other tab.
-
-M2's release gate is therefore pending. Physical crash/power-loss durability, other browsers, and 100-generation/production-scale soak remain unclaimed.
+FS-202, FS-205 and FS-206 were implemented and verified after this foundation report. See [M2 runtime and recovery](M2-RUNTIME-AND-RECOVERY.md) for the worker, shared clock, offline and multi-tab results. Physical crash/power-loss durability, other browsers, and the 100-generation/production-scale soak remain later hardening work.

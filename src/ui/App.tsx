@@ -7,8 +7,9 @@ import { VISUAL_DESCRIPTORS, type VisualDescriptorKey } from '../core/descriptor
 import { express, fingerprint, heterozygosity } from '../core/genetics';
 import { MARKING_BLOCKS, MARKING_VISIBLE_ALPHA } from '../core/pattern';
 import { kinship } from '../core/pedigree';
-import { commandEnvelope, executeCommand, TICK_MS } from '../core/runtime';
+import { advanceRuntime, commandEnvelope, executeCommand, TICK_MS } from '../core/runtime';
 import type { LoadedSession } from '../persistence/session';
+import { ACTIVE_CHECKPOINT_MS } from '../simulation/time';
 import { downloadText, SavePanel } from './SavePanel';
 import type { Fish, World } from '../core/types';
 import { COHORT_SIZE, quote, STOCK_PRICE, type Command } from '../core/world';
@@ -47,7 +48,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [paused, setPaused] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [speed, setSpeed] = useState(1);
   const [feedSignal, setFeedSignal] = useState(0);
-  const [notice, setNotice] = useState('Select a fish to explore its traits and ancestry.');
+  const [notice, setNotice] = useState(initial.resumeNotice || 'Select a fish to explore its traits and ancestry.');
   const [saveError, setSaveError] = useState(initial.warning);
   const [motherId, setMotherId] = useState(initial.runtime.world.fish.find(f => f.sex === 'F' && f.status === 'living')?.id ?? '');
   const [fatherId, setFatherId] = useState(initial.runtime.world.fish.find(f => f.sex === 'M' && f.status === 'living')?.id ?? '');
@@ -67,7 +68,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const inspectorHeading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
-    if (blocked || !initial.session) return;
+    if (blocked || initial.readOnly || !initial.session) return;
     let cancelled = false;
     setSaveError('Saving…');
     void initial.session.save(runtime).then(() => {
@@ -76,7 +77,22 @@ export function App({ initial }: { initial: LoadedSession }) {
       if (!cancelled) setSaveError(`Not saved. ${error instanceof Error ? error.message : 'Storage is unavailable.'} Open Saves to retry or export.`);
     });
     return () => { cancelled = true; };
-  }, [runtime, blocked, initial.session]);
+  }, [runtime, blocked, initial.readOnly, initial.session]);
+
+  // One shared deterministic clock advances visible and background tanks; motion speed remains visual-only.
+  // Idle checkpoints are sparse because every commit validates snapshots on the main thread; commands still save at once.
+  useEffect(() => {
+    if (blocked || initial.readOnly) return;
+    const interval = window.setInterval(() => {
+      const target = clockOrigin.current.tick + Math.floor((performance.now() - clockOrigin.current.time) / TICK_MS);
+      setRuntime(current => {
+        const advanced = advanceRuntime(current, Math.max(current.tick, target));
+        runtimeRef.current = advanced;
+        return advanced;
+      });
+    }, ACTIVE_CHECKPOINT_MS);
+    return () => window.clearInterval(interval);
+  }, [blocked, initial.readOnly]);
 
   useEffect(() => {
     if (blocked) return;
@@ -121,6 +137,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   useEffect(() => { setBatchIds([]); setBatchReview(false); setLastBatchId(null); }, [tank.id, showArchived, sexFilter, favoritesOnly, cohortKey]);
 
   function run(command: Command, message: string): World | null {
+    if (initial.readOnly) { setNotice('This tab is read-only. Close the editing tab and reload to take control.'); return null; }
     if (saveBusy.current) { setNotice('Wait for the save operation to finish.'); return null; }
     try {
       const current = runtimeRef.current;
@@ -203,7 +220,7 @@ export function App({ initial }: { initial: LoadedSession }) {
         <button className="quiet" onClick={() => downloadText(JSON.stringify(runtime), 'fishtank-save-v2.json')}>Export save</button></div>
     </header>
       <div className="save-navigation"><div className="save-state">{saveError === 'Saving…' ? 'Saving…' : saveError ? 'Session not saved' : 'Saved on this device'}</div><button aria-expanded={showSaves} onClick={() => setShowSaves(value => !value)}>Saves</button></div>
-      {showSaves ? <SavePanel runtime={runtime} session={initial.session} blocked={blocked} onBusy={value => { saveBusy.current = value; }} onSaved={() => { setBlocked(false); setSaveError(''); }} /> : null}
+      {showSaves ? <SavePanel runtime={runtime} session={initial.session} blocked={blocked} readOnly={initial.readOnly} onBusy={value => { saveBusy.current = value; }} onSaved={() => { setBlocked(false); setSaveError(''); }} /> : null}
     {view === 'fixtures' ? <VisualFixtureLab onClose={() => setView('aquarium')} /> : view === 'research' ? <ResearchLab onClose={() => setView('aquarium')} /> : <div className="workspace">
       <aside className="tank-sidebar">
         <div className="eyebrow">YOUR AQUARIUMS</div>

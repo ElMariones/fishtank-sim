@@ -32,3 +32,4 @@ footer a{display:inline-flex;align-items:center;min-height:24px}
 .import-preview { border: 1px solid #78a591; padding: 1rem; margin: 1rem 0; }
 
 .save-navigation .save-state { display: block; margin: 0; padding: 0; }
+.worker-state{position:absolute;z-index:3;left:16px;right:16px;top:52px;padding:10px 12px;border:1px solid #8d8155;border-radius:7px;background:#332f20e8;color:#f0e5bd;font-size:.75rem;display:flex;align-items:center;justify-content:space-between;gap:12px}.worker-state.recovered{right:auto;border-color:#4f7d68;background:#17352de8;color:#cae8d5}.worker-state button{min-height:36px}

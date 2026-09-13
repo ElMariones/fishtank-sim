@@ -1,0 +1,116 @@
+{
+  "version": 1,
+  "trialSet": "study-v1-12x4",
+  "records": [
+    {
+      "observerId": "observer-001",
+      "receivedAt": "2026-09-13T00:00:00.000Z",
+      "result": {
+        "version": 1,
+        "trialSet": "study-v1-12x4",
+        "answers": [
+          { "trialId": "trial-1", "choice": 1, "ms": 8846 },
+          { "trialId": "trial-2", "choice": 0, "ms": 11796 },
+          { "trialId": "trial-3", "choice": 1, "ms": 8541 },
+          { "trialId": "trial-4", "choice": 0, "ms": 3725 },
+          { "trialId": "trial-5", "choice": 1, "ms": 8805 },
+          { "trialId": "trial-6", "choice": 0, "ms": 5950 },
+          { "trialId": "trial-7", "choice": 1, "ms": 17239 },
+          { "trialId": "trial-8", "choice": 0, "ms": 6587 },
+          { "trialId": "trial-9", "choice": 0, "ms": 9040 },
+          { "trialId": "trial-10", "choice": 0, "ms": 2708 },
+          { "trialId": "trial-11", "choice": 0, "ms": 4745 },
+          { "trialId": "trial-12", "choice": 1, "ms": 2977 }
+        ]
+      }
+    },
+    {
+      "observerId": "observer-002",
+      "receivedAt": "2026-09-13T00:00:00.000Z",
+      "result": {
+        "version": 1,
+        "trialSet": "study-v1-12x4",
+        "answers": [
+          { "trialId": "trial-1", "choice": 1, "ms": 5868 },
+          { "trialId": "trial-2", "choice": 0, "ms": 7840 },
+          { "trialId": "trial-3", "choice": 1, "ms": 5493 },
+          { "trialId": "trial-4", "choice": 0, "ms": 5863 },
+          { "trialId": "trial-5", "choice": 1, "ms": 5712 },
+          { "trialId": "trial-6", "choice": 0, "ms": 3986 },
+          { "trialId": "trial-7", "choice": 1, "ms": 4657 },
+          { "trialId": "trial-8", "choice": 0, "ms": 4619 },
+          { "trialId": "trial-9", "choice": 0, "ms": 3891 },
+          { "trialId": "trial-10", "choice": 0, "ms": 2808 },
+          { "trialId": "trial-11", "choice": 0, "ms": 8742 },
+          { "trialId": "trial-12", "choice": 1, "ms": 4097 }
+        ]
+      }
+    },
+    {
+      "observerId": "observer-003",
+      "receivedAt": "2026-09-13T00:00:00.000Z",
+      "result": {
+        "version": 1,
+        "trialSet": "study-v1-12x4",
+        "answers": [
+          { "trialId": "trial-1", "choice": 1, "ms": 4680 },
+          { "trialId": "trial-2", "choice": 0, "ms": 3597 },
+          { "trialId": "trial-3", "choice": 1, "ms": 5930 },
+          { "trialId": "trial-4", "choice": 0, "ms": 1543 },
+          { "trialId": "trial-5", "choice": 1, "ms": 3279 },
+          { "trialId": "trial-6", "choice": 0, "ms": 2504 },
+          { "trialId": "trial-7", "choice": 1, "ms": 6348 },
+          { "trialId": "trial-8", "choice": 0, "ms": 3294 },
+          { "trialId": "trial-9", "choice": 0, "ms": 3247 },
+          { "trialId": "trial-10", "choice": 0, "ms": 5247 },
+          { "trialId": "trial-11", "choice": 0, "ms": 6101 },
+          { "trialId": "trial-12", "choice": 1, "ms": 2670 }
+        ]
+      }
+    },
+    {
+      "observerId": "observer-004",
+      "receivedAt": "2026-09-13T00:00:00.000Z",
+      "result": {
+        "version": 1,
+        "trialSet": "study-v1-12x4",
+        "answers": [
+          { "trialId": "trial-1", "choice": 1, "ms": 7275 },
+          { "trialId": "trial-2", "choice": 0, "ms": 3468 },
+          { "trialId": "trial-3", "choice": 1, "ms": 3835 },
+          { "trialId": "trial-4", "choice": 0, "ms": 1938 },
+          { "trialId": "trial-5", "choice": 1, "ms": 1778 },
+          { "trialId": "trial-6", "choice": 0, "ms": 1500 },
+          { "trialId": "trial-7", "choice": 1, "ms": 3726 },
+          { "trialId": "trial-8", "choice": 0, "ms": 4433 },
+          { "trialId": "trial-9", "choice": 0, "ms": 6840 },
+          { "trialId": "trial-10", "choice": 0, "ms": 7055 },
+          { "trialId": "trial-11", "choice": 0, "ms": 3959 },
+          { "trialId": "trial-12", "choice": 1, "ms": 5826 }
+        ]
+      }
+    },
+    {
+      "observerId": "observer-005",
+      "receivedAt": "2026-09-13T00:00:00.000Z",
+      "result": {
+        "version": 1,
+        "trialSet": "study-v1-12x4",
+        "answers": [
+          { "trialId": "trial-1", "choice": 1, "ms": 7113 },
+          { "trialId": "trial-2", "choice": 0, "ms": 2725 },
+          { "trialId": "trial-3", "choice": 1, "ms": 3858 },
+          { "trialId": "trial-4", "choice": 0, "ms": 1438 },
+          { "trialId": "trial-5", "choice": 1, "ms": 2917 },
+          { "trialId": "trial-6", "choice": 0, "ms": 2341 },
+          { "trialId": "trial-7", "choice": 0, "ms": 6794 },
+          { "trialId": "trial-8", "choice": 0, "ms": 2161 },
+          { "trialId": "trial-9", "choice": 0, "ms": 3791 },
+          { "trialId": "trial-10", "choice": 0, "ms": 3206 },
+          { "trialId": "trial-11", "choice": 0, "ms": 4091 },
+          { "trialId": "trial-12", "choice": 1, "ms": 2946 }
+        ]
+      }
+    }
+  ]
+}

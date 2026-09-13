@@ -20,6 +20,7 @@ src/
     collection.ts   Device-local collection preferences, goal ranking, sorting, cohorts and goal leaders
     selectionExperiment.ts Seeded ten-generation truncation selection vs random mating, with pedigree F and gate
     resemblanceStudy.ts Blind parent-pair trial set, display modes, computational observer and answer scoring
+    resemblancePool.ts Strict validation and recomputation of anonymous human observer records
     pedigree.ts     Exact memoized ancestry-pair queries with an explicit stack
     world.ts        Validated world commands and local NPC transactions
     save.ts         Legacy world-v1 schema and reference validation
@@ -27,9 +28,14 @@ src/
     visualFixtures.ts Frozen FS-101 fixtures, anatomy stress cases and v1-vs-v2 anatomy sweep
   persistence/
     database.ts     IndexedDB current/two backups, transaction/read-back and stale-writer checks
-    session.ts      Serialized commits and legacy migration
+    session.ts      Serialized commits, offline catch-up and legacy migration
+    writerLease.ts  Web Locks single-writer lease; IndexedDB compare-and-swap remains fallback
   simulation/
     motion.ts       Pure 20 Hz steering step, independent of React/Canvas
+    protocol.ts     Stable worker message and transferable frame layout
+    motionWorker.ts Worker-owned fixed-step steering, playback, feed and benchmark
+    motionClient.ts Lifecycle, cleanup, one automatic restart and manual recovery
+    time.ts         Shared tick segments, event boundaries and protected offline window
   rendering/
     fish.ts         Canvas renderer v2: draws anatomy v2 and pigment layers
     tankLayout.ts   Shared tank pose transform and fish-shaped picking
@@ -37,7 +43,7 @@ src/
     App.tsx         Lab controls, command runtime, inspector and paginated collection
     Startup.tsx     Validated async loading before interactive controls
     SavePanel.tsx   Export, import review, retry and backup recovery
-    TankCanvas.tsx  Frame loop, visual aquarium and selection
+    TankCanvas.tsx  Paints worker motion frames, fish picking and the motion-fault recovery notice
     FishPortrait.tsx Shared procedural renderer at portrait scale, fitted or shared-scale framing
     VisualFixtureLab.tsx Deterministic fixture, anatomy and marking-resemblance comparison surface
     ResearchLab.tsx Blind resemblance study and ten-generation selection experiment
@@ -50,11 +56,16 @@ tests/
   collection.test.ts Preference validation, collection ordering, cohorts and goal leaders
   selection.test.ts Selection gate, diversity cost, speed tradeoff and determinism
   resemblanceStudy.test.ts Trial set, display modes, computational observer and result validation
+  resemblancePool.test.ts Five-observer FS-111 pool, per-trial agreement and record validation
+  limits.test.ts   Living/record limits, deep and wide pedigree queries and atomic rejection
+  runtime.test.ts  Command envelopes, retries, replay, compaction, migration and tamper rejection
+  time.test.ts     Tick segments, shared tank clocks, offline cap and backwards clocks
+  motionClient.test.ts Worker start, one automatic restart, manual restart and cleanup
 ```
 
 Core modules import neither React nor browser globals. The Canvas renderer receives a phenotype, seed, size and animation time; it obtains geometry from the pure anatomy module, so tests validate the same eye, fin and tail anchors that are drawn and the tank uses one pose transform for drawing and picking. Motion has its own actors and reads genetic movement parameters. The app owns persisted entities and selected UI state.
 
-There is currently **no backend, Web Worker, WebGL mesh, life-stage scheduler, authentication, or online market**. These are planned boundaries, not existing infrastructure.
+There is currently **no backend, WebGL mesh, biological life-stage scheduler, authentication, or online market**. The Web Worker handles visual motion; commands, save validation and the persistent clock remain separate pure/domain or persistence modules.
 
 ## 2. Stack decisions
 
@@ -63,12 +74,12 @@ There is currently **no backend, Web Worker, WebGL mesh, life-stage scheduler, a
 | UI and tooling | React, strict TypeScript, Vite | Retain | Browser simulation does not require server rendering |
 | Renderer | Canvas 2D procedural paths | PixiJS mesh/shaders after core proof | Validate phenotype contract without GPU setup overhead |
 | Genetics | Pure synchronous TypeScript | Same core in worker/server | Share one tested rule implementation |
-| Motion | 20 Hz main-thread step | Worker with render interpolation | Keep expensive updates away from UI |
-| Persistence | IndexedDB snapshot/replay transactions, two backups and v1 migration | Worker-assisted incremental persistence and writer lease | Larger archives need async storage and explicit recovery |
+| Motion | 20 Hz module worker, transferable transform frames | Render interpolation and spatial hash | Keep O(N²) reference steering away from UI |
+| Persistence | IndexedDB transactions, two backups, v1 migration and Web Locks writer lease | Worker-assisted incremental persistence | Larger archives need async storage and explicit recovery |
 | State | React state + motion refs | UI store only if needed | Avoid global subscription to every swimming coordinate |
 | Genealogy | Exact memoized ancestor queries and paginated relatives | Worker query + incremental kinship cache | Preserve history without world-sized matrix allocation |
 | Backend | None | Authoritative HTTP service + PostgreSQL | Durable transactions and trusted online ownership |
-| Shared simulation | None | Tick/event jobs on server | Browser cannot be online-market authority |
+| Shared simulation | Persistent 50 ms clock and event-boundary integrator; no biological state yet | Water, development and scheduled lifecycle events | One deterministic integrator must serve visible/background/offline modes |
 
 React documents Vite as one option for a custom setup; Vite provides the React TypeScript build workflow. These choices fit this single-page research application, rather than implying every React app needs this stack. [React guidance](https://react.dev/learn/creating-a-react-app), [Vite guide](https://vite.dev/guide/).
 
@@ -163,7 +174,9 @@ The lab clones the small world, validates, applies a command and swaps state. Th
 
 Command IDs are `worldId:revision`, events are `worldId:event:revision`. The domain parses payloads before cloning or mutation. Exact recent retries return the current runtime; conflicting content and stale revisions reject. Every 64 commands the current state becomes the replay checkpoint; older IDs remain stale, so compaction cannot duplicate births or credits. This is bounded recovery history, not the permanent FS-404 life-event journal. Import validates both worlds, replays the ordered events, and checks the resulting snapshot/tick/revision. Property order has no semantic meaning.
 
-The UI samples a monotonic 50 ms clock when committing a command. This supplies deterministic replay ordering; autonomous active/background/offline integration is **FS-205**, not a shipped lifecycle. Motion controls still affect visual swimming only.
+The UI advances one monotonic integer clock every five minutes (`ACTIVE_CHECKPOINT_MS`) and samples it again when committing a command. Every owned tank receives the same elapsed ticks through `advanceRuntime`, independent of which tank is visible. The same bounded segment builder splits future model integration at scheduled event ticks. Motion controls still affect visual swimming only. Each advance is an autosave, and every commit serializes the world and validates the new, current and backup snapshots on the main thread. A 10,000-record world costs about 1.3 s per commit in the recorded Chrome run, so idle checkpoints are sparse (ADR-031). The saved tick and `savedAt` always describe the same moment, so reload catch-up covers any gap after the last save. At most five minutes of active time can count toward the offline cap.
+
+On reload, `savedAt` supplies elapsed real time at normal 1×. Negative elapsed time becomes zero; catch-up stops after eight real hours and reports any protected remainder. This currently advances research time only. It does not age fish, change health or consume resources because those domain states do not exist yet.
 
 The following envelope describes future server-authoritative work:
 
@@ -228,25 +241,11 @@ These are design defaults requiring numerical comparison against active simulati
 
 ## 7. Worker and renderer protocol
 
-```ts
-type ToSimulation =
-  | { type: 'initialize'; protocol: 1; snapshot: WorldSnapshot }
-  | { type: 'command'; command: CommandEnvelope<WorldCommand> }
-  | { type: 'set-visible-tank'; tankId: string }
-  | { type: 'set-speed'; speed: 0 | 1 | 4 | 12 }
-  | { type: 'request-checkpoint'; requestId: string };
-type FromSimulation =
-  | { type: 'ready'; worldVersion: number }
-  | { type: 'frame'; tick: number; tankId: string; transforms: Float32Array }
-  | { type: 'state-delta'; worldVersion: number; delta: WorldDelta }
-  | { type: 'command-result'; commandId: string; result: Result<unknown> }
-  | { type: 'checkpoint'; requestId: string; snapshot: WorldSnapshot }
-  | { type: 'fault'; code: string; recoverable: boolean };
-```
+Motion protocol v1 accepts initialize, fish synchronization, playback, feed, benchmark and shutdown messages. The worker replies with ready/entity maps, frames, benchmark results and faults. Entity IDs establish stable frame order; every fish occupies four `Float32` values: normalized x/y and vx/vy. Each frame allocates and transfers a new buffer, so the worker never reads a detached source. SharedArrayBuffer and cross-origin isolation are unnecessary.
 
-Define stable transform layout, entity-index mapping and transfer-buffer ownership before implementation. Never transfer a buffer then continue reading the detached source. Start with ordinary messages; SharedArrayBuffer/cross-origin isolation is unnecessary until measured.
+The worker owns 20 Hz steering and its transient actors. Canvas keeps transforms in refs, paints with `requestAnimationFrame`, and does not put coordinates in React state. Switching tanks deliberately creates a deterministic visual trajectory from fish IDs; persistent lifecycle ticks are unaffected. Fish that join the visible tank get an actor on the next frame. Playback pauses while the document is hidden. React cleanup sends shutdown and terminates the worker. The client attempts one automatic restart, then exposes a visible manual restart after a repeated failure.
 
-The UI should receive lightweight deltas at 2–5 Hz for telemetry, immediate command acknowledgements, and transform packets for renderer interpolation. Do not put per-fish coordinates into a broad React store that redraws the entire inspector 20 times per second.
+Commands remain in the pure versioned runtime reducer rather than the visual-motion worker. This preserves the existing synchronous atomic boundary and prevents rendering faults from changing identity, births or status or currency. A later worker-owned biological scheduler may call the same reducer through a separate protocol.
 
 Renderer interface: initialize, resize, updatePhenotypes, updateTransforms, setSelection, hitTest, renderPortrait, destroy. Keep Canvas as a reference/fallback while a PixiJS implementation proves visual parity.
 
@@ -258,7 +257,7 @@ Startup validates saved data before exposing controls. With no IndexedDB current
 
 Saves accepts a file or pasted JSON, validates v1/v2, shows record/living/tank/credit counts, then requires the user's explicit replacement action. This is a product action, not an agent approval requirement. A prior valid current becomes a recovery backup. Malformed/future saves cannot replace it. Commands pause during explicit save/replacement. Device-local goal/favorite preferences remain outside world exports, as the panel explains.
 
-Compare-and-swap blocks stale writes from another tab and preserves the unsaved session for export. A proactive single-writer lease and worker-fault recovery remain **FS-206**. Save validation and command replay still run on the main thread; the 10,000-record fixture (two world copies in its runtime checkpoint) took about 755 ms for commit/load/validation on the recorded Chrome run. FS-202 should move expensive work away from UI input.
+Web Locks holds `fishtank-sim-writer` for the editing tab’s lifetime. Other tabs load the same snapshot for inspection but domain commands return a read-only explanation. Closing the writer and reloading a reader transfers authority; drafts made in the reader are never committed. Browsers without Web Locks retain compare-and-swap stale-write rejection. Save validation and command replay still run on the main thread; the 10,000-record fixture took about 755 ms for commit/load/validation on the recorded Chrome run.
 
 ## 9. Online boundaries
 

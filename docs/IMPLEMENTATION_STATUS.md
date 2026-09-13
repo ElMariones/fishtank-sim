@@ -1,6 +1,6 @@
 # Implementation status
 
-**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–105 and FS-108–110 are pushed. FS-106, FS-107 review, FS-112 and M2 FS-201/203/204 are **DONE**, verified and pushed as `bd175ed`. FS-111 needs real human observers; the M1 perceptual gate remains open. M2 FS-202/205/206 remain open.
+**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–110 and FS-112 are pushed; FS-111's five-observer pool (54/60, above chance in every mode) is verified and awaiting push. M2 FS-201/203/204 are DONE (`bd175ed`); FS-202/205/206 are reviewed, fixed and verified, awaiting push.
 
 ## Delivered
 
@@ -29,23 +29,27 @@
 - FS-109 (user request): multi-select residents with shift-click ranges, select all and clear, a reviewed batch sale showing names, quotes and total, and one atomic `sell-batch` command.
 - FS-110 (user request): All / ♀ Females / ♂ Males filter buttons with live counts in the resident and archive collection views; changing the filter clears batch selection. Browser evidence in [TESTING.md](TESTING.md#fs-110-sex-filter-verification).
 - FS-112: 480 living fish across eight 60-place tanks; 10,000 permanent records, including sold ancestors. Exact memoized kinship has no depth cutoff; collection and offspring views paginate at 60 rows.
-- FS-201: runtime schema v2 wraps unchanged world/genome v1 with integer 50 ms command ticks, monotonic command/event IDs, stale-command rejection and a bounded validated replay journal. Tick is sampled when commands commit; autonomous lifecycle ticking remains FS-205.
+- FS-201: runtime schema v2 wraps unchanged world/genome v1 with integer 50 ms command ticks, monotonic command/event IDs, stale-command rejection and a bounded validated replay journal. FS-205 now advances the same persistent clock between commands.
 - FS-203: IndexedDB transactions store current plus two valid backups, compare-and-swap stale writers, validate/read back commits, and migrate v1 while retaining its original raw localStorage data.
 - FS-204: Saves panel with export, file/paste import validation and count preview, explicit replacement, backup preview/restore, preserved-legacy export and retry after storage failure. Unreadable current saves block autosave until explicit recovery.
 - FS-107: [M1 evidence review and M2 contracts](research/M1-REVIEW-M2-FOUNDATION.md); human recognition is still untested.
-- 53 automated tests; production build; isolated real-Chrome browser verification, including transaction abort/quota injection, migration and 10,000-record import/restore.
+- FS-111: five validated anonymous observer records, 54/60 overall (full 19/20, silhouette 20/20, markings 15/20), each mode above chance at the 95% lower bound; every observer missed markings trial-9. The pool also reports per-trial agreement. See [human resemblance results](research/FS-111-HUMAN-RESEMBLANCE.md).
+- FS-202: versioned module worker owns 20 Hz fish steering and transfers compact `Float32Array` frames to Canvas. Fish that join the visible tank are drawn and pickable on the next frame; motion pauses while the page is hidden. StrictMode/view cleanup terminates every replaced worker; one automatic and one user-triggered recovery path keep faults visible.
+- FS-205: one integer 50 ms clock advances visible and background tank integration identically, with idle checkpoints every five minutes. Reload applies elapsed time at normal 1×, clamps negative deltas to zero and caps protected offline catch-up at eight hours. No life-history effects exist yet.
+- FS-206: Web Locks gives one tab edit authority while other tabs remain inspectable and read-only; closing the writer and reloading transfers control. Existing transaction/quota recovery remains in the Saves panel.
+- 63 automated tests; production build; Chrome verification of worker load/cleanup/faults, two-tab takeover, offline limits, transaction recovery, migration and 10,000-record import/restore, with the runtime journeys repeated in the in-app Chromium pane after the M2 review fixes.
 
 ## Prototype shortcuts and limitations
 
 | Area | Current limitation | Next task(s) |
 |---|---|---|
-| Visual quality | Canvas reference art; anatomy attachment, computed marking resemblance and a computational observer are measured, but no person has judged resemblance yet; portrait is static | FS-111 FS-107 |
+| Visual quality | Canvas reference art; five observers scored 54/60 on one fixed 12-trial set, with markings the weak channel; portrait is static | FS-306 FS-701 |
 | Anatomy limits | An eye that cannot fit a shallow head is drawn smaller (adjustment listed); no protruding eyes or extra structures | FS-601–602 |
-| Pattern inheritance | Placement inherited from haplotype blocks (73% sibling separation, computed); common haplotypes are shared by chance; ellipse shapes; symmetry is a spread proxy, not bilateral matching | FS-111 |
+| Pattern inheritance | Placement inherited from haplotype blocks (73% sibling separation, computed); common haplotypes are shared by chance; ellipse shapes; symmetry is a spread proxy, not bilateral matching; all five observers misread one markings trial | FS-601 |
 | Selection balance | Keeping 4 + 4 parents saturates v1 traits within 4–7 generations and drives pedigree F to about 0.8, with only the expected-F figure as a warning | FS-403 FS-605 |
-| Research data | Study answers stay in one browser; pooling observers means copying records by hand | FS-111 |
+| Research data | Five anonymous records pooled in-repo by hand; no cue notes, observer context or remote collection | FS-705 |
 | Collection preferences | Goal, sort and favorites are device-local and not in exported saves; filters and parent picks reset on reload; the Parents filter groups every clutch of a pair | FS-203–204 |
-| World size | 10,000 records and 480 living fish; tested large snapshot round trip about 755 ms, with validation still on the main thread; pathological pedigrees can require quadratic ancestor-pair work | FS-202 FS-405 FS-702 |
+| World size | 10,000 records and 480 living fish; tested large snapshot round trip about 755 ms, with validation still on the main thread; pathological pedigrees can require quadratic ancestor-pair work | FS-405 FS-702 |
 | Life stages | All fish display adult potential immediately; no aging, growth, hunger, health, death or lifespan integration | FS-302 |
 | Behavior | No true feeding consumption, courtship, territorial utility, shelter use or learned memory | FS-303 |
 | Curiosity/life-history genes | Some outputs are computed or displayed only; do not affect lifecycle | FS-302–303 |
@@ -59,18 +63,22 @@
 | Family | One-hop navigation, no graph layout or lineage registration | FS-404–405 FS-604 |
 | History | Birth and pedigree permanent; recent command events persist but compact every 64 commands; no permanent lifetime event history or old portraits | FS-404 |
 | Appearance versions | Lab fish store no per-record development/anatomy/renderer version; all fish re-render under the current model (markings moved with development v2) | FS-404 FS-601 |
-| Persistence | IndexedDB snapshots/replay and two backups; stale saves rejected, but no proactive writer lease or cloud sync; preferences remain device-local | FS-206 |
-| Save recovery | Export/retry and reviewed backup/import recovery work; physical power-loss durability and cross-browser recovery matrix remain untested | FS-206 FS-703 |
-| Performance | Main-thread motion; 60-per-tank guardrails; no measured scale guarantee | FS-202 FS-701–702 |
+| Persistence | IndexedDB snapshots/replay, two backups and one Web Locks writer; browsers without Web Locks fall back to stale-write rejection; no cloud sync; preferences remain device-local | FS-703 M8 |
+| Save recovery | Export/retry and reviewed backup/import recovery work; physical power-loss durability and cross-browser recovery matrix remain untested | FS-703 |
+| Performance | Motion runs in a worker; a synthetic 200-fish/100-step run kept measured input delay under 2 ms, but Canvas rendering and large-save validation remain on the main thread. A 10,000-record commit costs about 1.3 s of serialization and validation, so idle clock checkpoints run every five minutes | FS-701–702 |
 | Selection | Body and caudal-fin shaped picking with 6 px slop; dorsal/pectoral fins only through slop; the live canvas is not keyboard-focusable (the collection is the keyboard path); no animated camera travel | FS-704 |
 | UI scale | Inspector stacks below the collection on phones; collection and relative lists paginate at 60 rows; no screen-reader audit yet | FS-404 FS-704 |
-| Offline | Motion pauses while hidden; no closed-browser/offline lifecycle | FS-205 |
+| Offline | Persistent research time catches up for at most eight hours; no growth, health, water or other biological state exists to integrate yet | FS-301–302 |
 | Online | No accounts, server, database, actual player listings, payments or external telemetry | M8 |
 | Delivery | Pushed to GitHub `main`; no public deployment or continuous integration | FS-706 |
 
 ## Evidence
 
+**M2 completion review and FS-111 pool, Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium 152:** 63 tests and build pass. The review fixed three problems. Fish bred into the visible tank were invisible; 40 → 60 fish now draw without a reload. The hidden-page motion pause is restored (21 → 0 → 20 frames per second). Idle clock checkpoints moved to five minutes after measuring about 1.3 s per 10,000-record commit. Re-verified: worker cleanup (6 created / 6 terminated over three remounts), automatic and manual fault recovery, a read-only second tab with takeover, the eight-hour cap (576,000 ticks) and a future timestamp (0 ticks). FS-111: five observers, 54/60. See [TESTING.md](TESTING.md#m2-completion-review-and-fixes).
+
 **FS-106/107/112 and M2 foundation, Windows 11, Node 24.11.1, npm 11.6.2, Chrome:** 53 tests and production build pass. Keyboard select/rename/breed/family/reload works; 10,000 records survive IndexedDB and reviewed import with 60-row archive/family pages; abort, quota and stale-write checks preserve all three snapshot slots; v1 bytes and unsupported current data remain untouched. At 375 px with coarse pointer, checked targets are at least 44 px; 200% text has no horizontal overflow at phone or desktop widths. See [TESTING.md](TESTING.md#m1-continuation-and-m2-foundation-verification).
+
+**FS-202/205/206 and FS-111 observer 1, same OS/toolchain, Chrome 153.0.8010.36:** 62 tests and build pass. One active worker remained after StrictMode and three remounts; 200 fish × 100 motion steps took 89.9 ms in the worker with 1.9 ms input delay; automatic/manual fault recovery passed. A second tab was read-only and took control after writer close/reload. Offline catch-up applied exactly 576,000 ticks for a nine-hour absence and zero for a future timestamp. See [M2 report](research/M2-RUNTIME-AND-RECOVERY.md).
 
 
 **FS-106, 13 September 2026, Windows 11, Node 22.18.0, npm 10.9.3:** strict typecheck and the existing test suite passed. Browser journeys and measurements are recorded in [TESTING.md](TESTING.md#fs-106-keyboard-text-and-touch-verification): skip links first in tab order; keyboard card and relative selection land on the inspector heading; "↩ Collection" returns to the card; no touch target under 44 px with a coarse pointer; no clipping or page overflow at 200% text.
@@ -81,7 +89,7 @@
 - Selection experiment (identical in Node and the browser): 6 of 6 traits beyond the founder typical range in 8 of 8 selected lines (random-mating 0–2 of 8); mean pedigree F 0.80; heterozygosity 77% → 14–19%; 0 invalid anatomies among 3,840 generation-10 fish; tail selection speed 0.042 → 0.034. The browser run took 0.9 s.
 - Computational observer, 300 trials each: silhouette 99.7%, markings 89.0%, combined 98.7% with 4 siblings; 96.3%, 79.7% and 95.3% from a single child.
 - Browser: **Research** is reachable from the header view navigation (`aria-current`). Trial 1 showed 4 siblings and two parent pairs, with labels that do not reveal the answer. An answer with a cue stored `{ trialId: trial-1, choice: 0, cue: "tail shape", ms: 690 }`; **Undo last answer** removed it. Scripted answers to all 12 trials reached the results table and a valid 12-answer record; **Start again** then cleared them. No new console errors.
-- No human observer has taken the study.
+- One human observer completed the study at the time: 11/12 overall. FS-111 later pooled five observers: 54/60.
 
 **FS-104, same environment:**
 
@@ -107,4 +115,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**FS-202 (worker protocol/runtime), then FS-205 (shared integration/offline scheduler), then FS-206 (writer lease and fault recovery).** FS-111 still needs at least five people to take Research → Resemblance study and share their records.
+**Push and mark FS-111 and FS-202/205/206 DONE.** M1's roadmap gate and M2 are then complete; FS-301’s unit-aware water model is the next scheduled task.

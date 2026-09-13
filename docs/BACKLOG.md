@@ -30,7 +30,7 @@ M0 completion does not imply M1’s visual research gate has passed.
 | FS-108 | DONE | 0.25 | UI | FS-003 | User request: larger sex symbols, pink ♀ for female and blue ♂ for male, still paired with text for assistive technology. Pushed `621a3cb` |
 | FS-109 | DONE | 1 | UI/core | FS-003 | User request: select several residents in the collection (including shift-click ranges) and sell them in one reviewed batch; any invalid member rejects the whole sale with no credit or status change. Pushed `621a3cb` |
 | FS-110 | DONE | 0.25 | UI | FS-108 | User request: collection buttons to show all fish, only females or only males, with counts, in resident and archive views; changing the filter clears batch selection so a sale only covers visible fish. Pushed `c467a26` |
-| FS-111 | P0 | 0.5 | Design/QA | FS-105 | Run the in-app resemblance study with at least five observers (60 trials, 20 per mode); pool the copied result records and report accuracy per mode against 50% chance, with cues. This is the M1 human-resemblance evidence |
+| FS-111 | IN PROGRESS (5/5) | 0.5 | Design/QA | FS-105 | Run the in-app resemblance study with at least five observers (60 trials, 20 per mode); pool the copied result records and report accuracy per mode against 50% chance, with cues. Five observers: 54/60 overall, above chance in every mode, no cue notes supplied; awaiting push. Evidence in [FS-111 human resemblance](research/FS-111-HUMAN-RESEMBLANCE.md) |
 | FS-112 | DONE | 1 | Core/UI | FS-109 | User request: raise the 1,000-record limit well beyond 1,000 and cap living (unsold) fish instead, so players can keep breeding while sold fish stay in the archive; kinship and large archive views must stay responsive; the record cap must fit reliable browser storage. Pushed `bd175ed` |
 
 FS-108 to FS-110 were requested during M1 and are outside the 10-day base estimate. FS-111 splits the human part of FS-105 out because it needs real participants.
@@ -40,11 +40,11 @@ FS-108 to FS-110 were requested during M1 and are outside the 10-day base estima
 | ID | Pri | Days | Role | Depends | Task and acceptance |
 |---|---|---:|---|---|---|
 | FS-201 | DONE | 2 | Core | FS-107 | World tick, command/event IDs, versioned replay; repeated command cannot duplicate births. Pushed `bd175ed` |
-| FS-202 | P0 | 3 | Runtime | FS-201 | Worker protocol with lifecycle cleanup; selection stays responsive during 200-fish synthetic workload |
+| FS-202 | P0 | 3 | Runtime | FS-201 | Worker protocol with lifecycle cleanup; selection stays responsive during 200-fish synthetic workload; implemented and verified, awaiting push |
 | FS-203 | DONE | 3 | Persistence | FS-201 | IndexedDB transactions, two backups, legacy migration and read-back; interrupted commit restores last good save. Pushed `bd175ed` |
 | FS-204 | DONE | 2 | UI/persistence | FS-203 | Validated import preview and export/recovery UI; malformed/future save never overwrites current world. Pushed `bd175ed` |
-| FS-205 | P0 | 3 | Simulation | FS-201 FS-202 | Shared active/background integration and protected offline scheduler; event-boundary fixtures agree within tolerance |
-| FS-206 | P1 | 2 | Persistence/runtime | FS-203 FS-205 | Multi-tab writer lock, worker-fault recovery and quota handling; user sees and can recover from each fault |
+| FS-205 | P0 | 3 | Simulation | FS-201 FS-202 | Shared active/background integration and protected offline scheduler; event-boundary fixtures agree within tolerance; implemented and verified, awaiting push |
+| FS-206 | P1 | 2 | Persistence/runtime | FS-203 FS-205 | Multi-tab writer lock, worker-fault recovery and quota handling; user sees and can recover from each fault; implemented and verified, awaiting push |
 
 ## M3 — 20 days
 
@@ -125,4 +125,4 @@ M8 total: 40–60 days. Provider costs and moderation operations require separat
 
 ## Suggested next-agent task
 
-Continue **FS-202**, then **FS-205** and **FS-206**. Read [the M1 review and M2 foundation report](research/M1-REVIEW-M2-FOUNDATION.md) and preserve the runtime, replay and storage contracts. FS-111 remains open for five real human observers. The user's request authorizes M2 development while that research gate is pending; it does not establish a human-resemblance result.
+Finish the current verified M2 batch by pushing FS-202/205/206 and marking them DONE. Then begin the bounded M3 water model in FS-301; do not activate growth, health decay or feeding effects before its conservation fixtures pass. FS-111 has all five observers and awaits its push marker.

@@ -57,7 +57,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> Continue with FS-202, then FS-205 and FS-206. Read the M1 review/M2 foundation report, src/core/runtime.ts, src/persistence/*, docs/ARCHITECTURE.md and docs/TESTING.md. Implement a versioned worker protocol with cleanup and a 200-fish synthetic responsiveness measurement; preserve the existing command IDs, validated replay and IndexedDB recovery. Current world ticks advance only when a command commits; FS-205 must define active/background/offline integration without inventing care or hatch mechanics that do not yet exist. M1 FS-111 still needs at least five real observers; never substitute scripted browser answers.
+> After FS-202/205/206 are pushed and marked DONE, continue with FS-301. Read the M2 runtime report, architecture §6–8, balance, and the M3 backlog. Define explicit water/oxygen/waste units and pure conservation fixtures before wiring UI. Use the existing shared tick integrator; do not make visual motion speed alter persistent biology. M1 FS-111 pooled five observers (54/60); the unanimously missed markings trial-9 is a follow-up, not a blocker.
 
 ## 7. Subsequent task briefs
 

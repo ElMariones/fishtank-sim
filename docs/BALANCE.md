@@ -70,7 +70,7 @@ No real-money conversion, cash-out, token economy, or paid mutation chance is de
 
 Show two parent pairs and shuffled child cohorts. Ask observers to match each cohort to its parents and describe the cues. Record sample size and chance baseline. Repeat with silhouettes only and patterns only to identify the weak channel.
 
-**Status (FS-105):** Research → Resemblance study runs 12 fixed blind trials (4 each in full, silhouette-only and markings-only modes) and exports a result record. A computational observer names the source pair in 99.7% (silhouette), 89.0% (markings) and 98.7% (combined) of 300 seeded trials. No human sessions yet (FS-111). See [FS-105 selection and resemblance](research/FS-105-SELECTION-AND-RESEMBLANCE.md).
+**Status (FS-105/111):** Research → Resemblance study runs 12 fixed blind trials (4 each in full, silhouette-only and markings-only modes) and exports a result record. A computational observer names the source pair in 99.7% (silhouette), 89.0% (markings) and 98.7% (combined) of 300 seeded trials. Five anonymous observers scored 54/60 overall (full 19/20, silhouette 20/20, markings 15/20), and each mode's 95% lower bound is above chance. Markings are the weak channel: all five markings misses were the same trial. No cue notes were supplied. See [FS-111 human resemblance](research/FS-111-HUMAN-RESEMBLANCE.md).
 
 ### E-02: artificial selection
 

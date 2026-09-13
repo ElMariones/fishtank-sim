@@ -10,8 +10,8 @@ export function downloadText(raw: string, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function SavePanel({ runtime, session, blocked, onSaved, onBusy }: {
-  runtime: Runtime; session: SaveSession | null; blocked: boolean; onSaved: () => void; onBusy: (busy: boolean) => void;
+export function SavePanel({ runtime, session, blocked, readOnly, onSaved, onBusy }: {
+  runtime: Runtime; session: SaveSession | null; blocked: boolean; readOnly: boolean; onSaved: () => void; onBusy: (busy: boolean) => void;
 }) {
   const [draft, setDraft] = useState('');
   const [preview, setPreview] = useState<Runtime | null>(null);
@@ -39,6 +39,7 @@ export function SavePanel({ runtime, session, blocked, onSaved, onBusy }: {
   return <section className="save-panel" aria-labelledby="save-title">
     <h2 id="save-title">Saves and recovery</h2>
     <p>Local sandbox · {runtime.world.fish.length.toLocaleString()} records · {runtime.world.fish.filter(f => f.status === 'living').length} living fish. Exports include identity, ancestry and recent command history. Goals and favorites remain on this device.</p>
+    {readOnly ? <p className="warning">Another tab holds the writer lock. This copy is read-only. Close the editing tab, then reload this one to take control.</p> : null}
     <div className="save-actions">
       <button onClick={() => downloadText(JSON.stringify(runtime), 'fishtank-save-v2.json')}>Export current world</button>
       <button onClick={() => {
@@ -48,7 +49,8 @@ export function SavePanel({ runtime, session, blocked, onSaved, onBusy }: {
           else downloadText(raw, 'fishtank-preserved-legacy.json');
         } catch { setMessage('Legacy browser storage cannot be read.'); }
       }}>Export preserved legacy save</button>
-      <button disabled={busy || !session} onClick={() => void commit(runtime, false)}>{blocked ? 'Save this session and preserve old data' : 'Retry save now'}</button>
+      <button disabled={busy || !session || readOnly} onClick={() => void commit(runtime, false)}>{blocked ? 'Save this session and preserve old data' : 'Retry save now'}</button>
+      {readOnly ? <button onClick={() => window.location.reload()}>Reload and try to take control</button> : null}
       <button disabled={busy || !session} onClick={async () => {
         try { setSlots(await readSlots(session!.database)); } catch { setMessage('Could not read backups. Your session can still be exported.'); }
       }}>Show recovery copies</button>
@@ -66,7 +68,7 @@ export function SavePanel({ runtime, session, blocked, onSaved, onBusy }: {
     {preview ? <div className="import-preview">
       <h3>Import preview</h3><p>{preview.world.fish.length.toLocaleString()} records · {preview.world.fish.filter(f => f.status === 'living').length} living · {preview.world.tanks.length} tanks · {preview.world.credits.toLocaleString()} credits</p>
       <p>This replaces the current world ({runtime.world.fish.length.toLocaleString()} records). Export this session first if it contains unsaved work.</p>
-      <button disabled={busy || !session} onClick={() => void commit(preview, true)}>Replace world with reviewed import</button>
+      <button disabled={busy || !session || readOnly} onClick={() => void commit(preview, true)}>Replace world with reviewed import</button>
       <button disabled={busy} onClick={() => setPreview(null)}>Cancel import</button>
     </div> : null}
     {slots ? <div><h3>Recovery copies</h3>{(['current', 'backup1', 'backup2'] as const).map(key => {

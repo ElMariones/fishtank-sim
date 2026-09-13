@@ -9,8 +9,8 @@
 FS-105 asks for a ten-generation selection report and a small resemblance study. This note separates three kinds of evidence:
 
 - **Automated and complete:** a seeded selection experiment (a reduced BALANCE E-02) and a computational observer for resemblance (an automated stand-in for E-01).
-- **Delivered, not yet used by people:** a blind in-app resemblance study that any observer can take and share.
-- **Not claimed:** human recognition of family resemblance. No observers have taken the study yet; that work is FS-111.
+- **Delivered and used:** a blind in-app resemblance study that any observer can take and share.
+- **Observed by people (FS-111):** five anonymous observers scored 54/60 overall, above chance in every mode; see [FS-111 human resemblance](FS-111-HUMAN-RESEMBLANCE.md).
 
 ## Selection experiment
 
@@ -67,7 +67,7 @@ On the 12 fixed human trials, the observer answers 4 of 4 correctly in every mod
 - **Recording:** each trial takes an answer and an optional cue note, and the last answer can be undone. Progress is stored on the device under `fishtank-sim.study.v1`.
 - **Display modes:** silhouette mode neutralises colour and hides markings. Markings mode draws every fish on the standard all-A2 body. Only display phenotypes change; the renderer does not.
 - **Results page:** per-mode accuracy with Wilson 95% intervals beside the computational observer, per-trial answers, and a JSON record to copy. It records no names, accounts or device details.
-- **Status:** verified with scripted answers, which were then cleared. **No human observer has taken it.** One person's 12 trials give wide intervals (6 of 12 correct spans 25–75%). FS-111 targets at least five observers (60 trials, 20 per mode), pooled from their copied records.
+- **Status:** verified with scripted answers, which were then cleared. Five real anonymous observer records are validated and pooled under FS-111: 54/60 overall, with full appearance 19/20, silhouette 20/20 and markings 15/20.
 
 ## Gate status
 
@@ -75,7 +75,7 @@ On the 12 fixed human trials, the observer answers 4 of 4 correctly in every mod
 |---|---|
 | Ten selected generations shift at least three descriptors beyond the typical range | **Passed:** 6 of 6 traits, 8 of 8 lines each |
 | Offspring stay finite, renderable and inspectable | Passed for 10 generations here; the 100-generation soak remains M7 (FS-702) |
-| People identify the correct parent pair more often than chance | **Not yet tested:** FS-111 |
+| People identify the correct parent pair more often than chance | **Passed (FS-111):** 54/60 across five observers; lowest per-mode 95% bound 53% (markings) |
 
 ## Reproduction
 

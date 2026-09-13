@@ -1,6 +1,6 @@
 # Testing and verification
 
-**Latest recorded run:** 13 September 2026 (M1 continuation and M2 foundation), Windows 11, Node 24.11.1, npm 11.6.2, Google Chrome 153.0.8010.36 via bundled Playwright. All tests use independent fixtures or fresh browser contexts; no user lineage is reset.
+**Latest recorded run:** 13 September 2026 (M2 completion review and FS-111 five-observer pool), Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium 152.0.7977.76 (Claude desktop browser pane). The earlier FS-202/205/206 run used Node 24.11.1, npm 11.6.2 and Google Chrome 153.0.8010.36 via bundled Playwright. Browser checks use independent fixtures, fresh browser contexts or the browser pane's own QA world; no user lineage is reset.
 
 ## 1. Commands
 
@@ -10,7 +10,7 @@ npm test
 npm run build
 ```
 
-Vitest runs every `tests/*.test.ts` file: `core.test.ts`, `anatomy.test.ts`, `pattern.test.ts`, `collection.test.ts`, `selection.test.ts` `resemblanceStudy.test.ts`, `limits.test.ts` and `runtime.test.ts`. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **53 tests**, and all passed. The production build passed.
+Vitest runs every `tests/*.test.ts` file. The M2 additions are `runtime.test.ts`, `time.test.ts`, `motionClient.test.ts` and `limits.test.ts`; `resemblancePool.test.ts` validates human records. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **63 tests**, and all passed. The production build passed.
 
 ## 2. Automated coverage
 
@@ -177,17 +177,52 @@ Environment: in-app Chromium pane. Desktop checks used an emulated 1280 × 800 v
 - Desktop 1440 px and mobile 375 × 812: no horizontal overflow with 200% root text, including genome and save views; measured mobile button/select/link/file targets at least 44 × 44 px; no page errors. The save status was moved out of the hidden mobile sidebar.
 - Reproduction writes local artifacts under ignored `.artifacts/`: `m2-browser-evidence.json` and `m2-mobile.png`. The human study was not answered or counted as evidence.
 
-Limitations: no physical power-loss test, Firefox/WebKit matrix, proactive writer lock, worker workload or offline integration yet. Current ticks sample command time; this does not age fish. Exports contain world/replay data; collection preferences remain device-local.
+Limitations from that foundation run were addressed by FS-202/205/206 below. Physical power-loss and Firefox/WebKit recovery remain untested. Exports contain world/replay data; collection preferences remain device-local.
+
+### FS-202/205/206 runtime completion verification
+
+**Commands:** `npm run check`; `node scripts/verify-runtime.cjs` against the local Vite server, with the same optional `PLAYWRIGHT_MODULE` and `FISHTANK_URL` environment variables as the earlier browser script.
+
+- Worker lifecycle: React StrictMode plus three Research → Return to aquarium remounts created 8 workers, terminated 7 and left exactly 1 active. Cleanup sends shutdown and calls terminate.
+- Recovery: an injected development diagnostic fault restarted once automatically. A second fault displayed “Aquarium motion is paused” and a **Restart aquarium motion** action; activating it recovered. No fish/world command is processed by this worker.
+- Workload: 200 synthetic fish × 100 all-pairs motion steps took **89.9 ms** inside the worker. A main-thread click scheduled during that work ran with **1.9 ms** added delay, below the 100 ms acceptance threshold.
+- Time: exact fine/coarse integration matched at tick 10,000 for both tanks. Bounded segments split at declared ticks with no gap or overlap. A nine-hour elapsed interval applied exactly **576,000 ticks** (eight hours at 20 Hz) and reported the remainder; a timestamp one hour ahead applied zero.
+- Writer ownership: a second same-origin tab loaded the current world with a read-only warning. Rename submission was rejected at the domain/UI boundary. After closing the writer, **Reload and try to take control** acquired the lock, and the rejected draft was absent.
+- No page errors. The final viewport screenshot and structured measurements are ignored artifacts at `.artifacts/m2-runtime.png` and `.artifacts/m2-runtime-evidence.json`.
+
+The worker benchmark isolates simulation responsiveness; it is not a 200-fish Canvas frame-rate claim. Save serialization and validation remain on the main thread. Offline time currently advances a clock only, because water, care and life-history state begin in M3.
+
+### M2 completion review and fixes
+
+**Commands:** `npm run check` (63 tests, strict TypeScript and production build passed). Playwright was not installed in this environment, so `scripts/verify-runtime.cjs` was not rerun. The same journeys ran in the in-app Chromium 152 browser pane against the local Vite server, in the pane's own QA world.
+
+A review before push found and fixed three problems:
+
+1. **New fish were invisible in the open tank.** The worker received the new entity IDs, but the canvas dropped every ID without an existing actor. Reproduced: breeding 20 into the visible Breeding Studio raised the count tag to 40 while the canvas still drew 20, and the selected fry had no outline. After the fix, breeding again took the tank from 40 to 60 fish on screen without a reload, and the selected new fish (Fry 87) showed its dashed outline and name label.
+2. **Hidden pages kept stepping motion.** The worker port had dropped the earlier `document.hidden` pause. A wrapped `Worker` counted 21 frames per second while visible, 0 while hidden and 20 after becoming visible again.
+3. **30-second clock checkpoints stalled large worlds.** A 10,000-record runtime (9,038,140 characters) took 48 ms to serialize and 412–490 ms per `decodeRuntime`. Each commit validates the new, current and backup snapshots, about 1.3 s of main-thread work. Idle checkpoints now run every five minutes (ADR-031), and commands still save immediately. The offline notice now reports minutes instead of thousands of seconds.
+
+Re-verification:
+
+- Worker lifecycle: three Research → Return to aquarium round trips created 6 workers and terminated 6 (StrictMode mounts twice in development); one remained active.
+- Faults: the first injected fault restarted automatically. The second showed "Aquarium motion is paused. Requested diagnostic worker fault." with **Restart aquarium motion**, and restarting resumed 20 frames per second. Totals stayed balanced at 8 created and 8 terminated.
+- Writer lock: a second tab loaded read-only; a rename was refused with "This tab is read-only"; Saves showed the writer-lock notice and **Reload and try to take control**. After the writer tab closed, that button made the second tab the writer ("Saved on this device"), and the refused draft was absent.
+- Offline: a `savedAt` nine hours old added exactly 576,000 ticks (191,933 → 767,933) with "8 hours of protected research time restored; the eight-hour offline cap was reached." Forty-five minutes added 54,001 ticks with "45 minutes of protected research time restored." A timestamp one hour ahead added zero ticks and no notice; `savedAt` was then reset to the current time.
+- No console errors were recorded.
+
+### FS-111 five-observer pool
+
+The user supplied five anonymous complete `study-v1-12x4` result records; the first was already pooled. `poolObserverRecords` validated unique observer IDs and all 12 unique trial IDs per record, then recomputed **54/60 overall**: full appearance 19/20 (Wilson 95% 76.4–99.1%), silhouette 20/20 (83.9–100%), markings 15/20 (53.1–88.8%), overall 90% (79.9–95.3%). Every mode's lower bound is above 50% chance. Per-trial agreement: ten trials 5/5, trial-7 (full) 4/5, trial-9 (markings) 0/5. Submitted score summaries matched the recomputed values. Response times were retained; no cue notes were present. `tests/resemblancePool.test.ts` pins the pool; details are in [FS-111 human resemblance](research/FS-111-HUMAN-RESEMBLANCE.md).
 
 ## 4. Required next verification
 
 ### Visual inheritance / FS-101–107, FS-111
 
-Human resemblance sessions (at least five observers through Research → Resemblance study), plus later screen-reader and cross-browser audits. The current keyboard/text/touch journeys passed. Do not assert a perceptual result from computational observers or allele counts.
+FS-111 pooled five observers (54/60). Before changing development v2 markings, a second seeded trial set with required cue notes should retest the markings channel, which every observer misread on trial-9. Screen-reader and cross-browser audits remain. The current keyboard/text/touch journeys passed. Do not assert a perceptual result from computational observers or allele counts.
 
 ### Runtime / M2
 
-Worker start/stop/restart, strict-mode mount cleanup, command idempotency, timestamp boundaries, active/background integration comparison, negative/offline clocks, bounded catch-up, failed save transactions, quota and multi-tab writers.
+M2’s local Chrome gate passed. Later verification still needs physical process/power interruption, Firefox/WebKit, long-run worker memory, save serialization off the UI thread and biological active/background/offline parity after M3 state exists.
 
 ### Aquarium / M3–4
 
