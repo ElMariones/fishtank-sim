@@ -1,6 +1,6 @@
 # FS-303 behavior and requested breeding improvements
 
-Recorded: 13 September 2026. Implementation verified; push pending.
+Recorded: 13 September 2026. FS-303, FS-114 and FS-115 DONE, pushed `e7aefc1`.
 
 ## Starting state
 
