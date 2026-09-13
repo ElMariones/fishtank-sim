@@ -20,7 +20,7 @@ M0 completion does not imply M1’s visual research gate has passed.
 
 | ID | Pri | Days | Role | Depends | Task and acceptance |
 |---|---|---:|---|---|---|
-| FS-101 | P0 | 1 | Genetics/rendering | FS-002 | Freeze descriptor/seed fixtures; generate a reproducible cohort report and six extreme genome cases |
+| FS-101 | DONE | 1 | Genetics/rendering | FS-002 | Freeze descriptor/seed fixtures; generate a reproducible cohort report and six extreme genome cases |
 | FS-102 | P0 | 2 | Rendering | FS-101 | Improve geometry anchors; no detached eyes/fins or clipped silhouettes at tested extremes |
 | FS-103 | P0 | 2 | Genetics/rendering | FS-101 | Add inherited low-frequency pattern structure; sibling markings share recognizable family properties |
 | FS-104 | P1 | 1 | UI | FS-003 | Cohort sorting and favorites; choose new parents without losing selected goal |
@@ -118,4 +118,4 @@ M8 total: 40–60 days. Provider costs and moderation operations require separat
 
 ## Suggested next-agent task
 
-Start with **FS-101**. Read the root AGENTS.md and implementation status. Create deterministic genotype/phenotype fixtures and a comparison view/report for the six founders, two crosses, and extreme body/head/eye/tail configurations. Preserve genome v1. Run core checks. Record what is actually visible and which expression ranges are weak. Do not start a shop, backend or genome-v2 migration during this task.
+FS-101 is complete and pushed. Continue with **FS-102**: improve geometry anchors against the frozen fixtures. Preserve the fixture signatures, genome v1, and renderer input contract; do not start a shop, backend or genome-v2 migration during this task.

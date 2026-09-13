@@ -1,6 +1,6 @@
 # Testing and verification
 
-**Latest recorded run:** 13 September 2026, Windows, Node 24.11.1, npm 11.6.2.
+**Latest recorded run:** 13 September 2026, Windows, Node 24.11.1, npm 11.6.2. FS-101 is pushed as `fe138d4`.
 
 ## 1. Commands
 
@@ -10,7 +10,7 @@ npm test
 npm run build
 ```
 
-Vitest runs tests/core.test.ts. Build first checks all app and test TypeScript under strict mode, then creates dist/. The current suite has **18 tests** and passed. The production build passed.
+Vitest runs tests/core.test.ts. Build first checks all app and test TypeScript under strict mode, then creates dist/. The current suite has **20 tests** and passed. The production build passed.
 
 ## 2. Automated coverage
 
@@ -33,6 +33,7 @@ Vitest runs tests/core.test.ts. Build first checks all app and test TypeScript u
 | NPC purchase | Funds deducted, new founder, immediate resale loses credits, insufficient funds rejected |
 | Save validation | Bad JSON, version, duplicates, IDs, tanks, cycles and allele bounds rejected |
 | Motion | Two 2,000-tick runs agree, positions remain finite and in bounds |
+| Visual fixtures | Founder/cohort/extreme signatures, 14 normalized descriptors, bounded measurements |
 
 These statistical checks use fixed seeds and wide tolerances to catch implementation regressions. They do not establish biological validity or rigorous randomness certification.
 
@@ -51,6 +52,14 @@ The agent-browser CLI was not installed, so the connected Codex browser was used
 - Checked responsive viewport at 390 × 844; document width did not exceed viewport; aquarium and core controls remained visible. Horizontal tank-selector scrolling is intentional.
 
 This is a representative smoke check. Export download, every genome cell, every browser engine, screen-reader behavior, and complete text-zoom accessibility have not been exhaustively verified.
+
+### FS-101 visual fixture verification
+
+- Opened **Visual fixtures** from the local lab without changing the device-local world (24 residents in The Koi Garden, 1 in Breeding Studio, 1,276 credits remained visible on return).
+- Confirmed six founders, two 20-child contact sheets, descriptor tables, and six extreme cases render as Canvas portraits.
+- Confirmed the default desktop viewport and 390 × 844 viewport had no horizontal overflow; 56 fixture canvases and no Vite error overlay were present.
+- Captured no browser `warn` or `error` logs.
+- Confirmed the report explicitly labels independent patch placement as a limitation and does not claim the M1 resemblance gate has passed.
 
 ## 4. Required next verification
 

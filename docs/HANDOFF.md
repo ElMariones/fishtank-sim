@@ -12,7 +12,7 @@ The user explicitly allowed modifying the concept. Major adjustments are documen
 
 - Remote: https://github.com/ElMariones/fishtank-sim.git
 - Local workspace used: C:/Users/mario/Desktop/PROYECTOS/Fishtank Sim
-- Remote was empty when cloned; source/documents are local and uncommitted at this handoff.
+- Remote was empty when cloned; the initial source/documents and FS-101 baseline are now pushed to `main` as `fe138d4`.
 - Node 24.11.1 and npm 11.6.2 verified.
 - npm cache is checkout-local through .npmrc.
 - No external accounts, database, secrets, deployment or env file required.
@@ -54,7 +54,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> Continue Fishtank Sim with task FS-101. Read AGENTS.md, docs/IMPLEMENTATION_STATUS.md, docs/GENETICS.md and docs/BACKLOG.md. Create a reproducible visual/phenotype fixture set for the six founders, two parent crosses with twenty children each, and six extreme body/head/eye/tail configurations. Keep genome v1, locus order, mutation semantics and saved fish identities stable. Produce a comparison surface or report with normalized descriptor measurements. Run the appropriate checks, inspect the results, and record weak visual inheritance and geometry problems as concrete follow-up tasks. Do not build the market/backend or migrate genome v2 in this task.
+> Continue Fishtank Sim with task FS-102. Read AGENTS.md, docs/IMPLEMENTATION_STATUS.md, docs/GENETICS.md, docs/research/FS-101-VISUAL-FIXTURES.md and docs/BACKLOG.md. Improve geometry anchors against the frozen FS-101 fixtures; no detached eyes/fins or clipped silhouettes at tested extremes. Keep genome v1, locus order, mutation semantics and saved fish identities stable. Run the appropriate checks, inspect the results, and preserve the fixture signatures. Do not build the market/backend or migrate genome v2 in this task.
 
 ## 7. Subsequent task briefs
 

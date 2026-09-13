@@ -18,5 +18,6 @@
 | ADR-014 | Bounded topology templates | Readable anatomy and safe geometry over unlimited mutations | Supported template validation expands |
 | ADR-015 | No real-money genetics economy in baseline | Not required for proving the game | Explicit future product decision |
 | ADR-016 | No public deployment or remote push in this handoff | User asked for design, planning and skeleton | Requested release/push action |
+| ADR-017 | Freeze visual fixtures in a pure core module and expose them through a report surface | Renderer changes need a reproducible before-state; keeping fixtures outside React preserves the phenotype contract and save identities | FS-102/103 replace renderer or pattern semantics after measured comparison |
 
 All decisions dated 13 September 2026. They are implementation guidance, not user-approval gates. Future agents may resolve routine details within the user’s authorized scope and record evidence-driven changes here.

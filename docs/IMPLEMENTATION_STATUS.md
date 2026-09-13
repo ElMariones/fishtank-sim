@@ -1,6 +1,6 @@
 # Implementation status
 
-**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab.
+**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab · **FS-101:** DONE and pushed (`fe138d4`).
 
 ## Delivered
 
@@ -19,13 +19,14 @@
 - Local NPC stock purchase, reviewed sale, bounded quote, and balance/ownership command checks.
 - Device-local autosave, versioned schema/reference validation, preserved invalid save fallback and JSON export.
 - Responsive desktop/phone layout, keyboard-accessible fish cards and reduced-motion initial pause.
-- 18 automated core tests; production build; browser verification of representative interactions.
+- FS-101 visual baseline: deterministic founder/cohort/extreme fixtures, normalized descriptor report, accessible comparison surface, and downloadable JSON report.
+- 20 automated core tests; production build; browser verification of representative interactions.
 
 ## Prototype shortcuts and limitations
 
 | Area | Current limitation | Next task(s) |
 |---|---|---|
-| Visual quality | Canvas reference art; silhouettes/patterns need resemblance studies; portrait is static | FS-101–107 |
+| Visual quality | Canvas reference art; silhouettes/patterns need resemblance studies; portrait is static | FS-102–107 |
 | Pattern inheritance | Parameters inherited, per-birth patch positions independent; symmetry is a spread proxy | FS-103 |
 | Life stages | All fish display adult potential immediately; no aging, growth, hunger, health, death or lifespan integration | FS-302 |
 | Behavior | No true feeding consumption, courtship, territorial utility, shelter use or learned memory | FS-303 |
@@ -61,4 +62,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**FS-101: freeze phenotype and visual fixtures.** Follow the proposed task in [HANDOFF.md](HANDOFF.md). The lab is a starting point for testing whether the fish are visibly related, not evidence that the design’s hardest visual problem is solved.
+**FS-102: improve geometry anchors against the frozen fixture set.** The lab now has a reproducible visual baseline, but it is not evidence that the design’s hardest visual problem is solved.

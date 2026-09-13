@@ -64,4 +64,4 @@ The next major work is visual inheritance research, followed by a persistent sim
 
 ## Repository status
 
-Created in a clone of [ElMariones/fishtank-sim](https://github.com/ElMariones/fishtank-sim), which was empty at the start of this work. Files are local; no remote push or public deployment was performed. No license has been selected; do not infer a public reuse license from repository visibility.
+Created in a clone of [ElMariones/fishtank-sim](https://github.com/ElMariones/fishtank-sim), which was empty at the start of this work. The initial lab and FS-101 visual-fixture baseline were pushed to `main` as `fe138d4`; no public deployment was performed. No license has been selected; do not infer a public reuse license from repository visibility.
