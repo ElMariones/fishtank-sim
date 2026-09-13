@@ -74,6 +74,8 @@ The current lab shows all 48 loci and marks new mutations with an asterisk. Carr
 
 **Comparison layout:** pinned parents above a offspring grid; selectable descriptor sort; a few measured traits beside each portrait; name/ID and sex; favorite action; selected count. Keep the same portrait framing/age preview for fair comparisons.
 
+**Lab implementation (FS-104):** a breeding goal (any visible descriptor, higher or lower) persists on the device. It ranks the collection, shows each fish's goal value on its card, in the parent pickers and in the inspector, and offers one goal leader per sex that sets a parent without clearing the goal. Cards have a ☆ favorite toggle and the collection has a Favorites filter. A Parents filter narrows the view to the offspring of one parent pair (all of that pair's clutches) and pins both parents above the grid with their goal values. Breeding switches the view to that pair's offspring. Goal values are normalized adult genetic potential, not current size, and leaders are a convenience for the declared goal rather than a universal best match.
+
 **Blocked cases:** same fish; wrong reproductive role; underage; archived/listed parent; unhealthy/unready parent; different breeding habitat; nursery full; pending clutch cap; stale world version. Messages say what can change.
 
 **Probability language:** “Estimated from 1,024 simulated offspring” versus “25% at this single locus.” Never imply the actual committed clutch will contain exactly the predicted percentage.

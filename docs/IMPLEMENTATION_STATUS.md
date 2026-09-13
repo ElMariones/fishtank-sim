@@ -1,6 +1,6 @@
 # Implementation status
 
-**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab · **M1:** FS-101 DONE (`fe138d4`); FS-102 DONE (`b0fd927`); FS-103 DONE (`bf4598b`); FS-104–107 open. User requests FS-108/FS-109 DONE (`621a3cb`) and FS-110 DONE (`c467a26`).
+**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab · **M1:** FS-101 DONE (`fe138d4`); FS-102 DONE (`b0fd927`); FS-103 DONE (`bf4598b`); FS-104 implemented, see the backlog for push status; FS-105–107 open. User requests FS-108/FS-109 DONE (`621a3cb`) and FS-110 DONE (`c467a26`).
 
 ## Delivered
 
@@ -22,10 +22,11 @@
 - FS-101 visual baseline: deterministic founder/cohort/extreme fixtures, normalized descriptor report, accessible comparison surface, and downloadable JSON report.
 - FS-102 anatomy v2: pure outline/anchor/bounds module shared by tank and portraits; eyes, fin roots, rays, gill and mouth attached to the measured outline; listed eye constraints; six anatomy stress fixtures; clipping-free fitted and shared-scale portraits; fish-shaped tank picking. See [FS-102 anatomy anchors](research/FS-102-ANATOMY-ANCHORS.md).
 - FS-103 development v2 inherited markings: marking anchors from phased Pigments/Pattern haplotype blocks, birth-seed jitter only, renderer v3 body-space markings, an inspector list of each fish's marking blocks and their parental copy, and a seeded resemblance study (sibling separation 52% → 73%). See [FS-103 inherited markings](research/FS-103-INHERITED-MARKINGS.md).
+- FS-104 collection comparison: a device-local breeding goal (any visible descriptor, higher or lower) ranks the collection and shows goal values on cards, parent pickers and the inspector. One goal leader per sex sets a parent without clearing the goal. ☆ favorites with a Favorites filter; a Parents filter with both parents pinned above the grid; breeding switches to that pair's offspring. Preferences are validated and stored apart from the world save (ADR-020).
 - FS-108 (user request): larger colour-coded sex symbols (pink ♀, blue ♂) with visible or hidden text, on collection cards, the inspector, relatives, the batch review and parent pickers.
 - FS-109 (user request): multi-select residents with shift-click ranges, select all and clear, a reviewed batch sale showing names, quotes and total, and one atomic `sell-batch` command.
 - FS-110 (user request): All / ♀ Females / ♂ Males filter buttons with live counts in the resident and archive collection views; changing the filter clears batch selection. Browser evidence in [TESTING.md](TESTING.md#fs-110-sex-filter-verification).
-- 32 automated tests (core, anatomy and pattern); production build; browser verification of representative interactions.
+- 36 automated tests (core, anatomy, pattern and collection); production build; browser verification of representative interactions.
 
 ## Prototype shortcuts and limitations
 
@@ -34,6 +35,7 @@
 | Visual quality | Canvas reference art; anatomy attachment and computed marking resemblance are measured, but no person has judged resemblance; portrait is static | FS-105–107 |
 | Anatomy limits | An eye that cannot fit a shallow head is drawn smaller (adjustment listed); no protruding eyes or extra structures | FS-601–602 |
 | Pattern inheritance | Placement inherited from haplotype blocks (73% sibling separation, computed); common haplotypes are shared by chance; ellipse shapes; symmetry is a spread proxy, not bilateral matching | FS-105 |
+| Collection preferences | Goal, sort and favorites are device-local and not in exported saves; filters and parent picks reset on reload; the Parents filter groups every clutch of a pair | FS-203–204 |
 | Life stages | All fish display adult potential immediately; no aging, growth, hunger, health, death or lifespan integration | FS-302 |
 | Behavior | No true feeding consumption, courtship, territorial utility, shelter use or learned memory | FS-303 |
 | Curiosity/life-history genes | Some outputs are computed or displayed only; do not affect lifecycle | FS-302–303 |
@@ -58,16 +60,24 @@
 
 ## Evidence
 
-**FS-103, 13 September 2026, Windows 11, Node 22.18.0, npm 10.9.3:**
+**FS-104, 13 September 2026, Windows 11, Node 22.18.0, npm 10.9.3:**
 
-- npm test: **32 tests passed** (21 core, 5 anatomy, 6 pattern); strict typecheck passed.
+- npm test: **36 tests passed** (21 core, 5 anatomy, 6 pattern, 4 collection); strict typecheck and production build passed.
+- Browser (in-app Chromium pane, its own device-local world). Choosing **Tail length** switched the sort to the goal, numbered cards #1 onward, and ordered goal chips from 49% down to 6%. Leaders showed ♀ Kohaku 49% and ♂ Momo 35%. Choosing Kohaku set the mother picker to "♀ Kohaku · G0 · 49%" with the notice "Your breeding goal is unchanged."
+- Starring two cards gave "★ Favorites 2", and that filter showed 2 fish. **Parents: Haru × Sumi · 15** showed 15 fish with Haru and Sumi pinned (tail length 15% and 23%). Preferences were stored under `fishtank-sim.lab.v1.preferences`.
+- After a reload the goal, direction, sort and both favorites persisted; filters and parent picks reset by design. Breeding then switched to "Haru × Sumi · 35" (the pair's 15 earlier plus 20 new offspring), ranked by tail length. No new console errors.
+
+**FS-103, same environment:**
+
+- npm test: 32 tests passed (21 core, 5 anatomy, 6 pattern); strict typecheck passed.
 - Seeded study, 24 families × 10 children: sibling separation 52.4% (independent placement) → 72.7% (inherited anchors); parent separation 53.3% → 71.9%; sibling overlap 21.1% → 41.8% against unrelated 19.3% → 28.9%. Replication at 60 × 12: 52.8% → 72.3%. FS-101 cohorts: 50.5% → 82.2%.
 - Browser (in-app Chromium pane): Visual fixtures reports development v2 · anatomy v2 · renderer v3, "73% sibling marking separation" and the same two tables. Opening it added no console errors.
 
-**FS-108/FS-109, same environment:**
+**FS-108/FS-109/FS-110, same environment:**
 
-- npm test: 26 tests passed; npm run build passed.
-- Browser (in-app Chromium pane, its own device-local test world): bred Haru × Sumi to 26 residents. Sex symbols computed pink `rgb(255, 140, 198)` and blue `rgb(109, 185, 255)` at 21.6 px. Ticking Fry 7 and shift-ticking Fry 11 selected exactly five fish (◈ 401). The review listed their names, IDs, generations and quotes. Confirming raised credits 1,200 → 1,601 and residents 26 → 21 (sidebar 21 / 60), then cleared the selection and closed the review. The archive listed the five sold fish without checkboxes. No new console errors. At 375 × 812: no horizontal overflow, 40 px tall checkbox rows, inspector shows "♀ Female".
+- npm test: 26 tests passed at FS-109; npm run build passed.
+- Browser (in-app Chromium pane, its own device-local test world): bred Haru × Sumi to 26 residents. Sex symbols computed pink `rgb(255, 140, 198)` and blue `rgb(109, 185, 255)` at 21.6 px. Ticking Fry 7 and shift-ticking Fry 11 selected exactly five fish (◈ 401). The review listed their names, IDs, generations and quotes. Confirming raised credits 1,200 → 1,601 and residents 26 → 21 (sidebar 21 / 60), then cleared the selection and closed the review. The archive listed the five sold fish without checkboxes. At 375 × 812: no horizontal overflow, 40 px tall checkbox rows, inspector shows "♀ Female".
+- The sex filter showed 9 females and 12 males, cleared a ticked selection when changed, and applied in the archive (1 male of 5).
 
 **FS-102, same environment:**
 
@@ -81,4 +91,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**User request FS-110 (collection sex filter), then FS-104: cohort sorting and favorites.** FS-105 then needs both inherited markings and the comparison tools before running the selection report and resemblance study.
+**FS-105: ten-generation selection report and small resemblance study.** Anatomy, inherited markings and comparison tools are in place. Selection response and computed resemblance can be measured automatically; human recognition needs real observers and must not be claimed from computation alone.

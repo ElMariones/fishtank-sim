@@ -1,34 +1,17 @@
 import { anatomyFor, insideBody, portraitFrame, silhouettePoints, validateAnatomy } from './anatomy';
 import { LOCI, MODEL_VERSIONS, type Locus } from './catalog';
+import { measureDescriptors, VISUAL_DESCRIPTORS, type NormalizedVisualDescriptors, type VisualDescriptorKey } from './descriptors';
 import { express, fingerprint, founderGenome, inherit } from './genetics';
 import { markingMask, maskSimilarity, separation, type PatternModel } from './patternResemblance';
-import { clamp, hash, random } from './random';
+import { hash, random } from './random';
 import type { Genome, Phenotype } from './types';
 import { createWorld } from './world';
+
+export { measureDescriptors, VISUAL_DESCRIPTORS, type NormalizedVisualDescriptors, type VisualDescriptorKey } from './descriptors';
 
 export const VISUAL_FIXTURE_VERSION = 1;
 export const VISUAL_FIXTURE_TIMESTAMP = '2026-09-13T12:00:00.000Z';
 export const VISUAL_FIXTURE_WORLD_SEED = 481516;
-
-export const VISUAL_DESCRIPTORS = [
-  { key: 'length', label: 'Body length', min: 0.7, max: 1.6 },
-  { key: 'depth', label: 'Body depth', min: 0.12, max: 0.6 },
-  { key: 'head', label: 'Head size', min: 0.13, max: 0.44 },
-  { key: 'snout', label: 'Snout length', min: 0.015, max: 0.135 },
-  { key: 'eye', label: 'Eye size', min: 0.015, max: 0.06 },
-  { key: 'tail', label: 'Tail length', min: 0.091, max: 1.026 },
-  { key: 'spread', label: 'Tail spread', min: 0.12, max: 0.54 },
-  { key: 'fork', label: 'Tail fork', min: 0, max: 0.75 },
-  { key: 'dorsal', label: 'Dorsal height', min: 0.02275, max: 0.37125 },
-  { key: 'pectoral', label: 'Pectoral length', min: 0.039, max: 0.432 },
-  { key: 'red', label: 'Warm pigment', min: 0, max: 1 },
-  { key: 'black', label: 'Dark pigment', min: 0, max: 1 },
-  { key: 'frequency', label: 'Pattern count', min: 3, max: 16 },
-  { key: 'patternScale', label: 'Pattern scale', min: 0.05, max: 0.2 },
-] as const;
-
-export type VisualDescriptorKey = typeof VISUAL_DESCRIPTORS[number]['key'];
-export type NormalizedVisualDescriptors = Record<VisualDescriptorKey, number>;
 
 export type VisualFixtureSubject = {
   id: string;
@@ -62,13 +45,6 @@ export type VisualCohortFixture = {
 };
 
 const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1);
-
-export function measureDescriptors(phenotype: Phenotype): NormalizedVisualDescriptors {
-  return Object.fromEntries(VISUAL_DESCRIPTORS.map(({ key, min, max }) => [
-    key,
-    clamp((phenotype[key] - min) / (max - min)),
-  ])) as NormalizedVisualDescriptors;
-}
 
 function subject(
   id: string,

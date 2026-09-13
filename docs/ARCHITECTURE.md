@@ -16,6 +16,8 @@ src/
     anatomy.ts      Anatomy v2: phenotype → body-space outline, anchors, bounds, validation, framing
     pattern.ts      Development v2 marking anchors from phased haplotype blocks; seeded placement in body coordinates
     patternResemblance.ts Standard-body marking masks, overlap/separation metrics and seeded family study
+    descriptors.ts  Fourteen visible descriptors normalized against development ranges
+    collection.ts   Device-local collection preferences, goal ranking, sorting, cohorts and goal leaders
     pedigree.ts     Exact tabular relationship matrix for the bounded lab
     world.ts        Validated world commands and local NPC transactions
     save.ts         Versioned save schema and reference validation
@@ -36,6 +38,7 @@ tests/
   core.test.ts     Genetics, pedigree, commands, saves, motion, FS-101 fixture pins
   anatomy.test.ts  Anatomy attachment sweep, framing without clipping, picking transform
   pattern.test.ts  Marking block derivation, transmission, placement jitter and resemblance thresholds
+  collection.test.ts Preference validation, collection ordering, cohorts and goal leaders
 ```
 
 Core modules import neither React nor browser globals. The Canvas renderer receives a phenotype, seed, size and animation time; it obtains geometry from the pure anatomy module, so tests validate the same eye, fin and tail anchors that are drawn and the tank uses one pose transform for drawing and picking. Motion has its own actors and reads genetic movement parameters. The app owns persisted entities and selected UI state.

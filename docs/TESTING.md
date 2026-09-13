@@ -1,6 +1,6 @@
 # Testing and verification
 
-**Latest recorded run:** 13 September 2026 (FS-103), Windows 11, Node 22.18.0, npm 10.9.3. FS-101 runs used Node 24.11.1 and npm 11.6.2; FS-101 is pushed as `fe138d4`.
+**Latest recorded run:** 13 September 2026 (FS-104), Windows 11, Node 22.18.0, npm 10.9.3. FS-101 runs used Node 24.11.1 and npm 11.6.2; FS-101 is pushed as `fe138d4`.
 
 ## 1. Commands
 
@@ -10,7 +10,7 @@ npm test
 npm run build
 ```
 
-Vitest runs every `tests/*.test.ts` file: `core.test.ts`, `anatomy.test.ts` and `pattern.test.ts`. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **32 tests**, and all passed. The production build passed.
+Vitest runs every `tests/*.test.ts` file: `core.test.ts`, `anatomy.test.ts`, `pattern.test.ts` and `collection.test.ts`. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **36 tests**, and all passed. The production build passed.
 
 ## 2. Automated coverage
 
@@ -44,6 +44,9 @@ Vitest runs every `tests/*.test.ts` file: `core.test.ts`, `anatomy.test.ts` and 
 | Marking placement | Deterministic and finite; body coordinates in range; a different birth seed moves a patch by at most 0.06 along and 0.16 across the body |
 | Pattern resemblance | 24 × 10 seeded families: inherited sibling separation above 68% and at least 15 points above independent placement (which stays below 58%); parent separation above 66%; FS-101 cohorts above 75% versus independent below 60% |
 | Resemblance metrics | Jaccard overlap and rank separation reference cases, including ties and empty masks |
+| Collection preferences | Valid preferences round-trip; duplicate and unknown favorites are dropped; missing, malformed, future-version, unknown-descriptor, unknown-sort and non-ID favorites fall back to defaults; the storage key differs from the world save |
+| Collection ordering | Newest, oldest, name and goal (higher and lower) orders; goal values equal normalized descriptors; a goal sort without a goal falls back to newest; input not mutated |
+| Cohorts and goal leaders | Offspring grouped by parent pair, newest cohort first; leaders are the best living female and male for the goal; a sold leader is replaced |
 
 These statistical checks use fixed seeds and wide tolerances to catch implementation regressions. They do not establish biological validity or rigorous randomness certification.
 
@@ -112,6 +115,19 @@ Environment: local Vite dev server, in-app Chromium browser pane, the pane's own
 - **View archive** kept the Males filter: "Archived fish 1", counts All 5 · Females 4 · Males 1, and the card was male.
 - **Show residents** then **All** restored 21 fish.
 - Typecheck and 32 tests passed. One console error, `sexFilter is not defined`, came from Fast Refresh loading an intermediate edit; after a fresh reload the error count did not change.
+
+### FS-104 goal, favorites and cohort verification
+
+Environment: local Vite dev server, in-app Chromium browser pane, the pane's own device-local world.
+
+- **Breeding goal → Tail length** switched **Sort** to the goal, labelled the first cards "G0 · #1", "#2", "#3", and ordered the 21 goal chips from 49% down to 6%.
+- Goal leaders read "♀ Kohaku 49%" and "♂ Momo 35%". Choosing Kohaku set the mother picker to "♀ Kohaku · G0 · 49%"; the goal stayed "tail" and the notice read "Kohaku selected as mother. Your breeding goal is unchanged."
+- Starring the first two cards gave "★ Favorites 2"; pressing it showed "Your collection 2".
+- **Parents → Haru × Sumi · 15** showed 15 fish and pinned Haru ("Mother · G0 · Tail length 15%") and Sumi ("Father · G0 · Tail length 23%").
+- `fishtank-sim.lab.v1.preferences` held `{ version: 1, goal: tail/higher, sort: goal, favorites: [FSH-000003, FSH-000006] }`.
+- After reload: goal, **Higher ↑**, goal sort and both stars persisted; the Parents filter and parent pickers had reset.
+- **Breed** (Haru × Sumi after the reset) switched the Parents filter to "Haru × Sumi · 35", kept the goal sort, and pinned both parents. The notice then said "new cohort" although the view held all of the pair's offspring; the wording was corrected to "Showing all offspring of … × …".
+- Production build passed; console error count did not change.
 
 ## 4. Required next verification
 
