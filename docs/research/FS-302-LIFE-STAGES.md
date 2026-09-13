@@ -1,6 +1,6 @@
 # FS-302 life stages and accumulated growth
 
-**Recorded:** 13 September 2026  
+**Recorded:** 13 September 2026 · **Status:** DONE, pushed `5821f46`  
 **Models:** world save v3 · life model v1 · water model v1 · genome v2 · development v3 · renderer v4
 
 ## Scope

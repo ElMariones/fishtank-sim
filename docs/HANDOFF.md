@@ -63,7 +63,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> FS-301 (`4f61d8b`) is complete. Continue with FS-302. Read the FS-301 water model report, genetics §9, balance and the M3 backlog. Integrate development through `advanceRuntime` on absolute game-day boundaries using basic arithmetic. Bump the world version with a checkpoint rebase, and show current size separately from genetic potential. Do not make visual motion speed alter persistent biology. M1 FS-111 pooled five observers (54/60); the unanimously missed markings trial-9 is a follow-up, not a blocker.
+> FS-302 (`5821f46`) is complete. Continue with FS-303. Read GDD §8, architecture §7 and the FS-202 and FS-302 reports. Keep behavior in the motion worker as transient visual state, and separate desire selection from steering. Expose each fish's current state and reason to the inspector. Behavior must not be saved or change biology, and visual motion speed must not alter persistent biology. M1 FS-111 pooled five observers (54/60); the unanimously missed markings trial-9 is a follow-up, not a blocker.
 
 ## 7. Subsequent task briefs
 

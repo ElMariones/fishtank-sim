@@ -1,6 +1,6 @@
 # Implementation status
 
-**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 has started: FS-301 (water model) is DONE (`4f61d8b`), and FS-302 (life stages and growth) is verified and awaiting push.
+**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`) and FS-302 (life stages and growth, `5821f46`) are DONE.
 
 ## Delivered
 
@@ -124,4 +124,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**Push and mark FS-302 DONE, then continue M3 with FS-303 utility behavior.**
+**Continue M3 with FS-303 utility behavior.**

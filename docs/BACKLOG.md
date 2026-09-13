@@ -53,7 +53,7 @@ FS-108 to FS-110 were requested during M1, and FS-113 after M2; all are outside 
 | ID | Pri | Days | Role | Depends | Task and acceptance |
 |---|---|---:|---|---|---|
 | FS-301 | DONE | 3 | Simulation | FS-205 | Unit-aware water/oxygen/waste model; zero/overload/recovery conservation fixtures. Pushed `4f61d8b`; evidence in [FS-301 water model](research/FS-301-WATER-MODEL.md) |
-| FS-302 | IN PROGRESS | 3 | Development | FS-301 | Eggs/fry/juvenile/adult stages and accumulated growth; same genome develops differently under declared conditions. Verified, awaiting push; evidence in [FS-302 life stages](research/FS-302-LIFE-STAGES.md) |
+| FS-302 | DONE | 3 | Development | FS-301 | Eggs/fry/juvenile/adult stages and accumulated growth; same genome develops differently under declared conditions. Pushed `5821f46`; evidence in [FS-302 life stages](research/FS-302-LIFE-STAGES.md) |
 | FS-303 | P0 | 4 | Behavior | FS-202 FS-301 | Utility AI with inspectable reasons; cruise/forage/eat/hide/school transitions work |
 | FS-304 | P1 | 2 | Spatial/runtime | FS-303 | Spatial hash and shelter/obstacle footprints; fish avoid geometry without all-pairs scaling |
 | FS-305 | P0 | 3 | UI/simulation | FS-301 FS-302 | Feeding/equipment/water controls with cost/effect previews; care warnings identify corrective actions |
@@ -127,4 +127,4 @@ M8 total: 40–60 days. Provider costs and moderation operations require separat
 
 ## Suggested next-agent task
 
-M1's roadmap gate, M2 (`6a69695`), the FS-113 appearance request (`2436fbf`) and the FS-301 water model (`4f61d8b`) are pushed. Continue M3 with FS-302: life stages and accumulated growth under declared water conditions. Health decay and feeding effects stay with FS-305.
+M1's roadmap gate, M2 (`6a69695`), the FS-113 appearance request (`2436fbf`), the FS-301 water model (`4f61d8b`) and FS-302 life stages (`5821f46`) are pushed. Continue M3 with FS-303: utility behavior with inspectable reasons. Health decay and feeding effects stay with FS-305.
