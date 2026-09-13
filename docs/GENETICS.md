@@ -157,8 +157,8 @@ For an additive locus, n = (maternal allele ID + paternal allele ID) / 10. Below
 | 6 | size_1 | 45% contribution to size potential | Potential |
 | 6 | growth_rate | 0.5–1.5 growth multiplier | Potential only |
 | 6 | longevity | 8–32 game-year potential | Potential only |
-| 6 | metabolism | 0.6–1.6 demand multiplier | Potential only |
-| 6 | oxygen_demand | Size- and tail-dependent oxygen demand proxy | Potential only |
+| 6 | metabolism | 0.6–1.6 demand multiplier | Water load (FS-301): respiration and excretion |
+| 6 | oxygen_demand | Size- and tail-dependent oxygen demand proxy | Water load (FS-301): respiration |
 | 6 | fertility | 0.3–0.9 potential | Potential only; lab births fixed at 20 |
 | 7 | thrust | Base normalized speed 0.035–0.090 before drag | Motion |
 | 7 | turning | Steering multiplier 0.7–2.1 | Motion |

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { describeAppearance } from '../core/appearance';
+import { advanceWorld, stocking, tankLoad } from '../core/habitat';
+import { waterStatus } from '../core/water';
 import { ALL_LOCI, CHROMOSOMES, GENOME_VERSION, label } from '../core/catalog';
 import {
   cohortsOf, decodePreferences, goalLeaders, goalValue, PREFERENCES_KEY, sortCollection, toggleFavorite, type BreedingGoal, type CollectionSort,
@@ -32,6 +34,27 @@ function readPreferences(world: World) {
   let raw: string | null = null;
   try { raw = localStorage.getItem(PREFERENCES_KEY); } catch { /* Preferences are optional. */ }
   return decodePreferences(raw, new Set(world.fish.map(f => f.id)));
+}
+
+/** Read-only water readout (FS-301). It previews the shared clock up to now without saving; care controls arrive in FS-305. */
+function WaterStatus({ world, tick, origin, tankId }: { world: World; tick: number; origin: { time: number; tick: number }; tankId: string }) {
+  const [now, setNow] = useState(() => performance.now());
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(performance.now()), 5_000);
+    return () => window.clearInterval(interval);
+  }, []);
+  const liveTick = Math.max(tick, origin.tick + Math.floor((now - origin.time) / TICK_MS));
+  const tank = useMemo(() => advanceWorld(world, tick, liveTick).tanks.find(t => t.id === tankId), [world, tick, liveTick, tankId]);
+  const load = useMemo(() => tankLoad(world.fish, tankId), [world.fish, tankId]);
+  // A hot-reloaded session can still hold a pre-water world in memory; decoded worlds always carry water.
+  if (!tank?.water) return null;
+  const status = waterStatus(tank.water), stock = stocking(load, tank.water);
+  return <div className="water-status" role="group" aria-label="Water model">
+    <span className={`water-chip ${status.oxygen}`} title={`${tank.water.oxygenMgL.toFixed(1)} mg/L dissolved oxygen`}>Oxygen {status.oxygen}</span>
+    <span className={`water-chip ${status.ammonia}`} title={`${tank.water.ammoniaMgL.toFixed(2)} mg/L ammonia nitrogen`}>Ammonia {status.ammonia}</span>
+    <span className={`water-chip ${stock.level}`} title={`${load.biomassKg.toFixed(0)} kg of fish in ${(tank.water.volumeL / 1000).toFixed(0)} m³ of water`}>Stocking {stock.level}</span>
+    <small>Water model v1 · fish are not affected yet; care controls come later</small>
+  </div>;
 }
 
 export function App({ initial }: { initial: LoadedSession }) {
@@ -236,6 +259,7 @@ export function App({ initial }: { initial: LoadedSession }) {
       <main>
         {saveError && saveError !== 'Saving…' ? <p className="warning" role="alert">{saveError}</p> : null}
         <div className="tank-heading"><div><div className="eyebrow">AQUARIUM / {String(world.tanks.indexOf(tank) + 1).padStart(2, '0')}</div><h1>{tank.name}</h1></div><span className="count-tag">{residents.length} inhabitants</span></div>
+        <WaterStatus world={world} tick={runtime.tick} origin={clockOrigin.current} tankId={tank.id} />
         <section className="aquarium" aria-label="Live aquarium">
           <TankCanvas fish={residents} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={speed} feedSignal={feedSignal} />
           <div className="tank-overlay"><span>{paused ? 'PAUSED' : 'LIVE AQUARIUM'}</span><span>{tank.planted ? 'Planted habitat' : 'Open water'}</span></div>

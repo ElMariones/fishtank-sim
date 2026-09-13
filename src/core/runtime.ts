@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { advanceWorld } from './habitat';
 import { decodeSave } from './save';
 import { applyCommand, commandSchema, type Command } from './world';
 import type { World } from './types';
@@ -30,13 +31,16 @@ export function createRuntime(world: World, worldId: string): Runtime {
     simulation: { version: 1, tankTicks: Object.fromEntries(world.tanks.map(tank => [tank.id, 0])) } };
 }
 
-/** Visible and background tanks use this same tick integration. No biology is applied until M3 defines it. */
+/**
+ * Visible and background tanks use this same tick integration. Water advances through fixed absolute steps, so fine,
+ * coarse, background and offline advances agree exactly. Fish biology stays inactive until its M3 contracts exist.
+ */
 export function advanceRuntime(runtime: Runtime, targetTick: number, eventTicks: readonly number[] = []): Runtime {
   const segments = timelineSegments(runtime.tick, targetTick, eventTicks);
   if (!segments.length) return runtime;
   const tankTicks = { ...runtime.simulation.tankTicks };
   for (const tank of runtime.world.tanks) tankTicks[tank.id] = (tankTicks[tank.id] ?? runtime.tick) + (targetTick - runtime.tick);
-  return { ...runtime, tick: targetTick, simulation: { version: 1, tankTicks } };
+  return { ...runtime, world: advanceWorld(runtime.world, runtime.tick, targetTick), tick: targetTick, simulation: { version: 1, tankTicks } };
 }
 
 export function applyOfflineCatchup(runtime: Runtime, savedAtMs: number, nowMs: number): { runtime: Runtime; window: OfflineWindow } {
@@ -85,10 +89,15 @@ const runtimeSchema = z.object({
   simulation: z.object({ version: z.literal(1), tankTicks: z.record(z.string().max(50), integer) }).strict().optional(),
 }).strict();
 
-/** Validate both snapshot and replay, including IDs, order, model versions and resulting world. */
+/**
+ * Validate both snapshot and replay, including IDs, order, model versions and resulting world. Replay advances to the
+ * snapshot tick, so water integrated by clock checkpoints must agree as well. A world v1 snapshot predates water: its
+ * tanks start with default water at the snapshot, and the journal folds into a new checkpoint there.
+ */
 export function decodeRuntime(raw: string): Runtime {
   if (raw.length > MAX_SAVE_CHARACTERS) throw new Error('Save exceeds the import size limit.');
   const parsed = runtimeSchema.parse(JSON.parse(raw));
+  const legacyWorld = (parsed.world as { version?: unknown } | null)?.version === 1;
   const checkpoint = { ...parsed.checkpoint, world: decodeSave(JSON.stringify(parsed.checkpoint.world)) };
   let replayed: Runtime = { ...createRuntime(checkpoint.world, parsed.worldId), ...checkpoint, checkpoint };
   for (const event of parsed.events) {
@@ -96,13 +105,22 @@ export function decodeRuntime(raw: string): Runtime {
     replayed = executeCommand(replayed, event.command);
   }
   const world = decodeSave(JSON.stringify(parsed.world));
-  if (replayed.revision !== parsed.revision || replayed.tick > parsed.tick || JSON.stringify(decodeSave(JSON.stringify(replayed.world))) !== JSON.stringify(world))
-    throw new Error('Save snapshot does not agree with its replay journal.');
+  const mismatch = new Error('Save snapshot does not agree with its replay journal.');
+  if (replayed.revision !== parsed.revision || replayed.tick > parsed.tick) throw mismatch;
+  replayed = advanceRuntime(replayed, parsed.tick);
+  const comparable = (candidate: World) => JSON.stringify(legacyWorld ? withoutWater(candidate) : candidate);
+  if (comparable(decodeSave(JSON.stringify(replayed.world))) !== comparable(world)) throw mismatch;
   const simulation = parsed.simulation ?? { version: 1 as const, tankTicks: Object.fromEntries(world.tanks.map(tank => [tank.id, parsed.tick])) };
   const tankIds = new Set(world.tanks.map(tank => tank.id));
   if (Object.keys(simulation.tankTicks).length !== tankIds.size || Object.entries(simulation.tankTicks).some(([id, tick]) => !tankIds.has(id) || tick !== parsed.tick))
     throw new Error('Simulation clocks do not agree with the world tick.');
+  if (legacyWorld) return { ...replayed, world, tick: parsed.tick, simulation, checkpoint: { world, tick: parsed.tick, revision: parsed.revision }, events: [] };
   return { ...replayed, world, tick: parsed.tick, simulation };
+}
+
+/** The world v1 projection compared for pre-water snapshots. */
+function withoutWater(world: World) {
+  return { ...world, tanks: world.tanks.map(tank => ({ id: tank.id, name: tank.name, capacity: tank.capacity, planted: tank.planted })) };
 }
 
 /** Legacy v1 records retain their exact identity, genome, seed and parent links. */

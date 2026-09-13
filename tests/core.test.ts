@@ -210,7 +210,7 @@ describe('world commands and persistence', () => {
   it('rejects malformed saves, duplicate IDs, missing tanks, cycles and invalid alleles', () => {
     const world = applyCommand(createWorld(NOW), cross);
     const invalid = [
-      { ...world, version: 2 },
+      { ...world, version: 3 },
       { ...world, nextId: 1 },
       { ...world, fish: [...world.fish, world.fish[0]] },
       { ...world, tanks: [] },

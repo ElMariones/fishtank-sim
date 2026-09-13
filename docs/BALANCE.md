@@ -24,6 +24,25 @@ All planned values below are game hypotheses. They are not real aquarium-care re
 | Motion speed | 1× / 2× / 4× | Does not age fish |
 | Food target lifetime | 8 simulated motion seconds | Attraction demo; no nourishment or waste |
 
+### Water model v1 (FS-301)
+
+Game-rule approximations in `src/core/water.ts`; not aquarium-care advice.
+
+| Parameter | Value | Reason / limitation |
+|---|---:|---|
+| Care time | 1 game day = 1,200 ticks = 60 real seconds at 1× | GDD pacing hypothesis; motion speed does not change it |
+| Integration step | 25 ticks (half a game hour) | Fixed absolute steps; aeration and decay cannot overshoot |
+| Default tank | 20,000 L at 22 °C, filter 60,000 mg N/day, aeration 24/day | A full tank of average adult lab fish stays "good" and "clean" |
+| Fish respiration | 6,000 mg O₂ per kg per day × metabolism × oxygen demand | Lab fish count at adult genetic potential until FS-302 |
+| Fish excretion | 100 mg ammonia N per kg per day × metabolism | Basal only; food-derived excretion arrives with feeding |
+| Fish mass | 0.0148 g × length³ (cm) | Koi-like proportions: 52 cm ≈ 2.1 kg |
+| Food decay | 2 per day; 50 mg N and 1,000 mg O₂ per gram | Uneaten food fouls water |
+| Biofilter | Half capacity at 0.5 mg N/L and at 2 mg/L oxygen; 4.57 mg O₂ per mg N | Saturates under overload |
+| Temperature | Rate × (1 + 0.07 × (T − 20)), bounded 0.5–2; oxygen saturation cubic fit | Linear Q10 stand-in |
+| Oxygen bands | Good ≥ 6 mg/L, low ≥ 4, critical below | Player labels |
+| Ammonia bands | Clean < 0.5 mg N/L, elevated < 1.5, high above | Player labels |
+| Stocking bands | Light < 4 kg/m³, moderate < 8, heavy < 12, overstocked above | Soft warning only; no fish is lost |
+
 ## 2. Proposed solo launch tuning
 
 | System | Initial experiment range | Measure |

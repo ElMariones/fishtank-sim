@@ -1,6 +1,6 @@
 # Implementation status
 
-**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`).
+**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 has started: the FS-301 water model is verified and awaiting push.
 
 ## Delivered
 
@@ -38,7 +38,8 @@
 - FS-205: one integer 50 ms clock advances visible and background tank integration identically, with idle checkpoints every five minutes. Reload applies elapsed time at normal 1×, clamps negative deltas to zero and caps protected offline catch-up at eight hours. No life-history effects exist yet.
 - FS-206: Web Locks gives one tab edit authority while other tabs remain inspectable and read-only; closing the writer and reloading transfers control. Existing transaction/quota recovery remains in the Saves panel.
 - FS-113 (user request): genome v2 appends Color and Ornament chromosomes. They add body, accent, dot and eye colors (with blends and two-tone eyes), fine multicolor spots, tiger stripes, marbling, calico, rosettes and motif mixes, five scale types, shimmer, and tail and dorsal patterns, with body motifs that can reach the fins. About one founder in four shows a new feature, and striking variants stay under 1%. Genome v1 fish keep their exact look, and FS-101–111 fixtures are unchanged. The inspector lists appearance with founder-stock rarity, and Visual fixtures shows 15 variants and a founder survey. See [FS-113 appearance genetics](research/FS-113-APPEARANCE-GENETICS.md).
-- 72 automated tests; production build; Chrome verification of worker load/cleanup/faults, two-tab takeover, offline limits, transaction recovery, migration and 10,000-record import/restore, with the runtime journeys repeated in the in-app Chromium pane after the M2 review fixes.
+- FS-301: world save v2 gives every tank a unit-aware, one-compartment water model: litres, temperature, dissolved oxygen, ammonia nitrogen and uneaten food, with biofilter and aeration. It advances through the shared clock in fixed half-game-hour steps; visible, background, offline and replayed intervals agree exactly, and a mass-balance ledger backs zero, overload and recovery fixtures. Residents load the water at their adult genetic potential. The aquarium shows read-only oxygen, ammonia and stocking bands. World v1 saves migrate with default water. See [FS-301 water model](research/FS-301-WATER-MODEL.md).
+- 84 automated tests; production build; Chrome verification of worker load/cleanup/faults, two-tab takeover, offline limits, transaction recovery, migration and 10,000-record import/restore, with the runtime journeys repeated in the in-app Chromium pane after the M2 review fixes.
 
 ## Prototype shortcuts and limitations
 
@@ -55,7 +56,7 @@
 | Behavior | No true feeding consumption, courtship, territorial utility, shelter use or learned memory | FS-303 |
 | Curiosity/life-history genes | Some outputs are computed or displayed only; do not affect lifecycle | FS-302–303 |
 | Breeding | Lab bypasses maturity, shared habitat, cost and cooldown; fixed 20 fish | FS-401–402 |
-| Environment | No liters, biomass, temperature, water chemistry or oxygen simulation | FS-301 |
+| Environment | One-compartment water per tank (litres, temperature, oxygen, ammonia, food) with read-only bands; water does not affect fish; no pH, nitrite/nitrate, light or plant uptake; no care controls | FS-302 FS-305 |
 | Decorations | Plants are cosmetic toggle; no placement or collision footprint | FS-304 FS-503 |
 | Economy | Free breeding/tanks make profit farming trivial, and batch sale makes it faster; stock is generated at purchase; sale quotes ignore appearance; no real market | FS-501–502 |
 | Batch management | Batch sale only; no batch move/rehome, and selection does not persist across tank or archive views | FS-406 |
@@ -69,11 +70,13 @@
 | Performance | Motion runs in a worker; a synthetic 200-fish/100-step run kept measured input delay under 2 ms, but Canvas rendering and large-save validation remain on the main thread. A 10,000-record commit costs about 1.3 s of serialization and validation, so idle clock checkpoints run every five minutes | FS-701–702 |
 | Selection | Body and caudal-fin shaped picking with 6 px slop; dorsal/pectoral fins only through slop; the live canvas is not keyboard-focusable (the collection is the keyboard path); no animated camera travel | FS-704 |
 | UI scale | Inspector stacks below the collection on phones; collection and relative lists paginate at 60 rows; no screen-reader audit yet | FS-404 FS-704 |
-| Offline | Persistent research time catches up for at most eight hours; no growth, health, water or other biological state exists to integrate yet | FS-301–302 |
+| Offline | Catch-up for at most eight hours integrates tank water (480 game days at 1×); no growth or health state exists yet | FS-302 |
 | Online | No accounts, server, database, actual player listings, payments or external telemetry | M8 |
 | Delivery | Pushed to GitHub `main`; no public deployment or continuous integration | FS-706 |
 
 ## Evidence
+
+**FS-301 water model, Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium 152:** 84 tests and build pass. Zero, overload and recovery fixtures each balance oxygen, ammonia and food against the recorded fluxes within 1e-7 relative, and a randomly split interval matches a single integration exactly. The existing QA world (a world v1 snapshot) loaded without a replay warning: a 158 kg tank read good oxygen and clean ammonia, and a 60-fish, 225 kg tank read low oxygen and heavy stocking. Saved water replayed after a reload, and a two-hour absence applied 144,002 ticks. See [FS-301 water model](research/FS-301-WATER-MODEL.md).
 
 **FS-113 appearance genetics, Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium 152:** 72 tests and build pass, and the FS-101 checksum pins and FS-103/105/111 research tests are unchanged. Of 10,000 seeded founders, 26.6% show a new feature, and every striking variant is under 1%. Browser checks rendered all 15 appearance variants. Before push they also found that replaying legacy breed/buy journal entries under genome v2 broke existing saves; with versioned commands, the same world now loads and saves. A genome v1 fish reads as classic, and four new Newcomers were genome v2, one with a very rare slate and lavender blend. See [FS-113 appearance genetics](research/FS-113-APPEARANCE-GENETICS.md).
 
@@ -118,4 +121,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**Continue with FS-301’s unit-aware water model.** M1's roadmap gate, M2 and FS-113 are complete.
+**Push and mark FS-301 DONE, then continue with FS-302 life stages and accumulated growth.**

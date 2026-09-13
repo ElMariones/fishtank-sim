@@ -1,6 +1,6 @@
 # Testing and verification
 
-**Latest recorded run:** 13 September 2026 (FS-113 appearance genetics, after the M2 completion review and FS-111 five-observer pool), Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium 152.0.7977.76 (Claude desktop browser pane). The earlier FS-202/205/206 run used Node 24.11.1, npm 11.6.2 and Google Chrome 153.0.8010.36 via bundled Playwright. Browser checks use independent fixtures, fresh browser contexts or the browser pane's own QA world; no user lineage is reset.
+**Latest recorded run:** 13 September 2026 (FS-301 water model, after FS-113 appearance genetics, the M2 completion review and the FS-111 five-observer pool), Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium 152.0.7977.76 (Claude desktop browser pane). The earlier FS-202/205/206 run used Node 24.11.1, npm 11.6.2 and Google Chrome 153.0.8010.36 via bundled Playwright. Browser checks use independent fixtures, fresh browser contexts or the browser pane's own QA world; no user lineage is reset.
 
 ## 1. Commands
 
@@ -10,7 +10,7 @@ npm test
 npm run build
 ```
 
-Vitest runs every `tests/*.test.ts` file. The M2 additions are `runtime.test.ts`, `time.test.ts`, `motionClient.test.ts` and `limits.test.ts`; `resemblancePool.test.ts` validates human records; `appearance.test.ts` covers genome v2 appearance (FS-113). The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **72 tests**, and all passed. The production build passed.
+Vitest runs every `tests/*.test.ts` file. The M2 additions are `runtime.test.ts`, `time.test.ts`, `motionClient.test.ts` and `limits.test.ts`; `resemblancePool.test.ts` validates human records; `appearance.test.ts` covers genome v2 appearance (FS-113); `water.test.ts` covers the FS-301 water model. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **84 tests**, and all passed. The production build passed.
 
 ## 2. Automated coverage
 
@@ -50,6 +50,7 @@ Vitest runs every `tests/*.test.ts` file. The M2 additions are `runtime.test.ts`
 | Selection experiment | Default configuration: gate passes (at least 3 traits beyond the founders' 10th–90th percentile in at least 75% of 8 selected lines); every trait's selected shift exceeds random mating by more than 25 points; random lines beyond the range at most 3 of 8; all generation-10 anatomy valid; pedigree F above 0.5 and heterozygosity lower after selection; tail-selected lines end slower than at generation 0 and than random lines; deterministic |
 | Resemblance study kit | 12 fixed trials, 4 per mode, both answers used; every sibling allele within one mutation step of the answer pair; silhouette mode keeps morphology and hides pigment and markings; markings mode keeps markings on identical bodies; computational observer above 90% (silhouette) and 75% (markings) over 150 trials; per-mode scoring, Wilson intervals and stored-result validation |
 | Appearance (FS-113) | For 300 seeds, genome v1 loci, mutations and non-appearance phenotype are identical under genome v2. Chromosomes 9–10 transmit from the parent homologs. Dominance, blends, carrier and mixed strengths, recessive scales and rainbow dots are independent of phase. Founder weights sum to 1; 10,000 founders show a new feature in 20–34% of cases, with striking variants under 1%. Rarity descriptions are checked. Mixed v1/v2 saves round-trip, and wrong genome shapes reject. A legacy breed/buy journal replays as genome v1, and an explicit v1 child of v2 parents rejects. Ornament geometry is finite, bounded and deterministic |
+| Water model (FS-301) | Zero load keeps clean water saturated, and depleted oxygen recovers monotonically. Overload raises ammonia every day, drives oxygen critical and records unmet demand. Two 50% changes plus a typical load return good, clean water. Every fixture balances oxygen, ammonia and food against its ledger within 1e-7 relative, with nothing negative. Split intervals match a single integration exactly. Food decays into ammonia and oxygen demand. Inputs stay unmutated, and invalid time, food and water changes reject. Habitat load counts living residents and matches `express`. Every tank, empty ones included, advances. Replay reproduces saved water and rejects tampering. Fine and coarse advances agree. A world v1 runtime migrates with a rebased checkpoint, and invalid water rejects |
 
 These statistical checks use fixed seeds and wide tolerances to catch implementation regressions. They do not establish biological validity or rigorous randomness certification.
 
@@ -227,6 +228,17 @@ The user supplied five anonymous complete `study-v1-12x4` result records; the fi
   - Four purchased Newcomers were genome v2. Newcomer 110 showed a slate and lavender blended body labeled very rare, with the founder-stock note.
   - After the purchases the world autosaved and reloaded without a replay warning, and no console errors were recorded.
 - **Not verified:** frame timing for a full tank of ornamented fish, human perception of the new motifs, and screen-reader review of the Appearance block.
+
+### FS-301 water model verification
+
+**Commands:** `npm run check` (84 tests, strict TypeScript and production build passed); `node scripts/check-docs.mjs`. Browser: in-app Chromium 152 against the local Vite server.
+
+- **Existing QA world** (world v1 snapshot and legacy journal): loaded without a replay warning. The Koi Garden (45 fish, 158 kg) showed "Oxygen good" (6.4 mg/L), "Ammonia clean" (0.21 mg N/L) and "Stocking moderate". The Breeding Studio (60 fish, 225 kg) showed "Oxygen low" (5.5 mg/L), "Ammonia clean" (0.39 mg N/L) and "Stocking heavy".
+- **Saved water:** two plant toggles saved world v2 in both the snapshot and the checkpoint, with water and two journal events. After a reload the world replayed without a warning.
+- **Offline catch-up:** a saved timestamp two hours old applied 144,002 ticks with "2 hours of protected research time restored. Tank water kept changing; fish growth and health are not simulated yet." The water saved at steady state (6.385 / 0.210 and 5.492 / 0.389).
+- **Newer world:** a world created before FS-301 (6 founders, 16 kg) loaded with "Oxygen good" (8.4 mg/L), "Ammonia clean" (0.01 mg N/L) and "Stocking light".
+- **Found and fixed:** a hot-reloaded tab still holding a pre-water world threw "Cannot read properties of undefined (reading 'volumeL')" in the readout. The readout now skips a tank without water; freshly loaded pages rendered normally.
+- **Not verified:** water effects on fish (none exist), care controls (FS-305), and long real-time sessions beyond the five-minute clock checkpoint.
 
 ## 4. Required next verification
 

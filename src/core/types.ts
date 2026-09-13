@@ -6,8 +6,27 @@ export type Fish = {
   generation: number; parents: [string, string] | null; bornAt: string;
   tankId: string; status: 'living' | 'sold'; mutations: Mutation[];
 };
-export type Tank = { id: string; name: string; capacity: number; planted: boolean };
-export type World = { version: 1; seed: number; nextId: number; credits: number; fish: Fish[]; tanks: Tank[] };
+/** Water model v1 state for one tank (FS-301). Units are explicit; values are game approximations, not care advice. */
+export type WaterState = {
+  model: 1;
+  /** Litres of water. */
+  volumeL: number;
+  /** Degrees Celsius. */
+  temperatureC: number;
+  /** Dissolved oxygen, mg O₂ per litre. */
+  oxygenMgL: number;
+  /** Total ammonia nitrogen proxy, mg N per litre. */
+  ammoniaMgL: number;
+  /** Uneaten food in grams. */
+  foodG: number;
+  /** Biofilter nitrification capacity at 20 °C, mg N per game day. */
+  filterMgNPerDay: number;
+  /** Aeration transfer coefficient (kLa), per game day. */
+  aerationPerDay: number;
+};
+export type Tank = { id: string; name: string; capacity: number; planted: boolean; water: WaterState };
+/** World v2 adds per-tank water (FS-301). World v1 saves migrate with default water. */
+export type World = { version: 2; seed: number; nextId: number; credits: number; fish: Fish[]; tanks: Tank[] };
 /**
  * Development v2 inherited marking anchor, derived from one phased two-locus haplotype block.
  * Body coordinates: u 0 = snout tip … 1 = peduncle; v −1 = dorsal edge … 1 = ventral edge.

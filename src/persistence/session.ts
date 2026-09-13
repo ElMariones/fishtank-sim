@@ -46,7 +46,7 @@ export async function loadSession(): Promise<LoadedSession> {
       const caughtUp = lease.writable ? applyOfflineCatchup(stored, Date.parse(slots.current.savedAt), Date.now()) : { runtime: stored, window: null };
       const seconds = caughtUp.window ? Math.round(caughtUp.window.appliedTicks * TICK_MS / 1000) : 0;
       const resumeNotice = seconds
-        ? `${formatDuration(seconds)} of protected research time restored${caughtUp.window?.remainingTicks ? '; the eight-hour offline cap was reached' : ''}. Life-history effects are inactive in this lab.`
+        ? `${formatDuration(seconds)} of protected research time restored${caughtUp.window?.remainingTicks ? '; the eight-hour offline cap was reached' : ''}. Tank water kept changing; fish growth and health are not simulated yet.`
         : '';
       return { runtime: caughtUp.runtime, session, blocked: false, readOnly: !lease.writable,
         warning: lease.writable ? '' : 'Read-only: another tab controls this world. Close it, then reload this tab to continue.', resumeNotice };

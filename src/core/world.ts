@@ -1,5 +1,6 @@
 import { GENOME_VERSION, MUTATION_RATE, type GenomeVersion } from './catalog';
 import { express, founderGenome, inherit } from './genetics';
+import { defaultWater } from './water';
 import { z } from 'zod';
 import { hash } from './random';
 import type { Fish, World } from './types';
@@ -29,9 +30,9 @@ function founder(world: World, name: string, sex: Fish['sex'], timestamp: string
 
 /** New worlds use the current genome. Research fixtures pass genome version 1 to reproduce the frozen FS-101 founders. */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = GENOME_VERSION): World {
-  const world: World = { version: 1, seed, nextId: 1, credits: 1200, fish: [], tanks: [
-    { id: 'tank-1', name: 'The Koi Garden', capacity: TANK_CAPACITY, planted: true },
-    { id: 'tank-2', name: 'Breeding Studio', capacity: TANK_CAPACITY, planted: false },
+  const world: World = { version: 2, seed, nextId: 1, credits: 1200, fish: [], tanks: [
+    { id: 'tank-1', name: 'The Koi Garden', capacity: TANK_CAPACITY, planted: true, water: defaultWater() },
+    { id: 'tank-2', name: 'Breeding Studio', capacity: TANK_CAPACITY, planted: false, water: defaultWater() },
   ] };
   ['Haru', 'Sumi', 'Kohaku', 'Yuki', 'Akira', 'Momo'].forEach((name, i) => {
     world.fish.push(founder(world, name, i % 2 === 0 ? 'F' : 'M', timestamp, genomeVersion)); world.nextId++;
@@ -144,7 +145,7 @@ export function applyCommand(world: World, command: Command): World {
     }
     case 'add-tank':
       if (next.tanks.length >= MAX_TANKS) throw new Error('This lab supports up to eight tanks.');
-      next.tanks.push({ id: `tank-${next.tanks.length + 1}`, name: `Lineage Tank ${next.tanks.length + 1}`, capacity: TANK_CAPACITY, planted: true });
+      next.tanks.push({ id: `tank-${next.tanks.length + 1}`, name: `Lineage Tank ${next.tanks.length + 1}`, capacity: TANK_CAPACITY, planted: true, water: defaultWater() });
       break;
     case 'decorate': {
       const tank = space(command.tankId, 0); tank.planted = !tank.planted; break;

@@ -25,6 +25,8 @@ src/
     resemblancePool.ts Strict validation and recomputation of anonymous human observer records
     pedigree.ts     Exact memoized ancestry-pair queries with an explicit stack
     world.ts        Validated world commands and local NPC transactions
+    water.ts        Water model v1: one-compartment oxygen/ammonia/food chemistry, fixed steps, ledger and status bands
+    habitat.ts      Resident load per tank, world advance through the shared clock and stocking bands
     save.ts         Legacy world-v1 schema and reference validation
     runtime.ts      Versioned command envelope, integer tick, event IDs and checkpoint replay
     visualFixtures.ts Frozen FS-101 fixtures, anatomy stress cases and v1-vs-v2 anatomy sweep
@@ -60,6 +62,7 @@ tests/
   resemblanceStudy.test.ts Trial set, display modes, computational observer and result validation
   resemblancePool.test.ts Five-observer FS-111 pool, per-trial agreement and record validation
   appearance.test.ts Genome v2 stream isolation, dominance, founder rarity, mixed-version saves and ornament bounds
+  water.test.ts    Zero/overload/recovery conservation fixtures, split-interval equality, habitat load, replay and world v1 migration
   limits.test.ts   Living/record limits, deep and wide pedigree queries and atomic rejection
   runtime.test.ts  Command envelopes, retries, replay, compaction, migration and tamper rejection
   time.test.ts     Tick segments, shared tank clocks, offline cap and backwards clocks
@@ -82,7 +85,7 @@ There is currently **no backend, WebGL mesh, biological life-stage scheduler, au
 | State | React state + motion refs | UI store only if needed | Avoid global subscription to every swimming coordinate |
 | Genealogy | Exact memoized ancestor queries and paginated relatives | Worker query + incremental kinship cache | Preserve history without world-sized matrix allocation |
 | Backend | None | Authoritative HTTP service + PostgreSQL | Durable transactions and trusted online ownership |
-| Shared simulation | Persistent 50 ms clock and event-boundary integrator; no biological state yet | Water, development and scheduled lifecycle events | One deterministic integrator must serve visible/background/offline modes |
+| Shared simulation | Persistent 50 ms clock, event-boundary integrator and fixed-step water model per tank (FS-301); no fish biology yet | Water, development and scheduled lifecycle events | One deterministic integrator must serve visible/background/offline modes |
 
 React documents Vite as one option for a custom setup; Vite provides the React TypeScript build workflow. These choices fit this single-page research application, rather than implying every React app needs this stack. [React guidance](https://react.dev/learn/creating-a-react-app), [Vite guide](https://vite.dev/guide/).
 
@@ -241,6 +244,20 @@ Changing a tank’s visibility must not change birth RNG, lifetime, economy, or 
 - Process at scheduled event boundaries, using bounded integration steps and checkpoints for long jobs.
 
 These are design defaults requiring numerical comparison against active simulation before shipping.
+
+### Implemented water model (FS-301)
+
+`src/core/water.ts` holds one well-mixed compartment per tank in world save v2: volume (L), temperature (°C), dissolved oxygen (mg/L), ammonia nitrogen (mg N/L), uneaten food (g), biofilter capacity (mg N per game day) and aeration (kLa per game day). Care time is one game day per 1,200 ticks (60 real seconds at 1×). Water advances in fixed 25-tick steps (half a game hour) counted by absolute step boundaries, so any split of an interval produces identical values.
+
+Each step, in order:
+- **Food:** uneaten food decays.
+- **Ammonia:** excretion and decaying food add ammonia. The biofilter nitrifies it with saturating capacity, slowed at low oxygen.
+- **Oxygen:** aeration moves oxygen toward temperature-dependent saturation. Respiration, food decay and nitrification draw on the oxygen available; unmet demand is recorded rather than going negative.
+- **Temperature:** it scales biological rates within bounds.
+
+The step uses only basic arithmetic, so saved doubles match across browsers.
+
+`src/core/habitat.ts` sums living residents' load at adult genetic potential: mass = 0.0148 g × cm³, with metabolism and oxygen-demand loci. `advanceRuntime` advances every tank's water, visible or not. `decodeRuntime` replays to the snapshot tick and compares water too. Fish are not yet affected by water; health, growth and care controls belong to FS-302 and FS-305.
 
 ## 7. Worker and renderer protocol
 

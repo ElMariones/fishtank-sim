@@ -98,6 +98,24 @@ export function express(genome: Genome): Phenotype {
   };
 }
 
+/**
+ * Size and metabolic potential from genome v1 loci using basic arithmetic only: cheap enough for every simulation advance
+ * and identical on every browser. Values match express() for adult length and metabolism.
+ */
+export function metabolicPotential(genome: Genome): { adultLengthCm: number; metabolism: number; oxygenDemand: number } {
+  const g = (name: Locus) => {
+    const i = LOCI.indexOf(name);
+    return (genome.maternal[i] + genome.paternal[i]) / 10;
+  };
+  const tail = (0.14 + g('tail_length') * 0.62) * (0.65 + g('fin_gain') * 0.7);
+  return {
+    adultLengthCm: 22 + 76 * (0.45 * g('size_1') + 0.35 * g('size_2') + 0.2 * g('body_length')),
+    metabolism: 0.6 + g('metabolism'),
+    /** Relative oxygen need from the oxygen_demand locus and tail drag, about 0.6–2.3. */
+    oxygenDemand: (0.6 + g('oxygen_demand')) * (1 + tail * 0.3),
+  };
+}
+
 export function fingerprint(genome: Genome): string {
   return hash(`g${genome.version}:${genome.maternal.join(',')}|${genome.paternal.join(',')}`).toString(16).padStart(8, '0').toUpperCase();
 }

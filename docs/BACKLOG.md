@@ -52,7 +52,7 @@ FS-108 to FS-110 were requested during M1, and FS-113 after M2; all are outside 
 
 | ID | Pri | Days | Role | Depends | Task and acceptance |
 |---|---|---:|---|---|---|
-| FS-301 | P0 | 3 | Simulation | FS-205 | Unit-aware water/oxygen/waste model; zero/overload/recovery conservation fixtures |
+| FS-301 | IN PROGRESS | 3 | Simulation | FS-205 | Unit-aware water/oxygen/waste model; zero/overload/recovery conservation fixtures. Verified, awaiting push; evidence in [FS-301 water model](research/FS-301-WATER-MODEL.md) |
 | FS-302 | P0 | 3 | Development | FS-301 | Eggs/fry/juvenile/adult stages and accumulated growth; same genome develops differently under declared conditions |
 | FS-303 | P0 | 4 | Behavior | FS-202 FS-301 | Utility AI with inspectable reasons; cruise/forage/eat/hide/school transitions work |
 | FS-304 | P1 | 2 | Spatial/runtime | FS-303 | Spatial hash and shelter/obstacle footprints; fish avoid geometry without all-pairs scaling |
