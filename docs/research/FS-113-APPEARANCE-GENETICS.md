@@ -1,6 +1,6 @@
 # FS-113 appearance genetics
 
-**Recorded:** 13 September 2026  
+**Recorded:** 13 September 2026 · **Status:** DONE, pushed `2436fbf`  
 **Models:** genome v2 · development v3 · anatomy v2 · renderer v4. FS-101 to FS-111 research surfaces stay on genome v1.
 
 ## Request and decisions

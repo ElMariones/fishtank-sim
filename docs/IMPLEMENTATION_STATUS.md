@@ -1,6 +1,6 @@
 # Implementation status
 
-**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics; it is verified and awaiting push.
+**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`).
 
 ## Delivered
 
@@ -118,4 +118,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**Push and mark FS-113 DONE.** M1's roadmap gate and M2 are complete, so the next scheduled task is FS-301’s unit-aware water model.
+**Continue with FS-301’s unit-aware water model.** M1's roadmap gate, M2 and FS-113 are complete.

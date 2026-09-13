@@ -33,7 +33,7 @@ M0 completion does not imply M1’s visual research gate has passed.
 | FS-111 | DONE | 0.5 | Design/QA | FS-105 | Run the in-app resemblance study with at least five observers (60 trials, 20 per mode); pool the copied result records and report accuracy per mode against 50% chance, with cues. Pushed `6a69695`: five observers, 54/60 overall, above chance in every mode, no cue notes supplied. Evidence in [FS-111 human resemblance](research/FS-111-HUMAN-RESEMBLANCE.md) |
 | FS-112 | DONE | 1 | Core/UI | FS-109 | User request: raise the 1,000-record limit well beyond 1,000 and cap living (unsold) fish instead, so players can keep breeding while sold fish stay in the archive; kinship and large archive views must stay responsive; the record cap must fit reliable browser storage. Pushed `bd175ed` |
 
-| FS-113 | IN PROGRESS | 3 | Genetics/rendering | FS-103 FS-111 | User request after M2: genome v2 Color and Ornament chromosomes with more body, accent, dot and eye colors, fine multicolor spots, tiger stripes, marbling, calico, rosettes and mixes, scale types and shimmer, and tail/dorsal patterns. Rare features appear in about one founder in four; existing genome v1 fish keep their exact look, and FS-101–111 fixtures stay unchanged. Evidence in [FS-113 appearance genetics](research/FS-113-APPEARANCE-GENETICS.md) |
+| FS-113 | DONE | 3 | Genetics/rendering | FS-103 FS-111 | User request after M2: genome v2 Color and Ornament chromosomes with more body, accent, dot and eye colors, fine multicolor spots, tiger stripes, marbling, calico, rosettes and mixes, scale types and shimmer, and tail/dorsal patterns. Rare features appear in about one founder in four; existing genome v1 fish keep their exact look, and FS-101–111 fixtures stay unchanged. Pushed `2436fbf`; evidence in [FS-113 appearance genetics](research/FS-113-APPEARANCE-GENETICS.md) |
 
 FS-108 to FS-110 were requested during M1, and FS-113 after M2; all are outside the base estimates. FS-111 splits the human part of FS-105 out because it needs real participants.
 
@@ -127,4 +127,4 @@ M8 total: 40–60 days. Provider costs and moderation operations require separat
 
 ## Suggested next-agent task
 
-M1's roadmap gate and all of M2 are pushed (`6a69695`). After any queued user requests, begin the bounded M3 water model in FS-301; do not activate growth, health decay or feeding effects before its conservation fixtures pass.
+M1's roadmap gate, all of M2 (`6a69695`) and the FS-113 appearance request (`2436fbf`) are pushed. Begin the bounded M3 water model in FS-301; do not activate growth, health decay or feeding effects before its conservation fixtures pass.
