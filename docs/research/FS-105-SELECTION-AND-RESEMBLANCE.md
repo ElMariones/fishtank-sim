@@ -42,7 +42,7 @@ Generation-10 means were 96–100% for the "higher" traits and 0% for eye size, 
 
 ### Failures and costs
 
-1. **Saturation.** Selected lines hit the development-v1 ceiling (or floor) within about 4–7 generations. After that, the additive A0–A5 range limits progress, not selection. Continued progress towards unusual fish needs new mutation classes or topology (genome v2), which confirms the M6 dependency.
+1. **Saturation.** Selected lines hit the development-v1 ceiling (or floor) within about 4–7 generations. After that, the additive A0–A5 range limits progress, not selection. Continued progress towards unusual fish needs new mutation classes or topology (genome v3; FS-113 used genome v2 for appearance), which confirms the M6 dependency.
 2. **Diversity collapse.** With 4 + 4 parents, mean pedigree F reaches about 0.80 and heterozygosity falls from 77% to 14–19% in ten generations. The lab lets a player do this for free, and the only warning is the expected F shown before a cross. Larger retained sets and outcrossing should be tested (BALANCE E-06) before breeding balance in M4.
 3. **The speed tradeoff is noisy.** Tail selection lowers mean speed (0.042 → 0.034) and ends below random-mating lines. Correlated drift in thrust and body depth moves speed in other lines too: depth-selected lines ended slightly faster on average. In small populations speed is not a clean single-trait readout.
 4. **Controls drift.** One or two of eight random-mating lines ended beyond the founder range for length, depth and tail. Any selection claim in this lab needs its control lines.

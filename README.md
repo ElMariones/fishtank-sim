@@ -42,7 +42,7 @@ Limits: 60 residents per tank, eight tanks, 480 living fish and 10,000 total fis
 | Read | Purpose |
 |---|---|
 | [Game design document](docs/GDD.md) | Full product vision, concept critique, gameplay, care, economy and progression |
-| [Genetics specification](docs/GENETICS.md) | Exact v1 rules, all 48 loci, rarity, pedigree, planned 72-locus expansion |
+| [Genetics specification](docs/GENETICS.md) | Exact genome v1/v2 rules, all 60 loci, color and ornament expression, rarity, pedigree, planned genome v3 expansion |
 | [Architecture](docs/ARCHITECTURE.md) | Current source map, target data model, command contracts, worker/server strategy |
 | [UX specification](docs/UX_SPEC.md) | Aquarium, inspector, breeding, family, market and recovery flows |
 | [Balance and experiments](docs/BALANCE.md) | Implemented constants, future tuning, measurable experiments |
@@ -58,7 +58,7 @@ New contributors and agents should start with [AGENTS.md](AGENTS.md), then [impl
 
 ## Technical foundation
 
-React + TypeScript + Vite. Pure seeded genetics and pedigree core. Procedural Canvas fish shared between live tank and portraits. A versioned Web Worker runs fixed-step visual motion. The persistent clock integrates visible, background and protected offline time without activating unimplemented biology. Versioned command replay, transactional IndexedDB backups and a single-writer browser lock protect local worlds.
+React + TypeScript + Vite. Pure seeded genetics and pedigree core, with genome v2 color and ornament chromosomes. Procedural Canvas fish shared between live tank and portraits, including body and eye colors, fine spots, tiger stripes, marbling, calico, rosettes, scale types, shimmer and tail/dorsal patterns. A versioned Web Worker runs fixed-step visual motion. The persistent clock integrates visible, background and protected offline time without activating unimplemented biology. Versioned command replay, transactional IndexedDB backups and a single-writer browser lock protect local worlds.
 
 M2 (FS-201–206) is complete. Five human observers scored 54/60 in the M1 resemblance study (FS-111), meeting M1's human-resemblance gate. Life stages/care, PixiJS and an authoritative database-backed market remain planned. See the [M2 runtime report](docs/research/M2-RUNTIME-AND-RECOVERY.md) and [human resemblance results](docs/research/FS-111-HUMAN-RESEMBLANCE.md).
 

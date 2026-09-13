@@ -1,6 +1,6 @@
 # Genetics and development specification
 
-**Baseline:** lab genome v1, development v1, renderer v1. **Scope:** synthetic game genetics. Gene names describe fictional controls, not identified koi genes. Source notes are preserved in [source/original-concept.txt](source/original-concept.txt).
+**Baseline:** lab genome v1 and v2 (FS-113), development v3, anatomy v2, renderer v4. **Scope:** synthetic game genetics. Gene names describe fictional controls, not identified koi genes. Source notes are preserved in [source/original-concept.txt](source/original-concept.txt).
 
 ## 1. Representation and actual combinatorics
 
@@ -14,9 +14,9 @@ Numbers this large must stay out of the hot path and save schema. “Millions of
 
 ```ts
 type Genome = {
-  version: 1;
-  maternal: number[]; // exactly 48 IDs; copy received from mother
-  paternal: number[]; // exactly 48 IDs; copy received from father
+  version: 1 | 2;
+  maternal: number[]; // 48 IDs (v1) or 60 IDs (v2); copy received from mother
+  paternal: number[]; // 48 IDs (v1) or 60 IDs (v2); copy received from father
 };
 ```
 
@@ -187,38 +187,61 @@ oxygenProxy     = (0.60 + oxygen_demand) × (sizePotentialCm / 50)^2 × (1 + 0.3
 
 These inputs refer to normalized additive n values. Geometry ratios, centimeters, normalized tank widths/second, and unitless proxies must be distinguished in future TypeScript types.
 
-## 7. Planned genome v2: 24 additional loci
+## 7. Genome v2: Color and Ornament chromosomes (FS-113, implemented)
 
-Do not add these as unused rows to genome v1. Add a separate schema/version only once expression and tests exist.
+Genome v2 appends two six-locus chromosomes after the 48 v1 loci (indices 48–59). Genome v1 records are never rewritten: they carry no chromosome 9 or 10 and are read as homozygous for the classic baseline, so their appearance is unchanged. Every child is bred as genome v2; a genome v1 parent transmits the baseline there. Founders and births draw chromosomes 9–10 from a separate derived stream (`appearance-v2:founder:<seed>`, `appearance-v2:birth:<seed>`), so the v1 loci, mutation log and phenotype of any seed are identical to genome v1. Research surfaces (FS-101 fixtures, FS-103 study, FS-105 selection experiment and the frozen `study-v1-12x4` trials) explicitly use genome v1.
+
+| Chr | Locus | Alleles A0 → A5 | Expression | v1 baseline | Founder weights A0–A5 |
+|---|---|---|---|---|---|
+| 9 | base_color | classic, gold, slate, charcoal, lavender, jade | Classic dominant; two different variants blend | A0 | .84 .06 .045 .03 .018 .007 |
+| 9 | accent_color | classic orange, crimson, sunflower, cobalt, violet, pearl | Classic dominant; blend; colors patches, warm fins and motifs | A0 | .84 .05 .05 .03 .02 .01 |
+| 9 | dot_color | ink, pearl, gold, turquoise, ruby, rainbow | Rainbow dominant; two colors alternate; used by spots, calico and fin spots | A0 | .50 .18 .14 .10 .07 .01 |
+| 9 | iris_color | natural (v1 iris hue), amber, ruby, sapphire, emerald, silver | Natural dominant; two variants give a two-tone iris | A0 | .82 .07 .045 .035 .022 .008 |
+| 9 | shimmer | additive | (m + p) / 10; sparkles drawn from 0.3, strong from 0.7 | A0 | .90 .06 .025 .01 .004 .001 |
+| 9 | scale_type | smooth, fine, mirror, netted, pearl, armored | Recessive: both copies non-smooth, higher variant expressed | A0 | .82 .08 .05 .03 .015 .005 |
+| 10 | body_motif | classic patches, fine spots, tiger stripes, marbling, calico, rosettes | Overlay: one copy shows faintly (0.55) over patches; two identical copies replace patches (1.0); two different motifs mix (0.8 each) | A0 | .95 .02 .015 .008 .005 .002 |
+| 10 | motif_density | additive | Count of dots, stripes, veins, flecks or rosettes | A2 | Standard |
+| 10 | motif_scale | additive | Dot radius, stripe width, fleck and rosette size | A2 | Standard |
+| 10 | motif_contrast | additive | Motif opacity 0.55–1.0 | A2 | Standard |
+| 10 | motif_reach | additive | From 0.3, body motifs continue onto the tail and dorsal fin | A0 | Standard |
+| 10 | fin_motif | plain, spots, bands, colored edge, dark tips, flame rays | Overlay like body_motif, on the tail and dorsal fin | A0 | .97 .012 .009 .005 .003 .001 |
+
+"Standard" is the v1 founder distribution. Mutation keeps the adjacent-allele rule, so a classic A0 copy mutates first to A1 (gold, crimson, pearl dots, amber eyes, faint shimmer, fine scales, fine spots, spotted fins); rarer variants are further along the allele ladder. The target the user chose is that about one founder in four shows at least one new feature while the striking variants stay well under 1%; see [FS-113 appearance genetics](research/FS-113-APPEARANCE-GENETICS.md) for the measured survey.
+
+The inspector labels a variant "uncommon" (at least 2% of founders express it), "rare" (0.3–2%) or "very rare" (below 0.3%) from the exact founder-weight probability of that expressed value. It describes founder stock, not a player's population.
+
+## 8. Planned genome v3: 24 additional loci
+
+Do not add these as unused rows to an existing genome version. Add a separate schema/version only once expression and tests exist. They were originally planned as genome v2; FS-113 used v2 for appearance, so these now follow as chromosomes 11–14.
 
 | Chr | New locus | Purpose and guardrail |
 |---|---|---|
-| 9 | tail_topology | Enum: standard, paired fan, crown-four; no arbitrary mesh count |
-| 9 | tail_lobe_balance | Relative lobe scaling with bounded minimum |
-| 9 | dorsal_presence | Normal, reduced, suppressed |
-| 9 | pectoral_topology | Standard or supported doubled arrangement |
-| 9 | barbel_count | 0, 2, 4, 6 only |
-| 9 | vertebral_extension | Longitudinal control-point distribution, bounded |
-| 10 | scale_size | Repeating scale geometry/shader frequency |
-| 10 | scale_coverage | Regional scale suppression mask |
-| 10 | eye_protrusion | Position relative to head surface within anatomy envelope |
-| 10 | jaw_orientation | Mouth axis, preserving visible attachment |
-| 10 | cheek_depth | Local head silhouette |
-| 10 | fin_ray_density | Fin ray count within render budget |
-| 11 | aggression | Territorial utility, not automatic damage |
-| 11 | depth_preference | Target normalized vertical region |
-| 11 | food_drive | Appetite and approach utility |
-| 11 | human_affinity | Learned approach baseline |
-| 11 | mate_selectivity | Strength of bounded compatibility penalties |
-| 11 | maturity_rate | Life-stage timing |
-| 12 | preference_red | Signed attraction to red coverage |
-| 12 | preference_size | Signed attraction to relative size |
-| 12 | preference_tail | Signed attraction to tail display |
-| 12 | stress_recovery | Rate of environmental recovery |
-| 12 | resilience | Specific condition tolerance, not universal immunity |
-| 12 | recessive_load | First explicit modeled harmful recessive effect |
+| 11 | tail_topology | Enum: standard, paired fan, crown-four; no arbitrary mesh count |
+| 11 | tail_lobe_balance | Relative lobe scaling with bounded minimum |
+| 11 | dorsal_presence | Normal, reduced, suppressed |
+| 11 | pectoral_topology | Standard or supported doubled arrangement |
+| 11 | barbel_count | 0, 2, 4, 6 only |
+| 11 | vertebral_extension | Longitudinal control-point distribution, bounded |
+| 12 | scale_size | Repeating scale geometry/shader frequency |
+| 12 | scale_coverage | Regional scale suppression mask |
+| 12 | eye_protrusion | Position relative to head surface within anatomy envelope |
+| 12 | jaw_orientation | Mouth axis, preserving visible attachment |
+| 12 | cheek_depth | Local head silhouette |
+| 12 | fin_ray_density | Fin ray count within render budget |
+| 13 | aggression | Territorial utility, not automatic damage |
+| 13 | depth_preference | Target normalized vertical region |
+| 13 | food_drive | Appetite and approach utility |
+| 13 | human_affinity | Learned approach baseline |
+| 13 | mate_selectivity | Strength of bounded compatibility penalties |
+| 13 | maturity_rate | Life-stage timing |
+| 14 | preference_red | Signed attraction to red coverage |
+| 14 | preference_size | Signed attraction to relative size |
+| 14 | preference_tail | Signed attraction to tail display |
+| 14 | stress_recovery | Rate of environmental recovery |
+| 14 | resilience | Specific condition tolerance, not universal immunity |
+| 14 | recessive_load | First explicit modeled harmful recessive effect |
 
-This yields 72 loci within the original requested scale. Future additions need measured player value and a version migration rather than an arbitrary goal of 100 genes.
+This would yield 84 loci. Future additions need measured player value and a version migration rather than an arbitrary goal of 100 genes.
 
 ### Escaping the koi silhouette
 
@@ -226,7 +249,7 @@ Stage 1: select length, depth, head, snout, eyes, and fins within v1 bounds. Sta
 
 Examples to build as render fixtures: elongated needle body; deep disk body; large domed head with small eyes; broad fan-tail; small body with long snout; four-lobed crown tail. A fixture must be reachable through permitted allele states, not a handcrafted renderer exception keyed to a fish name.
 
-## 8. Development and phenotype contract
+## 9. Development and phenotype contract
 
 The lab shows adult genetic potential. Planned development integrates:
 
@@ -242,9 +265,9 @@ Treat this as a proposed approximation to validate, not a scientific fish growth
 
 Phenotype owns anatomy, material/pigment descriptors, physiological potential, and behavior weights. Renderer only consumes phenotype. Persist development state and model versions. The same world snapshot, genome, seed, and version should reproduce the same parameters.
 
-## 9. Procedural pattern and morphology plan
+## 10. Procedural pattern and morphology plan
 
-Current Canvas renderer v3 draws the anatomy v2 body, fins and rays, eye/pupil and mouth/barbels, plus development v2 inherited markings. Marking placement now comes from phased two-locus haplotype blocks on the Pigments and Pattern chromosomes (three blocks per homolog). Each block haplotype defines one anchor's body position, size, angle, layer and priority; identical homolog blocks merge into one bolder anchor. `pattern_frequency` selects how many anchors (plus inherited satellites) are drawn, and the birth seed adds only small jitter. A crossover inside a block or a mutation at either of its loci moves that marking. Measured sibling separation rose from 52% (independent placement) to 73%; see [FS-103 inherited markings](research/FS-103-INHERITED-MARKINGS.md). Remaining risks: chance sharing of common haplotypes, ellipse-only shapes and no true bilateral symmetry.
+Current Canvas renderer v4 draws the anatomy v2 body, fins and rays, eye/pupil and mouth/barbels, development v2 inherited markings, and the development v3 color palette and ornament layers from section 7 (motifs, scales, shimmer, tail and dorsal patterns). Marking placement now comes from phased two-locus haplotype blocks on the Pigments and Pattern chromosomes (three blocks per homolog). Each block haplotype defines one anchor's body position, size, angle, layer and priority; identical homolog blocks merge into one bolder anchor. `pattern_frequency` selects how many anchors (plus inherited satellites) are drawn, and the birth seed adds only small jitter. A crossover inside a block or a mutation at either of its loci moves that marking. Measured sibling separation rose from 52% (independent placement) to 73%; see [FS-103 inherited markings](research/FS-103-INHERITED-MARKINGS.md). Remaining risks: chance sharing of common haplotypes, ellipse-only shapes and no true bilateral symmetry.
 
 Next renderer:
 
@@ -262,7 +285,7 @@ Anatomy validators must ensure positive body dimensions, eye attachment, continu
 
 **Implemented in anatomy v2 (FS-102):** `src/core/anatomy.ts` samples the v1 body outline and anchors eye, gill, mouth, barbels, dorsal, pectoral and caudal structures to local body sections (steps 2–3 above, without a spline centreline yet). The validator checks finite values, positive thickness, an x-monotonic outline, the eye inside the head, fin/gill/mouth/barbel roots inside the body, rays on the trailing edge and bounds containing every drawn curve. An eye that cannot fit is moved back up to 0.04 BL and then drawn smaller; the adjustment is recorded, and the phenotype's eye value is unchanged. Lobe-count and mesh winding checks wait for topology templates (FS-602). Evidence: [FS-102 anatomy anchors](research/FS-102-ANATOMY-ANCHORS.md).
 
-## 10. Rarity with honest scope
+## 11. Rarity with honest scope
 
 ### Allele rarity
 
@@ -284,7 +307,7 @@ Track mutation-origin IDs and living descendant carrier counts within the known 
 
 Use rarity as a bounded input to an NPC/customer-specific desirability model. A tail can be rare and unsuitable for that buyer. Local rarity measures must not leak into online pricing as trusted claims.
 
-## 11. Pedigree and diversity
+## 12. Pedigree and diversity
 
 The lab evaluates exact recorded-pedigree kinship on demand. Its recurrence is equivalent to the numerator relationship matrix A:
 
@@ -302,7 +325,7 @@ Heterozygosity = heterozygous loci / assayed loci. It is not “genetic diversit
 
 FS-112 uses memoized ancestor-pair queries with an explicit stack, including diagonal terms. It preserves all recorded generations without a depth cutoff and avoids allocating a world-sized matrix. Pathological pedigrees can still require O(N²) pairs; worker execution and cross-query caching remain future work. The lab caps permanent records at 10,000 and living fish at 480.
 
-## 12. Validation gates
+## 13. Validation gates
 
 - Exact repeatability from seed, parents, parameters and version.
 - No mutation: every transmitted allele must occur at that parental locus.

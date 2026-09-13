@@ -1,3 +1,4 @@
+import { GENOME_VERSION, MUTATION_RATE, type GenomeVersion } from './catalog';
 import { express, founderGenome, inherit } from './genetics';
 import { z } from 'zod';
 import { hash } from './random';
@@ -20,19 +21,20 @@ const iso = (timestamp: string) => {
 const id = (n: number) => `FSH-${n.toString().padStart(6, '0')}`;
 const count = (n: number) => n.toLocaleString('en');
 
-function founder(world: World, name: string, sex: Fish['sex'], timestamp: string): Fish {
+function founder(world: World, name: string, sex: Fish['sex'], timestamp: string, version: GenomeVersion = GENOME_VERSION): Fish {
   const birthSeed = hash(`${world.seed}:founder:${world.nextId}`);
-  return { id: id(world.nextId), name, sex, genome: founderGenome(birthSeed), birthSeed,
+  return { id: id(world.nextId), name, sex, genome: founderGenome(birthSeed, version), birthSeed,
     generation: 0, parents: null, bornAt: iso(timestamp), tankId: world.tanks[0].id, status: 'living', mutations: [] };
 }
 
-export function createWorld(timestamp: string, seed = 481516): World {
+/** New worlds use the current genome. Research fixtures pass genome version 1 to reproduce the frozen FS-101 founders. */
+export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = GENOME_VERSION): World {
   const world: World = { version: 1, seed, nextId: 1, credits: 1200, fish: [], tanks: [
     { id: 'tank-1', name: 'The Koi Garden', capacity: TANK_CAPACITY, planted: true },
     { id: 'tank-2', name: 'Breeding Studio', capacity: TANK_CAPACITY, planted: false },
   ] };
   ['Haru', 'Sumi', 'Kohaku', 'Yuki', 'Akira', 'Momo'].forEach((name, i) => {
-    world.fish.push(founder(world, name, i % 2 === 0 ? 'F' : 'M', timestamp)); world.nextId++;
+    world.fish.push(founder(world, name, i % 2 === 0 ? 'F' : 'M', timestamp, genomeVersion)); world.nextId++;
   });
   return world;
 }
@@ -45,21 +47,26 @@ export function quote(fish: Fish): number {
 export type Command =
   | { type: 'rename'; fishId: string; name: string }
   | { type: 'move'; fishId: string; tankId: string }
-  | { type: 'breed'; motherId: string; fatherId: string; tankId: string; timestamp: string }
+  | { type: 'breed'; motherId: string; fatherId: string; tankId: string; timestamp: string; genomeVersion?: GenomeVersion }
   | { type: 'sell'; fishId: string }
   | { type: 'sell-batch'; fishIds: string[] }
-  | { type: 'buy'; tankId: string; timestamp: string }
+  | { type: 'buy'; tankId: string; timestamp: string; genomeVersion?: GenomeVersion }
   | { type: 'add-tank' }
   | { type: 'decorate'; tankId: string };
 
 const fishIdSchema = z.string().regex(/^FSH-\d{6}$/);
+/**
+ * Commands recorded before FS-113 carry no genomeVersion. They must replay exactly as the genome v1 reducer produced
+ * them, or stored snapshots would stop agreeing with their journals; the app sends the current version explicitly.
+ */
+const genomeVersionSchema = z.union([z.literal(1), z.literal(2)]).optional();
 export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('rename'), fishId: fishIdSchema, name: z.string().trim().min(1).max(32) }).strict(),
   z.object({ type: z.literal('move'), fishId: fishIdSchema, tankId: z.string().max(50) }).strict(),
-  z.object({ type: z.literal('breed'), motherId: fishIdSchema, fatherId: fishIdSchema, tankId: z.string().max(50), timestamp: z.string().datetime() }).strict(),
+  z.object({ type: z.literal('breed'), motherId: fishIdSchema, fatherId: fishIdSchema, tankId: z.string().max(50), timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema }).strict(),
   z.object({ type: z.literal('sell'), fishId: fishIdSchema }).strict(),
   z.object({ type: z.literal('sell-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING) }).strict(),
-  z.object({ type: z.literal('buy'), tankId: z.string().max(50), timestamp: z.string().datetime() }).strict(),
+  z.object({ type: z.literal('buy'), tankId: z.string().max(50), timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema }).strict(),
   z.object({ type: z.literal('add-tank') }).strict(),
   z.object({ type: z.literal('decorate'), tankId: z.string().max(50) }).strict(),
 ]);
@@ -102,9 +109,11 @@ export function applyCommand(world: World, command: Command): World {
       if (mother.id === father.id || mother.sex !== 'F' || father.sex !== 'M') throw new Error('Choose a female and a male.');
       room(COHORT_SIZE);
       space(command.tankId, COHORT_SIZE);
+      // A pre-FS-113 command could only name genome v1 parents, which then produced genome v1 children.
+      const version = command.genomeVersion ?? (mother.genome.version === 1 && father.genome.version === 1 ? 1 : 2);
       for (let i = 0; i < COHORT_SIZE; i++) {
         const birthSeed = hash(`${world.seed}:birth:${next.nextId}:${mother.id}:${father.id}`);
-        const result = inherit(mother.genome, father.genome, birthSeed);
+        const result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, version);
         next.fish.push({ id: id(next.nextId), name: `Fry ${next.nextId}`, sex: hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M',
           ...result, birthSeed, generation: Math.max(mother.generation, father.generation) + 1,
           parents: [mother.id, father.id], bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living' });
@@ -128,7 +137,7 @@ export function applyCommand(world: World, command: Command): World {
       space(command.tankId, 1);
       if (next.credits < STOCK_PRICE) throw new Error('You need 250 lab credits for unrelated stock.');
       room(1);
-      const fish = founder(next, `Newcomer ${next.nextId}`, next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp);
+      const fish = founder(next, `Newcomer ${next.nextId}`, next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp, command.genomeVersion ?? 1);
       fish.tankId = command.tankId;
       next.fish.push(fish); next.nextId++; next.credits -= STOCK_PRICE;
       break;

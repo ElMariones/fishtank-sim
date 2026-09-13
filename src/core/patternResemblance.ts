@@ -1,5 +1,5 @@
 import { anatomyFor, section, type Anatomy } from './anatomy';
-import { LOCI } from './catalog';
+import { LOCI, MUTATION_RATE } from './catalog';
 import { express, founderGenome, inherit } from './genetics';
 import { MARKING_VISIBLE_ALPHA, markingPosition, placeMarkings, type PlacedMarking } from './pattern';
 import { clamp, hash, random } from './random';
@@ -79,15 +79,15 @@ const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0)
 export type StudyFish = { genome: Genome; phenotype: Phenotype; seed: number };
 export type StudyFamily = { mother: StudyFish; father: StudyFish; children: StudyFish[] };
 
-/** Unrelated founder pairs, each with a full-sibling cohort, at the lab mutation rate. Fully seeded. */
+/** Unrelated founder pairs, each with a full-sibling cohort, at the lab mutation rate. Fully seeded; genome v1 keeps FS-103 results fixed. */
 export function studyFamilies(families: number, childrenPerFamily: number, salt = 'fs-103'): StudyFamily[] {
   const fish = (genome: Genome, seed: number): StudyFish => ({ genome, phenotype: express(genome), seed });
   return Array.from({ length: families }, (_, f) => {
     const motherSeed = hash(`${salt}:family:${f}:mother`), fatherSeed = hash(`${salt}:family:${f}:father`);
-    const mother = fish(founderGenome(motherSeed), motherSeed), father = fish(founderGenome(fatherSeed), fatherSeed);
+    const mother = fish(founderGenome(motherSeed, 1), motherSeed), father = fish(founderGenome(fatherSeed, 1), fatherSeed);
     const children = Array.from({ length: childrenPerFamily }, (_, c) => {
       const seed = hash(`${salt}:family:${f}:child:${c}`);
-      return fish(inherit(mother.genome, father.genome, seed).genome, seed);
+      return fish(inherit(mother.genome, father.genome, seed, MUTATION_RATE, 1).genome, seed);
     });
     return { mother, father, children };
   });

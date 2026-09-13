@@ -59,13 +59,15 @@ describe('genetics invariants', () => {
 
   it('logs every forced mutation and clamps boundary transitions without no-ops', () => {
     for (const value of [0, 2, 5]) {
-      const result = inherit(uniform(value), uniform(value), 90, 1);
-      expect(result.mutations).toHaveLength(96);
-      for (const mutation of result.mutations) {
-        expect(mutation.to).not.toBe(mutation.from);
-        expect(result.genome[mutation.copy][mutation.locus]).toBe(mutation.to);
-        expect(mutation.to).toBeGreaterThanOrEqual(0);
-        expect(mutation.to).toBeLessThanOrEqual(5);
+      for (const [version, loci] of [[1, 48], [2, 60]] as const) {
+        const result = inherit(uniform(value), uniform(value), 90, 1, version);
+        expect(result.mutations).toHaveLength(loci * 2);
+        for (const mutation of result.mutations) {
+          expect(mutation.to).not.toBe(mutation.from);
+          expect(result.genome[mutation.copy][mutation.locus]).toBe(mutation.to);
+          expect(mutation.to).toBeGreaterThanOrEqual(0);
+          expect(mutation.to).toBeLessThanOrEqual(5);
+        }
       }
     }
   });
@@ -73,8 +75,9 @@ describe('genetics invariants', () => {
   it('produces finite positive anatomy from extremes and varied founders', () => {
     const genomes = [uniform(0), uniform(5), uniform(0, 5), ...Array.from({ length: 1000 }, (_, i) => founderGenome(i))];
     for (const genome of genomes) {
-      const p = express(genome), { markings, ...numeric } = p;
+      const p = express(genome), { markings, appearance, ...numeric } = p;
       expect(Object.values(numeric).every(Number.isFinite)).toBe(true);
+      expect([appearance.shimmer, appearance.density, appearance.motifScale, appearance.contrast, appearance.reach].every(Number.isFinite)).toBe(true);
       expect(markings.length).toBeGreaterThanOrEqual(6);
       expect(markings.length).toBeLessThanOrEqual(12);
       expect(markings.every(m => [m.u, m.v, m.size, m.angle, m.priority].every(Number.isFinite) && m.u > 0 && m.u < 1 && Math.abs(m.v) < 1)).toBe(true);

@@ -14,7 +14,7 @@
 | M3 — Living aquarium | W6–9 · 19 Oct–15 Nov | 20 days | Care, life stages, utility behavior, habitat footprints | Fish react legibly; habitat affects development |
 | M4 — Breeding lifecycle and genealogy | W10–12 · 16 Nov–6 Dec | 15 days | Courtship, clutches, nursery limits, deep family view | Complete two generations without instant-lab shortcuts |
 | M5 — Solo management game | W13–15 · 7–27 Dec | 15 days | NPC demand, tanks/equipment, decoration tools, onboarding | Complete first-session loop and avoid economic softlock |
-| M6 — Advanced anatomy and lineages | W16–18 · 28 Dec–17 Jan 2027 | 15 days | Supported structural mutations, genome v2, named lines | Koi-to-unusual-line demonstration with valid ancestry |
+| M6 — Advanced anatomy and lineages | W16–18 · 28 Dec–17 Jan 2027 | 15 days | Supported structural mutations, genome v3, named lines | Koi-to-unusual-line demonstration with valid ancestry |
 | M7 — Solo alpha hardening | W19–22 · 18 Jan–14 Feb | 20 days | Performance, migration, recovery, accessibility, playtests | Alpha acceptance matrix passes on named hardware |
 | Contingency | Up to 6 additional weeks | 30 days | Resolve visual and simulation uncertainty | Retain core promises; cut optional systems first |
 | M8 — Trusted online economy | After solo gate; 8–12 further weeks | 40–60 days | Auth, server-owned world, listings, atomic trades | Concurrency/security/economy tests and private pilot |

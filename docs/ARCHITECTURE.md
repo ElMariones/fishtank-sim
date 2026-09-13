@@ -16,6 +16,8 @@ src/
     anatomy.ts      Anatomy v2: phenotype → body-space outline, anchors, bounds, validation, framing
     pattern.ts      Development v2 marking anchors from phased haplotype blocks; seeded placement in body coordinates
     patternResemblance.ts Standard-body marking masks, overlap/separation metrics and seeded family study
+    appearance.ts   Genome v2 Color/Ornament expression, founder weights and founder-stock rarity descriptions
+    ornament.ts     Development v3 motif, scale, sparkle and tail/dorsal pattern geometry in body-length units
     descriptors.ts  Fourteen visible descriptors normalized against development ranges
     collection.ts   Device-local collection preferences, goal ranking, sorting, cohorts and goal leaders
     selectionExperiment.ts Seeded ten-generation truncation selection vs random mating, with pedigree F and gate
@@ -37,7 +39,7 @@ src/
     motionClient.ts Lifecycle, cleanup, one automatic restart and manual recovery
     time.ts         Shared tick segments, event boundaries and protected offline window
   rendering/
-    fish.ts         Canvas renderer v2: draws anatomy v2 and pigment layers
+    fish.ts         Canvas renderer v4: anatomy v2, markings, color palettes and cached ornament paths
     tankLayout.ts   Shared tank pose transform and fish-shaped picking
   ui/
     App.tsx         Lab controls, command runtime, inspector and paginated collection
@@ -57,6 +59,7 @@ tests/
   selection.test.ts Selection gate, diversity cost, speed tradeoff and determinism
   resemblanceStudy.test.ts Trial set, display modes, computational observer and result validation
   resemblancePool.test.ts Five-observer FS-111 pool, per-trial agreement and record validation
+  appearance.test.ts Genome v2 stream isolation, dominance, founder rarity, mixed-version saves and ornament bounds
   limits.test.ts   Living/record limits, deep and wide pedigree queries and atomic rejection
   runtime.test.ts  Command envelopes, retries, replay, compaction, migration and tamper rejection
   time.test.ts     Tick segments, shared tank clocks, offline cap and backwards clocks
@@ -198,7 +201,7 @@ type Result<T> =
 
 Representative commands: RenameFish, TransferFishBatch, ReserveClutch, CancelCourtship, PlaceDecoration, FeedTank, SetEquipment, RehomeFish, CreateListing, BuyListing, CancelListing. Each has declared preconditions, events, failure codes, and replay rules.
 
-The lab reducer currently implements `rename`, `move`, `breed`, `sell`, `sell-batch`, `buy`, `add-tank` and `decorate`. `sell-batch` validates every member (non-empty, unique, living) before paying for any of them, so one invalid member rejects the whole batch.
+The lab reducer currently implements `rename`, `move`, `breed`, `sell`, `sell-batch`, `buy`, `add-tank` and `decorate`. `breed` and `buy` carry an optional `genomeVersion`: the app sends the current genome version, and commands recorded before FS-113 omit it and replay exactly as genome v1 (ADR-034). `sell-batch` validates every member (non-empty, unique, living) before paying for any of them, so one invalid member rejects the whole batch.
 
 **Breed:** validate eligible parents and current ownership; reserve cohort slots; commit courtship/clutch record; scheduler emits hatch events at an exact tick. Recheck relevant health/status rules at conception and handle interrupted courtship without losing reservations.
 

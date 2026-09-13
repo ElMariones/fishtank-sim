@@ -33,7 +33,9 @@ M0 completion does not imply M1’s visual research gate has passed.
 | FS-111 | DONE | 0.5 | Design/QA | FS-105 | Run the in-app resemblance study with at least five observers (60 trials, 20 per mode); pool the copied result records and report accuracy per mode against 50% chance, with cues. Pushed `6a69695`: five observers, 54/60 overall, above chance in every mode, no cue notes supplied. Evidence in [FS-111 human resemblance](research/FS-111-HUMAN-RESEMBLANCE.md) |
 | FS-112 | DONE | 1 | Core/UI | FS-109 | User request: raise the 1,000-record limit well beyond 1,000 and cap living (unsold) fish instead, so players can keep breeding while sold fish stay in the archive; kinship and large archive views must stay responsive; the record cap must fit reliable browser storage. Pushed `bd175ed` |
 
-FS-108 to FS-110 were requested during M1 and are outside the 10-day base estimate. FS-111 splits the human part of FS-105 out because it needs real participants.
+| FS-113 | IN PROGRESS | 3 | Genetics/rendering | FS-103 FS-111 | User request after M2: genome v2 Color and Ornament chromosomes with more body, accent, dot and eye colors, fine multicolor spots, tiger stripes, marbling, calico, rosettes and mixes, scale types and shimmer, and tail/dorsal patterns. Rare features appear in about one founder in four; existing genome v1 fish keep their exact look, and FS-101–111 fixtures stay unchanged. Evidence in [FS-113 appearance genetics](research/FS-113-APPEARANCE-GENETICS.md) |
+
+FS-108 to FS-110 were requested during M1, and FS-113 after M2; all are outside the base estimates. FS-111 splits the human part of FS-105 out because it needs real participants.
 
 ## M2 — 15 days
 
@@ -83,7 +85,7 @@ FS-108 to FS-110 were requested during M1 and are outside the 10-day base estima
 
 | ID | Pri | Days | Role | Depends | Task and acceptance |
 |---|---|---:|---|---|---|
-| FS-601 | P0 | 3 | Genetics/persistence | FS-405 | Data-driven registry and genome-v2 migration; old fish retain their original expression version |
+| FS-601 | P0 | 3 | Genetics/persistence | FS-405 | Data-driven registry and genome-v3 migration; old fish retain their original expression version |
 | FS-602 | P0 | 4 | Rendering/genetics | FS-601 FS-306 | Validated tail topology + barbel/dorsal variants; reachable fixtures and no invalid geometry |
 | FS-603 | P1 | 2 | Genetics | FS-602 | Mutation-origin propagation and save-local carrier counts with declared scope |
 | FS-604 | P1 | 3 | Genealogy/UI | FS-603 FS-404 | Named bloodline registry; ancestry contribution and standard similarity shown separately |

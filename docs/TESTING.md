@@ -1,6 +1,6 @@
 # Testing and verification
 
-**Latest recorded run:** 13 September 2026 (M2 completion review and FS-111 five-observer pool), Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium 152.0.7977.76 (Claude desktop browser pane). The earlier FS-202/205/206 run used Node 24.11.1, npm 11.6.2 and Google Chrome 153.0.8010.36 via bundled Playwright. Browser checks use independent fixtures, fresh browser contexts or the browser pane's own QA world; no user lineage is reset.
+**Latest recorded run:** 13 September 2026 (FS-113 appearance genetics, after the M2 completion review and FS-111 five-observer pool), Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium 152.0.7977.76 (Claude desktop browser pane). The earlier FS-202/205/206 run used Node 24.11.1, npm 11.6.2 and Google Chrome 153.0.8010.36 via bundled Playwright. Browser checks use independent fixtures, fresh browser contexts or the browser pane's own QA world; no user lineage is reset.
 
 ## 1. Commands
 
@@ -10,7 +10,7 @@ npm test
 npm run build
 ```
 
-Vitest runs every `tests/*.test.ts` file. The M2 additions are `runtime.test.ts`, `time.test.ts`, `motionClient.test.ts` and `limits.test.ts`; `resemblancePool.test.ts` validates human records. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **63 tests**, and all passed. The production build passed.
+Vitest runs every `tests/*.test.ts` file. The M2 additions are `runtime.test.ts`, `time.test.ts`, `motionClient.test.ts` and `limits.test.ts`; `resemblancePool.test.ts` validates human records; `appearance.test.ts` covers genome v2 appearance (FS-113). The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **72 tests**, and all passed. The production build passed.
 
 ## 2. Automated coverage
 
@@ -49,6 +49,7 @@ Vitest runs every `tests/*.test.ts` file. The M2 additions are `runtime.test.ts`
 | Cohorts and goal leaders | Offspring grouped by parent pair, newest cohort first; leaders are the best living female and male for the goal; a sold leader is replaced |
 | Selection experiment | Default configuration: gate passes (at least 3 traits beyond the founders' 10th–90th percentile in at least 75% of 8 selected lines); every trait's selected shift exceeds random mating by more than 25 points; random lines beyond the range at most 3 of 8; all generation-10 anatomy valid; pedigree F above 0.5 and heterozygosity lower after selection; tail-selected lines end slower than at generation 0 and than random lines; deterministic |
 | Resemblance study kit | 12 fixed trials, 4 per mode, both answers used; every sibling allele within one mutation step of the answer pair; silhouette mode keeps morphology and hides pigment and markings; markings mode keeps markings on identical bodies; computational observer above 90% (silhouette) and 75% (markings) over 150 trials; per-mode scoring, Wilson intervals and stored-result validation |
+| Appearance (FS-113) | For 300 seeds, genome v1 loci, mutations and non-appearance phenotype are identical under genome v2. Chromosomes 9–10 transmit from the parent homologs. Dominance, blends, carrier and mixed strengths, recessive scales and rainbow dots are independent of phase. Founder weights sum to 1; 10,000 founders show a new feature in 20–34% of cases, with striking variants under 1%. Rarity descriptions are checked. Mixed v1/v2 saves round-trip, and wrong genome shapes reject. A legacy breed/buy journal replays as genome v1, and an explicit v1 child of v2 parents rejects. Ornament geometry is finite, bounded and deterministic |
 
 These statistical checks use fixed seeds and wide tolerances to catch implementation regressions. They do not establish biological validity or rigorous randomness certification.
 
@@ -213,6 +214,19 @@ Re-verification:
 ### FS-111 five-observer pool
 
 The user supplied five anonymous complete `study-v1-12x4` result records; the first was already pooled. `poolObserverRecords` validated unique observer IDs and all 12 unique trial IDs per record, then recomputed **54/60 overall**: full appearance 19/20 (Wilson 95% 76.4–99.1%), silhouette 20/20 (83.9–100%), markings 15/20 (53.1–88.8%), overall 90% (79.9–95.3%). Every mode's lower bound is above 50% chance. Per-trial agreement: ten trials 5/5, trial-7 (full) 4/5, trial-9 (markings) 0/5. Submitted score summaries matched the recomputed values. Response times were retained; no cue notes were present. `tests/resemblancePool.test.ts` pins the pool; details are in [FS-111 human resemblance](research/FS-111-HUMAN-RESEMBLANCE.md).
+
+### FS-113 appearance genetics verification
+
+**Commands:** `npm run check` (72 tests, strict TypeScript and production build passed); `node scripts/check-docs.mjs`. Browser: in-app Chromium 152 against `npm run dev -- --port 5173 --strictPort`.
+
+- The FS-101 founder, cohort and extreme checksum pins pass unchanged, as do the FS-103 pattern thresholds, the FS-105 selection and resemblance tests, and the FS-111 pool.
+- **Visual fixtures → Appearance variants:** 15 cards with 15 portraits. A contact sheet showed every body motif, color variant, scale type and fin pattern listed in the [FS-113 report](research/FS-113-APPEARANCE-GENETICS.md#browser-verification). The founder table read 26.6% with at least one new feature; striking variants ran 0.12–0.60%, and strong shimmer 0.00%.
+- **Regression found and fixed before push:** an existing QA world with genome v1 fish opened in recovery mode with "Save snapshot does not agree with its replay journal". Its breed/buy journal entries were replaying under genome v2. After adding `genomeVersion` to those commands (legacy entries replay as v1), the same world loaded and saved.
+- **Existing world after the fix:**
+  - Haru showed "Appearance · genome v1" with every trait classic, and the Genome tab marked chromosomes 09–10 "not carried by genome v1" (12 loci).
+  - Four purchased Newcomers were genome v2. Newcomer 110 showed a slate and lavender blended body labeled very rare, with the founder-stock note.
+  - After the purchases the world autosaved and reloaded without a replay warning, and no console errors were recorded.
+- **Not verified:** frame timing for a full tank of ornamented fish, human perception of the new motifs, and screen-reader review of the Appearance block.
 
 ## 4. Required next verification
 

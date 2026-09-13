@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { CLASSIC_APPEARANCE } from './appearance';
+import { MUTATION_RATE } from './catalog';
 import { measureDescriptors, type VisualDescriptorKey } from './descriptors';
 import { express, founderGenome, inherit } from './genetics';
 import { markingMask, maskSimilarity } from './patternResemblance';
@@ -9,6 +11,7 @@ import type { Genome, Phenotype } from './types';
  * FS-105 resemblance study (BALANCE E-01). A trial shows two unrelated parent pairs and a small cohort bred from one of
  * them; the observer names the source pair. Modes isolate the channel: full appearance, silhouette only (pigment
  * neutralised) or pattern only (markings on one standard body). The same seeded trial set is shown to every observer.
+ * Trials use genome v1, so study-v1-12x4 shows exactly the fish that the FS-111 observers judged.
  */
 export const STUDY_VERSION = 1;
 export const STUDY_RESULTS_KEY = 'fishtank-sim.study.v1';
@@ -26,14 +29,14 @@ export function studyTrials(count = 12, cohortSize = 4, salt = `fs-105:study:v${
   return Array.from({ length: count }, (_, t) => {
     const pair = (side: number): StudyPair => {
       const motherSeed = hash(`${salt}:${t}:${side}:mother`), fatherSeed = hash(`${salt}:${t}:${side}:father`);
-      return { mother: fish(`T${t + 1}-${side ? 'B' : 'A'}-mother`, 'F', founderGenome(motherSeed), motherSeed), father: fish(`T${t + 1}-${side ? 'B' : 'A'}-father`, 'M', founderGenome(fatherSeed), fatherSeed) };
+      return { mother: fish(`T${t + 1}-${side ? 'B' : 'A'}-mother`, 'F', founderGenome(motherSeed, 1), motherSeed), father: fish(`T${t + 1}-${side ? 'B' : 'A'}-father`, 'M', founderGenome(fatherSeed, 1), fatherSeed) };
     };
     const pairs: [StudyPair, StudyPair] = [pair(0), pair(1)];
     const answer = (hash(`${salt}:${t}:answer`) % 2) as 0 | 1;
     const source = pairs[answer];
     const cohort = Array.from({ length: cohortSize }, (_, c) => {
       const seed = hash(`${salt}:${t}:child:${c}`);
-      return fish(`T${t + 1}-child-${c + 1}`, c % 2 ? 'M' : 'F', inherit(source.mother.genome, source.father.genome, seed).genome, seed);
+      return fish(`T${t + 1}-child-${c + 1}`, c % 2 ? 'M' : 'F', inherit(source.mother.genome, source.father.genome, seed, MUTATION_RATE, 1).genome, seed);
     });
     return { id: `trial-${t + 1}`, mode: STUDY_MODES[t % STUDY_MODES.length], pairs, cohort, answer };
   });
@@ -46,7 +49,7 @@ const standard = () => standardPhenotype ??= express({ version: 1, maternal: Arr
 /** Presentation-only phenotype for a study mode. The renderer is unchanged; nothing here is saved or inherited. */
 export function displayPhenotype(p: Phenotype, mode: StudyMode): Phenotype {
   if (mode === 'full') return p;
-  if (mode === 'silhouette') return { ...p, red: 0, black: 0, speckle: 0, yellow: 0.5, white: 0.55, metallic: 0.15, translucency: 0, finPigment: 0, iris: 140, markings: [] };
+  if (mode === 'silhouette') return { ...p, red: 0, black: 0, speckle: 0, yellow: 0.5, white: 0.55, metallic: 0.15, translucency: 0, finPigment: 0, iris: 140, markings: [], appearance: CLASSIC_APPEARANCE };
   const s = standard();
   return { ...p, ...Object.fromEntries(MORPHOLOGY_FIELDS.map(field => [field, s[field]])) };
 }

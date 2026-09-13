@@ -1,6 +1,6 @@
 # Implementation status
 
-**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`).
+**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics; it is verified and awaiting push.
 
 ## Delivered
 
@@ -37,7 +37,8 @@
 - FS-202: versioned module worker owns 20 Hz fish steering and transfers compact `Float32Array` frames to Canvas. Fish that join the visible tank are drawn and pickable on the next frame; motion pauses while the page is hidden. StrictMode/view cleanup terminates every replaced worker; one automatic and one user-triggered recovery path keep faults visible.
 - FS-205: one integer 50 ms clock advances visible and background tank integration identically, with idle checkpoints every five minutes. Reload applies elapsed time at normal 1×, clamps negative deltas to zero and caps protected offline catch-up at eight hours. No life-history effects exist yet.
 - FS-206: Web Locks gives one tab edit authority while other tabs remain inspectable and read-only; closing the writer and reloading transfers control. Existing transaction/quota recovery remains in the Saves panel.
-- 63 automated tests; production build; Chrome verification of worker load/cleanup/faults, two-tab takeover, offline limits, transaction recovery, migration and 10,000-record import/restore, with the runtime journeys repeated in the in-app Chromium pane after the M2 review fixes.
+- FS-113 (user request): genome v2 appends Color and Ornament chromosomes. They add body, accent, dot and eye colors (with blends and two-tone eyes), fine multicolor spots, tiger stripes, marbling, calico, rosettes and motif mixes, five scale types, shimmer, and tail and dorsal patterns, with body motifs that can reach the fins. About one founder in four shows a new feature, and striking variants stay under 1%. Genome v1 fish keep their exact look, and FS-101–111 fixtures are unchanged. The inspector lists appearance with founder-stock rarity, and Visual fixtures shows 15 variants and a founder survey. See [FS-113 appearance genetics](research/FS-113-APPEARANCE-GENETICS.md).
+- 72 automated tests; production build; Chrome verification of worker load/cleanup/faults, two-tab takeover, offline limits, transaction recovery, migration and 10,000-record import/restore, with the runtime journeys repeated in the in-app Chromium pane after the M2 review fixes.
 
 ## Prototype shortcuts and limitations
 
@@ -45,7 +46,7 @@
 |---|---|---|
 | Visual quality | Canvas reference art; five observers scored 54/60 on one fixed 12-trial set, with markings the weak channel; portrait is static | FS-306 FS-701 |
 | Anatomy limits | An eye that cannot fit a shallow head is drawn smaller (adjustment listed); no protruding eyes or extra structures | FS-601–602 |
-| Pattern inheritance | Placement inherited from haplotype blocks (73% sibling separation, computed); common haplotypes are shared by chance; ellipse shapes; symmetry is a spread proxy, not bilateral matching; all five observers misread one markings trial | FS-601 |
+| Pattern inheritance | Placement inherited from haplotype blocks (73% sibling separation, computed); common haplotypes are shared by chance; ellipse shapes; symmetry is a spread proxy, not bilateral matching; all five observers misread one markings trial. FS-113 motif positions come from the birth seed, while kind, colors, density and contrast are inherited, and people have not judged them | FS-601 |
 | Selection balance | Keeping 4 + 4 parents saturates v1 traits within 4–7 generations and drives pedigree F to about 0.8, with only the expected-F figure as a warning | FS-403 FS-605 |
 | Research data | Five anonymous records pooled in-repo by hand; no cue notes, observer context or remote collection | FS-705 |
 | Collection preferences | Goal, sort and favorites are device-local and not in exported saves; filters and parent picks reset on reload; the Parents filter groups every clutch of a pair | FS-203–204 |
@@ -56,10 +57,10 @@
 | Breeding | Lab bypasses maturity, shared habitat, cost and cooldown; fixed 20 fish | FS-401–402 |
 | Environment | No liters, biomass, temperature, water chemistry or oxygen simulation | FS-301 |
 | Decorations | Plants are cosmetic toggle; no placement or collision footprint | FS-304 FS-503 |
-| Economy | Free breeding/tanks make profit farming trivial, and batch sale makes it faster; stock is generated at purchase; no real market | FS-501–502 |
+| Economy | Free breeding/tanks make profit farming trivial, and batch sale makes it faster; stock is generated at purchase; sale quotes ignore appearance; no real market | FS-501–502 |
 | Batch management | Batch sale only; no batch move/rehome, and selection does not persist across tank or archive views | FS-406 |
-| Rarity | No measured reference population/global service or rarity badges | FS-603 FS-805 |
-| Topology | No extra tail lobes/eyes/fins, scale geometry, or genome v2 | FS-601–602 |
+| Rarity | Only founder-stock rarity labels for appearance (FS-113); no measured reference population or global service | FS-603 FS-805 |
+| Topology | No extra tail lobes/eyes/fins or genome v3 topology; FS-113 scale types are drawn textures, not scale geometry | FS-601–602 |
 | Family | One-hop navigation, no graph layout or lineage registration | FS-404–405 FS-604 |
 | History | Birth and pedigree permanent; recent command events persist but compact every 64 commands; no permanent lifetime event history or old portraits | FS-404 |
 | Appearance versions | Lab fish store no per-record development/anatomy/renderer version; all fish re-render under the current model (markings moved with development v2) | FS-404 FS-601 |
@@ -73,6 +74,8 @@
 | Delivery | Pushed to GitHub `main`; no public deployment or continuous integration | FS-706 |
 
 ## Evidence
+
+**FS-113 appearance genetics, Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium 152:** 72 tests and build pass, and the FS-101 checksum pins and FS-103/105/111 research tests are unchanged. Of 10,000 seeded founders, 26.6% show a new feature, and every striking variant is under 1%. Browser checks rendered all 15 appearance variants. Before push they also found that replaying legacy breed/buy journal entries under genome v2 broke existing saves; with versioned commands, the same world now loads and saves. A genome v1 fish reads as classic, and four new Newcomers were genome v2, one with a very rare slate and lavender blend. See [FS-113 appearance genetics](research/FS-113-APPEARANCE-GENETICS.md).
 
 **M2 completion review and FS-111 pool, Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium 152:** 63 tests and build pass. The review fixed three problems. Fish bred into the visible tank were invisible; 40 → 60 fish now draw without a reload. The hidden-page motion pause is restored (21 → 0 → 20 frames per second). Idle clock checkpoints moved to five minutes after measuring about 1.3 s per 10,000-record commit. Re-verified: worker cleanup (6 created / 6 terminated over three remounts), automatic and manual fault recovery, a read-only second tab with takeover, the eight-hour cap (576,000 ticks) and a future timestamp (0 ticks). FS-111: five observers, 54/60. See [TESTING.md](TESTING.md#m2-completion-review-and-fixes).
 
@@ -115,4 +118,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**M1's roadmap gate and M2 are complete.** After any queued user requests, the next scheduled task is FS-301’s unit-aware water model.
+**Push and mark FS-113 DONE.** M1's roadmap gate and M2 are complete, so the next scheduled task is FS-301’s unit-aware water model.

@@ -1,10 +1,11 @@
 import { anatomyFor, insideBody, portraitFrame, silhouettePoints, validateAnatomy } from './anatomy';
-import { LOCI, MODEL_VERSIONS, type Locus } from './catalog';
+import { APPEARANCE_BASELINE, appearanceFeatures, expressAppearance } from './appearance';
+import { APPEARANCE_LOCI, LOCI, MODEL_VERSIONS, MUTATION_RATE, type AppearanceLocus, type Locus } from './catalog';
 import { measureDescriptors, VISUAL_DESCRIPTORS, type NormalizedVisualDescriptors, type VisualDescriptorKey } from './descriptors';
 import { express, fingerprint, founderGenome, inherit } from './genetics';
 import { markingMask, maskSimilarity, separation, type PatternModel } from './patternResemblance';
 import { hash, random } from './random';
-import type { Genome, Phenotype } from './types';
+import type { Appearance, Genome, Phenotype } from './types';
 import { createWorld } from './world';
 
 export { measureDescriptors, VISUAL_DESCRIPTORS, type NormalizedVisualDescriptors, type VisualDescriptorKey } from './descriptors';
@@ -16,7 +17,7 @@ export const VISUAL_FIXTURE_WORLD_SEED = 481516;
 export type VisualFixtureSubject = {
   id: string;
   label: string;
-  kind: 'founder' | 'child' | 'extreme' | 'anatomy';
+  kind: 'founder' | 'child' | 'extreme' | 'anatomy' | 'appearance';
   birthSeed: number;
   genome: Genome;
   genomeFingerprint: string;
@@ -61,7 +62,8 @@ function subject(
   };
 }
 
-const fixtureWorld = createWorld(VISUAL_FIXTURE_TIMESTAMP, VISUAL_FIXTURE_WORLD_SEED);
+// FS-101 to FS-105 fixtures stay on genome v1 so their pinned identities and measurements never drift.
+const fixtureWorld = createWorld(VISUAL_FIXTURE_TIMESTAMP, VISUAL_FIXTURE_WORLD_SEED, 1);
 
 export const FOUNDER_VISUAL_FIXTURES = fixtureWorld.fish.map(fish =>
   subject(fish.id, fish.name, 'founder', fish.genome, fish.birthSeed),
@@ -72,7 +74,7 @@ function cohort(id: string, label: string, motherIndex: number, fatherIndex: num
   const father = FOUNDER_VISUAL_FIXTURES[fatherIndex];
   const children = Array.from({ length: 20 }, (_, index) => {
     const birthSeed = hash(`fs-101:${seed}:child:${String(index + 1).padStart(2, '0')}`);
-    const inherited = inherit(mother.genome, father.genome, birthSeed);
+    const inherited = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, 1);
     return subject(`${id}-${String(index + 1).padStart(2, '0')}`, `Child ${String(index + 1).padStart(2, '0')}`, 'child', inherited.genome, birthSeed, inherited.mutations.length);
   });
   const descriptors = Object.fromEntries(VISUAL_DESCRIPTORS.map(({ key }) => {
@@ -130,6 +132,68 @@ export const ANATOMY_STRESS_FIXTURES = ANATOMY_STRESS_CASES.map(([id, label, bir
   subject(id, label, 'anatomy', genomeWith(overrides, base), birthSeed),
 );
 
+type AppearanceOverrides = Partial<Record<AppearanceLocus, readonly [number, number]>>;
+
+/** FS-113 appearance variants: founder Kohaku's genome v1 loci plus chosen genome v2 Color and Ornament alleles. */
+const APPEARANCE_CASES: readonly [string, string, number, AppearanceOverrides][] = [
+  ['appearance-spots', 'Fine gold spots', 401001, { body_motif: [1, 1], dot_color: [2, 2], motif_density: [4, 4], motif_contrast: [4, 4] }],
+  ['appearance-stripes', 'Tiger stripes', 401002, { body_motif: [2, 2], motif_density: [3, 3], motif_scale: [3, 3], motif_contrast: [5, 5] }],
+  ['appearance-carrier', 'Faint stripes over classic patches', 401003, { body_motif: [0, 2], motif_contrast: [4, 4] }],
+  ['appearance-marble', 'Cobalt marbling', 401004, { body_motif: [3, 3], accent_color: [3, 3], motif_contrast: [4, 4] }],
+  ['appearance-calico', 'Calico flecks in pearl and turquoise', 401005, { body_motif: [4, 4], dot_color: [1, 3], motif_density: [4, 4] }],
+  ['appearance-rosettes', 'Rosettes on a gold body', 401006, { body_motif: [5, 5], base_color: [1, 1], motif_density: [2, 3] }],
+  ['appearance-mix', 'Rainbow spots mixed with stripes', 401007, { body_motif: [1, 2], dot_color: [5, 0], motif_density: [3, 3], motif_contrast: [5, 5] }],
+  ['appearance-slate', 'Slate body, crimson accents, ruby eyes', 401008, { base_color: [2, 2], accent_color: [1, 1], iris_color: [2, 2] }],
+  ['appearance-charcoal', 'Charcoal body, pearl accents, silver eyes, netted scales', 401009, { base_color: [3, 3], accent_color: [5, 5], iris_color: [5, 5], scale_type: [3, 3] }],
+  ['appearance-blend', 'Lavender–jade blend, two-tone eyes, pearl scales, shimmer', 401010, { base_color: [4, 5], iris_color: [3, 4], scale_type: [4, 4], shimmer: [5, 4] }],
+  ['appearance-mirror', 'Mirror scales with soft shimmer', 401011, { scale_type: [2, 2], shimmer: [2, 2] }],
+  ['appearance-armor', 'Armored scales, sunflower accents', 401012, { scale_type: [5, 5], accent_color: [2, 2] }],
+  ['appearance-banded-fins', 'Banded tail and dorsal; stripes reach the fins', 401013, { fin_motif: [2, 2], body_motif: [2, 2], motif_reach: [5, 5], motif_contrast: [4, 4] }],
+  ['appearance-edged-fins', 'Colored fin edges and dark tips', 401014, { fin_motif: [3, 4], accent_color: [4, 4] }],
+  ['appearance-flame-fins', 'Flame rays; ruby spots reach the fins', 401015, { fin_motif: [5, 5], body_motif: [1, 1], motif_reach: [4, 4], dot_color: [4, 4] }],
+];
+
+function appearanceGenome(base: Genome, overrides: AppearanceOverrides): Genome {
+  const genome: Genome = { version: 2, maternal: [...base.maternal.slice(0, LOCI.length), ...APPEARANCE_BASELINE], paternal: [...base.paternal.slice(0, LOCI.length), ...APPEARANCE_BASELINE] };
+  for (const [locus, alleles] of Object.entries(overrides) as [AppearanceLocus, readonly [number, number]][]) {
+    const index = LOCI.length + APPEARANCE_LOCI.indexOf(locus);
+    genome.maternal[index] = alleles[0];
+    genome.paternal[index] = alleles[1];
+  }
+  return genome;
+}
+
+export const APPEARANCE_VISUAL_FIXTURES = APPEARANCE_CASES.map(([id, label, birthSeed, overrides]) =>
+  subject(id, label, 'appearance', appearanceGenome(FOUNDER_VISUAL_FIXTURES[2].genome, overrides), birthSeed),
+);
+
+const APPEARANCE_FEATURES = ['body color', 'accent color', 'eye color', 'shimmer', 'scales', 'body pattern', 'fin pattern'];
+const STRIKING_FEATURES: readonly [string, (a: Appearance) => boolean][] = [
+  ['Rosettes', a => a.motifs.some(m => m.kind === 'rosettes')],
+  ['Rainbow dots', a => a.dots[0] === 'rainbow' && (a.motifs.some(m => m.kind === 'spots' || m.kind === 'calico') || a.finMotifs.some(m => m.kind === 'spots'))],
+  ['Jade body', a => a.base.includes('jade')],
+  ['Lavender body', a => a.base.includes('lavender')],
+  ['Silver eyes', a => a.iris.includes('silver')],
+  ['Armored scales', a => a.scales === 'armor'],
+  ['Flame fins', a => a.finMotifs.some(m => m.kind === 'flame')],
+  ['Strong shimmer', a => a.shimmer >= 0.7],
+];
+export type AppearanceSurvey = { samples: number; anyFeature: number; features: Record<string, number>; striking: Record<string, number> };
+
+/** Seeded genome v2 founders, the distribution sold as Newcomer stock: how often each new feature is visible. */
+export function appearanceFounderSurvey(samples = 10_000, salt = 'fs-113:founders'): AppearanceSurvey {
+  const features = Object.fromEntries(APPEARANCE_FEATURES.map(name => [name, 0])), striking = Object.fromEntries(STRIKING_FEATURES.map(([name]) => [name, 0]));
+  let any = 0;
+  for (let i = 0; i < samples; i++) {
+    const appearance = expressAppearance(founderGenome(hash(`${salt}:${i}`), 2)), shown = appearanceFeatures(appearance);
+    if (shown.length) any++;
+    for (const feature of shown) features[feature]++;
+    for (const [name, test] of STRIKING_FEATURES) if (test(appearance)) striking[name]++;
+  }
+  const share = (counts: Record<string, number>) => Object.fromEntries(Object.entries(counts).map(([name, count]) => [name, count / samples]));
+  return { samples, anyFeature: any / samples, features: share(features), striking: share(striking) };
+}
+
 export const LEGACY_ANATOMY_DEFECTS = [
   { key: 'eye-overhang', label: 'Eye extends past the head outline' },
   { key: 'dorsal-root-gap', label: 'Dorsal fin root outside the body outline' },
@@ -182,7 +246,7 @@ export function anatomySweep(randomSamples = 400): AnatomySweepReport {
   };
   const subjects: [string, Phenotype][] = [
     ...[...FOUNDER_VISUAL_FIXTURES, ...COHORT_VISUAL_FIXTURES.flatMap(c => c.children), ...EXTREME_VISUAL_FIXTURES, ...ANATOMY_STRESS_FIXTURES].map(f => [f.id, f.phenotype] as [string, Phenotype]),
-    ...Array.from({ length: randomSamples }, (_, i) => [`founder-sample-${i}`, express(founderGenome(hash(`fs-102:founder:${i}`)))] as [string, Phenotype]),
+    ...Array.from({ length: randomSamples }, (_, i) => [`founder-sample-${i}`, express(founderGenome(hash(`fs-102:founder:${i}`), 1))] as [string, Phenotype]),
     ...Array.from({ length: randomSamples }, (_, i) => [`binary-extreme-${i}`, express(binary(hash(`fs-102:binary:${i}`)))] as [string, Phenotype]),
   ];
   const legacy = Object.fromEntries(LEGACY_ANATOMY_DEFECTS.map(({ key }) => [key, 0])) as Record<LegacyAnatomyDefect, number>;
@@ -222,6 +286,7 @@ export function fixturePatternComparison(): FixturePatternComparison[] {
 export const VISUAL_FIXTURE_REPORT = {
   fixtureVersion: VISUAL_FIXTURE_VERSION,
   genomeVersion: MODEL_VERSIONS.genome,
+  fixtureGenomeVersion: 1,
   developmentVersion: MODEL_VERSIONS.development,
   anatomyVersion: MODEL_VERSIONS.anatomy,
   rendererVersion: MODEL_VERSIONS.renderer,
@@ -232,7 +297,9 @@ export const VISUAL_FIXTURE_REPORT = {
   cohorts: COHORT_VISUAL_FIXTURES,
   extremes: EXTREME_VISUAL_FIXTURES,
   anatomyStress: ANATOMY_STRESS_FIXTURES,
+  appearance: APPEARANCE_VISUAL_FIXTURES,
   knownFindings: [
+    'Genome v2 appends Color and Ornament chromosomes. Genome v1 fixtures and saved fish read as the classic baseline, so these frozen fixtures render exactly as before.',
     'Morphology and pigment parameter ranges are inherited and measurable in normalized descriptor space.',
     'Anatomy v2 anchors eyes, fin roots, rays, gill and mouth to the measured outline. An eye that cannot fit a shallow head is limited, and the limit is listed.',
     'Development v2 derives marking anchors from phased pigment and pattern haplotype blocks; the birth seed only jitters them. Siblings share placement in proportion to the chromosome copies they share.',

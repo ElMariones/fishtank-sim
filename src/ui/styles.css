@@ -33,3 +33,7 @@ footer a{display:inline-flex;align-items:center;min-height:24px}
 
 .save-navigation .save-state { display: block; margin: 0; padding: 0; }
 .worker-state{position:absolute;z-index:3;left:16px;right:16px;top:52px;padding:10px 12px;border:1px solid #8d8155;border-radius:7px;background:#332f20e8;color:#f0e5bd;font-size:.75rem;display:flex;align-items:center;justify-content:space-between;gap:12px}.worker-state.recovered{right:auto;border-color:#4f7d68;background:#17352de8;color:#cae8d5}.worker-state button{min-height:36px}
+.appearance-traits{display:grid;gap:6px;margin:8px 0 0}.appearance-traits div{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:.8rem}.appearance-traits dt{color:#9fb5ab}.appearance-traits dd{margin:0;display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:6px;text-align:right}
+.rarity{font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:999px;border:1px solid #6f8f80;color:#bfe0cf;white-space:nowrap}.rarity.rare{border-color:#b69a52;color:#f0d88f}.rarity.very-rare{border-color:#c0799b;color:#ffc3de}
+.locus.absent code{opacity:.45}
+.appearance-list{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:3px;font-size:.72rem}.appearance-list li{display:flex;flex-wrap:wrap;gap:4px 6px}.appearance-list span{color:#9fb5ab}.appearance-list em{font-style:normal;color:#f0d88f}

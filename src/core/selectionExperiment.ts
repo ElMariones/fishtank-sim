@@ -80,7 +80,8 @@ function runLine(target: SelectionTarget, config: SelectionConfig, replicate: nu
 
   let population = Array.from({ length: config.population }, (_, i) => {
     const seed = hash(`${config.salt}:founder:${replicate}:${i}`);
-    return make(founderGenome(seed), i % 2 === 0 ? 'F' : 'M', null, null);
+    // Genome v1 keeps the recorded FS-105 selection results reproducible.
+    return make(founderGenome(seed, 1), i % 2 === 0 ? 'F' : 'M', null, null);
   });
   const founders = population.map(f => f.value);
   const generations = [summarize(population, 0)];
@@ -101,7 +102,7 @@ function runLine(target: SelectionTarget, config: SelectionConfig, replicate: nu
       const mother = mothers[pair], father = fathers[(pair + generation) % k];
       for (let child = 0; child < perPair && next.length < config.population; child++) {
         const seed = hash(`${config.salt}:birth:${target.descriptor}:${replicate}:${mode}:${generation}:${pair}:${child}`);
-        next.push(make(inherit(mother.genome, father.genome, seed, config.mutationRate).genome, next.length % 2 === 0 ? 'F' : 'M', mother.id, father.id));
+        next.push(make(inherit(mother.genome, father.genome, seed, config.mutationRate, 1).genome, next.length % 2 === 0 ? 'F' : 'M', mother.id, father.id));
       }
     }
     population = next;

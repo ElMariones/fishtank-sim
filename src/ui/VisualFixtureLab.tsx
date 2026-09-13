@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { sharedExtent, type Extent } from '../core/anatomy';
+import { describeAppearance } from '../core/appearance';
 import { patternResemblanceReport, type ResemblanceSummary } from '../core/patternResemblance';
 import {
-  anatomySweep, fixturePatternComparison, LEGACY_ANATOMY_DEFECTS, VISUAL_DESCRIPTORS, VISUAL_FIXTURE_REPORT,
+  anatomySweep, appearanceFounderSurvey, fixturePatternComparison, LEGACY_ANATOMY_DEFECTS, VISUAL_DESCRIPTORS, VISUAL_FIXTURE_REPORT,
   type VisualDescriptorKey, type VisualFixtureSubject,
 } from '../core/visualFixtures';
 import { PhenotypePortrait } from './FishPortrait';
@@ -15,6 +16,18 @@ const PATTERN_ROWS: [keyof ResemblanceSummary, string][] = [
 ];
 const descriptorLabels = new Map(VISUAL_DESCRIPTORS.map(descriptor => [descriptor.key, descriptor.label]));
 const displayPercent = (value: number) => `${Math.round(value * 100)}%`;
+const preciseShare = (value: number) => `${(value * 100).toFixed(value < 0.01 ? 2 : 1)}%`;
+const CLASSIC_VALUES = new Set(['Classic', 'Classic orange', 'Natural', 'Classic patches', 'Smooth', 'None', 'Plain']);
+
+function AppearanceCard({ fixture }: { fixture: VisualFixtureSubject }) {
+  const rows = describeAppearance(fixture.genome).filter(row => !CLASSIC_VALUES.has(row.value));
+  return <article className="fixture-card appearance-card">
+    <div className="fixture-card-heading"><span>{fixture.id}</span><code>{fixture.genomeFingerprint}</code></div>
+    <PhenotypePortrait phenotype={fixture.phenotype} seed={fixture.birthSeed} label={`${fixture.label}, genome v2 appearance fixture`} />
+    <h3>{fixture.label}</h3>
+    <ul className="appearance-list">{rows.map(row => <li key={row.trait}><span>{row.trait}</span><strong>{row.value}</strong>{row.rarity ? <em>{row.rarity}</em> : null}</li>)}</ul>
+  </article>;
+}
 type Framing = 'fit' | 'shared';
 
 function downloadReport(extra: Record<string, unknown>) {
@@ -49,6 +62,7 @@ export function VisualFixtureLab({ onClose }: { onClose: () => void }) {
   const sweep = useMemo(() => anatomySweep(400), []);
   const patternStudy = useMemo(() => patternResemblanceReport(24, 10), []);
   const fixturePatterns = useMemo(() => fixturePatternComparison(), []);
+  const survey = useMemo(() => appearanceFounderSurvey(), []);
   const shared = (subjects: readonly VisualFixtureSubject[]) => framing === 'shared' ? sharedExtent(subjects.map(subject => subject.phenotype)) : undefined;
   const founderScale = shared(VISUAL_FIXTURE_REPORT.founders);
   const extremeScale = shared(VISUAL_FIXTURE_REPORT.extremes);
@@ -56,13 +70,13 @@ export function VisualFixtureLab({ onClose }: { onClose: () => void }) {
   const r = VISUAL_FIXTURE_REPORT;
   return <main className="fixture-lab">
     <div className="fixture-hero">
-      <div><div className="eyebrow">FS-101 BASELINE · DEVELOPMENT V{r.developmentVersion} · ANATOMY V{r.anatomyVersion} · RENDERER V{r.rendererVersion}</div><h1>Visual inheritance fixtures</h1><p>A deterministic comparison surface for genome v{r.genomeVersion} → development v{r.developmentVersion} → anatomy v{r.anatomyVersion} → renderer v{r.rendererVersion}. It does not alter your aquarium save.</p></div>
+      <div><div className="eyebrow">FS-101 BASELINE · DEVELOPMENT V{r.developmentVersion} · ANATOMY V{r.anatomyVersion} · RENDERER V{r.rendererVersion}</div><h1>Visual inheritance fixtures</h1><p>A deterministic comparison surface for frozen genome v{r.fixtureGenomeVersion} fixtures and genome v{r.genomeVersion} appearance variants → development v{r.developmentVersion} → anatomy v{r.anatomyVersion} → renderer v{r.rendererVersion}. It does not alter your aquarium save.</p></div>
       <div className="fixture-actions">
         <div className="framing-toggle" role="group" aria-label="Portrait framing">
           <button aria-pressed={framing === 'fit'} onClick={() => setFraming('fit')}>Fit each fish</button>
           <button aria-pressed={framing === 'shared'} onClick={() => setFraming('shared')}>Shared scale</button>
         </div>
-        <button className="quiet" onClick={() => downloadReport({ anatomySweep: sweep, patternResemblance: patternStudy, fixturePatterns })}>Download JSON report</button><button onClick={onClose}>Return to aquarium</button>
+        <button className="quiet" onClick={() => downloadReport({ anatomySweep: sweep, patternResemblance: patternStudy, fixturePatterns, appearanceSurvey: survey })}>Download JSON report</button><button onClick={onClose}>Return to aquarium</button>
       </div>
     </div>
     <div className="fixture-summary" aria-label="Fixture summary">
@@ -73,6 +87,20 @@ export function VisualFixtureLab({ onClose }: { onClose: () => void }) {
     <section className="fixture-section" aria-labelledby="founder-fixtures-title">
       <div className="fixture-section-heading"><div><div className="eyebrow">BASE POPULATION</div><h2 id="founder-fixtures-title">Six founder anchors</h2></div><p>World seed {r.worldSeed} · fixed timestamp {r.timestamp}</p></div>
       <div className="fixture-grid founders">{r.founders.map(fixture => <FixtureCard key={fixture.id} fixture={fixture} shared={founderScale} />)}</div>
+    </section>
+
+    <section className="fixture-section" aria-labelledby="appearance-fixtures-title">
+      <div className="fixture-section-heading"><div><div className="eyebrow">FS-113 · GENOME V{r.genomeVersion} COLOR AND ORNAMENT</div><h2 id="appearance-fixtures-title">Appearance variants</h2></div><p>Each card adds chosen Color and Ornament alleles to founder Kohaku’s genome. Genome v1 fish carry neither chromosome and keep the classic look.</p></div>
+      <div className="fixture-grid founders">{r.appearance.map(fixture => <AppearanceCard key={fixture.id} fixture={fixture} />)}</div>
+      <div className="fixture-table-wrap"><table className="fixture-table">
+        <caption>{survey.samples.toLocaleString()} seeded genome v2 founders, the distribution sold as unrelated stock: {preciseShare(survey.anyFeature)} show at least one new feature</caption>
+        <thead><tr><th scope="col">Feature</th><th scope="col">Founders showing it</th></tr></thead>
+        <tbody>
+          {Object.entries(survey.features).map(([name, share]) => <tr key={name}><th scope="row">{name.charAt(0).toUpperCase() + name.slice(1)}</th><td>{preciseShare(share)}</td></tr>)}
+          {Object.entries(survey.striking).map(([name, share]) => <tr key={name}><th scope="row">{name} · striking</th><td>{preciseShare(share)}</td></tr>)}
+        </tbody>
+      </table></div>
+      <p className="fixture-note">Offspring of genome v1 fish inherit the classic alleles. New features then enter a lineage through unrelated stock or a new mutation (0.3% per transmitted copy); carriers of one body or fin motif copy show it faintly.</p>
     </section>
 
     {r.cohorts.map(cohort => {

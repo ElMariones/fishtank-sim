@@ -1,38 +1,64 @@
-import { CROSSOVER_RATE, FOUNDER_WEIGHTS, LOCI, MUTATION_RATE, type Locus } from './catalog';
+import { APPEARANCE_LOCI, CROSSOVER_RATE, FOUNDER_WEIGHTS, GENOME_VERSION, LOCI, MUTATION_RATE, type GenomeVersion, type Locus } from './catalog';
+import { APPEARANCE_BASELINE, APPEARANCE_FOUNDER_WEIGHTS, expressAppearance } from './appearance';
 import { markingAnchors } from './pattern';
 import { clamp, hash, random } from './random';
 import type { Genome, Mutation, Phenotype } from './types';
 
-export function founderGenome(seed: number): Genome {
-  const rng = random(seed);
-  const allele = () => {
-    const draw = rng();
-    let sum = 0;
-    return FOUNDER_WEIGHTS.findIndex((weight, i) => { sum += weight; return draw < sum || i === 5; });
-  };
-  return { version: 1, maternal: LOCI.map(allele), paternal: LOCI.map(allele) };
+function weighted(rng: () => number, weights: readonly number[]): number {
+  const draw = rng();
+  let sum = 0;
+  return weights.findIndex((weight, i) => { sum += weight; return draw < sum || i === weights.length - 1; });
 }
 
-export function inherit(mother: Genome, father: Genome, seed: number, mutationRate = MUTATION_RATE): { genome: Genome; mutations: Mutation[] } {
-  if (mutationRate < 0 || mutationRate > 1 || !Number.isFinite(mutationRate)) throw new Error('Invalid mutation rate.');
+/**
+ * Genome v1 loci always consume the original stream, so a seed's first 48 loci never change. Genome v2 draws the
+ * appended Color and Ornament chromosomes from a separate stream with locus-specific founder weights.
+ */
+export function founderGenome(seed: number, version: GenomeVersion = GENOME_VERSION): Genome {
   const rng = random(seed);
+  const maternal = LOCI.map(() => weighted(rng, FOUNDER_WEIGHTS));
+  const paternal = LOCI.map(() => weighted(rng, FOUNDER_WEIGHTS));
+  if (version === 1) return { version, maternal, paternal };
+  const stream = random(hash(`appearance-v2:founder:${seed}`));
+  const appended = () => APPEARANCE_LOCI.map(locus => weighted(stream, APPEARANCE_FOUNDER_WEIGHTS[locus]));
+  return { version, maternal: [...maternal, ...appended()], paternal: [...paternal, ...appended()] };
+}
+
+/**
+ * Linked meiosis with per-copy mutation. The genome v1 loci of a child are identical for a seed whatever the requested
+ * version. A genome v2 child draws chromosomes 9–10 from a separate stream; a genome v1 parent transmits the classic
+ * baseline there, so its offspring look classic unless a new mutation appears.
+ */
+export function inherit(mother: Genome, father: Genome, seed: number, mutationRate = MUTATION_RATE, version: GenomeVersion = GENOME_VERSION): { genome: Genome; mutations: Mutation[] } {
+  if (mutationRate < 0 || mutationRate > 1 || !Number.isFinite(mutationRate)) throw new Error('Invalid mutation rate.');
+  if (version === 1 && (mother.version !== 1 || father.version !== 1)) throw new Error('Genome v2 parents cannot produce a genome v1 child.');
   const mutations: Mutation[] = [];
-  const gamete = (parent: Genome, copy: Mutation['copy']) => {
-    let side = 0;
-    return LOCI.map((_, i) => {
+  const transmit = (rng: () => number, count: number, offset: number, allele: (homolog: 0 | 1, index: number) => number, copy: Mutation['copy']) => {
+    let side: 0 | 1 = 0;
+    return Array.from({ length: count }, (_, i) => {
       if (i % 6 === 0) side = rng() < 0.5 ? 0 : 1;
-      else if (rng() < CROSSOVER_RATE) side = 1 - side;
-      const from = (side === 0 ? parent.maternal : parent.paternal)[i];
+      else if (rng() < CROSSOVER_RATE) side = side ? 0 : 1;
+      const from = allele(side, i);
       if (rng() >= mutationRate) return from;
       const to = from === 0 ? 1 : from === 5 ? 4 : from + (rng() < 0.5 ? -1 : 1);
-      mutations.push({ locus: i, copy, from, to });
+      mutations.push({ locus: offset + i, copy, from, to });
       return to;
     });
   };
-  return { genome: { version: 1, maternal: gamete(mother, 'maternal'), paternal: gamete(father, 'paternal') }, mutations };
+  const core = (parent: Genome) => (homolog: 0 | 1, i: number) => (homolog === 0 ? parent.maternal : parent.paternal)[i];
+  const rng = random(seed);
+  const maternal = transmit(rng, LOCI.length, 0, core(mother), 'maternal');
+  const paternal = transmit(rng, LOCI.length, 0, core(father), 'paternal');
+  if (version === 1) return { genome: { version, maternal, paternal }, mutations };
+  const appended = (parent: Genome) => (homolog: 0 | 1, i: number) =>
+    parent.version === 1 ? APPEARANCE_BASELINE[i] : (homolog === 0 ? parent.maternal : parent.paternal)[LOCI.length + i];
+  const stream = random(hash(`appearance-v2:birth:${seed}`));
+  maternal.push(...transmit(stream, APPEARANCE_LOCI.length, LOCI.length, appended(mother), 'maternal'));
+  paternal.push(...transmit(stream, APPEARANCE_LOCI.length, LOCI.length, appended(father), 'paternal'));
+  return { genome: { version, maternal, paternal }, mutations };
 }
 
-/** Development v2: adult genetic potential plus inherited marking anchors; age/environmental expression is a later milestone. */
+/** Development v3: adult genetic potential, inherited marking anchors and appearance; age/environment come later. */
 export function express(genome: Genome): Phenotype {
   const g = (name: Locus) => {
     const i = LOCI.indexOf(name);
@@ -68,6 +94,7 @@ export function express(genome: Genome): Phenotype {
     speed: (0.035 + g('thrust') * 0.055) / (1 + tail * 0.7 + depth * 0.35),
     turning: 0.7 + g('turning') * 1.4, activity: g('activity'), social: g('sociability'), bold: g('boldness'), curious: g('curiosity'),
     markings: markingAnchors(genome),
+    appearance: expressAppearance(genome),
   };
 }
 
@@ -75,6 +102,7 @@ export function fingerprint(genome: Genome): string {
   return hash(`g${genome.version}:${genome.maternal.join(',')}|${genome.paternal.join(',')}`).toString(16).padStart(8, '0').toUpperCase();
 }
 
+/** Share of carried loci that are heterozygous; genome v1 fish are assayed over their 48 loci. */
 export function heterozygosity(genome: Genome): number {
-  return genome.maternal.filter((allele, i) => allele !== genome.paternal[i]).length / LOCI.length;
+  return genome.maternal.filter((allele, i) => allele !== genome.paternal[i]).length / genome.maternal.length;
 }

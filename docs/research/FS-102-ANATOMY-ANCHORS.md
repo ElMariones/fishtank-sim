@@ -59,7 +59,7 @@ Anatomy v2 limited 51 eye radii (5.9%) and moved 76 eyes. The v1 pectoral rear r
 
 ## Limits and follow-up
 
-1. **Eye expression is bounded by head depth.** The eye-size descriptor still reports genetic potential, but in the shallowest bodies the drawn eye is smaller and the card says so. Protruding eyes need a topology template (genome v2), not a renderer exception.
+1. **Eye expression is bounded by head depth.** The eye-size descriptor still reports genetic potential, but in the shallowest bodies the drawn eye is smaller and the card says so. Protruding eyes need a topology template (now planned as genome v3), not a renderer exception.
 2. **Picking approximates the caudal fin with a wedge.** Dorsal and pectoral fins are reached only through the slop; keyboard and collection selection remain the reliable path (FS-106).
 3. **Tank edges.** A large fish near the motion bound can still extend past the tank's visible edge. That is the aquarium viewport, not portrait clipping.
 4. **Human review is still pending.** Automated geometry checks and a DOM smoke check are not a resemblance or art-quality study. FS-105 owns that evidence.
