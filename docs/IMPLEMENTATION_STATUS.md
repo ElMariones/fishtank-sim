@@ -1,6 +1,6 @@
 # Implementation status
 
-**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab · **M1:** FS-101 DONE (`fe138d4`); FS-102 DONE (`b0fd927`); FS-103 DONE (`bf4598b`); FS-104 implemented, see the backlog for push status; FS-105–107 open. User requests FS-108/FS-109 DONE (`621a3cb`) and FS-110 DONE (`c467a26`).
+**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab · **M1:** FS-101 DONE (`fe138d4`); FS-102 DONE (`b0fd927`); FS-103 DONE (`bf4598b`); FS-104 DONE (`2c8f18c`); FS-105–107 open. User requests FS-108/FS-109 DONE (`621a3cb`) and FS-110 DONE (`c467a26`).
 
 ## Delivered
 

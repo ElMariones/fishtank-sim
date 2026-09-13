@@ -57,7 +57,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> Continue Fishtank Sim with task FS-104. Read AGENTS.md, docs/IMPLEMENTATION_STATUS.md, docs/UX_SPEC.md §5, docs/research/FS-103-INHERITED-MARKINGS.md and docs/BACKLOG.md. Add cohort sorting by visible descriptors, favorites, and a persistent breeding goal so a player can compare siblings and choose new parents without losing the goal. Keep world save v1 unchanged unless a versioned migration is added; batch selection and the sex filter must keep acting only on visible fish. Verify the journey in the browser. Do not build the market/backend or migrate genome v2 in this task.
+> Continue Fishtank Sim with task FS-105. Read AGENTS.md, docs/IMPLEMENTATION_STATUS.md, docs/BALANCE.md §4 (E-01, E-02), docs/research/FS-103-INHERITED-MARKINGS.md and docs/BACKLOG.md. Produce the ten-generation selection report (selected versus random-mating lines, and the typical-range gate for at least three descriptors) and a small resemblance study with an observer harness in full, silhouette-only and pattern-only modes. Report computational observers separately from any human results, and do not claim the M1 human-resemblance gate without real observers. Record outcomes and failures in a research note.
 
 ## 7. Subsequent task briefs
 
