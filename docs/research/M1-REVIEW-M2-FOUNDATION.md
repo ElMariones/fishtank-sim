@@ -1,6 +1,6 @@
 # M1 review and M2 foundation
 
-Recorded 13 September 2026. Genome v1, development v2, anatomy v2, renderer v3 remain unchanged. Runtime save schema v2 wraps world v1; this is not genome v2.
+Recorded 13 September 2026. Implementation pushed to `main` as `bd175ed`; FS-106/107/112 and FS-201/203/204 are DONE. Genome v1, development v2, anatomy v2, renderer v3 remain unchanged. Runtime save schema v2 wraps world v1; this is not genome v2.
 
 ## M1 review (FS-107)
 

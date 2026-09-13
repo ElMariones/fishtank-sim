@@ -1,6 +1,6 @@
 # Implementation status
 
-**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–105 and FS-108–110 are pushed. FS-106, FS-107 review, FS-112 and M2 FS-201/203/204 are implemented and verified, awaiting push. FS-111 needs real human observers; the M1 perceptual gate remains open. M2 FS-202/205/206 remain open.
+**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–105 and FS-108–110 are pushed. FS-106, FS-107 review, FS-112 and M2 FS-201/203/204 are **DONE**, verified and pushed as `bd175ed`. FS-111 needs real human observers; the M1 perceptual gate remains open. M2 FS-202/205/206 remain open.
 
 ## Delivered
 
