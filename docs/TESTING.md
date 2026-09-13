@@ -1,6 +1,6 @@
 # Testing and verification
 
-**Latest recorded run:** 13 September 2026 (FS-104), Windows 11, Node 22.18.0, npm 10.9.3. FS-101 runs used Node 24.11.1 and npm 11.6.2; FS-101 is pushed as `fe138d4`.
+**Latest recorded run:** 13 September 2026 (FS-105), Windows 11, Node 22.18.0, npm 10.9.3. FS-101 runs used Node 24.11.1 and npm 11.6.2; FS-101 is pushed as `fe138d4`.
 
 ## 1. Commands
 
@@ -10,7 +10,7 @@ npm test
 npm run build
 ```
 
-Vitest runs every `tests/*.test.ts` file: `core.test.ts`, `anatomy.test.ts`, `pattern.test.ts` and `collection.test.ts`. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **36 tests**, and all passed. The production build passed.
+Vitest runs every `tests/*.test.ts` file: `core.test.ts`, `anatomy.test.ts`, `pattern.test.ts`, `collection.test.ts`, `selection.test.ts` and `resemblanceStudy.test.ts`. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **44 tests**, and all passed. The production build passed.
 
 ## 2. Automated coverage
 
@@ -47,6 +47,8 @@ Vitest runs every `tests/*.test.ts` file: `core.test.ts`, `anatomy.test.ts`, `pa
 | Collection preferences | Valid preferences round-trip; duplicate and unknown favorites are dropped; missing, malformed, future-version, unknown-descriptor, unknown-sort and non-ID favorites fall back to defaults; the storage key differs from the world save |
 | Collection ordering | Newest, oldest, name and goal (higher and lower) orders; goal values equal normalized descriptors; a goal sort without a goal falls back to newest; input not mutated |
 | Cohorts and goal leaders | Offspring grouped by parent pair, newest cohort first; leaders are the best living female and male for the goal; a sold leader is replaced |
+| Selection experiment | Default configuration: gate passes (at least 3 traits beyond the founders' 10th–90th percentile in at least 75% of 8 selected lines); every trait's selected shift exceeds random mating by more than 25 points; random lines beyond the range at most 3 of 8; all generation-10 anatomy valid; pedigree F above 0.5 and heterozygosity lower after selection; tail-selected lines end slower than at generation 0 and than random lines; deterministic |
+| Resemblance study kit | 12 fixed trials, 4 per mode, both answers used; every sibling allele within one mutation step of the answer pair; silhouette mode keeps morphology and hides pigment and markings; markings mode keeps markings on identical bodies; computational observer above 90% (silhouette) and 75% (markings) over 150 trials; per-mode scoring, Wilson intervals and stored-result validation |
 
 These statistical checks use fixed seeds and wide tolerances to catch implementation regressions. They do not establish biological validity or rigorous randomness certification.
 
@@ -129,11 +131,22 @@ Environment: local Vite dev server, in-app Chromium browser pane, the pane's own
 - **Breed** (Haru × Sumi after the reset) switched the Parents filter to "Haru × Sumi · 35", kept the goal sort, and pinned both parents. The notice then said "new cohort" although the view held all of the pair's offspring; the wording was corrected to "Showing all offspring of … × …".
 - Production build passed; console error count did not change.
 
+### FS-105 research surfaces verification
+
+Environment: local Vite dev server, in-app Chromium browser pane.
+
+- Header navigation read "Aquarium (current) · Visual fixtures · Research". **Research** opened the resemblance study.
+- Trial 1 of 12 was **Full appearance**, with 4 sibling canvases and 4 parent canvases labelled "Sibling 1–4", "Pair A mother/father" and "Pair B mother/father" (no answer leaked), plus the buttons "Pair A are the parents" and "Pair B are the parents".
+- Typing the cue "tail shape" and choosing Pair A advanced to Trial 2 (**Silhouette only**) and stored `{ trialId: trial-1, choice: 0, cue: "tail shape", ms: 690 }` under `fishtank-sim.study.v1`. **Undo last answer** returned to Trial 1 with 0 stored answers.
+- Scripted alternating answers to all 12 trials reached "Your resemblance results", with per-mode rows and Wilson intervals beside the computational observer (4/4 in each mode), and a textarea record that parsed with 12 answers. These answers are not data; **Start again** cleared them (0 stored).
+- **Selection experiment → Run experiment** finished in 882 ms: "6 / 6 traits beyond typical range", "Passed gate (needs 3)", "0 invalid anatomies in generation 10", "0.80 mean pedigree F after selection". Six trend cards drew selected and random curves, and the outcome table matched the Node results.
+- Console error count did not change.
+
 ## 4. Required next verification
 
-### Visual inheritance / FS-101–107
+### Visual inheritance / FS-101–107, FS-111
 
-Fixed-seed phenotype tables, portraits/contact sheets, six extreme anatomies, parent-child resemblance study, multi-trait selection and readability under larger text. Do not assert a perceptual metric based only on allele counts.
+Human resemblance sessions (at least five observers through Research → Resemblance study), readability under 200% text, touch, and keyboard-only journeys. Do not assert a perceptual result from computational observers or allele counts.
 
 ### Runtime / M2
 

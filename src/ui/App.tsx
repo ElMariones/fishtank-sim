@@ -11,6 +11,7 @@ import { decodeSave, SAVE_KEY } from '../core/save';
 import type { Fish, World } from '../core/types';
 import { applyCommand, COHORT_SIZE, createWorld, quote, STOCK_PRICE, type Command } from '../core/world';
 import { FishPortrait } from './FishPortrait';
+import { ResearchLab } from './ResearchLab';
 import { TankCanvas } from './TankCanvas';
 import { VisualFixtureLab } from './VisualFixtureLab';
 import './styles.css';
@@ -20,6 +21,8 @@ const wholePercent = (n: number) => `${Math.round(n * 100)}%`;
 const date = (timestamp: string) => new Date(timestamp).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 const descriptorLabel = new Map(VISUAL_DESCRIPTORS.map(descriptor => [descriptor.key, descriptor.label]));
 type SexFilter = 'all' | Fish['sex'];
+type View = 'aquarium' | 'fixtures' | 'research';
+const VIEWS: [View, string][] = [['aquarium', 'Aquarium'], ['fixtures', 'Visual fixtures'], ['research', 'Research']];
 
 function load(): { world: World; warning: string; blocked: boolean } {
   try {
@@ -62,7 +65,7 @@ export function App() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [cohortKey, setCohortKey] = useState('all');
   const [saleId, setSaleId] = useState<string | null>(null);
-  const [view, setView] = useState<'aquarium' | 'fixtures'>('aquarium');
+  const [view, setView] = useState<View>('aquarium');
   const [batchIds, setBatchIds] = useState<string[]>([]);
   const [batchReview, setBatchReview] = useState(false);
   const [lastBatchId, setLastBatchId] = useState<string | null>(null);
@@ -171,9 +174,11 @@ export function App() {
     <header className="topbar">
       <a className="brand" href="#"><img src="/favicon.svg" alt="" /><span>fishtank<span className="brand-light"> sim</span></span></a>
       <div className="project-label">GENETICS LAB <span>0.1</span></div>
-      <div className="top-actions"><span className="credits">◈ {world.credits.toLocaleString()} <small>lab credits</small></span><button className="quiet" onClick={() => setView(current => current === 'aquarium' ? 'fixtures' : 'aquarium')}>{view === 'aquarium' ? 'Visual fixtures' : 'Aquarium'}</button><button className="quiet" onClick={() => download(world)}>Export save</button></div>
+      <div className="top-actions"><span className="credits">◈ {world.credits.toLocaleString()} <small>lab credits</small></span>
+        <nav className="view-switch" aria-label="Lab views">{VIEWS.map(([value, text]) => <button key={value} className="quiet" aria-current={view === value ? 'page' : undefined} onClick={() => setView(value)}>{text}</button>)}</nav>
+        <button className="quiet" onClick={() => download(world)}>Export save</button></div>
     </header>
-    {view === 'fixtures' ? <VisualFixtureLab onClose={() => setView('aquarium')} /> : <div className="workspace">
+    {view === 'fixtures' ? <VisualFixtureLab onClose={() => setView('aquarium')} /> : view === 'research' ? <ResearchLab onClose={() => setView('aquarium')} /> : <div className="workspace">
       <aside className="tank-sidebar">
         <div className="eyebrow">YOUR AQUARIUMS</div>
         <nav aria-label="Aquariums">{world.tanks.map((t, i) => <button key={t.id} className={`tank-link ${t.id === tank.id ? 'active' : ''}`} onClick={() => { setTankId(t.id); setShowArchived(false); setQuery(''); }}>

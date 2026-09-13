@@ -69,11 +69,13 @@ No real-money conversion, cash-out, token economy, or paid mutation chance is de
 
 Show two parent pairs and shuffled child cohorts. Ask observers to match each cohort to its parents and describe the cues. Record sample size and chance baseline. Repeat with silhouettes only and patterns only to identify the weak channel.
 
+**Status (FS-105):** Research → Resemblance study runs 12 fixed blind trials (4 each in full, silhouette-only and markings-only modes) and exports a result record. A computational observer names the source pair in 99.7% (silhouette), 89.0% (markings) and 98.7% (combined) of 300 seeded trials. No human sessions yet (FS-111). See [FS-105 selection and resemblance](research/FS-105-SELECTION-AND-RESEMBLANCE.md).
+
 ### E-02: artificial selection
 
 For each selected descriptor, create 20 replicate seed populations; retain a declared proportion and breed for 10–30 generations. Compare to random mating. Plot mean, variance, survival/geometry validity and heterozygosity. Add a multi-objective experiment for long tails with adequate swimming performance.
 
-The repository has a smaller deterministic regression proving selection increases body depth. It is not the full balance experiment.
+**Status (FS-105, reduced):** 8 replicate lines per trait, 40 fish per generation, top 4 + 4 parents, 10 generations, with random-mating controls. All six traits ended beyond the founders' 10th–90th percentile range in 8 of 8 lines, while mean pedigree F reached 0.80 and heterozygosity fell from 77% to 14–19%. The 20-replicate, 10–30-generation version and the multi-objective long-tail experiment remain open. The original body-depth regression still runs in the core tests.
 
 ### E-03: mutation discovery
 

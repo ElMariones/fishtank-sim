@@ -279,7 +279,7 @@ Avoid pushy “come back now” notifications, countdown anxiety, fake scarcity,
 - Reopening a save preserves genotype, identity, parent links, and appearance version.
 - A player can follow an ancestor from a child in another tank and return without losing context.
 
-These are planned experiments; the current build has not passed a user study or 100-generation visual-quality evaluation.
+**Status (13 September 2026):** the selection-shift criterion passed for 6 of 6 traits in a seeded ten-generation experiment, and generation-10 offspring stayed renderable; see [FS-105 selection and resemblance](research/FS-105-SELECTION-AND-RESEMBLANCE.md). The blind human comparison (FS-111) and the 100-generation evaluation (FS-702) have not been run.
 
 ### Product targets
 

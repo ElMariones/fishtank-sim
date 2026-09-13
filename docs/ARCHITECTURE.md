@@ -18,6 +18,8 @@ src/
     patternResemblance.ts Standard-body marking masks, overlap/separation metrics and seeded family study
     descriptors.ts  Fourteen visible descriptors normalized against development ranges
     collection.ts   Device-local collection preferences, goal ranking, sorting, cohorts and goal leaders
+    selectionExperiment.ts Seeded ten-generation truncation selection vs random mating, with pedigree F and gate
+    resemblanceStudy.ts Blind parent-pair trial set, display modes, computational observer and answer scoring
     pedigree.ts     Exact tabular relationship matrix for the bounded lab
     world.ts        Validated world commands and local NPC transactions
     save.ts         Versioned save schema and reference validation
@@ -31,7 +33,8 @@ src/
     App.tsx         Lab controls, local persistence, inspector and collection
     TankCanvas.tsx  Frame loop, visual aquarium and selection
     FishPortrait.tsx Shared procedural renderer at portrait scale, fitted or shared-scale framing
-    VisualFixtureLab.tsx Deterministic fixture and anatomy comparison surface
+    VisualFixtureLab.tsx Deterministic fixture, anatomy and marking-resemblance comparison surface
+    ResearchLab.tsx Blind resemblance study and ten-generation selection experiment
     styles.css     Responsive theme and layout
   main.tsx         React entry
 tests/
@@ -39,6 +42,8 @@ tests/
   anatomy.test.ts  Anatomy attachment sweep, framing without clipping, picking transform
   pattern.test.ts  Marking block derivation, transmission, placement jitter and resemblance thresholds
   collection.test.ts Preference validation, collection ordering, cohorts and goal leaders
+  selection.test.ts Selection gate, diversity cost, speed tradeoff and determinism
+  resemblanceStudy.test.ts Trial set, display modes, computational observer and result validation
 ```
 
 Core modules import neither React nor browser globals. The Canvas renderer receives a phenotype, seed, size and animation time; it obtains geometry from the pure anatomy module, so tests validate the same eye, fin and tail anchors that are drawn and the tank uses one pose transform for drawing and picking. Motion has its own actors and reads genetic movement parameters. The app owns persisted entities and selected UI state.
