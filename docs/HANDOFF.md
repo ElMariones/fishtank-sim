@@ -57,7 +57,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> Continue Fishtank Sim with task FS-103. Read AGENTS.md, docs/IMPLEMENTATION_STATUS.md, docs/GENETICS.md, docs/research/FS-101-VISUAL-FIXTURES.md, docs/research/FS-102-ANATOMY-ANCHORS.md and docs/BACKLOG.md. Add inherited low-frequency pattern structure so sibling markings share recognizable family properties, with birth-seed microvariation only for detail. Keep genome v1, locus order, mutation semantics, saved fish identities and FS-101 signatures stable; record the development/renderer model change. Measure sibling, parent-child and unrelated marking similarity before and after. Do not build the market/backend or migrate genome v2 in this task.
+> Continue Fishtank Sim with task FS-104. Read AGENTS.md, docs/IMPLEMENTATION_STATUS.md, docs/UX_SPEC.md §5, docs/research/FS-103-INHERITED-MARKINGS.md and docs/BACKLOG.md. Add cohort sorting by visible descriptors, favorites, and a persistent breeding goal so a player can compare siblings and choose new parents without losing the goal. Keep world save v1 unchanged unless a versioned migration is added; batch selection and the sex filter must keep acting only on visible fish. Verify the journey in the browser. Do not build the market/backend or migrate genome v2 in this task.
 
 ## 7. Subsequent task briefs
 
