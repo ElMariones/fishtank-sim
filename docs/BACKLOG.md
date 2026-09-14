@@ -55,7 +55,7 @@ FS-108 to FS-110 were requested during M1, and FS-113 after M2; all are outside 
 | FS-301 | DONE | 3 | Simulation | FS-205 | Unit-aware water/oxygen/waste model; zero/overload/recovery conservation fixtures. Pushed `4f61d8b`; evidence in [FS-301 water model](research/FS-301-WATER-MODEL.md) |
 | FS-302 | DONE | 3 | Development | FS-301 | Eggs/fry/juvenile/adult stages and accumulated growth; same genome develops differently under declared conditions. Pushed `5821f46`; evidence in [FS-302 life stages](research/FS-302-LIFE-STAGES.md) |
 | FS-303 | DONE | 4 | Behavior | FS-202 FS-301 | Utility AI with inspectable reasons; cruise/forage/eat/hide/school transitions work. Pushed `e7aefc1`; [evidence](research/FS-303-BEHAVIOR-AND-BREEDING.md) |
-| FS-304 | VERIFIED, awaiting push | 2 | Spatial/runtime | FS-303 | Spatial hash and shared shelter/rock footprints with anticipatory avoidance and body-center clearance. Local-density scaling fixture; extreme fins may overlap. [Evidence](research/FS-304-403-SPATIAL-AND-PREDICTION.md) |
+| FS-304 | DONE | 2 | Spatial/runtime | FS-303 | Spatial hash and shared shelter/rock footprints with anticipatory avoidance and body-center clearance. Local-density scaling fixture; extreme fins may overlap. Pushed `5dbfb73`; [Evidence](research/FS-304-403-SPATIAL-AND-PREDICTION.md) |
 | FS-305 | P0 | 3 | UI/simulation | FS-301 FS-302 | Feeding/equipment/water controls with cost/effect previews; care warnings identify corrective actions |
 | FS-306 | P1 | 3 | Rendering | FS-102 FS-302 | Juvenile reveal and smooth body/fin animation; actual stage and adult preview clearly distinguished |
 | FS-307 | P0 | 2 | Integration | FS-303 FS-304 FS-305 FS-306 | Healthy and stressed tanks demo, absence summary and recovery; no unexplained health decay |
@@ -66,7 +66,7 @@ FS-108 to FS-110 were requested during M1, and FS-113 after M2; all are outside 
 |---|---|---:|---|---|---|
 | FS-401 | P0 | 3 | Breeding | FS-307 | Maturity/health/cooldown and shared habitat checks; transparent courtship blockers |
 | FS-402 | P0 | 3 | Breeding/runtime | FS-401 | Reserved clutch scheduler and bounded nursery; no overflow or duplicated hatch on reload |
-| FS-403 | VERIFIED, awaiting push | 2 | UI/genetics | FS-402 | Independent prediction stream; exact single-locus odds and labeled sampled polygenic ranges. Delivered early in the lab; FS-402 lifecycle integration remains a milestone dependency. [Evidence](research/FS-304-403-SPATIAL-AND-PREDICTION.md) |
+| FS-403 | DONE | 2 | UI/genetics | FS-402 | Independent prediction stream; exact single-locus odds and labeled sampled polygenic ranges. Delivered early in the lab; FS-402 lifecycle integration remains a milestone dependency. Pushed `5dbfb73`; [Evidence](research/FS-304-403-SPATIAL-AND-PREDICTION.md) |
 | FS-404 | P0 | 3 | Genealogy | FS-203 FS-402 | Bounded ancestor graph with portraits and cross-tank/archived focus; six-generation navigation |
 | FS-405 | P1 | 2 | Genetics/data | FS-404 | Incremental kinship cache with unknown-founder assumptions and reference fixtures |
 | FS-406 | P0 | 2 | Integration | FS-403 FS-404 FS-405 | Two-generation normal-mode demonstration, cohort selection and batch rehoming with review |
@@ -127,7 +127,7 @@ M8 total: 40–60 days. Provider costs and moderation operations require separat
 
 ## Suggested next-agent task
 
-M1, M2 and FS-301–303 are pushed. FS-304 and the independent FS-403 prediction feature are verified, awaiting push. Next is FS-305 care controls, followed by FS-306/307 and FS-401/402. Normal breeding and M4's two-generation gate remain open; predictions do not enforce eligibility or reserve a nursery.
+M1, M2 and FS-301–303 are pushed. FS-304 and the independent FS-403 prediction feature are DONE, pushed `5dbfb73`. Next is FS-305 care controls, followed by FS-306/307 and FS-401/402. Normal breeding and M4's two-generation gate remain open; predictions do not enforce eligibility or reserve a nursery.
 
 ## Current user-requested additions — DONE, pushed `e7aefc1`
 

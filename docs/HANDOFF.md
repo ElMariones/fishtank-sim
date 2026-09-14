@@ -63,7 +63,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> FS-304 spatial steering and FS-403 independent prediction are verified, awaiting push; see the backlog for final push status and the FS-304/403 report for limits. Continue M3 with FS-305 feeding/equipment/water controls, cost/effect previews and actionable care warnings. Read GDD §5/9 and the water/development contracts. Keep domain care separate from transient worker pellets and motion speed, preserve protected absence, and verify active/background/offline/replay equality and rejected-command atomicity. Complete FS-306/307 before FS-401/402 normal breeding. FS-403 was delivered early in the lab; it does not complete M4's lifecycle or two-generation gate.
+> FS-304 spatial steering and FS-403 independent prediction are DONE, pushed `5dbfb73`; see the backlog for final push status and the FS-304/403 report for limits. Continue M3 with FS-305 feeding/equipment/water controls, cost/effect previews and actionable care warnings. Read GDD §5/9 and the water/development contracts. Keep domain care separate from transient worker pellets and motion speed, preserve protected absence, and verify active/background/offline/replay equality and rejected-command atomicity. Complete FS-306/307 before FS-401/402 normal breeding. FS-403 was delivered early in the lab; it does not complete M4's lifecycle or two-generation gate.
 
 ## 7. Subsequent task briefs
 

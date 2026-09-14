@@ -1,10 +1,10 @@
 # Implementation status
 
-**Updated:** 13 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`) and FS-302 (life stages and growth, `5821f46`) and FS-303 (utility behavior, `e7aefc1`) are DONE.
+**Updated:** 14 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`) and FS-302 (life stages and growth, `5821f46`) and FS-303 (utility behavior, `e7aefc1`) are DONE.
 
-## Current continuation — verified, awaiting push
+## Current continuation — DONE, pushed `5dbfb73`
 
-14 September 2026: FS-304 spatial steering and FS-403 offspring prediction are implemented and verified, awaiting push. FS-403 is delivered early as a pure prediction feature in the lab; it does not complete the FS-401/402 lifecycle dependencies or M4's gate. See [spatial and prediction evidence](research/FS-304-403-SPATIAL-AND-PREDICTION.md). Next is FS-305 care; FS-306/307 and FS-401/402/404–406 remain open.
+14 September 2026: FS-304 spatial steering and FS-403 offspring prediction are DONE, pushed `5dbfb73`. FS-403 is delivered early as a pure prediction feature in the lab; it does not complete the FS-401/402 lifecycle dependencies or M4's gate. See [spatial and prediction evidence](research/FS-304-403-SPATIAL-AND-PREDICTION.md). Next is FS-305 care; FS-306/307 and FS-401/402/404–406 remain open.
 
 The starting checkout was at `953143d`, equal to freshly fetched `origin/main`, with no tracked changes or unpushed commits. The unrelated `.claude/launch.json` remains untouched and untracked. Prior FS-303/114/115 work (`e7aefc1`) and the planner/inspector follow-up (`c50e579`) were already pushed.
 

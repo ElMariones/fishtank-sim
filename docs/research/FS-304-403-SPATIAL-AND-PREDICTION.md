@@ -1,6 +1,6 @@
 # FS-304 spatial steering and FS-403 offspring prediction
 
-14 September 2026. Verified, awaiting push. World v3, runtime/save schema unchanged; behavior model 2, motion protocol 2, prediction model 1. Genome/development/anatomy/fish renderer versions unchanged.
+14 September 2026. DONE, pushed `5dbfb73`. World v3, runtime/save schema unchanged; behavior model 2, motion protocol 2, prediction model 1. Genome/development/anatomy/fish renderer versions unchanged.
 
 ## Repository review
 
