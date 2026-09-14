@@ -24,6 +24,7 @@ src/
     resemblanceStudy.ts Blind parent-pair trial set, display modes, computational observer and answer scoring
     resemblancePool.ts Strict validation and recomputation of anonymous human observer records
     pedigree.ts     Exact memoized ancestry-pair queries with an explicit stack
+    genealogy.ts    Bounded ancestor graph (each ancestor once, with positions and unknown/missing counts), descendants by generation, record search and breadcrumbs
     world.ts        Validated world commands and local NPC transactions
     water.ts        Water model v1: one-compartment oxygen/ammonia/food chemistry, fixed steps, ledger and status bands
     habitat.ts      Resident load and food need per tank, world advance (care and water steps plus daily development) and stocking bands
@@ -59,6 +60,8 @@ src/
     AbsencePanel.tsx "While you were away" per-tank return summary with links to each tank
     CareScenarios.tsx Research tab charting the healthy and stressed care scenarios
     NormalBreeding.tsx Pairing options, blockers with fixes, and the courting, incubating and hatched clutch list
+    FamilyView.tsx  Family tab: ancestor generations with portraits, descendant generations, record search and breadcrumb trail
+    Controls.tsx    Shared sex mark and pagination controls
     TankCanvas.tsx  Paints worker motion frames, fish picking and the motion-fault recovery notice
     FishPortrait.tsx Shared procedural renderer at portrait scale, fitted or shared-scale framing
     VisualFixtureLab.tsx Deterministic fixture, anatomy and marking-resemblance comparison surface
@@ -79,6 +82,7 @@ tests/
   juvenile.test.ts Maturity, hatchling interpolation, stage anatomy and framing sweeps, ornament reveal, turning poses and reveal series
   absence.test.ts  Day observer neutrality, no unexplained decline across random care, scenario recovery and absence summaries
   breeding.test.ts Pairing blockers, courtship pauses and spawning, reservations under random commands, reload/offline no-duplication, cancel/sale guards, world v4 migration
+  genealogy.test.ts Repeated ancestors, position-by-position reference on random inbred pedigrees, ten generations six at a time, sold and cross-tank relatives, 10,000-record bounds, search and trail
   care.test.ts     Ration conservation, development under rations and temperature, split/offline/replay equality, costs, warnings, projections and world v3 migration
   limits.test.ts   Living/record limits, deep and wide pedigree queries and atomic rejection
   runtime.test.ts  Command envelopes, retries, replay, compaction, migration and tamper rejection
@@ -96,6 +100,12 @@ There is currently **no backend, WebGL mesh, biological life-stage scheduler, au
 
 `core/prediction.ts` reads genomes only: exact unordered single-locus genotype odds before mutation, plus 256 linked/meiosis samples from a dedicated prediction namespace. `ui/OffspringPrediction.tsx` memoizes by genome/goal content and labels empirical ranges, expression scores and exact odds separately. It is available in the lab ahead of normal breeding, independent of clock, commands, fish IDs and nursery records. It predicts current genome-v2 births; legacy replay rules are unchanged.
 
+### FS-404 family graph, 14 September 2026
+
+`core/genealogy.ts` indexes records by ID and children by parent in one pass, only while the Family tab is open. `ancestorGraph` walks up to six generations back. Per generation it counts how many pedigree positions each ancestor fills rather than expanding 2^n positions, so an ancestor reached by several paths is one node listed at its nearest generation, carrying every position, generation and child edge. Each generation also counts positions above founder stock (unknown) and positions whose recorded parent has no record (missing); recorded + unknown + missing always equals 2^n. A view holds at most 126 distinct ancestors, and an ancestor whose parents lie beyond it is marked so focusing it continues further back. `descendantGenerations` lists each descendant once at its nearest generation, up to six forward.
+
+No save, command or kinship calculation changed; pedigree F still uses every recorded generation. `ui/FamilyView.tsx` renders the graph with current-stage portraits, descendant generations paginated at 60, a name or ID search across living and sold records, and a breadcrumb trail kept as session state in App (ADR-050).
+
 ## 2. Stack decisions
 
 | Concern | Current | Next target | Reason |
@@ -106,7 +116,7 @@ There is currently **no backend, WebGL mesh, biological life-stage scheduler, au
 | Motion | 20 Hz module worker, spatial hash and shared cover/rock footprints | Render interpolation and morphology-aware clearance | Remove unconditional all-pairs scans; dense clusters still cost more |
 | Persistence | IndexedDB transactions, two backups, v1 migration and Web Locks writer lease | Worker-assisted incremental persistence | Larger archives need async storage and explicit recovery |
 | State | React state + motion refs | UI store only if needed | Avoid global subscription to every swimming coordinate |
-| Genealogy | Exact memoized ancestor queries and paginated relatives | Worker query + incremental kinship cache | Preserve history without world-sized matrix allocation |
+| Genealogy | Exact memoized kinship queries; bounded six-generation ancestor graph and descendant generations from an on-demand index (FS-404) | Worker query + incremental kinship cache | Preserve history without world-sized matrix allocation |
 | Backend | None | Authoritative HTTP service + PostgreSQL | Durable transactions and trusted online ownership |
 | Shared simulation | Persistent 50 ms clock, event-boundary integrator, fixed-step care and water per tank (FS-301, FS-305) and daily life stages, growth and condition (FS-302) | Water, development and scheduled lifecycle events | One deterministic integrator must serve visible/background/offline modes |
 

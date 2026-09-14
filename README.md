@@ -28,7 +28,7 @@ The npm cache is configured inside this checkout for compatibility with the work
 
 1. Select a swimming fish or its collection card. Rename it and inspect its 48- or 60-locus genome, including named Genome 2 appearance alleles.
 2. Choose an adult mother and father that share a tank, pick a nursery, and start a courtship. It reserves the nursery places, pauses with a reason if anything is wrong, and lays tracked eggs when it completes. **Instant lab cross** still lays twenty eggs at once as a research shortcut.
-3. Select a child, then open Family and choose a parent.
+3. Select a child, then open Family. Follow ancestors up to six generations back or descendants forward, find any record by name or ID, and use Back to retrace your path.
 4. Review the planner's exact single-locus odds and 256-sample adult-potential ranges, then move interesting offspring to another aquarium and select them as the next parents.
 5. Use unrelated NPC stock for outcrossing. Selling preserves the fish’s family record.
 6. Open **Saves** to export, preview a v1/v2 import, or restore one of two backups. The app automatically reloads its validated IndexedDB save and preserves the original v1 localStorage data.
@@ -62,7 +62,7 @@ React + TypeScript + Vite. Pure seeded genetics and pedigree core, with genome v
 
 M2 (FS-201–206) is complete. Five human observers scored 54/60 in the M1 resemblance study (FS-111), meeting M1's human-resemblance gate. Care controls, juvenile appearance reveal, PixiJS and an authoritative database-backed market remain planned. See the [M2 runtime report](docs/research/M2-RUNTIME-AND-RECOVERY.md) and [human resemblance results](docs/research/FS-111-HUMAN-RESEMBLANCE.md).
 
-FS-304 adds spatial steering around shared rock and plant-cover footprints. FS-403 offers exact single-locus odds and sampled offspring ranges early in the lab. M3 is delivered: care controls with previews and warnings (FS-305), juvenile reveal and swim animation (FS-306), and a per-tank return summary plus healthy and stressed care scenarios in Research (FS-307). M4 is under way: normal breeding with courtship blockers and reserved nurseries is delivered (FS-401/402); the deep family tree, kinship cache and batch rehoming remain unfinished. See [spatial and prediction evidence](docs/research/FS-304-403-SPATIAL-AND-PREDICTION.md).
+FS-304 adds spatial steering around shared rock and plant-cover footprints. FS-403 offers exact single-locus odds and sampled offspring ranges early in the lab. M3 is delivered: care controls with previews and warnings (FS-305), juvenile reveal and swim animation (FS-306), and a per-tank return summary plus healthy and stressed care scenarios in Research (FS-307). M4 is under way: normal breeding with courtship blockers and reserved nurseries (FS-401/402) and a six-generation family graph with record search (FS-404) are delivered; the kinship cache and batch rehoming remain unfinished. See [spatial and prediction evidence](docs/research/FS-304-403-SPATIAL-AND-PREDICTION.md).
 
 ## Repository status
 

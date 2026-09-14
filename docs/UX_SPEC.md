@@ -101,6 +101,13 @@ Default shows parents and children with portraits, then expandable grandparents/
 
 Deep pedigree should expose coefficient assumptions and missing ancestors. Do not render a massive 50-generation graph at once. Navigate progressively.
 
+**Lab implementation (FS-404):** the Family tab lists ancestors by generation: Parents, Grandparents, Great-grandparents, then 2×–4× great-grandparents. Parents and grandparents show by default; each **Show …** press adds one generation up to six, and that depth is kept while moving between relatives.
+- **Ancestors:** each appears once, at its nearest generation, with a current-stage portrait, name, generation, sex, aquarium or "Sold · archived record", and "Mother of …" or "Father of …". A repeated ancestor states how many positions it fills and in which generations, and a later generation that meets it again says "Also here, listed nearer". Founders say "Founder stock"; ancestors whose parents lie beyond the sixth generation say "Earlier ancestors recorded".
+- **Missing ancestors:** each generation heading counts recorded positions and those above founder stock or missing from the world. Generations with nothing recorded collapse into one note. A closing note says pedigree F uses every recorded generation and assumes founder stock is unrelated and not inbred.
+- **Descendants:** one button per generation forward, up to six, with counts. The chosen generation lists each relative with its parents, 60 per page, and notes when the sixth generation has offspring of its own.
+- **Navigation:** selecting a relative or search result focuses it. A living fish brings its aquarium into view and the inspector heading takes focus; a sold fish opens its archived record. A session-only breadcrumb trail of up to 12 steps offers **Back**, **Return to** the first fish and clickable earlier steps; revisiting a fish on the trail returns there instead of looping. Selecting a fish outside the family view starts a new trail.
+- **Search:** **Find any record** matches names and IDs (digits such as "47" work) across living and sold fish, eight at a time.
+
 ## 7. Tanks, care and transfer
 
 Tank selector shows name, role, stocking warning and unresolved urgent issues. Opening a tank does not reset physiology.

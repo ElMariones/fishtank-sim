@@ -334,6 +334,8 @@ Heterozygosity = heterozygous loci / assayed loci. It is not “genetic diversit
 
 FS-112 uses memoized ancestor-pair queries with an explicit stack, including diagonal terms. It preserves all recorded generations without a depth cutoff and avoids allocating a world-sized matrix. Pathological pedigrees can still require O(N²) pairs; worker execution and cross-query caching remain future work. The lab caps permanent records at 10,000 and living fish at 480.
 
+The family view (FS-404) reports pedigree completeness per generation back: its 2^n positions split into recorded ancestors, positions above founder stock (unknown, assumed unrelated and non-inbred) and positions whose recorded parent has no record in the world. A repeated ancestor is one node that records every position it fills, never a duplicate record. These counts describe the displayed view of up to six generations; pedigree F still uses every recorded generation.
+
 ### Implemented offspring guidance (FS-403)
 
 The planner offers exact unordered genotype odds at every locus, before mutation. Each parental homolog contributes with probability one half; linkage changes joint outcomes but not these marginal probabilities. Genome v1 uses the classic baseline at appended appearance loci.

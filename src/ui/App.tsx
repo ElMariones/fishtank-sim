@@ -15,6 +15,7 @@ import { BreedingPlanner } from './BreedingPlanner';
 import { NormalBreeding } from './NormalBreeding';
 import { express, fingerprint, heterozygosity, metabolicPotential } from '../core/genetics';
 import { MARKING_BLOCKS, MARKING_VISIBLE_ALPHA } from '../core/pattern';
+import { genealogyIndex, visitTrail } from '../core/genealogy';
 import { kinship } from '../core/pedigree';
 import { advanceRuntime, commandEnvelope, executeCommand, TICK_MS } from '../core/runtime';
 import type { LoadedSession } from '../persistence/session';
@@ -22,6 +23,8 @@ import { ACTIVE_CHECKPOINT_MS } from '../simulation/time';
 import { downloadText, SavePanel } from './SavePanel';
 import type { Clutch, Fish, World } from '../core/types';
 import { COHORT_SIZE, quote, STOCK_PRICE, type Command } from '../core/world';
+import { Pagination, SexMark } from './Controls';
+import { FamilyView } from './FamilyView';
 import { FishPortrait, type PortraitView } from './FishPortrait';
 import { ResearchLab } from './ResearchLab';
 import { TankCanvas } from './TankCanvas';
@@ -95,7 +98,8 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [batchReview, setBatchReview] = useState(false);
   const [lastBatchId, setLastBatchId] = useState<string | null>(null);
   const [collectionPage, setCollectionPage] = useState(0);
-  const [familyPage, setFamilyPage] = useState(0);
+  const [familyDepth, setFamilyDepth] = useState(2);
+  const [familyTrail, setFamilyTrail] = useState<string[]>([]);
   const [focusRequest, setFocusRequest] = useState(0);
   const [breedingOpen, setBreedingOpen] = useState(true);
   const [heroView, setHeroView] = useState<PortraitView>('current');
@@ -157,6 +161,8 @@ export function App({ initial }: { initial: LoadedSession }) {
   const appearanceRows = useMemo(() => fish ? describeAppearance(fish.genome) : [], [fish]);
   const prospectiveF = useMemo(() => kinship(world.fish, motherId, fatherId), [world.fish, motherId, fatherId]);
   const currentF = useMemo(() => fish?.parents ? kinship(world.fish, fish.parents[0], fish.parents[1]) : 0, [world.fish, fish]);
+  // The family index is built only while the Family tab is open (FS-404).
+  const genealogy = useMemo(() => tab === 'Family' ? genealogyIndex(world.fish) : null, [tab, world.fish]);
 
   // Collection pipeline: view → cohort → favorites → sex → sort. Counts show what each filter would reveal.
   const viewFish = (showArchived ? world.fish.filter(f => f.status === 'sold') : residents).filter(f => `${f.name} ${f.id}`.toLowerCase().includes(query.toLowerCase()));
@@ -170,10 +176,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const pageSize = 60;
   const page = Math.min(collectionPage, Math.max(0, Math.ceil(collection.length / pageSize) - 1));
   const visibleCollection = collection.slice(page * pageSize, (page + 1) * pageSize);
-  const children = world.fish.filter(child => child.parents?.includes(selectedId));
-  const childPage = Math.min(familyPage, Math.max(0, Math.ceil(children.length / pageSize) - 1));
   useEffect(() => { setCollectionPage(0); }, [tank.id, showArchived, query, sexFilter, favoritesOnly, cohortKey, sort, goal]);
-  useEffect(() => { setFamilyPage(0); }, [selectedId]);
   const fishName = (id: string) => world.fish.find(f => f.id === id)?.name ?? id;
   // Batch selection only ever acts on living fish visible in the current collection view.
   const saleable = batchSaleCandidates(collection, favoriteIds);
@@ -200,13 +203,16 @@ export function App({ initial }: { initial: LoadedSession }) {
     catch (error) { setNotice(error instanceof Error ? error.message : 'The action could not be completed.'); return null; }
   }
 
-  function select(id: string, focusInspector = false) {
+  /** `trail` is the family breadcrumb to keep; a selection made outside the family view starts a new one. */
+  function select(id: string, focusInspector = false, trail: string[] = []) {
     const target = world.fish.find(f => f.id === id);
     if (!target) return;
-    setSelectedId(id); setSaleId(null);
+    setSelectedId(id); setSaleId(null); setFamilyTrail(trail);
     if (target.status === 'living') { setTankId(target.tankId); setShowArchived(false); }
     if (focusInspector) setFocusRequest(n => n + 1);
   }
+
+  function navigateFamily(id: string) { select(id, true, visitTrail(familyTrail, selectedId, id)); }
 
   function returnToCollection() {
     const card = document.getElementById(`card-${selectedId}`);
@@ -415,32 +421,12 @@ export function App({ initial }: { initial: LoadedSession }) {
             const visible = (anchor.layer === 'dark' ? p.black : p.red) * (1 - p.translucency) >= MARKING_VISIBLE_ALPHA, drawn = index < p.frequency;
             return <li key={anchor.key} className={drawn && visible ? '' : 'muted'}><span className={`marking-swatch ${anchor.layer}`} aria-hidden="true" /><span>{MARKING_BLOCKS[anchor.block].label}<small>A{anchor.alleles[0]}·A{anchor.alleles[1]} · {anchor.origin === 'both' ? 'on both copies (bolder)' : anchor.origin === 'maternal' ? 'copy from mother' : 'copy from father'}</small></span><span>{anchor.layer === 'dark' ? 'Dark' : 'Warm'}{!drawn ? ' · not drawn' : !visible ? ' · too faint' : ''}</span></li>;
           })}</ol></div></div> : null}
-          {tab === 'Family' ? <div className="family-view"><p className="help-copy">Select any relative to inspect them. Living fish bring their aquarium into view; sold fish retain an archived profile.</p><h3>Parents</h3>{fish.parents ? fish.parents.map(id => <Relative key={id} fish={world.fish.find(f => f.id === id)!} onSelect={id => select(id, true)} />) : <p className="empty-copy">Founder · no recorded parents.</p>}<div className="family-self">{fish.name}<small>Generation {fish.generation}</small></div><h3>Offspring</h3><Pagination page={childPage} count={children.length} size={pageSize} onPage={setFamilyPage} label="Offspring" />{children.slice(childPage * pageSize, (childPage + 1) * pageSize).map(child => <Relative key={child.id} fish={child} onSelect={id => select(id, true)} />)}{!world.fish.some(f => f.parents?.includes(fish.id)) ? <p className="empty-copy">Their story is just beginning.</p> : null}<p className="help-copy">Pedigree F uses recorded ancestry and assumes unrelated founders. It is different from heterozygosity.</p></div> : null}
+          {tab === 'Family' && genealogy ? <FamilyView key={fish.id} world={world} index={genealogy} fish={fish} depth={familyDepth} trail={familyTrail} pedigreeF={percent(currentF)}
+            onDepth={setFamilyDepth} onNavigate={navigateFamily} onBack={() => select(familyTrail[familyTrail.length - 1], true, familyTrail.slice(0, -1))}
+            onReturn={() => select(familyTrail[0], true)} /> : null}
         </> : <p className="empty-copy">Select a fish from the aquarium or collection.</p>}
       </aside>
     </div>}
     <footer>Fishtank Sim <span>Research prototype · synthetic genetics · local saves · unbalanced lab economy</span><a href="https://github.com/ElMariones/fishtank-sim" target="_blank" rel="noreferrer">Project repository ↗</a></footer>
   </div>;
-}
-
-/** Colour-coded sex symbol (pink ♀, blue ♂). The text label keeps it readable without colour or sight. */
-function SexMark({ sex, withLabel = false, decorative = false }: { sex: Fish['sex']; withLabel?: boolean; decorative?: boolean }) {
-  const female = sex === 'F', text = female ? 'Female' : 'Male';
-  return <span className={`sex-mark ${female ? 'female' : 'male'}`} aria-hidden={decorative || undefined}>
-    <span className="sex-symbol" aria-hidden="true">{female ? '♀' : '♂'}</span>
-    {withLabel ? <span className="sex-label">{text}</span> : decorative ? null : <span className="visually-hidden">{text}</span>}
-  </span>;
-}
-
-function Relative({ fish, onSelect }: { fish: Fish; onSelect: (id: string) => void }) {
-  return <button className="relative" onClick={() => onSelect(fish.id)}><FishPortrait fish={fish} view="current" /><span><strong>{fish.name}</strong><small>G{fish.generation} · <SexMark sex={fish.sex} withLabel />{fish.status === 'sold' ? ' · Sold' : ''}</small></span><span>↗</span></button>;
-}
-
-function Pagination({ page, count, size, onPage, label }: { page: number; count: number; size: number; onPage: (page: number) => void; label: string }) {
-  if (count <= size) return null;
-  return <nav className="pagination" aria-label={`${label} pages`}>
-    <button disabled={page === 0} onClick={() => onPage(page - 1)}>Previous {label.toLowerCase()} page</button>
-    <span>{page * size + 1}–{Math.min(count, (page + 1) * size)} of {count.toLocaleString()}</span>
-    <button disabled={(page + 1) * size >= count} onClick={() => onPage(page + 1)}>Next {label.toLowerCase()} page</button>
-  </nav>;
 }
