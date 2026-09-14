@@ -1,6 +1,6 @@
 # FS-406 clutch selection, batch rehoming and two generations in normal mode
 
-**Recorded:** 14 September 2026 · **Status:** delivered; push reference in the [backlog](../BACKLOG.md)
+**Recorded:** 14 September 2026 · **Status:** DONE, pushed `44d7d98`
 **Models:** world save v5 (unchanged) · breeding model v1 · care model v1 · genome v2
 
 ## Starting state
