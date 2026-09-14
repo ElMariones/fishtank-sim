@@ -1,8 +1,8 @@
 # Implementation status
 
-**Updated:** 14 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is delivered, completing M3's task list; the backlog records the push.
+**Updated:** 14 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list.
 
-## Current continuation — FS-307 care demonstration and absence summary
+## Current continuation — FS-307 DONE, pushed `a5d5ddc`
 
 14 September 2026: FS-307 started from `45c0063` (FS-306 marked DONE), equal to `origin/main`. `.claude/launch.json` stays untracked; its extra `fishtank-qa` entry (port 5176) is the isolated QA origin.
 

@@ -1,6 +1,6 @@
 # FS-307 care demonstration, absence summary and recovery
 
-**Recorded:** 14 September 2026 · **Status:** delivered; push reference in the [backlog](../BACKLOG.md)
+**Recorded:** 14 September 2026 · **Status:** DONE, pushed `a5d5ddc`
 **Models:** world save v4 (unchanged) · care model v1 · life model v1 · stage appearance v1 · renderer v6
 
 ## Starting state

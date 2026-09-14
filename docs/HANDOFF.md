@@ -69,7 +69,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> FS-305 (`d425639`) and FS-306 (`325ceb4`) are DONE, and FS-307's care demonstration and absence summary is delivered (see the backlog and the FS-307 report), completing M3's task list. Start M4 with FS-401: maturity, condition, cooldown and shared-habitat checks with transparent courtship blockers, then FS-402's reserved clutch scheduler and bounded nursery. Keep the instant `breed` command replayable for old journals, reserve nursery places atomically, bump the world version for new persisted state, and keep the absence summary's unexplained-decline count at zero.
+> FS-305 (`d425639`) and FS-306 (`325ceb4`) are DONE, and FS-307's care demonstration and absence summary is DONE, pushed `a5d5ddc` (see the FS-307 report), completing M3's task list. Start M4 with FS-401: maturity, condition, cooldown and shared-habitat checks with transparent courtship blockers, then FS-402's reserved clutch scheduler and bounded nursery. Keep the instant `breed` command replayable for old journals, reserve nursery places atomically, bump the world version for new persisted state, and keep the absence summary's unexplained-decline count at zero.
 
 ## 7. Subsequent task briefs
 

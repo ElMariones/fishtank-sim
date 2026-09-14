@@ -58,7 +58,7 @@ FS-108 to FS-110 were requested during M1, and FS-113 after M2; all are outside 
 | FS-304 | DONE | 2 | Spatial/runtime | FS-303 | Spatial hash and shared shelter/rock footprints with anticipatory avoidance and body-center clearance. Local-density scaling fixture; extreme fins may overlap. Pushed `5dbfb73`; [Evidence](research/FS-304-403-SPATIAL-AND-PREDICTION.md) |
 | FS-305 | DONE | 3 | UI/simulation | FS-301 FS-302 | Feeding/equipment/water controls with cost/effect previews; care warnings identify corrective actions. Pushed `d425639`; [evidence](research/FS-305-CARE-CONTROLS.md) |
 | FS-306 | DONE | 3 | Rendering | FS-102 FS-302 | Juvenile reveal and smooth body/fin animation; actual stage and adult preview clearly distinguished. Pushed `325ceb4`; [evidence](research/FS-306-JUVENILE-REVEAL.md) |
-| FS-307 | P0 | 2 | Integration | FS-303 FS-304 FS-305 FS-306 | Healthy and stressed tanks demo, absence summary and recovery; no unexplained health decay |
+| FS-307 | DONE | 2 | Integration | FS-303 FS-304 FS-305 FS-306 | Healthy and stressed tanks demo, absence summary and recovery; no unexplained health decay. Pushed `a5d5ddc`; [evidence](research/FS-307-CARE-DEMO-AND-ABSENCE.md) |
 
 ## M4 — 15 days
 
@@ -127,7 +127,7 @@ M8 total: 40–60 days. Provider costs and moderation operations require separat
 
 ## Suggested next-agent task
 
-M1, M2 and FS-301–304 are pushed, with the independent FS-403 prediction (`5dbfb73`). FS-305 care controls are DONE, pushed `d425639`, and FS-306 juvenile reveal is DONE, pushed `325ceb4`. Next is FS-307, then FS-401/402. Normal breeding and M4's two-generation gate remain open; predictions do not enforce eligibility or reserve a nursery.
+M1, M2 and FS-301–304 are pushed, with the independent FS-403 prediction (`5dbfb73`). M3 is DONE: FS-305 care controls (`d425639`), FS-306 juvenile reveal (`325ceb4`) and FS-307 care demonstration and absence summary (`a5d5ddc`). Next is M4, starting with FS-401/402. Normal breeding and M4's two-generation gate remain open; predictions do not enforce eligibility or reserve a nursery.
 
 ## Current user-requested additions — DONE, pushed `e7aefc1`
 
