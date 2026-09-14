@@ -14,7 +14,9 @@ export type GoalDirection = 'higher' | 'lower';
 export type BreedingGoal = GoalTrait & { secondary?: GoalTrait[] };
 export const COLLECTION_SORTS = ['newest', 'oldest', 'name', 'goal'] as const;
 export type CollectionSort = typeof COLLECTION_SORTS[number];
-export type LabPreferences = { version: 1; goal: BreedingGoal | null; sort: CollectionSort; favorites: string[] };
+/** Collection portraits show the current stage (FS-306 default) or adult genetic potential; absent in older preferences. */
+export type PortraitPreference = 'current' | 'adult';
+export type LabPreferences = { version: 1; goal: BreedingGoal | null; sort: CollectionSort; favorites: string[]; portraits?: PortraitPreference };
 
 export const DEFAULT_PREFERENCES: LabPreferences = { version: 1, goal: null, sort: 'newest', favorites: [] };
 
@@ -25,6 +27,7 @@ const schema = z.object({
   goal: goalTraitSchema.extend({ secondary: z.array(goalTraitSchema).max(3).optional() }).nullable(),
   sort: z.enum(COLLECTION_SORTS),
   favorites: z.array(z.string().regex(/^FSH-\d{6}$/)).max(10_000),
+  portraits: z.enum(['current', 'adult']).optional(),
 });
 
 /** Parses stored preferences for this world. Unknown fish IDs and duplicates are dropped; anything invalid yields defaults. */
@@ -32,7 +35,7 @@ export function decodePreferences(raw: string | null, fishIds: ReadonlySet<strin
   if (!raw) return DEFAULT_PREFERENCES;
   try {
     const parsed = schema.parse(JSON.parse(raw));
-    return { version: 1, goal: parsed.goal, sort: parsed.sort, favorites: [...new Set(parsed.favorites)].filter(id => fishIds.has(id)) };
+    return { version: 1, goal: parsed.goal, sort: parsed.sort, favorites: [...new Set(parsed.favorites)].filter(id => fishIds.has(id)), ...(parsed.portraits ? { portraits: parsed.portraits } : {}) };
   } catch {
     return DEFAULT_PREFERENCES;
   }

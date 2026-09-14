@@ -30,6 +30,7 @@ src/
     care.ts         Care model v1: feeder rations, shared food pool, equipment tiers, thermostat, water changes and costs
     careAdvice.ts   Care status, warnings with priced fixes, and projections that preview a change on a copy of the tank
     development.ts  Life model v1: egg/fry/juvenile/adult/elderly stages, logistic growth, lagged condition and environment curves
+    juvenile.ts     Stage appearance v1: body and pigment maturity from life state, hatchling proportions and reveal fixtures
     save.ts         Legacy world-v1 schema and reference validation
     runtime.ts      Versioned command envelope, integer tick, event IDs and checkpoint replay
     visualFixtures.ts Frozen FS-101 fixtures, anatomy stress cases and v1-vs-v2 anatomy sweep
@@ -44,7 +45,8 @@ src/
     motionClient.ts Lifecycle, cleanup, one automatic restart and manual recovery
     time.ts         Shared tick segments, event boundaries and protected offline window
   rendering/
-    fish.ts         Canvas renderer v5: anatomy v2, markings, color palettes and cached ornament paths
+    fish.ts         Canvas renderer v6: anatomy v2, markings, color palettes, cached ornament paths, swim motion and eggs
+    stage.ts        Stage phenotype cache per adult phenotype and quantized maturity
     tankLayout.ts   Shared tank pose transform and fish-shaped picking
   ui/
     App.tsx         Lab controls, command runtime, inspector and paginated collection
@@ -68,6 +70,7 @@ tests/
   appearance.test.ts Genome v2 stream isolation, dominance, founder rarity, mixed-version saves and ornament bounds
   water.test.ts    Zero/overload/recovery conservation fixtures, split-interval equality, habitat load, replay and world v1 migration
   development.test.ts Hatching, healthy maturity range, declared-condition fixtures, condition history, egg rules and world v2 migration
+  juvenile.test.ts Maturity, hatchling interpolation, stage anatomy and framing sweeps, ornament reveal, turning poses and reveal series
   care.test.ts     Ration conservation, development under rations and temperature, split/offline/replay equality, costs, warnings, projections and world v3 migration
   limits.test.ts   Living/record limits, deep and wide pedigree queries and atomic rejection
   runtime.test.ts  Command envelopes, retries, replay, compaction, migration and tamper rejection

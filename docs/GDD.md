@@ -98,7 +98,7 @@ Every fish has an immutable ID, immutable parents, birth time in world ticks, ge
 
 **Growth:** estimate adult length from several loci, then integrate growth according to age, nutrition, oxygen, stress, and health. Current size must never be substituted for genetic potential. The inspector labels current length, estimated mature range, and environmental limitations independently.
 
-**Color development:** early fry show simplified pigment. Juvenile markings gradually approach genetically specified pigment layers. Environmental pigment intensity can vary within bounds without changing DNA.
+**Color development:** early fry show simplified pigment. Juvenile markings gradually approach genetically specified pigment layers. Environmental pigment intensity can vary within bounds without changing DNA. The current lab (FS-306) reveals pigment, motifs and scales between game days 5 and 15 and eases hatchling proportions toward the adult as fish grow; environment does not yet change pigment intensity.
 
 **Sex and reproduction:** start with fictional fixed female/male reproductive roles for the koi ancestry. Preserve room in the model for other systems later; do not pretend these initial roles or inheritance match real koi sex determination.
 

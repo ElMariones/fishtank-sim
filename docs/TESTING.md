@@ -1,6 +1,6 @@
 # Testing and verification
 
-**Latest recorded run:** 14 September 2026 (FS-305 care controls, after FS-304/403), Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium (Claude desktop browser pane) on an isolated QA origin. Earlier: 13 September 2026 (FS-302 life stages, after FS-301, FS-113, the M2 completion review and the FS-111 five-observer pool), in-app Chromium 152.0.7977.76. The earlier FS-202/205/206 run used Node 24.11.1, npm 11.6.2 and Google Chrome 153.0.8010.36 via bundled Playwright. Browser checks use independent fixtures, fresh browser contexts or the browser pane's own QA world; no user lineage is reset.
+**Latest recorded run:** 14 September 2026 (FS-306 juvenile reveal, after FS-305 care controls), Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium (Claude desktop browser pane) on an isolated QA origin. Earlier: 13 September 2026 (FS-302 life stages, after FS-301, FS-113, the M2 completion review and the FS-111 five-observer pool), in-app Chromium 152.0.7977.76. The earlier FS-202/205/206 run used Node 24.11.1, npm 11.6.2 and Google Chrome 153.0.8010.36 via bundled Playwright. Browser checks use independent fixtures, fresh browser contexts or the browser pane's own QA world; no user lineage is reset.
 
 ## 1. Commands
 
@@ -10,7 +10,7 @@ npm test
 npm run build
 ```
 
-Vitest runs every `tests/*.test.ts` file. The M2 additions are `runtime.test.ts`, `time.test.ts`, `motionClient.test.ts` and `limits.test.ts`; `resemblancePool.test.ts` validates human records; `appearance.test.ts` covers genome v2 appearance (FS-113); `water.test.ts` covers the FS-301 water model; `development.test.ts` covers FS-302 life stages and growth; `care.test.ts` covers FS-305 care. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **118 tests** in 19 files, and all passed. The production build passed.
+Vitest runs every `tests/*.test.ts` file. The M2 additions are `runtime.test.ts`, `time.test.ts`, `motionClient.test.ts` and `limits.test.ts`; `resemblancePool.test.ts` validates human records; `appearance.test.ts` covers genome v2 appearance (FS-113); `water.test.ts` covers the FS-301 water model; `development.test.ts` covers FS-302 life stages and growth; `care.test.ts` covers FS-305 care; `juvenile.test.ts` covers FS-306 stage appearance and turning poses. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **124 tests** in 20 files, and all passed. The production build passed.
 
 ## 2. Automated coverage
 
@@ -53,6 +53,7 @@ Vitest runs every `tests/*.test.ts` file. The M2 additions are `runtime.test.ts`
 | Water model (FS-301) | Zero load keeps clean water saturated, and depleted oxygen recovers monotonically. Overload raises ammonia every day, drives oxygen critical and records unmet demand. Two 50% changes plus a typical load return good, clean water. Every fixture balances oxygen, ammonia and food against its ledger within 1e-7 relative, with nothing negative. Split intervals match a single integration exactly. Food decays into ammonia and oxygen demand. Inputs stay unmutated, and invalid time, food and water changes reject. Habitat load counts living residents and matches `express`. Every tank, empty ones included, advances. Replay reproduces saved water and rejects tampering. Fine and coarse advances agree. A world v1 runtime migrates with a rebased checkpoint, and invalid water rejects |
 | Life stages (FS-302) | Environment curves give 1 when healthy, 0.475 hypoxic, 0.5 at high ammonia and 0.667 crowded, with limits listed most severe first. A healthy egg hatches on day 3 and becomes an adult within 18–30 game days through fry and juvenile, never shrinking or passing its potential. At day 30 the same genome ranks healthy > crowded > ammonia > hypoxic. Condition lags the environment in both directions, and growth resumes after recovery. In the world, eggs hatch at the day boundary, biomass rises, founders only age, splits and replay agree, and tampered length rejects. Eggs cannot be sold, batch-sold or bred, atomically. World v2 saves and runtimes migrate as young adults, and invalid life state rejects. Goal leaders are never eggs |
 
+| Stage appearance (FS-306) | Maturity is 0 for eggs and hatchlings, 1 for stock adults (which draw the identical phenotype object) and rises monotonically. Hatchling proportions and pigment interpolate as declared while genetic, life-history, behavior values and marking anchors stay identical. Fixtures and 600 founders at four maturities keep valid anatomy and unclipped portraits. Ornament is empty before pigment and equals the adult's at full maturity. Continuous facing round-trips and stays pickable edge-on. The reveal series progresses egg → fry → juvenile with pigment complete by day 16 |
 | Care (FS-305) | Rations from Off to Heavy order fed share, uneaten food and ammonia as declared, never feed beyond need, and balance food, ammonia and oxygen within 1e-7. Rations and temperature change development directionally; extra food gives identical growth. The thermostat reaches its target without overshoot. Splits, single-tick advances, offline catch-up and replay agree, and tampered care rejects. Upgrades, downgrades, water changes and feeding charge or reject atomically. A stressed tank's warnings, applied in rounds, clear every warning, and each projection equals the applied result. World v3 migrates with default care |
 
 These statistical checks use fixed seeds and wide tolerances to catch implementation regressions. They do not establish biological validity or rigorous randomness certification.
@@ -270,6 +271,17 @@ In-app Chromium on isolated port 5175: verified goal and parent changes update s
 - 375 × 812 with coarse pointer: document width 375 px, projection table inside its panel, no care control under 44 px.
 - Found and fixed: "26 fishs affected"; care warnings reused the save banner's `.warning` class; the resume notice still said health was not simulated; chip text lacked a space before values.
 - No console or dev-server errors. Details: [FS-305 care controls](research/FS-305-CARE-CONTROLS.md).
+
+## FS-306 juvenile reveal verification
+
+14 September 2026, Windows 11, Node 22.18.0 / npm 10.9.3. `npm run check`: 124 tests in 20 files, strict TypeScript and production build passed; `node scripts/check-docs.mjs` and `git diff --check` passed. In-app Chromium on the isolated origin `http://localhost:5176`, continuing the FS-305 QA world.
+
+- Eggs: 20 bred into the empty Breeding Studio read "0 swimming fish and 20 incubating eggs" on the canvas, "incubating egg, day 0 of 3" on cards and "NOW · EGG · HATCHES IN 3 GAME DAYS" in the inspector.
+- After 8 simulated offline minutes: 20 swimming fry, cards such as "Fry 46, fry at 1.8 cm, current appearance".
+- Views: the collection toggle relabeled cards as adult genetic potential, stored `portraits: "adult"` and survived a reload. The large portrait for Fry 46 switched between "ADULT GENETIC POTENTIAL · A PREVIEW, NOT HOW THIS FISH LOOKS TODAY" and "NOW · FRY · 2.2 OF 65 CM".
+- Visual fixtures showed renderer v6 and the reveal strip: egg (day 0), fry at 0.6 cm (day 3), pigment 5% / 35% / 80% (days 6 / 9 / 12), juvenile with full pigment at 5.2 cm (day 16), juvenile at 30.1 cm with 95% body maturity (day 30).
+- 375 × 812 with coarse pointer: no document overflow; the **Now** toggle measured 43 × 44 px, gained a coarse-pointer minimum width and rechecked at 44 × 44 px. All seven reveal portraits contained drawn pixels.
+- One stale console error came from hot reload between two FS-305 edits and did not recur. Frame timing and screenshots were unavailable because the pane was hidden. Details: [FS-306 juvenile reveal](research/FS-306-JUVENILE-REVEAL.md).
 
 ## 4. Required next verification
 

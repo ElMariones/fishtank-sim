@@ -83,6 +83,23 @@ Game rules in `src/core/care.ts` and `src/core/careAdvice.ts`; not aquarium-care
 
 Probe with 60 founder-distribution adults (155 kg, 7.8 kg/m³) and default equipment over 10 game days: Measured rations kept ammonia clean (0.31 mg N/L) with oxygen just low (5.8 mg/L); Generous reached elevated ammonia and low oxygen; Heavy reached high ammonia and critical oxygen. Half that stock on Measured rations had no warnings. A tank of 60 of the largest adults (836 kg) stays critical under any equipment; only moving fish helps.
 
+### Stage appearance v1 and swim motion (FS-306)
+
+Display rules in `src/core/juvenile.ts`, `src/rendering/fish.ts` and `src/ui/TankCanvas.tsx`; nothing here changes saved state or behavior.
+
+| Parameter | Value | Reason / limitation |
+|---|---:|---|
+| Body maturity | Smoothstep of current length ÷ (0.7 × adult length) | Reaches 1 at the adult stage threshold |
+| Pigment maturity | Smoothstep from game day 5 to 15 | Inside the GDD's 6–12 day reveal window after hatching |
+| Hatchling proportions | Head 1.35× (at most 0.5), eye 1.7×, depth 0.78×, snout 0.6×, tail 0.55×, spread 0.7×, dorsal 0.45×, pectoral 0.7×, barbel 0.3× | Each returns to 1 with body maturity; anatomy v2 still limits eyes that cannot fit |
+| Hatchling pigment | Red, black, metallic, fin pigment and speckle × pigment maturity; translucency at least 0.5 until revealed | Motifs, fin motifs, contrast and shimmer scale too; scale textures from 50% pigment |
+| Maturity steps | Twentieths | Bounds cached stage phenotypes per fish |
+| Tail beat | 3 + 5 × effort + 2 × activity radians per second × motion speed | Effort is swim speed over top speed |
+| Tail sweep | Spread narrows up to 14% mid-stroke | Only shrinks, so anatomy bounds hold |
+| Pectoral flutter | Folds toward the body by up to 35% of pectoral length | Portraits draw no motion |
+| Turning | Facing eases 4 per second through side-on | Picking treats facing below 0.35 as 0.35 |
+| Interpolation | Positions and time blend over each 50 ms worker frame | Paused tanks hold the last frame |
+
 ## 2. Proposed solo launch tuning
 
 | System | Initial experiment range | Measure |

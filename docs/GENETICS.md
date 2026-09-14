@@ -270,7 +270,7 @@ Treat this as a proposed approximation to validate, not a scientific fish growth
 - **Condition:** moves 25% of the way toward the day's environment factor, min(oxygen, ammonia) × crowding × nutrition, so deficits and recovery take days. Length never decreases.
 - **Stages:** derived, not stored. Fry below 10% of adult length, adult from 70%, elderly after the longevity potential in 365-day years.
 
-FS-305 adds nutrition (the fed share of each tank's feeding day), temperature comfort and a bounded temperature growth multiplier to the same daily update; see [BALANCE.md](BALANCE.md#care-model-v1-fs-305). Pigment maturity and juvenile rendering remain FS-306, so portraits still show adult potential.
+FS-305 adds nutrition (the fed share of each tank's feeding day), temperature comfort and a bounded temperature growth multiplier to the same daily update; see [BALANCE.md](BALANCE.md#care-model-v1-fs-305). FS-306 implements the pigment-maturity idea as stage appearance v1 in `src/core/juvenile.ts`: body maturity follows length toward the adult stage threshold and pigment maturity follows age (smoothstep from game day 5 to 15). A pure function turns the adult phenotype into the juvenile one (larger head and eyes, shorter fins, faint translucent pigment) without touching genetic or behavior values; the adult phenotype remains available as a labeled preview.
 
 Phenotype owns anatomy, material/pigment descriptors, physiological potential, and behavior weights. Renderer only consumes phenotype. Persist development state and model versions. The same world snapshot, genome, seed, and version should reproduce the same parameters.
 

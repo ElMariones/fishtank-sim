@@ -114,3 +114,11 @@ footer a{display:inline-flex;align-items:center;min-height:24px}
 @media (max-width: 900px) { .care-settings { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 650px) { .care-toggle { margin-left: 0; } }
 @media (pointer: coarse) { .care-fixes button, .care-water button, .care-toggle { min-height: 44px; } }
+/* FS-306 stage portraits: current stage versus adult potential. */
+.hero-toggle { width: max-content; max-width: 100%; margin: 0 auto 4px; flex-wrap: wrap; justify-content: center; }
+.hero-toggle button, .portrait-toggle button { font-size: .72rem; padding: 6px 10px; }
+.hero-portrait > span { margin-top: -4px; }
+@media (pointer: coarse) { .hero-toggle button, .portrait-toggle button { min-width: 44px; min-height: 44px; } }
+.fixture-grid.reveal-strip { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+@media (max-width: 1180px) { .fixture-grid.reveal-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .fixture-grid.reveal-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

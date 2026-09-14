@@ -33,7 +33,7 @@ The npm cache is configured inside this checkout for compatibility with the work
 5. Use unrelated NPC stock for outcrossing. Selling preserves the fish’s family record.
 6. Open **Saves** to export, preview a v1/v2 import, or restore one of two backups. The app automatically reloads its validated IndexedDB save and preserves the original v1 localStorage data.
 
-Offspring start as eggs. They hatch after 3 game days and grow toward their genetic adult length, faster in well-kept water; one game day passes per real minute. Portraits still show **adult genetic potential**. Each tank has a feeder, filter, aeration and thermostat under **Care controls**, with previews and costs; warnings name what to fix. Poor care lowers condition and slows growth, and fish never die. Motion speed does not change growth. The local NPC economy is intentionally unbalanced because lab breeding and tanks are free.
+Offspring start as eggs. They hatch after 3 game days and grow toward their genetic adult length, faster in well-kept water; one game day passes per real minute. The tank and **Now** portraits show each fish's current stage (hatchlings have big heads and eyes, and pigment reveals over about ten game days); **Adult potential** previews its genetics. Each tank has a feeder, filter, aeration and thermostat under **Care controls**, with previews and costs; warnings name what to fix. Poor care lowers condition and slows growth, and fish never die. Motion speed does not change growth. The local NPC economy is intentionally unbalanced because lab breeding and tanks are free.
 
 Limits: 60 residents per tank, eight tanks, 480 living fish and 10,000 total fish records including archives. A full twenty-fish cohort must fit before any birth is created.
 

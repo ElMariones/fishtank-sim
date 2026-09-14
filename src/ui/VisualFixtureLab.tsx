@@ -1,12 +1,16 @@
 import { useMemo, useState } from 'react';
 import { sharedExtent, type Extent } from '../core/anatomy';
 import { describeAppearance } from '../core/appearance';
+import { stageRevealSeries } from '../core/juvenile';
 import { patternResemblanceReport, type ResemblanceSummary } from '../core/patternResemblance';
 import {
   anatomySweep, appearanceFounderSurvey, fixturePatternComparison, LEGACY_ANATOMY_DEFECTS, VISUAL_DESCRIPTORS, VISUAL_FIXTURE_REPORT,
   type VisualDescriptorKey, type VisualFixtureSubject,
 } from '../core/visualFixtures';
-import { PhenotypePortrait } from './FishPortrait';
+import { EggPortrait, PhenotypePortrait } from './FishPortrait';
+
+const REVEAL_DAYS = [0, 3, 6, 9, 12, 16, 30];
+const REVEAL_FIXTURE = VISUAL_FIXTURE_REPORT.appearance.find(fixture => fixture.id === 'appearance-rosettes') ?? VISUAL_FIXTURE_REPORT.appearance[0];
 
 const COMPARISON_KEYS: VisualDescriptorKey[] = ['length', 'depth', 'head', 'eye', 'tail', 'spread', 'frequency', 'patternScale'];
 const EXTREME_KEYS: VisualDescriptorKey[] = ['length', 'depth', 'head', 'snout', 'eye', 'tail', 'spread', 'fork'];
@@ -63,6 +67,7 @@ export function VisualFixtureLab({ onClose }: { onClose: () => void }) {
   const patternStudy = useMemo(() => patternResemblanceReport(24, 10), []);
   const fixturePatterns = useMemo(() => fixturePatternComparison(), []);
   const survey = useMemo(() => appearanceFounderSurvey(), []);
+  const reveal = useMemo(() => stageRevealSeries(REVEAL_FIXTURE.phenotype, REVEAL_FIXTURE.genome, REVEAL_DAYS), []);
   const shared = (subjects: readonly VisualFixtureSubject[]) => framing === 'shared' ? sharedExtent(subjects.map(subject => subject.phenotype)) : undefined;
   const founderScale = shared(VISUAL_FIXTURE_REPORT.founders);
   const extremeScale = shared(VISUAL_FIXTURE_REPORT.extremes);
@@ -101,6 +106,18 @@ export function VisualFixtureLab({ onClose }: { onClose: () => void }) {
         </tbody>
       </table></div>
       <p className="fixture-note">Offspring of genome v1 fish inherit the classic alleles. New features then enter a lineage through unrelated stock or a new mutation (0.3% per transmitted copy); carriers of one body or fin motif copy show it faintly.</p>
+    </section>
+
+    <section className="fixture-section" aria-labelledby="reveal-fixtures-title">
+      <div className="fixture-section-heading"><div><div className="eyebrow">FS-306 · STAGE APPEARANCE V1</div><h2 id="reveal-fixtures-title">Juvenile reveal</h2></div><p>{REVEAL_FIXTURE.label} raised in healthy default water. Proportions follow length toward the adult stage; pigment, motifs and scales reveal between game days 5 and 15. Portraits are fitted, so size appears in each caption.</p></div>
+      <div className="fixture-grid reveal-strip">{reveal.map(frame => <article className="fixture-card" key={frame.day}>
+        <div className="fixture-card-heading"><span>Day {frame.day}</span><code>{frame.stage}</code></div>
+        {frame.stage === 'egg'
+          ? <EggPortrait seed={REVEAL_FIXTURE.birthSeed} progress={frame.day / 3} label={`${REVEAL_FIXTURE.label}, egg on game day ${frame.day}`} />
+          : <PhenotypePortrait phenotype={frame.phenotype} seed={REVEAL_FIXTURE.birthSeed} label={`${REVEAL_FIXTURE.label}, ${frame.stage} on game day ${frame.day}`} />}
+        <h3>{frame.stage.charAt(0).toUpperCase() + frame.stage.slice(1)}</h3>
+        <small>{frame.life.lengthCm.toFixed(1)} cm · body {displayPercent(frame.maturity.body)} · pigment {displayPercent(frame.maturity.pigment)}</small>
+      </article>)}</div>
     </section>
 
     {r.cohorts.map(cohort => {

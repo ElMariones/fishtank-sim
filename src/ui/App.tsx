@@ -19,7 +19,7 @@ import { ACTIVE_CHECKPOINT_MS } from '../simulation/time';
 import { downloadText, SavePanel } from './SavePanel';
 import type { Fish, World } from '../core/types';
 import { COHORT_SIZE, quote, STOCK_PRICE, type Command } from '../core/world';
-import { FishPortrait } from './FishPortrait';
+import { FishPortrait, type PortraitView } from './FishPortrait';
 import { ResearchLab } from './ResearchLab';
 import { TankCanvas } from './TankCanvas';
 import { VisualFixtureLab } from './VisualFixtureLab';
@@ -93,6 +93,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [familyPage, setFamilyPage] = useState(0);
   const [focusRequest, setFocusRequest] = useState(0);
   const [breedingOpen, setBreedingOpen] = useState(true);
+  const [heroView, setHeroView] = useState<PortraitView>('current');
   const inspectorHeading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -131,6 +132,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   useEffect(() => { if (focusRequest) inspectorHeading.current?.focus(); }, [focusRequest]);
 
   const { goal, favorites } = preferences;
+  const portraitView: PortraitView = preferences.portraits ?? 'current';
   const favoriteIds = new Set(favorites);
   const tank = world.tanks.find(t => t.id === tankId) ?? world.tanks[0];
   const fish = world.fish.find(f => f.id === selectedId);
@@ -260,14 +262,14 @@ export function App({ initial }: { initial: LoadedSession }) {
         <div className="tank-heading"><div><div className="eyebrow">AQUARIUM / {String(world.tanks.indexOf(tank) + 1).padStart(2, '0')}</div><h1>{tank.name}</h1></div><span className="count-tag">{residents.length} inhabitants</span></div>
         {tank.care ? <CarePanel world={world} tank={tank} tick={liveTick} readOnly={initial.readOnly} onRun={(command, message) => run(command, message) !== null} /> : null}
         <section className="aquarium" aria-label="Live aquarium">
-          <TankCanvas fish={swimmers} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={speed} feedSignal={feedSignal} onBehavior={setBehavior} />
+          <TankCanvas fish={swimmers} eggs={residents.length - swimmers.length} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={speed} feedSignal={feedSignal} onBehavior={setBehavior} />
           <div className="tank-overlay"><span>{paused ? 'PAUSED' : 'LIVE AQUARIUM'}</span><span>{tank.planted ? 'Planted habitat' : 'Open water'}{residents.length > swimmers.length ? ` · ${residents.length - swimmers.length} eggs incubating` : ''}</span></div>
           {!residents.length ? <div className="empty-tank">A little room to evolve.<small>Move a fish here or introduce unrelated stock, which can carry new colors and patterns.</small></div> : null}
           <div className="tank-controls"><div><button aria-label={paused ? 'Resume aquarium' : 'Pause aquarium'} onClick={() => setPaused(v => !v)}>{paused ? '▶' : 'Ⅱ'}</button><button onClick={() => setSpeed(v => v === 1 ? 2 : v === 2 ? 4 : 1)} aria-label={`Motion speed ${speed} times`}>{speed}×</button></div><span>Click a fish to inspect · click the water to startle</span><button className="feed-button" onClick={() => {
             if (run({ type: 'feed', tankId: tank.id }, 'A portion of food joined the water, a quarter of a game day of what these fish need. They eat it over the next hours and leftovers decay. The sinking pellets show hungry, bold fish reaching food first.')) setFeedSignal(v => v + 1);
           }}>＋ Feed</button></div>
         </section>
-        <div className="habitat-toolbar"><span>Laboratory mode · offspring show adult genetic potential</span><button className="quiet" onClick={() => run({ type: 'decorate', tankId: tank.id }, 'Habitat updated. Plants offer cover and fish steer around rocks. Water and growth are unchanged by decorations.')}>{tank.planted ? 'Remove plants and rocks' : 'Add plants and rocks'}</button></div>
+        <div className="habitat-toolbar"><span>Fish swim at their current stage and size · portraits can show adult potential</span><button className="quiet" onClick={() => run({ type: 'decorate', tankId: tank.id }, 'Habitat updated. Plants offer cover and fish steer around rocks. Water and growth are unchanged by decorations.')}>{tank.planted ? 'Remove plants and rocks' : 'Add plants and rocks'}</button></div>
         <section className={`breeding-panel ${breedingOpen ? 'is-open' : 'is-collapsed'}`} aria-labelledby="breeding-title">
           <div className="breed-intro">
             <div><div className="eyebrow">THE NEXT GENERATION</div><h2 id="breeding-title">What will they inherit?</h2><p>{breedingOpen ? 'Choose two parents. Discover twenty possibilities.' : goal ? `Goal active · ${goalLabel}` : 'Breeding planner is tucked away.'}</p></div>
@@ -301,9 +303,13 @@ export function App({ initial }: { initial: LoadedSession }) {
             <label className="inline-select">Sort<select value={sort} onChange={event => setPreferences(current => ({ ...current, sort: event.target.value as CollectionSort }))}>
               <option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Name</option><option value="goal" disabled={!goal}>{goal ? `${goalLabel} · best match first` : 'Breeding goal (set one first)'}</option>
             </select></label>
+            <div className="framing-toggle portrait-toggle" role="group" aria-label="Collection portraits show">
+              <button aria-pressed={portraitView === 'current'} onClick={() => setPreferences(current => ({ ...current, portraits: 'current' }))}>Now</button>
+              <button aria-pressed={portraitView === 'adult'} onClick={() => setPreferences(current => ({ ...current, portraits: 'adult' }))}>Adult potential</button>
+            </div>
           </div>
           {cohort ? <div className="cohort-parents" role="group" aria-label="Parents of this cohort">{[cohort.motherId, cohort.fatherId].flatMap(id => world.fish.filter(f => f.id === id)).map(parent => <button className="cohort-parent" key={parent.id} onClick={event => select(parent.id, event.detail === 0)}>
-            <FishPortrait fish={parent} /><span><strong>{parent.name}</strong><small>{parent.sex === 'F' ? 'Mother' : 'Father'} · G{parent.generation}{goal ? ` · ${goalLabel} ${wholePercent(goalMatch(parent, goal))}` : ''}{parent.status === 'sold' ? ' · Sold' : ''}</small></span>
+            <FishPortrait fish={parent} view={portraitView} /><span><strong>{parent.name}</strong><small>{parent.sex === 'F' ? 'Mother' : 'Father'} · G{parent.generation}{goal ? ` · ${goalLabel} ${wholePercent(goalMatch(parent, goal))}` : ''}{parent.status === 'sold' ? ' · Sold' : ''}</small></span>
           </button>)}</div> : null}
           {!showArchived && collection.length ? <div className="batch-bar" role="group" aria-label="Batch selection">
             <span className="batch-summary">{batch.length ? <><strong>{batch.length}</strong> selected · ◈ {batchTotal.toLocaleString()}</> : 'Favorites and eggs are protected from bulk sales. Shift-click selects a range.'}</span>
@@ -328,7 +334,7 @@ export function App({ initial }: { initial: LoadedSession }) {
                 <button className="favorite-toggle" aria-pressed={favorite} aria-label={`Favorite ${f.name}`} onClick={() => setPreferences(current => toggleFavorite(current, f.id))}>{favorite ? '★' : '☆'}</button><SexMark sex={f.sex} />
               </span></div>
               <button className="fish-card-main" id={`card-${f.id}`} aria-pressed={f.id === selectedId} onClick={event => select(f.id, event.detail === 0)}>
-                <FishPortrait fish={f} /><div className="fish-card-bottom"><strong>{f.name}</strong><small>{f.status === 'sold' ? 'Archived' : lifeSummary(f)}</small>{goal ? <span className="goal-chip">Match · {goalLabel} {wholePercent(goalMatch(f, goal))}</span> : null}</div>
+                <FishPortrait fish={f} view={portraitView} /><div className="fish-card-bottom"><strong>{f.name}</strong><small>{f.status === 'sold' ? 'Archived' : lifeSummary(f)}</small>{goal ? <span className="goal-chip">Match · {goalLabel} {wholePercent(goalMatch(f, goal))}</span> : null}</div>
               </button>
               {f.status === 'living' ? <label className="batch-check"><input type="checkbox" disabled={favorite || isEgg(f.life)} checked={inBatch} aria-label={`Select ${f.name} for batch sale`}
                 onChange={event => toggleBatch(f.id, (event.nativeEvent as MouseEvent).shiftKey === true)} /><span aria-hidden="true">{favorite ? 'Favorite protected' : isEgg(f.life) ? 'Egg protected' : inBatch ? 'Selected' : 'Select'}</span></label> : null}
@@ -340,7 +346,14 @@ export function App({ initial }: { initial: LoadedSession }) {
       <aside className="inspector" id="inspector" tabIndex={-1} aria-label="Fish inspector">
         {fish && p ? <>
           <div className="inspector-heading"><span className="eyebrow">SPECIMEN {fish.id.slice(4)}</span><span className="inspector-heading-actions"><button className="quiet back-to-card" onClick={returnToCollection}>↩ Collection</button><span className="generation">G{fish.generation}</span></span></div>
-          <div className="hero-portrait"><FishPortrait fish={fish} large /><span>{fish.status === 'sold' ? 'ARCHIVED SPECIMEN' : 'ADULT GENETIC PREVIEW'}</span></div>
+          <div className="hero-portrait">
+            <div className="framing-toggle hero-toggle" role="group" aria-label="Large portrait shows">
+              <button aria-pressed={heroView === 'current'} onClick={() => setHeroView('current')}>{fish.status === 'living' ? 'Now' : 'Last recorded'}</button>
+              <button aria-pressed={heroView === 'adult'} onClick={() => setHeroView('adult')}>Adult potential</button>
+            </div>
+            <FishPortrait fish={fish} large view={heroView} />
+            <span>{heroView === 'adult' ? 'ADULT GENETIC POTENTIAL · A PREVIEW, NOT HOW THIS FISH LOOKS TODAY' : `${fish.status === 'living' ? 'NOW' : 'LAST RECORDED'} · ${lifeSummary(fish).toUpperCase()}`}</span>
+          </div>
           <div className="fish-title"><h2 ref={inspectorHeading} tabIndex={-1}>{fish.name}</h2><SexMark sex={fish.sex} withLabel /></div>
           <p className="fish-subtitle">Koi ancestry · {fish.parents ? 'Bred in your aquarium' : 'Founder stock'}{favoriteIds.has(fish.id) ? ' · ★ Favorite' : ''}</p>
           <div className="inspector-tabs" role="group" aria-label="Inspector views">{(['Overview', 'Genome', 'Family'] as const).map(t => <button key={t} aria-pressed={tab === t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
@@ -381,7 +394,7 @@ function SexMark({ sex, withLabel = false, decorative = false }: { sex: Fish['se
 }
 
 function Relative({ fish, onSelect }: { fish: Fish; onSelect: (id: string) => void }) {
-  return <button className="relative" onClick={() => onSelect(fish.id)}><FishPortrait fish={fish} /><span><strong>{fish.name}</strong><small>G{fish.generation} · <SexMark sex={fish.sex} withLabel />{fish.status === 'sold' ? ' · Sold' : ''}</small></span><span>↗</span></button>;
+  return <button className="relative" onClick={() => onSelect(fish.id)}><FishPortrait fish={fish} view="current" /><span><strong>{fish.name}</strong><small>G{fish.generation} · <SexMark sex={fish.sex} withLabel />{fish.status === 'sold' ? ' · Sold' : ''}</small></span><span>↗</span></button>;
 }
 
 function Pagination({ page, count, size, onPage, label }: { page: number; count: number; size: number; onPage: (page: number) => void; label: string }) {

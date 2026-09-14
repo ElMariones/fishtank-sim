@@ -1,13 +1,13 @@
 # Implementation status
 
-**Updated:** 14 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`).
+**Updated:** 14 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is delivered; the backlog records the push.
 
-## Current continuation — FS-305 DONE, pushed `d425639`
+## Current continuation — FS-306 juvenile reveal
 
-14 September 2026: the starting checkout was `b282836`, equal to freshly fetched `origin/main`, with no tracked changes or unpushed commits. Only `.claude/launch.json` was untracked; an extra isolated `fishtank-qa` preview entry (port 5176) was added there and is not committed.
+14 September 2026: FS-306 started from `b084eb5` (FS-305 marked DONE), equal to `origin/main`. `.claude/launch.json` stays untracked; its extra `fishtank-qa` entry (port 5176) is the isolated QA origin.
 
-- FS-305: world save v4 gives every tank care: a feeder ration of the residents' current need, filter and aeration tiers, a thermostat and water changes. One shared food pool per tank feeds development through the fed share of each game day; temperature adds comfort and a bounded growth multiplier. Controls show cost and a three-day projection before applying; warnings name the fish affected and priced fixes, and open those fixes as previews. Condition only falls with a named cause, and fish never die. See [FS-305 care controls](research/FS-305-CARE-CONTROLS.md).
-- Next: FS-306 juvenile reveal and animation, then FS-307's integrated demo and absence summary, before FS-401/402 normal breeding.
+- FS-306: stage appearance v1 derives a juvenile phenotype in pure core from saved life state: large head and eyes, short fins and faint translucent pigment that reveal between game days 5 and 15. The tank and **Now** portraits draw it, eggs draw as eggs, and **Adult potential** toggles label the genetic preview. Renderer v6 adds tail sweep, fin flutter, eased turns and frame interpolation in the tank only. No save, genome or behavior change. See [FS-306 juvenile reveal](research/FS-306-JUVENILE-REVEAL.md).
+- Next: FS-307's healthy/stressed demonstration, absence summary and recovery, then FS-401/402 normal breeding.
 
 ## Delivered
 
@@ -49,20 +49,21 @@
 - FS-302: world save v3 gives every fish a life state (age, current length, condition). Breeding lays eggs that hatch after 3 game days. Fry and juveniles grow logistically toward their genetic adult length, reaching adulthood in about 18–30 game days in good water, slower under low oxygen, ammonia or crowding. Condition carries recent conditions forward, so deficits and recovery take days. Development runs once per game day through the shared clock, including offline and replay. The tank draws fish at current size and counts incubating eggs; cards and the inspector show stage, age and condition beside adult potential. Eggs cannot breed or be sold. Older saves migrate as young adults. See [FS-302 life stages](research/FS-302-LIFE-STAGES.md).
 - FS-304 (`5dbfb73`): one spatial hash per motion step supplies stable ordered local neighbors, and shared plant-cover and rock footprints drive Canvas and avoidance with body-center clearance. FS-403 (`5dbfb73`): exact pre-mutation genotype odds at all 60 loci and a separate 256-offspring preview of adult length and goal scores that never changes future births. See [spatial and prediction evidence](research/FS-304-403-SPATIAL-AND-PREDICTION.md).
 - FS-305: world save v4 tank care with feeder rations, a shared food pool, filter and aeration tiers, a thermostat, manual feeding and water changes. Nutrition and temperature join the daily environment; condition names every limiting cause. The care panel shows chips, warnings with priced fixes, and controls with cost and a three-day projection before applying. See [FS-305 care controls](research/FS-305-CARE-CONTROLS.md).
-- 118 automated tests; production build; Chrome verification of worker load/cleanup/faults, two-tab takeover, offline limits, transaction recovery, migration and 10,000-record import/restore, with the runtime journeys repeated in the in-app Chromium pane after the M2 review fixes.
+- FS-306: stage appearance v1 in `src/core/juvenile.ts` (body maturity from length, pigment maturity from age) and renderer v6 swim motion with eased turns, interpolation and eggs. Inspector and collection toggles separate **Now** from **Adult potential**; Visual fixtures adds a juvenile reveal strip. See [FS-306 juvenile reveal](research/FS-306-JUVENILE-REVEAL.md).
+- 124 automated tests; production build; Chrome verification of worker load/cleanup/faults, two-tab takeover, offline limits, transaction recovery, migration and 10,000-record import/restore, with the runtime journeys repeated in the in-app Chromium pane after the M2 review fixes.
 
 ## Prototype shortcuts and limitations
 
 | Area | Current limitation | Next task(s) |
 |---|---|---|
-| Visual quality | Canvas reference art; five observers scored 54/60 on one fixed 12-trial set, with markings the weak channel; portrait is static | FS-306 FS-701 |
+| Visual quality | Canvas reference art; five observers scored 54/60 on one fixed 12-trial set, with markings the weak channel; portraits are still images and swim motion is a stylized 2D side view; renderer v6 frame timing unmeasured | FS-701 |
 | Anatomy limits | An eye that cannot fit a shallow head is drawn smaller (adjustment listed); no protruding eyes or extra structures | FS-601–602 |
 | Pattern inheritance | Placement inherited from haplotype blocks (73% sibling separation, computed); common haplotypes are shared by chance; ellipse shapes; symmetry is a spread proxy, not bilateral matching; all five observers misread one markings trial. FS-113 motif positions come from the birth seed, while kind, colors, density and contrast are inherited, and people have not judged them | FS-601 |
 | Selection balance | Keeping 4 + 4 parents saturates v1 traits within 4–7 generations and drives pedigree F to about 0.8, with only the expected-F figure as a warning | FS-403 FS-605 |
 | Research data | Five anonymous records pooled in-repo by hand; no cue notes, observer context or remote collection | FS-705 |
 | Collection preferences | Up to four compound goals, sort and favorites are device-local and not in exported saves; filters and parent picks reset on reload; the Parents filter groups every clutch of a pair | FS-203–204 |
 | World size | 10,000 records and 480 living fish; tested large snapshot round trip about 755 ms, with validation still on the main thread; pathological pedigrees can require quadratic ancestor-pair work | FS-405 FS-702 |
-| Life stages | Eggs, fry, juveniles, adults and an elderly label with age, growth and condition; condition is the health measure; drawings keep adult shape and pigment at current size; no disease or death | FS-306 |
+| Life stages | Eggs, fry, juveniles, adults and an elderly label with age, growth and condition; condition is the health measure; hatchling proportions ease with length and pigment reveals by age only; fry steer with adult movement traits; no disease or death | FS-906 |
 | Behavior | Utility cruise/forage/eat/hide/school with transient visual pellets; domain feeding is one shared pool per tank; no courtship, territorial utility or learned memory | FS-401 FS-906 |
 | Curiosity/life-history genes | growth_rate, longevity, metabolism and oxygen_demand are active; fertility and curiosity remain display-only | FS-303 FS-401 |
 | Breeding | Eggs cannot breed, but the lab bypasses maturity, courtship, shared habitat, cost and cooldown; fixed 20 eggs | FS-401–402 |
@@ -85,6 +86,8 @@
 | Delivery | Pushed to GitHub `main`; no public deployment or continuous integration | FS-706 |
 
 ## Evidence
+
+**FS-306 juvenile reveal, Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium (isolated port 5176):** 124 tests and build pass. Six fixtures cover maturity, interpolation without genetic change, stage anatomy and framing sweeps (fixtures and 600 founders at four maturities), ornament reveal, continuous turning poses and the reveal series. In the browser, 20 eggs showed egg portraits and an incubating caption; after 8 simulated minutes the fry read "fry at 1.8 cm, current appearance", and the Now/Adult potential toggles relabeled cards and the inspector, with the collection choice persisting. The reveal strip showed pigment 5/35/80/100% on days 6/9/12/16. See [FS-306 juvenile reveal](research/FS-306-JUVENILE-REVEAL.md).
 
 **FS-305 care controls, Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium (isolated port 5176):** 118 tests and build pass. Seven fixtures cover ration conservation, directional development, the thermostat, split/offline/replay equality, atomic costs, warnings whose fixes clear a stressed tank with exact projections, and world v3 migration. In the browser, a stressed tank (Compact filter, Gentle aeration, 29 °C, Heavy rations, 26 fish, 45 offline minutes) read oxygen critical 1.7 mg/L and ammonia high 9.23 mg N/L with priced fixes; after a previewed fix, a 50% water change and 30 more minutes it read good, clean, 97% fed and 100% condition with no warnings. See [FS-305 care controls](research/FS-305-CARE-CONTROLS.md).
 
@@ -135,4 +138,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**Continue M3 with FS-306 juvenile reveal and smooth animation, then FS-307's healthy/stressed demonstration and absence summary.** Keep the renderer consuming phenotype only and keep care previews equal to applied results. Then FS-401/402 normal breeding. FS-403 prediction is available early; it does not establish M4's two-generation gate.
+**Finish M3 with FS-307: a healthy/stressed tank demonstration, an absence summary on return, and recovery with no unexplained condition decline.** Keep care previews equal to applied results and the renderer consuming phenotype only. Then FS-401/402 normal breeding. FS-403 prediction is available early; it does not establish M4's two-generation gate.

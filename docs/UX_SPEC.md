@@ -48,6 +48,8 @@ Minimum target 360 CSS pixels. Essential controls support 200% text enlargement.
 
 **Overview fields:** name, sex, birth, life stage, current size, mature potential range, generation, tank/ownership status, health/stress trend, value estimate, mutations, pedigree F and measured heterozygosity.
 
+**Lab implementation (FS-306):** the large portrait has **Now** (**Last recorded** for archived fish) and **Adult potential** toggles, with a caption such as "NOW · JUVENILE · 21 OF 61 CM" or "ADULT GENETIC POTENTIAL · A PREVIEW, NOT HOW THIS FISH LOOKS TODAY". Eggs draw as eggs. Collection cards and pinned cohort parents share one **Now / Adult potential** toggle kept on the device, so a comparison always uses one view; relatives show the current stage. The tank draws the current stage and an egg cluster on the substrate.
+
 **Rename:** draft edit, validation 1–32 trimmed characters, explicit save or clear keyboard submission, success feedback. The name is ordinary text, never HTML. Immutable ID remains visible independently.
 
 **Empty:** “Select a fish to inspect.” **Archived:** read-only facts and family links with status. **Unavailable/private:** retain the ID/relationship tombstone and explain access limits.

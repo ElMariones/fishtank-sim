@@ -113,11 +113,27 @@ function paint(ctx: CanvasRenderingContext2D, layers: readonly PreparedLayer[]) 
   }
 }
 
-/** Renderer v5: anatomy v2, classic markings and development v4 ornament. No inheritance, mutation, or identity decisions belong here. */
-export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: number, size: number, time = 0) {
+/** Live swimming state from the tank: accumulated tail and fin phases and effort (swim speed over top speed, 0–1). */
+export type SwimMotion = { tailPhase: number; finPhase: number; effort: number };
+
+/**
+ * Renderer v6: anatomy v2, classic markings and development v4 ornament, with optional swimming motion (FS-306). Portraits
+ * pass no motion and draw exactly as renderer v5. Motion only narrows the tail spread and folds the pectoral fin toward
+ * the body, so anatomy bounds still contain every drawn point. No inheritance, mutation, or identity decisions belong here.
+ */
+export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: number, size: number, time = 0, motion?: SwimMotion) {
   const a = anatomyFor(p);
   const l = size * p.length, h = l * p.depth;
-  const wave = Math.sin(time * (2.5 + p.activity * 3) + seed % 20) * TAIL_WAVE;
+  const wave = motion
+    ? Math.sin(motion.tailPhase) * TAIL_WAVE * Math.min(1, 0.55 + 0.45 * motion.effort)
+    : Math.sin(time * (2.5 + p.activity * 3) + seed % 20) * TAIL_WAVE;
+  // Seen from the side, a sweeping tail looks narrower mid-stroke.
+  const sweep = motion ? 1 - 0.14 * (1 - Math.cos(2 * motion.tailPhase)) / 2 : 1;
+  const tip = (v: Vec): Vec => (sweep === 1 ? v : { x: v.x, y: v.y * sweep });
+  const dorsal = motion ? { ...a.dorsal, control: { x: a.dorsal.control.x + Math.sin(motion.finPhase * 0.5) * 0.012, y: a.dorsal.control.y } } : a.dorsal;
+  const pectoral = motion
+    ? { ...a.pectoral, control: { x: a.pectoral.control.x + Math.cos(motion.finPhase) * 0.02, y: a.pectoral.control.y - (1 - Math.sin(motion.finPhase)) * 0.35 * p.pectoral } }
+    : a.pectoral;
   const at = (v: Vec, dy = 0): [number, number] => [v.x * l, (v.y + dy) * l];
   const palette = paletteFor(p), ornament = ornamentFor(p, seed, a);
   const orange = palette.accent, base = palette.base;
@@ -129,10 +145,10 @@ export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: numb
   const c = a.caudal;
   const caudal = new Path2D();
   caudal.moveTo(...at(c.root));
-  caudal.bezierCurveTo(...at(c.upperInner), ...at(c.upperOuter, wave), ...at(c.upperTip, wave));
+  caudal.bezierCurveTo(...at(c.upperInner), ...at(tip(c.upperOuter), wave), ...at(tip(c.upperTip), wave));
   caudal.lineTo(...at(c.notch, wave));
-  caudal.lineTo(...at(c.lowerTip, wave));
-  caudal.bezierCurveTo(...at(c.lowerOuter, wave), ...at(c.lowerInner), ...at(c.root));
+  caudal.lineTo(...at(tip(c.lowerTip), wave));
+  caudal.bezierCurveTo(...at(tip(c.lowerOuter), wave), ...at(c.lowerInner), ...at(c.root));
   ctx.fill(caudal); ctx.stroke(caudal);
   ctx.save(); ctx.clip(caudal);
   if (ornament) {
@@ -151,19 +167,19 @@ export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: numb
     }
     if (flame) {
       ctx.globalAlpha = flame; ctx.strokeStyle = orange; ctx.lineWidth = Math.max(1, l * 0.02); ctx.lineCap = 'round';
-      for (const ray of c.rays) { ctx.beginPath(); ctx.moveTo(...at(ray.start)); ctx.quadraticCurveTo(...at(ray.control, wave * 0.5), ...at(ray.end, wave)); ctx.stroke(); }
+      for (const ray of c.rays) { ctx.beginPath(); ctx.moveTo(...at(ray.start)); ctx.quadraticCurveTo(...at(ray.control, wave * 0.5), ...at(tip(ray.end), wave)); ctx.stroke(); }
     }
     if (edge) { ctx.globalAlpha = edge; ctx.strokeStyle = orange; ctx.lineWidth = Math.max(1.5, l * 0.07); ctx.stroke(caudal); }
     ctx.restore();
   }
-  for (const ray of c.rays) { ctx.beginPath(); ctx.moveTo(...at(ray.start)); ctx.quadraticCurveTo(...at(ray.control, wave * 0.5), ...at(ray.end, wave)); ctx.stroke(); }
+  for (const ray of c.rays) { ctx.beginPath(); ctx.moveTo(...at(ray.start)); ctx.quadraticCurveTo(...at(ray.control, wave * 0.5), ...at(tip(ray.end), wave)); ctx.stroke(); }
   ctx.restore();
   // Dorsal and pectoral fins sit behind the body with roots inside the outline.
-  for (const fin of [a.dorsal, a.pectoral]) {
+  for (const [fin, isDorsal] of [[dorsal, true], [pectoral, false]] as const) {
     const path = new Path2D();
     path.moveTo(...at(fin.start)); path.quadraticCurveTo(...at(fin.control), ...at(fin.end)); path.closePath();
     ctx.fill(path); ctx.stroke(path);
-    if (!ornament || fin !== a.dorsal) continue;
+    if (!ornament || !isDorsal) continue;
     ctx.save(); ctx.clip(path);
     ctx.save(); ctx.scale(l, l); paint(ctx, ornament.dorsal); ctx.restore();
     const { edge, tips, flame } = ornament.fins;
@@ -242,5 +258,31 @@ export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: numb
   ctx.beginPath(); ctx.moveTo(...at(a.mouth.tip)); ctx.lineTo(...at(a.mouth.corner)); ctx.stroke();
   ctx.strokeStyle = '#e0dbc3aa';
   for (const barbel of a.barbels) { ctx.beginPath(); ctx.moveTo(...at(barbel.start)); ctx.quadraticCurveTo(...at(barbel.control), ...at(barbel.end)); ctx.stroke(); }
+  ctx.restore();
+}
+
+/**
+ * An incubating egg at the origin: a translucent membrane over the yolk, with the embryo and its eye spots appearing as
+ * `progress` (0 laid – 1 ready to hatch) rises. Visual only; hatching is decided by the life model.
+ */
+export function drawEgg(ctx: CanvasRenderingContext2D, radius: number, seed: number, progress: number, time = 0) {
+  const rng = random(hash(`egg:${seed}`)), grown = clamp(progress), r = radius;
+  ctx.save();
+  ctx.rotate(rng() * Math.PI * 2 + Math.sin(time * 0.8 + seed) * 0.05);
+  const membrane = ctx.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.1, 0, 0, r);
+  membrane.addColorStop(0, '#fbf0cfd9'); membrane.addColorStop(0.7, '#e7c78ab0'); membrane.addColorStop(1, '#c89a4a80');
+  ctx.fillStyle = membrane; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#fff3d066'; ctx.lineWidth = Math.max(0.6, r * 0.06); ctx.stroke();
+  ctx.fillStyle = `rgba(226, 150, 58, ${0.75 - 0.35 * grown})`;
+  ctx.beginPath(); ctx.arc(r * 0.12, r * 0.18, r * (0.5 - 0.18 * grown), 0, Math.PI * 2); ctx.fill();
+  if (grown > 0.2) {
+    ctx.strokeStyle = `rgba(92, 74, 46, ${Math.min(0.85, grown)})`; ctx.lineWidth = Math.max(0.8, r * 0.14); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(r * 0.05, r * 0.05, r * 0.52, Math.PI * 0.85, Math.PI * (0.85 + 1.2 * grown)); ctx.stroke();
+  }
+  if (grown > 0.45) {
+    ctx.fillStyle = '#1b2322';
+    for (const offset of [-0.12, 0.12]) { ctx.beginPath(); ctx.arc(-r * 0.42 + offset * r, -r * 0.18 + offset * r * 0.4, Math.max(0.5, r * 0.08), 0, Math.PI * 2); ctx.fill(); }
+  }
+  ctx.fillStyle = '#ffffff70'; ctx.beginPath(); ctx.ellipse(-r * 0.38, -r * 0.42, r * 0.18, r * 0.1, -0.6, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
