@@ -1,6 +1,6 @@
 # FS-404 bounded family graph
 
-**Recorded:** 14 September 2026 · **Status:** delivered; push reference in the [backlog](../BACKLOG.md)
+**Recorded:** 14 September 2026 · **Status:** DONE, pushed `b7c3e37`
 **Models:** world save v5 (unchanged) · genome v2 · no save, command or kinship change
 
 ## Starting state
