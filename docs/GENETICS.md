@@ -332,9 +332,15 @@ Unknown founders are assumed unrelated and non-inbred. Parents always have lower
 
 Heterozygosity = heterozygous loci / assayed loci. It is not “genetic diversity of the species” and it does not equal 1 − F. Alleles identical in state need not be identical by descent.
 
-FS-112 uses memoized ancestor-pair queries with an explicit stack, including diagonal terms. It preserves all recorded generations without a depth cutoff and avoids allocating a world-sized matrix. Pathological pedigrees can still require O(N²) pairs; worker execution and cross-query caching remain future work. The lab caps permanent records at 10,000 and living fish at 480.
+FS-112 uses memoized ancestor-pair queries with an explicit stack, including diagonal terms. It preserves all recorded generations without a depth cutoff and avoids allocating a world-sized matrix. Pathological pedigrees can still require O(N²) pairs; worker execution remains future work, and FS-405 caches computed pairs across queries. The lab caps permanent records at 10,000 and living fish at 480.
 
 The family view (FS-404) reports pedigree completeness per generation back: its 2^n positions split into recorded ancestors, positions above founder stock (unknown, assumed unrelated and non-inbred) and positions whose recorded parent has no record in the world. A repeated ancestor is one node that records every position it fills, never a duplicate record. These counts describe the displayed view of up to six generations; pedigree F still uses every recorded generation.
+
+**Kinship cache (FS-405).** The app keeps one kinship cache per session.
+- **Invalidation:** recorded parents never change and records are never deleted, so every computed pair stays valid as births are added. Only a changed, duplicated or removed record rebuilds the cache, and the pair table starts over after 500,000 entries.
+- **Founder assumption:** founders follow an explicit assumption, by default unrelated and not inbred (kinship 0 between founders, 0.5 with themselves). A base population may instead declare a founder coancestry f₀ and inbreeding F₀, giving A[i,j] = 2f₀ between different founders and A[i,i] = 1 + F₀.
+- **Unrecorded parents:** a parent ID with no record counts as one more founder, so the link through that parent is invisible. Siblings whose shared father has no record read as half siblings.
+- **Display:** the breeding panel and the Family view state how many founders a value assumes.
 
 ### Implemented offspring guidance (FS-403)
 

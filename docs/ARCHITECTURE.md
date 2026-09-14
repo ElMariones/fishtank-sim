@@ -23,7 +23,7 @@ src/
     selectionExperiment.ts Seeded ten-generation truncation selection vs random mating, with pedigree F and gate
     resemblanceStudy.ts Blind parent-pair trial set, display modes, computational observer and answer scoring
     resemblancePool.ts Strict validation and recomputation of anonymous human observer records
-    pedigree.ts     Exact memoized ancestry-pair queries with an explicit stack
+    pedigree.ts     Incremental kinship cache: exact ancestry-pair queries with an explicit stack, founder assumptions and founder listing
     genealogy.ts    Bounded ancestor graph (each ancestor once, with positions and unknown/missing counts), descendants by generation, record search and breadcrumbs
     world.ts        Validated world commands and local NPC transactions
     water.ts        Water model v1: one-compartment oxygen/ammonia/food chemistry, fixed steps, ledger and status bands
@@ -82,6 +82,7 @@ tests/
   juvenile.test.ts Maturity, hatchling interpolation, stage anatomy and framing sweeps, ornament reveal, turning poses and reveal series
   absence.test.ts  Day observer neutrality, no unexplained decline across random care, scenario recovery and absence summaries
   breeding.test.ts Pairing blockers, courtship pauses and spawning, reservations under random commands, reload/offline no-duplication, cancel/sale guards, world v4 migration
+  kinship.test.ts  Textbook relationships, Wright's recurrences, founder assumptions against the tabular matrix, founder listing, incremental reuse and rebuilds
   genealogy.test.ts Repeated ancestors, position-by-position reference on random inbred pedigrees, ten generations six at a time, sold and cross-tank relatives, 10,000-record bounds, search and trail
   care.test.ts     Ration conservation, development under rations and temperature, split/offline/replay equality, costs, warnings, projections and world v3 migration
   limits.test.ts   Living/record limits, deep and wide pedigree queries and atomic rejection
@@ -106,6 +107,15 @@ There is currently **no backend, WebGL mesh, biological life-stage scheduler, au
 
 No save, command or kinship calculation changed; pedigree F still uses every recorded generation. `ui/FamilyView.tsx` renders the graph with current-stage portraits, descendant generations paginated at 60, a name or ID search across living and sold records, and a breadcrumb trail kept as session state in App (ADR-050).
 
+### FS-405 kinship cache, 14 September 2026
+
+`core/pedigree.ts` now exposes `createKinshipCache`. It stores each record's ID, generation and parents, plus a table of computed ancestor pairs.
+- **Sync:** `sync(fish)` adds new records and keeps every cached pair. It rebuilds only when a known record's parents or generation change, a record disappears or an ID repeats. It skips the scan when handed the same array.
+- **Queries:** `kinship`, `inbreeding` and `founders` use the explicit-stack recursion from FS-112. Founders and unrecorded parent IDs follow a validated `FounderAssumption`, unrelated and not inbred by default.
+- **Pair limit:** past 500,000 pairs the table starts over.
+- **Compatibility:** the old `kinship(fish, a, b)` function is a one-off cache, so every existing kinship test exercises the same code.
+- **App:** one cache lives in App state for the session. It serves expected pedigree F, the inspector's F and the founder counts shown beside them (ADR-051).
+
 ## 2. Stack decisions
 
 | Concern | Current | Next target | Reason |
@@ -116,7 +126,7 @@ No save, command or kinship calculation changed; pedigree F still uses every rec
 | Motion | 20 Hz module worker, spatial hash and shared cover/rock footprints | Render interpolation and morphology-aware clearance | Remove unconditional all-pairs scans; dense clusters still cost more |
 | Persistence | IndexedDB transactions, two backups, v1 migration and Web Locks writer lease | Worker-assisted incremental persistence | Larger archives need async storage and explicit recovery |
 | State | React state + motion refs | UI store only if needed | Avoid global subscription to every swimming coordinate |
-| Genealogy | Exact memoized kinship queries; bounded six-generation ancestor graph and descendant generations from an on-demand index (FS-404) | Worker query + incremental kinship cache | Preserve history without world-sized matrix allocation |
+| Genealogy | Session kinship cache that keeps computed pairs across births (FS-405); bounded six-generation ancestor graph and descendant generations from an on-demand index (FS-404) | Worker query for pathological pedigrees | Preserve history without world-sized matrix allocation |
 | Backend | None | Authoritative HTTP service + PostgreSQL | Durable transactions and trusted online ownership |
 | Shared simulation | Persistent 50 ms clock, event-boundary integrator, fixed-step care and water per tank (FS-301, FS-305) and daily life stages, growth and condition (FS-302) | Water, development and scheduled lifecycle events | One deterministic integrator must serve visible/background/offline modes |
 

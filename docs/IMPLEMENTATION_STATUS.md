@@ -1,13 +1,20 @@
 # Implementation status
 
-**Updated:** 14 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`).
+**Updated:** 14 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`). FS-405's incremental kinship cache with stated founder assumptions is delivered; the backlog records the push.
 
-## Current continuation — FS-404 DONE, pushed `b7c3e37`
+## Current continuation — FS-405 kinship cache
+
+14 September 2026: FS-405 started from `c741d20` (FS-404 marked DONE), equal to `origin/main`. `.claude/launch.json` stays untracked; the QA world (`localhost:5176`) and the generated deep lineage (`127.0.0.1:5176`) remain the isolated browser origins.
+
+- FS-405: `createKinshipCache` keeps computed ancestor pairs for the session as births are added, rebuilds only when recorded history changes, and applies an explicit, validated founder assumption (unrelated and not inbred by default; unrecorded parents count as founders). Expected pedigree F and the Family note state how many founders a value assumes. Values match the previous calculation exactly. See [FS-405 kinship cache](research/FS-405-KINSHIP-CACHE.md).
+- Next: FS-406, the two-generation normal-mode demonstration with cohort selection and batch rehoming with review, which closes M4's task list.
+
+## Previous continuation — FS-404 DONE, pushed `b7c3e37`
 
 14 September 2026: FS-404 started from `f944706` (FS-401/402 marked DONE), equal to `origin/main`. `.claude/launch.json` stays untracked; its `fishtank-qa` entry (port 5176) serves the QA world at `localhost` and a generated deep lineage at `127.0.0.1`, two isolated origins.
 
 - FS-404: `genealogy.ts` computes a bounded ancestor graph on demand. Each ancestor is listed once at its nearest generation, with its positions and the counts of recorded, founder-stock and missing positions. It also lists descendants by generation, searches records and keeps breadcrumbs. The Family tab shows up to six generations each way with portraits, aquariums and archived status. Selecting a relative focuses it across tanks, and marked ancestors continue further back. No save or command changed. See [FS-404 family graph](research/FS-404-FAMILY-GRAPH.md).
-- Next: FS-405 incremental kinship cache with unknown-founder assumptions and reference fixtures, then FS-406's two-generation normal-mode demonstration with cohort selection and batch rehoming.
+- Followed by FS-405 (above).
 
 ## Previous continuation — FS-401/402 DONE, pushed `9aabfdb`
 
@@ -68,7 +75,8 @@
 - FS-307: `onDay` observer on the shared advance, `absence.ts` per-tank return summary with an unexplained-decline check, the **While you were away** panel, and seeded healthy/stressed care scenarios in Research with a keeper that applies warning fixes. See [FS-307 care demonstration and absence](research/FS-307-CARE-DEMO-AND-ABSENCE.md).
 - FS-401/402: `breeding.ts` pairing and courtship blockers, day-boundary courtship and spawning into reserved nursery places, rest days, cancel and sale guards; world save v5 with validated clutch records; the Normal breeding panel, clutch list and inspector Breeding row. See [FS-401/402 breeding lifecycle](research/FS-401-402-BREEDING-LIFECYCLE.md).
 - FS-404: `genealogy.ts` bounded ancestor graph with repeated ancestors listed once, per-generation completeness, descendant generations, record search and breadcrumbs. `FamilyView.tsx` shows up to six generations each way with portraits, cross-tank and archived focus. See [FS-404 family graph](research/FS-404-FAMILY-GRAPH.md).
-- 142 automated tests; production build; Chrome verification of worker load/cleanup/faults, two-tab takeover, offline limits, transaction recovery, migration and 10,000-record import/restore, with the runtime journeys repeated in the in-app Chromium pane after the M2 review fixes.
+- FS-405: `createKinshipCache` in `pedigree.ts` keeps computed ancestor pairs for the session as births are added. It rebuilds only when recorded history changes, and treats founders and unrecorded parents under an explicit, validated assumption (unrelated and not inbred by default). The breeding panel and Family view state how many founders an F value assumes. See [FS-405 kinship cache](research/FS-405-KINSHIP-CACHE.md).
+- 148 automated tests; production build; Chrome verification of worker load/cleanup/faults, two-tab takeover, offline limits, transaction recovery, migration and 10,000-record import/restore, with the runtime journeys repeated in the in-app Chromium pane after the M2 review fixes.
 
 ## Prototype shortcuts and limitations
 
@@ -80,7 +88,7 @@
 | Selection balance | Keeping 4 + 4 parents saturates v1 traits within 4–7 generations and drives pedigree F to about 0.8, with only the expected-F figure as a warning | FS-403 FS-605 |
 | Research data | Five anonymous records pooled in-repo by hand; no cue notes, observer context or remote collection | FS-705 |
 | Collection preferences | Up to four compound goals, sort and favorites are device-local and not in exported saves; filters and parent picks reset on reload; the Parents filter groups every clutch of a pair | FS-203–204 |
-| World size | 10,000 records and 480 living fish; tested large snapshot round trip about 755 ms, with validation still on the main thread; pathological pedigrees can require quadratic ancestor-pair work | FS-405 FS-702 |
+| World size | 10,000 records and 480 living fish; tested large snapshot round trip about 755 ms, with validation still on the main thread; pathological pedigrees can still require quadratic ancestor-pair work on a first query, though computed pairs are then cached for the session | FS-702 |
 | Life stages | Eggs, fry, juveniles, adults and an elderly label with age, growth and condition; condition is the health measure; hatchling proportions ease with length and pigment reveals by age only; fry steer with adult movement traits; no disease or death | FS-906 |
 | Behavior | Utility cruise/forage/eat/hide/school with transient visual pellets; domain feeding is one shared pool per tank; no courtship, territorial utility or learned memory | FS-401 FS-906 |
 | Curiosity/life-history genes | growth_rate, longevity, metabolism and oxygen_demand are active; fertility sets courtship speed; curiosity remains display-only | FS-906 |
@@ -91,7 +99,7 @@
 | Batch management | Batch sale only; no batch move/rehome, and selection does not persist across tank or archive views | FS-406 |
 | Rarity | Only founder-stock rarity labels for appearance (FS-113); no measured reference population or global service | FS-603 FS-805 |
 | Topology | No extra tail lobes/eyes/fins or genome v3 topology; FS-113 scale types are drawn textures, not scale geometry | FS-601–602 |
-| Family | Six generations back and forward as generation lists with text edges; no drawn pedigree chart or lineage registration; breadcrumbs and depth are session-only; pedigree F is uncached | FS-405 FS-604 |
+| Family | Six generations back and forward as generation lists with text edges; no drawn pedigree chart or lineage registration; breadcrumbs, depth and the kinship cache are session-only; F assumes founders unrelated rather than measuring them | FS-603 FS-604 |
 | History | Birth and pedigree permanent; recent command events persist but compact every 64 commands; no permanent lifetime event history or old portraits | FS-404 |
 | Appearance versions | Lab fish store no per-record development/anatomy/renderer version; all fish re-render under the current model (markings moved with development v2) | FS-404 FS-601 |
 | Persistence | IndexedDB snapshots/replay, two backups and one Web Locks writer; browsers without Web Locks fall back to stale-write rejection; no cloud sync; preferences remain device-local | FS-703 M8 |
@@ -104,6 +112,8 @@
 | Delivery | Pushed to GitHub `main`; no public deployment or continuous integration | FS-706 |
 
 ## Evidence
+
+**FS-405 kinship cache, Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium (isolated origins on port 5176):** 148 tests and build pass. Six fixtures cover textbook relationships through second cousins, Wright's full-sib and backcross recurrences, three founder assumptions against the tabular relationship matrix, founder and missing-parent listing through real commands, incremental reuse (the next of 240 cached generations computes at most 12 pairs) and exact rebuilds. In the browser, Haru × Sumi read 0.0% with 2 founders assumed, and generation 9 siblings Tomo × Yori read 85.4% in both breeding modes, the value their first egg then showed. A wrong fixture expectation for a removed father record was corrected before commit. See [FS-405 kinship cache](research/FS-405-KINSHIP-CACHE.md).
 
 **FS-404 family graph, Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium (isolated origins on port 5176):** 142 tests and build pass. Eight fixtures cover:
 - repeated ancestors;
@@ -176,4 +186,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**Continue M4 with FS-405: an incremental kinship cache with unknown-founder assumptions and reference fixtures.** It must match `pedigree.ts` exactly. Then do FS-406's two-generation normal-mode demonstration with cohort selection and batch rehoming. Keep migrations writing keys in schema order, every arrival counting nursery reservations, and family views bounded. FS-403 prediction is available early; it does not establish M4's two-generation gate.
+**Finish M4 with FS-406: a two-generation normal-mode demonstration, cohort selection and batch rehoming with review.** Rehoming must count nursery reservations and reject the whole batch atomically, like batch sale. Keep migrations writing keys in schema order, family views bounded, and kinship served from the session cache. FS-403 prediction is available early; it does not establish M4's two-generation gate.

@@ -16,7 +16,7 @@ import { NormalBreeding } from './NormalBreeding';
 import { express, fingerprint, heterozygosity, metabolicPotential } from '../core/genetics';
 import { MARKING_BLOCKS, MARKING_VISIBLE_ALPHA } from '../core/pattern';
 import { genealogyIndex, visitTrail } from '../core/genealogy';
-import { kinship } from '../core/pedigree';
+import { createKinshipCache } from '../core/pedigree';
 import { advanceRuntime, commandEnvelope, executeCommand, TICK_MS } from '../core/runtime';
 import type { LoadedSession } from '../persistence/session';
 import { ACTIVE_CHECKPOINT_MS } from '../simulation/time';
@@ -159,8 +159,13 @@ export function App({ initial }: { initial: LoadedSession }) {
     return home ? environmentLimits(tankEnvironment(home, tankLoad(world.fish, home.id))) : [];
   }, [fish, world]);
   const appearanceRows = useMemo(() => fish ? describeAppearance(fish.genome) : [], [fish]);
-  const prospectiveF = useMemo(() => kinship(world.fish, motherId, fatherId), [world.fish, motherId, fatherId]);
-  const currentF = useMemo(() => fish?.parents ? kinship(world.fish, fish.parents[0], fish.parents[1]) : 0, [world.fish, fish]);
+  // One kinship cache per session keeps computed pairs as the world grows; recorded parents never change (FS-405).
+  const [kinshipCache] = useState(() => createKinshipCache());
+  const pedigree = useMemo(() => { kinshipCache.sync(world.fish); return kinshipCache; }, [kinshipCache, world.fish]);
+  const prospectiveF = useMemo(() => pedigree.kinship(motherId, fatherId), [pedigree, world.fish, motherId, fatherId]);
+  const pairFounders = useMemo(() => pedigree.founders([motherId, fatherId]).founders.length, [pedigree, world.fish, motherId, fatherId]);
+  const currentF = useMemo(() => fish ? pedigree.inbreeding(fish.id) : 0, [pedigree, world.fish, fish]);
+  const fishFounders = useMemo(() => fish && tab === 'Family' ? pedigree.founders([fish.id]).founders.length : 0, [pedigree, world.fish, fish, tab]);
   // The family index is built only while the Family tab is open (FS-404).
   const genealogy = useMemo(() => tab === 'Family' ? genealogyIndex(world.fish) : null, [tab, world.fish]);
 
@@ -320,7 +325,7 @@ export function App({ initial }: { initial: LoadedSession }) {
             {breedingMode === 'normal' ? <>
               <NormalBreeding world={world} motherId={motherId} fatherId={fatherId} nurseryId={nurseryId} size={clutchSize} readOnly={initial.readOnly}
                 onNursery={setNurseryId} onSize={setClutchSize} onPair={pair} onCancel={cancelClutch} onShowClutch={showClutch} />
-              <p className="help-copy">Expected pedigree F: {percent(prospectiveF)}. Parents must be adults with at least 70% condition, not resting after a clutch, and in the same tank. Courtship pauses, with the reason shown, if they are separated, their condition falls or the water turns harsh.</p>
+              <p className="help-copy">Expected pedigree F: {percent(prospectiveF)}, from recorded ancestry; {pairFounders === 1 ? 'the one founder behind this pair is' : `the ${pairFounders} founders behind this pair are`} assumed unrelated and not inbred. Parents must be adults with at least 70% condition, not resting after a clutch, and in the same tank. Courtship pauses, with the reason shown, if they are separated, their condition falls or the water turns harsh.</p>
             </> : <>
               <div className="breed-action"><button className="primary" onClick={breed} disabled={!breeders.some(f => f.id === motherId) || !breeders.some(f => f.id === fatherId) || residents.length + reservedPlaces(world, tank.id) + COHORT_SIZE > tank.capacity}>Breed 20 offspring <span>↗</span></button><small>Expected pedigree F: {percent(prospectiveF)}</small></div>
               <p className="help-copy">Clutch destination: {tank.name} · {tank.capacity - residents.length - reservedPlaces(world, tank.id)} free places · {COHORT_SIZE} required.</p>
@@ -421,7 +426,7 @@ export function App({ initial }: { initial: LoadedSession }) {
             const visible = (anchor.layer === 'dark' ? p.black : p.red) * (1 - p.translucency) >= MARKING_VISIBLE_ALPHA, drawn = index < p.frequency;
             return <li key={anchor.key} className={drawn && visible ? '' : 'muted'}><span className={`marking-swatch ${anchor.layer}`} aria-hidden="true" /><span>{MARKING_BLOCKS[anchor.block].label}<small>A{anchor.alleles[0]}·A{anchor.alleles[1]} · {anchor.origin === 'both' ? 'on both copies (bolder)' : anchor.origin === 'maternal' ? 'copy from mother' : 'copy from father'}</small></span><span>{anchor.layer === 'dark' ? 'Dark' : 'Warm'}{!drawn ? ' · not drawn' : !visible ? ' · too faint' : ''}</span></li>;
           })}</ol></div></div> : null}
-          {tab === 'Family' && genealogy ? <FamilyView key={fish.id} world={world} index={genealogy} fish={fish} depth={familyDepth} trail={familyTrail} pedigreeF={percent(currentF)}
+          {tab === 'Family' && genealogy ? <FamilyView key={fish.id} world={world} index={genealogy} fish={fish} depth={familyDepth} trail={familyTrail} pedigreeF={percent(currentF)} founders={fishFounders}
             onDepth={setFamilyDepth} onNavigate={navigateFamily} onBack={() => select(familyTrail[familyTrail.length - 1], true, familyTrail.slice(0, -1))}
             onReturn={() => select(familyTrail[0], true)} /> : null}
         </> : <p className="empty-copy">Select a fish from the aquarium or collection.</p>}

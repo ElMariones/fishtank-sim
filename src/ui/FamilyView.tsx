@@ -16,6 +16,8 @@ type Props = {
   /** Fish visited before this one through the family view, oldest first. */
   trail: readonly string[];
   pedigreeF: string;
+  /** Founders in this fish's recorded ancestry, whose relatedness pedigree F assumes (FS-405). */
+  founders: number;
   onDepth: (depth: number) => void; onNavigate: (id: string) => void; onBack: () => void; onReturn: () => void;
 };
 
@@ -28,7 +30,7 @@ function listNames(names: string[]): string {
  * Bounded family graph (FS-404): up to six ancestor generations with repeated ancestors listed once, descendants by
  * generation, record search and a breadcrumb trail. Selecting a relative focuses it and brings a living fish's tank into view.
  */
-export function FamilyView({ world, index, fish, depth, trail, pedigreeF, onDepth, onNavigate, onBack, onReturn }: Props) {
+export function FamilyView({ world, index, fish, depth, trail, pedigreeF, founders, onDepth, onNavigate, onBack, onReturn }: Props) {
   const graph = useMemo(() => ancestorGraph(index, fish.id, depth), [index, fish.id, depth]);
   const descendants = useMemo(() => descendantGenerations(index, fish.id), [index, fish.id]);
   const [query, setQuery] = useState('');
@@ -116,7 +118,7 @@ export function FamilyView({ world, index, fish, depth, trail, pedigreeF, onDept
       </> : <p className="empty-copy">Their story is just beginning.</p>}
     </section>
 
-    <p className="help-copy">Pedigree F ({pedigreeF}) uses every recorded generation, not only those shown, and assumes founder stock is unrelated and not inbred. It is different from heterozygosity.{fish.parents && totals.positions ? ` Of ${totals.positions} ancestor positions shown, ${totals.recorded} are recorded${totals.unknown ? ` and ${totals.unknown} lie above founder stock` : ''}${totals.missing ? `; ${totals.missing} are missing from this world` : ''}.` : ''} Repeated ancestors are listed once, at their nearest generation.</p>
+    <p className="help-copy">Pedigree F ({pedigreeF}) uses every recorded generation, not only those shown, and assumes {founders === 1 ? 'the one founder' : `the ${founders} founders`} in this recorded ancestry {founders === 1 ? 'is' : 'are'} unrelated and not inbred. It is different from heterozygosity.{fish.parents && totals.positions ? ` Of ${totals.positions} ancestor positions shown, ${totals.recorded} are recorded${totals.unknown ? ` and ${totals.unknown} lie above founder stock` : ''}${totals.missing ? `; ${totals.missing} are missing from this world` : ''}.` : ''} Repeated ancestors are listed once, at their nearest generation.</p>
   </div>;
 }
 

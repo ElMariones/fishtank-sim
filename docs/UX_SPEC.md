@@ -108,6 +108,8 @@ Deep pedigree should expose coefficient assumptions and missing ancestors. Do no
 - **Navigation:** selecting a relative or search result focuses it. A living fish brings its aquarium into view and the inspector heading takes focus; a sold fish opens its archived record. A session-only breadcrumb trail of up to 12 steps offers **Back**, **Return to** the first fish and clickable earlier steps; revisiting a fish on the trail returns there instead of looping. Selecting a fish outside the family view starts a new trail.
 - **Search:** **Find any record** matches names and IDs (digits such as "47" work) across living and sold fish, eight at a time.
 
+**Lab implementation (FS-405):** in normal breeding, expected pedigree F reads "from recorded ancestry; the N founders behind this pair are assumed unrelated and not inbred". The Family view's closing note likewise says how many founders in the fish's recorded ancestry its F assumes. Values come from a session kinship cache and match the uncached calculation exactly.
+
 ## 7. Tanks, care and transfer
 
 Tank selector shows name, role, stocking warning and unresolved urgent issues. Opening a tank does not reset physiology.
