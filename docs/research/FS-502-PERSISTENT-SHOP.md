@@ -1,6 +1,6 @@
 # FS-502 — Persistent NPC shop
 
-Status: implemented and verified; awaiting push before marking DONE.
+Status: DONE. Implementation and verification pushed as `3945d86`.
 
 ## Review and scope
 
