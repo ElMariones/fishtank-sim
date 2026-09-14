@@ -195,6 +195,15 @@ footer a{display:inline-flex;align-items:center;min-height:24px}
 .family-depth button, .family-levels button { font-size: .72rem; }
 .family-levels button[aria-pressed="true"] { border-color: #9fd89b; color: #dff5dc; background: #1f3a2f; }
 @media (pointer: coarse) { .family-trail li button { min-width: 44px; } }
+/* FS-406 two-generation demonstration timeline. */
+.lifecycle-events { list-style: none; margin: 14px 0; padding: 0; display: grid; gap: 6px; }
+.lifecycle-events li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; padding: 8px 10px; border: 1px solid #2f4541; border-radius: 7px; background: #122326; font-size: .76rem; color: #cfe0d6; line-height: 1.5; }
+.lifecycle-events li span { color: #9fd89b; font-weight: 600; }
+/* FS-406 batch move review. */
+.move-review .inline-select { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 10px 0 2px; font-size: .74rem; color: #eee3c3; }
+.move-review .move-warning { margin: 0 0 8px; padding: 8px 10px; border: 1px solid #4f7d68; border-radius: 7px; background: #17352d; color: #cae8d5; }
+.batch-done { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; font-size: .74rem; color: #b8d9ac; }
+.batch-done button { font-size: .72rem; }
 .fixture-grid.reveal-strip { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 @media (max-width: 1180px) { .fixture-grid.reveal-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .fixture-grid.reveal-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

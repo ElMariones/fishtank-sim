@@ -72,7 +72,8 @@ export type Command =
   | { type: 'set-care'; tankId: string; ration: Ration; filterTier: number; aerationTier: number; targetC: number }
   | { type: 'change-water'; tankId: string; percent: WaterChangePercent }
   | { type: 'pair'; motherId: string; fatherId: string; nurseryId: string; size: ClutchSize; timestamp: string; genomeVersion: GenomeVersion }
-  | { type: 'cancel-clutch'; clutchId: string };
+  | { type: 'cancel-clutch'; clutchId: string }
+  | { type: 'move-batch'; fishIds: string[]; tankId: string };
 
 const fishIdSchema = z.string().regex(/^FSH-\d{6}$/);
 const tankIdSchema = z.string().max(50);
@@ -103,6 +104,7 @@ export const commandSchema = z.discriminatedUnion('type', [
     timestamp: z.string().datetime(), genomeVersion: z.union([z.literal(1), z.literal(2)]),
   }).strict(),
   z.object({ type: z.literal('cancel-clutch'), clutchId: z.string().regex(/^CL-\d{6}$/) }).strict(),
+  z.object({ type: z.literal('move-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING), tankId: tankIdSchema }).strict(),
 ]);
 
 /** Validate before mutation; rejected commands leave the original world untouched. */
@@ -243,6 +245,15 @@ export function applyCommand(world: World, command: Command): World {
       if (!clutch) throw new Error('Clutch not found.');
       if (clutch.stage !== 'courting') throw new Error('Only a courtship can be cancelled; once laid, its eggs are tracked fish.');
       clutch.stage = 'cancelled'; clutch.blockers = [];
+      break;
+    }
+    case 'move-batch': {
+      // Batch rehoming (FS-406): every member and the destination's free places, reservations included, are checked before any fish moves.
+      if (new Set(command.fishIds).size !== command.fishIds.length) throw new Error('Each fish can only be moved once.');
+      const batch = command.fishIds.map(getFish), arriving = batch.filter(member => member.tankId !== command.tankId).length;
+      const tank = space(command.tankId, arriving);
+      if (!arriving) throw new Error(`These fish already live in ${tank.name}.`);
+      for (const fish of batch) fish.tankId = command.tankId;
       break;
     }
   }

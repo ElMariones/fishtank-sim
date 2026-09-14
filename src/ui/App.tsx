@@ -7,10 +7,10 @@ import { AbsencePanel } from './AbsencePanel';
 import { CarePanel } from './CarePanel';
 import { ALL_LOCI, CHROMOSOMES, GENOME_VERSION, label } from '../core/catalog';
 import {
-  cohortsOf, decodePreferences, batchSaleCandidates, goalMatch, PREFERENCES_KEY, sortCollection, toggleFavorite, type BreedingGoal, type CollectionSort,
+  birthGroupsOf, cohortsOf, decodePreferences, batchSaleCandidates, goalMatch, PREFERENCES_KEY, sortCollection, toggleFavorite, type BreedingGoal, type CollectionSort,
 } from '../core/collection';
 import { GOAL_DESCRIPTORS } from '../core/breedingGoals';
-import { breedingStatus, reservedPlaces, type ClutchSize } from '../core/breeding';
+import { breedingStatus, courtingClutchOf, reservedPlaces, type ClutchSize } from '../core/breeding';
 import { BreedingPlanner } from './BreedingPlanner';
 import { NormalBreeding } from './NormalBreeding';
 import { express, fingerprint, heterozygosity, metabolicPotential } from '../core/genetics';
@@ -95,7 +95,10 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [saleId, setSaleId] = useState<string | null>(null);
   const [view, setView] = useState<View>('aquarium');
   const [batchIds, setBatchIds] = useState<string[]>([]);
-  const [batchReview, setBatchReview] = useState(false);
+  const [batchReview, setBatchReview] = useState<'sale' | 'move' | null>(null);
+  const [birthKey, setBirthKey] = useState('all');
+  const [moveTarget, setMoveTarget] = useState('');
+  const [movedTo, setMovedTo] = useState<string | null>(null);
   const [lastBatchId, setLastBatchId] = useState<string | null>(null);
   const [collectionPage, setCollectionPage] = useState(0);
   const [familyDepth, setFamilyDepth] = useState(2);
@@ -173,7 +176,10 @@ export function App({ initial }: { initial: LoadedSession }) {
   const viewFish = (showArchived ? world.fish.filter(f => f.status === 'sold') : residents).filter(f => `${f.name} ${f.id}`.toLowerCase().includes(query.toLowerCase()));
   const cohorts = cohortsOf(viewFish);
   const cohort = cohorts.find(c => c.key === cohortKey) ?? null;
-  const inCohort = cohort ? viewFish.filter(f => f.parents?.[0] === cohort.motherId && f.parents?.[1] === cohort.fatherId) : viewFish;
+  // Within a parent pair, the clutch filter narrows the view to fish laid together (FS-406).
+  const births = cohort ? birthGroupsOf(viewFish, cohort.motherId, cohort.fatherId) : [];
+  const birth = births.find(group => group.key === birthKey) ?? null;
+  const inCohort = cohort ? viewFish.filter(f => f.parents?.[0] === cohort.motherId && f.parents?.[1] === cohort.fatherId && (!birth || f.bornAt === birth.bornAt)) : viewFish;
   const favoriteFiltered = favoritesOnly ? inCohort.filter(f => favoriteIds.has(f.id)) : inCohort;
   const sexCounts = { all: favoriteFiltered.length, F: favoriteFiltered.filter(f => f.sex === 'F').length, M: favoriteFiltered.filter(f => f.sex === 'M').length };
   const sort: CollectionSort = preferences.sort === 'goal' && !goal ? 'newest' : preferences.sort;
@@ -181,14 +187,33 @@ export function App({ initial }: { initial: LoadedSession }) {
   const pageSize = 60;
   const page = Math.min(collectionPage, Math.max(0, Math.ceil(collection.length / pageSize) - 1));
   const visibleCollection = collection.slice(page * pageSize, (page + 1) * pageSize);
-  useEffect(() => { setCollectionPage(0); }, [tank.id, showArchived, query, sexFilter, favoritesOnly, cohortKey, sort, goal]);
+  useEffect(() => { setCollectionPage(0); }, [tank.id, showArchived, query, sexFilter, favoritesOnly, cohortKey, birthKey, sort, goal]);
   const fishName = (id: string) => world.fish.find(f => f.id === id)?.name ?? id;
-  // Batch selection only ever acts on living fish visible in the current collection view.
+  // Batch selection only ever acts on living fish visible in the current collection view. Any of them can be moved;
+  // favorites and eggs are never sold in bulk.
+  const selectable = collection.filter(f => f.status === 'living');
   const saleable = batchSaleCandidates(collection, favoriteIds);
-  const batch = saleable.filter(f => batchIds.includes(f.id));
-  const batchTotal = batch.reduce((sum, f) => sum + quote(f), 0);
+  const batch = selectable.filter(f => batchIds.includes(f.id));
+  const saleBatch = batchSaleCandidates(batch, favoriteIds);
+  const batchTotal = saleBatch.reduce((sum, f) => sum + quote(f), 0);
+  const freePlaces = (id: string) => {
+    const home = world.tanks.find(t => t.id === id);
+    return home ? home.capacity - living.filter(f => f.tankId === id).length - reservedPlaces(world, id) : 0;
+  };
+  const moveDestinations = world.tanks.filter(t => t.id !== tank.id);
+  const moveDestination = moveDestinations.find(t => t.id === moveTarget) ?? null;
+  const arriving = moveDestination ? batch.filter(f => f.tankId !== moveDestination.id).length : 0;
+  const placesAfter = moveDestination ? freePlaces(moveDestination.id) - arriving : 0;
+  // A courting fish that leaves its partner behind pauses that courtship (FS-402), so the move review says so first.
+  const pausedByMove = moveDestination ? batch.flatMap(f => {
+    const clutch = courtingClutchOf(world, f.id);
+    if (!clutch) return [];
+    const partnerId = clutch.motherId === f.id ? clutch.fatherId : clutch.motherId, partner = world.fish.find(member => member.id === partnerId);
+    const partnerTank = batch.some(member => member.id === partnerId) ? moveDestination.id : partner?.tankId;
+    return partnerTank === moveDestination.id ? [] : [`${f.name} is courting ${partner?.name ?? 'a partner'}; the courtship pauses until they share a tank again.`];
+  }) : [];
 
-  useEffect(() => { setBatchIds([]); setBatchReview(false); setLastBatchId(null); }, [tank.id, showArchived, sexFilter, favoritesOnly, cohortKey]);
+  useEffect(() => { setBatchIds([]); setBatchReview(null); setLastBatchId(null); setMovedTo(null); }, [tank.id, showArchived, sexFilter, favoritesOnly, cohortKey, birthKey]);
 
   function run(command: Command, message: string): World | null {
     if (initial.readOnly) { setNotice('This tab is read-only. Close the editing tab and reload to take control.'); return null; }
@@ -225,11 +250,12 @@ export function App({ initial }: { initial: LoadedSession }) {
   }
 
   function breed() {
-    const pairText = ` Showing all offspring of ${fishName(motherId)} × ${fishName(fatherId)}${goal ? `, ranked by ${descriptorLabel.get(goal.descriptor)?.toLowerCase()}` : ''}.`;
-    const next = run({ type: 'breed', motherId, fatherId, tankId: tank.id, timestamp: new Date().toISOString(), genomeVersion: GENOME_VERSION }, `${COHORT_SIZE} eggs laid. They hatch in ${INCUBATION_DAYS} game days and grow fastest in good water; each inherited one recombined copy from each parent.${pairText}`);
+    const pairText = ` Showing this clutch of ${fishName(motherId)} × ${fishName(fatherId)}${goal ? `, ranked by ${descriptorLabel.get(goal.descriptor)?.toLowerCase()}` : ''}.`;
+    const timestamp = new Date().toISOString();
+    const next = run({ type: 'breed', motherId, fatherId, tankId: tank.id, timestamp, genomeVersion: GENOME_VERSION }, `${COHORT_SIZE} eggs laid. They hatch in ${INCUBATION_DAYS} game days and grow fastest in good water; each inherited one recombined copy from each parent.${pairText}`);
     if (next) {
       setSelectedId(next.fish[next.fish.length - COHORT_SIZE].id); setShowArchived(false); setQuery('');
-      setCohortKey(`${motherId}×${fatherId}`); setFavoritesOnly(false); setSexFilter('all');
+      setCohortKey(`${motherId}×${fatherId}`); setBirthKey(timestamp); setFavoritesOnly(false); setSexFilter('all');
     }
   }
 
@@ -248,12 +274,13 @@ export function App({ initial }: { initial: LoadedSession }) {
   function showClutch(clutch: Clutch) {
     setTankId(clutch.nurseryId); setShowArchived(false); setQuery(''); setFavoritesOnly(false); setSexFilter('all');
     setCohortKey(`${clutch.motherId}×${clutch.fatherId}`);
+    setBirthKey(world.fish.find(f => f.id === clutch.firstFishId)?.bornAt ?? 'all');
     if (clutch.firstFishId) setSelectedId(clutch.firstFishId);
   }
 
   /** Shift-click extends the last toggle across the visible collection, matching the new checked state. */
   function toggleBatch(id: string, extend: boolean) {
-    const visible = saleable.map(f => f.id);
+    const visible = selectable.map(f => f.id);
     if (!visible.includes(id)) return;
     const checked = !batchIds.includes(id);
     let affected = [id];
@@ -262,13 +289,28 @@ export function App({ initial }: { initial: LoadedSession }) {
       affected = visible.slice(from, to + 1);
     }
     setBatchIds(checked ? [...new Set([...batchIds, ...affected])] : batchIds.filter(existing => !affected.includes(existing)));
-    setLastBatchId(id); setBatchReview(false);
+    setLastBatchId(id); setBatchReview(null); setMovedTo(null);
   }
 
   function sellBatch() {
-    const count = batch.length, total = batchTotal;
-    if (run({ type: 'sell-batch', fishIds: batch.map(f => f.id) }, `${count} fish sold to the local NPC for ◈ ${total.toLocaleString()}. Their archived profiles remain in the family tree.`)) {
-      setBatchIds([]); setBatchReview(false); setSaleId(null);
+    const count = saleBatch.length, total = batchTotal;
+    if (run({ type: 'sell-batch', fishIds: saleBatch.map(f => f.id) }, `${count} fish sold to the local NPC for ◈ ${total.toLocaleString()}. Their archived profiles remain in the family tree.`)) {
+      setBatchIds([]); setBatchReview(null); setSaleId(null);
+    }
+  }
+
+  function openMoveReview() {
+    const fits = moveDestinations.find(t => freePlaces(t.id) >= batch.filter(f => f.tankId !== t.id).length);
+    setMoveTarget(current => moveDestinations.some(t => t.id === current) ? current : (fits ?? moveDestinations[0]).id);
+    setBatchReview('move'); setMovedTo(null);
+  }
+
+  /** Batch rehoming (FS-406): one command moves every reviewed fish, or none if any member or the destination fails. */
+  function moveBatch() {
+    if (!moveDestination) return;
+    const count = batch.length, destination = moveDestination;
+    if (run({ type: 'move-batch', fishIds: batch.map(f => f.id), tankId: destination.id }, `${count} fish moved from ${tank.name} to ${destination.name} in one transfer. Their records, genomes and family links are unchanged.`)) {
+      setBatchIds([]); setBatchReview(null); setMovedTo(destination.id);
     }
   }
 
@@ -347,9 +389,12 @@ export function App({ initial }: { initial: LoadedSession }) {
               </button>)}
             </div>
             <button className="pill-toggle" aria-pressed={favoritesOnly} onClick={() => setFavoritesOnly(v => !v)}><span aria-hidden="true">★</span>Favorites<span className="filter-count">{inCohort.filter(f => favoriteIds.has(f.id)).length}</span></button>
-            <label className="inline-select">Parents<select value={cohort ? cohort.key : 'all'} onChange={event => setCohortKey(event.target.value)}>
+            <label className="inline-select">Parents<select value={cohort ? cohort.key : 'all'} onChange={event => { setCohortKey(event.target.value); setBirthKey('all'); }}>
               <option value="all">All parents</option>{cohorts.map(c => <option key={c.key} value={c.key}>{fishName(c.motherId)} × {fishName(c.fatherId)} · {c.size}</option>)}
             </select></label>
+            {births.length > 1 || birth ? <label className="inline-select">Clutch<select value={birth ? birth.key : 'all'} onChange={event => setBirthKey(event.target.value)}>
+              <option value="all">All {births.length} clutches</option>{births.map(group => <option key={group.key} value={group.key}>#{Number(group.firstId.slice(4))}–{Number(group.lastId.slice(4))} · {group.size} fish</option>)}
+            </select></label> : null}
             <label className="inline-select">Sort<select value={sort} onChange={event => setPreferences(current => ({ ...current, sort: event.target.value as CollectionSort }))}>
               <option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Name</option><option value="goal" disabled={!goal}>{goal ? `${goalLabel} · best match first` : 'Breeding goal (set one first)'}</option>
             </select></label>
@@ -362,18 +407,31 @@ export function App({ initial }: { initial: LoadedSession }) {
             <FishPortrait fish={parent} view={portraitView} /><span><strong>{parent.name}</strong><small>{parent.sex === 'F' ? 'Mother' : 'Father'} · G{parent.generation}{goal ? ` · ${goalLabel} ${wholePercent(goalMatch(parent, goal))}` : ''}{parent.status === 'sold' ? ' · Sold' : ''}</small></span>
           </button>)}</div> : null}
           {!showArchived && collection.length ? <div className="batch-bar" role="group" aria-label="Batch selection">
-            <span className="batch-summary">{batch.length ? <><strong>{batch.length}</strong> selected · ◈ {batchTotal.toLocaleString()}</> : 'Favorites and eggs are protected from bulk sales. Shift-click selects a range.'}</span>
+            <span className="batch-summary">{batch.length ? <><strong>{batch.length}</strong> selected{saleBatch.length ? ` · ${saleBatch.length} saleable for ◈ ${batchTotal.toLocaleString()}` : ' · none saleable'}</> : 'Select fish to move or sell together. Favorites and eggs are never sold in bulk. Shift-click selects a range.'}</span>
             <div className="batch-actions">
-              <button className="quiet" onClick={() => { setBatchIds(saleable.map(f => f.id)); setBatchReview(false); }}>Select all saleable {saleable.length}</button>
-              {batch.length ? <button className="quiet" onClick={() => { setBatchIds([]); setBatchReview(false); }}>Clear</button> : null}
-              {batch.length ? <button className="batch-sell" aria-expanded={batchReview} aria-controls="batch-review" onClick={() => setBatchReview(true)}>Review sale of {batch.length}</button> : null}
+              <button className="quiet" onClick={() => { setBatchIds(selectable.map(f => f.id)); setBatchReview(null); setMovedTo(null); }}>Select all {selectable.length}{birth ? ' in this clutch' : ''}</button>
+              <button className="quiet" onClick={() => { setBatchIds(saleable.map(f => f.id)); setBatchReview(null); setMovedTo(null); }}>Select all saleable {saleable.length}</button>
+              {batch.length ? <button className="quiet" onClick={() => { setBatchIds([]); setBatchReview(null); }}>Clear</button> : null}
+              {batch.length && moveDestinations.length ? <button aria-expanded={batchReview === 'move'} aria-controls="batch-review" onClick={openMoveReview}>Review move of {batch.length}</button> : null}
+              {saleBatch.length ? <button className="batch-sell" aria-expanded={batchReview === 'sale'} aria-controls="batch-review" onClick={() => setBatchReview('sale')}>Review sale of {saleBatch.length}</button> : null}
             </div>
           </div> : null}
-          {batchReview && batch.length ? <div className="batch-review" id="batch-review" role="region" aria-labelledby="batch-review-title">
-            <h3 id="batch-review-title">Sell {batch.length} fish to the local NPC for ◈ {batchTotal.toLocaleString()}?</h3>
-            <p>Their genomes and family links stay in the archive. Sold fish cannot breed, move or be sold again.</p>
-            <ul>{batch.map(f => <li key={f.id}><SexMark sex={f.sex} /><span>{f.name}<small>{f.id} · G{f.generation}{favoriteIds.has(f.id) ? ' · ★ favorite' : ''}</small></span><span>◈ {quote(f)}</span></li>)}</ul>
-            <div className="batch-review-actions"><button className="confirm" onClick={sellBatch}>Confirm sale of {batch.length}</button><button className="quiet" onClick={() => setBatchReview(false)}>Cancel</button></div>
+          {movedTo && !batch.length ? <p className="batch-done" role="status">Moved to {tankName(movedTo)}. <button className="quiet" onClick={() => { setTankId(movedTo); setShowArchived(false); setQuery(''); }}>Open {tankName(movedTo)}</button></p> : null}
+          {batchReview === 'sale' && saleBatch.length ? <div className="batch-review" id="batch-review" role="region" aria-labelledby="batch-review-title">
+            <h3 id="batch-review-title">Sell {saleBatch.length} fish to the local NPC for ◈ {batchTotal.toLocaleString()}?</h3>
+            <p>Their genomes and family links stay in the archive. Sold fish cannot breed, move or be sold again.{batch.length > saleBatch.length ? ` ${batch.length - saleBatch.length} selected ${batch.length - saleBatch.length === 1 ? 'fish is a favorite or an egg and stays' : 'fish are favorites or eggs and stay'}.` : ''}</p>
+            <ul>{saleBatch.map(f => <li key={f.id}><SexMark sex={f.sex} /><span>{f.name}<small>{f.id} · G{f.generation}</small></span><span>◈ {quote(f)}</span></li>)}</ul>
+            <div className="batch-review-actions"><button className="confirm" onClick={sellBatch}>Confirm sale of {saleBatch.length}</button><button className="quiet" onClick={() => setBatchReview(null)}>Cancel</button></div>
+          </div> : null}
+          {batchReview === 'move' && batch.length && moveDestination ? <div className="batch-review move-review" id="batch-review" role="region" aria-labelledby="batch-review-title">
+            <h3 id="batch-review-title">Move {batch.length} fish from {tank.name} to {moveDestination.name}?</h3>
+            <label className="inline-select">Destination<select value={moveDestination.id} onChange={event => setMoveTarget(event.target.value)}>
+              {moveDestinations.map(t => <option key={t.id} value={t.id}>{t.name} · {Math.max(0, freePlaces(t.id))} free</option>)}
+            </select></label>
+            <p>{moveDestination.name} has {Math.max(0, freePlaces(moveDestination.id))} free places{reservedPlaces(world, moveDestination.id) ? `, after ${reservedPlaces(world, moveDestination.id)} reserved for a courting clutch` : ''}; {placesAfter >= 0 ? `${placesAfter} remain after this move` : `that is ${-placesAfter} too few for this move`}. Records, genomes, family links and clutch records do not change{batch.some(f => isEgg(f.life)) ? ', and moved eggs keep incubating' : ''}.</p>
+            {pausedByMove.map(text => <p className="move-warning" key={text}>{text}</p>)}
+            <ul>{batch.map(f => <li key={f.id}><SexMark sex={f.sex} /><span>{f.name}<small>{f.id} · G{f.generation} · {lifeSummary(f)}</small></span><span>{favoriteIds.has(f.id) ? '★' : ''}</span></li>)}</ul>
+            <div className="batch-review-actions"><button className="confirm" disabled={placesAfter < 0 || initial.readOnly} onClick={moveBatch}>Confirm move of {batch.length}</button><button className="quiet" onClick={() => setBatchReview(null)}>Cancel</button></div>
           </div> : null}
           <Pagination page={page} count={collection.length} size={pageSize} onPage={setCollectionPage} label="Collection" />
           <div className="fish-grid">{visibleCollection.map((f, index) => {
@@ -386,8 +444,8 @@ export function App({ initial }: { initial: LoadedSession }) {
               <button className="fish-card-main" id={`card-${f.id}`} aria-pressed={f.id === selectedId} onClick={event => select(f.id, event.detail === 0)}>
                 <FishPortrait fish={f} view={portraitView} /><div className="fish-card-bottom"><strong>{f.name}</strong><small>{f.status === 'sold' ? 'Archived' : lifeSummary(f)}</small>{goal ? <span className="goal-chip">Match · {goalLabel} {wholePercent(goalMatch(f, goal))}</span> : null}</div>
               </button>
-              {f.status === 'living' ? <label className="batch-check"><input type="checkbox" disabled={favorite || isEgg(f.life)} checked={inBatch} aria-label={`Select ${f.name} for batch sale`}
-                onChange={event => toggleBatch(f.id, (event.nativeEvent as MouseEvent).shiftKey === true)} /><span aria-hidden="true">{favorite ? 'Favorite protected' : isEgg(f.life) ? 'Egg protected' : inBatch ? 'Selected' : 'Select'}</span></label> : null}
+              {f.status === 'living' ? <label className="batch-check"><input type="checkbox" checked={inBatch} aria-label={`Select ${f.name} for a batch move or sale`}
+                onChange={event => toggleBatch(f.id, (event.nativeEvent as MouseEvent).shiftKey === true)} /><span aria-hidden="true">{inBatch ? 'Selected' : 'Select'}{favorite ? ' · kept from sales' : isEgg(f.life) ? ' · egg, not for sale' : ''}</span></label> : null}
             </article>;
           })}</div>
           {!collection.length ? <p className="empty-copy">{favoritesOnly && !inCohort.some(f => favoriteIds.has(f.id)) ? 'No favorites here yet. Use ☆ on a card to keep a candidate.' : 'No fish here match this view.'}</p> : null}

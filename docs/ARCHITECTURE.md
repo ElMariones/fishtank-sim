@@ -19,7 +19,7 @@ src/
     appearance.ts   Genome v2 Color/Ornament expression, founder weights and founder-stock rarity descriptions
     ornament.ts     Development v3 motif, scale, sparkle and tail/dorsal pattern geometry in body-length units
     descriptors.ts  Fourteen legacy visible descriptors normalized against development ranges
-    collection.ts   Device-local collection preferences, goal ranking, sorting, cohorts and goal leaders
+    collection.ts   Device-local collection preferences, goal ranking, sorting, cohorts, clutch groups and goal leaders
     selectionExperiment.ts Seeded ten-generation truncation selection vs random mating, with pedigree F and gate
     resemblanceStudy.ts Blind parent-pair trial set, display modes, computational observer and answer scoring
     resemblancePool.ts Strict validation and recomputation of anonymous human observer records
@@ -32,6 +32,7 @@ src/
     careAdvice.ts   Care status, warnings with priced fixes, and projections that preview a change on a copy of the tank
     absence.ts      Day observer and per-tank absence summary: hatching, stages, growth, condition, limiting causes, warnings
     careScenario.ts Seeded healthy and stressed care scenarios with a keeper that applies warning fixes
+    lifecycleScenario.ts Seeded two-generation normal-breeding demonstration with batch rehoming, checked by journal replay
     breeding.ts     Breeding model v1: pairing and courtship blockers, reserved nursery places, day-boundary courtship, spawning and rest
     development.ts  Life model v1: egg/fry/juvenile/adult/elderly stages, logistic growth, lagged condition and environment curves
     juvenile.ts     Stage appearance v1: body and pigment maturity from life state, hatchling proportions and reveal fixtures
@@ -53,12 +54,13 @@ src/
     stage.ts        Stage phenotype cache per adult phenotype and quantized maturity
     tankLayout.ts   Shared tank pose transform and fish-shaped picking
   ui/
-    App.tsx         Lab controls, command runtime, inspector and paginated collection
+    App.tsx         Lab controls, command runtime, inspector, paginated collection, clutch filter and batch move/sale reviews
     Startup.tsx     Validated async loading before interactive controls
     SavePanel.tsx   Export, import review, retry and backup recovery
     CarePanel.tsx   Care chips, warnings with fixes, and previewed feeder/equipment/thermostat/water-change controls
     AbsencePanel.tsx "While you were away" per-tank return summary with links to each tank
     CareScenarios.tsx Research tab charting the healthy and stressed care scenarios
+    LifecycleDemonstration.tsx Research tab running the two-generation demonstration
     NormalBreeding.tsx Pairing options, blockers with fixes, and the courting, incubating and hatched clutch list
     FamilyView.tsx  Family tab: ancestor generations with portraits, descendant generations, record search and breadcrumb trail
     Controls.tsx    Shared sex mark and pagination controls
@@ -82,6 +84,7 @@ tests/
   juvenile.test.ts Maturity, hatchling interpolation, stage anatomy and framing sweeps, ornament reveal, turning poses and reveal series
   absence.test.ts  Day observer neutrality, no unexplained decline across random care, scenario recovery and absence summaries
   breeding.test.ts Pairing blockers, courtship pauses and spawning, reservations under random commands, reload/offline no-duplication, cancel/sale guards, world v4 migration
+  lifecycle.test.ts Batch rehoming atomicity and reservations, clutch grouping within a pair, and the two-generation demonstration
   kinship.test.ts  Textbook relationships, Wright's recurrences, founder assumptions against the tabular matrix, founder listing, incremental reuse and rebuilds
   genealogy.test.ts Repeated ancestors, position-by-position reference on random inbred pedigrees, ten generations six at a time, sold and cross-tank relatives, 10,000-record bounds, search and trail
   care.test.ts     Ration conservation, development under rations and temperature, split/offline/replay equality, costs, warnings, projections and world v3 migration
@@ -115,6 +118,23 @@ No save, command or kinship calculation changed; pedigree F still uses every rec
 - **Pair limit:** past 500,000 pairs the table starts over.
 - **Compatibility:** the old `kinship(fish, a, b)` function is a one-off cache, so every existing kinship test exercises the same code.
 - **App:** one cache lives in App state for the session. It serves expected pedigree F, the inspector's F and the founder counts shown beside them (ADR-051).
+
+### FS-406 batch rehoming and two generations, 14 September 2026
+
+`move-batch` moves up to 480 living fish to one tank in a single command. It rejects duplicates and unavailable members, and checks the destination's free places counting courtship reservations. A batch therefore moves whole or not at all, and replays like any other command; no save version changed.
+
+`collection.ts` groups a parent pair's offspring by birth time, which fish from one clutch or one lab cross share. The collection offers a Clutch filter when a pair has more than one.
+- **Selection:** any living fish in view can be selected.
+- **Move review:** states the destination's free places after the move, and warns when a courting fish would leave its partner.
+- **Sale review:** still excludes favorites and eggs.
+
+`core/lifecycleScenario.ts` runs M4's gate as a seeded demonstration through `createRuntime`, `executeCommand` and `advanceRuntime`:
+- two founder pairs court into two nurseries;
+- once all 40 offspring are adults, the largest adult-length potential of each sex is chosen from different clutches;
+- each clutch's surplus is rehomed in one batch;
+- the chosen fish are paired for a second generation.
+
+It issues no `breed` command, checks every bred fish against a clutch record, and decodes the runtime save so its journal replays to the same world (ADR-052).
 
 ## 2. Stack decisions
 

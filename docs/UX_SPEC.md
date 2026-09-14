@@ -130,7 +130,14 @@ NPC shop is clearly labeled in solo play. A marketplace listing shows the actual
 
 Before selling, show fish name, price, destination type and irreversibility within the game; indicate that lineage history remains. Batch sale/rehome reviews count and selected names. After sale, focus can remain on the archived record.
 
-**Lab implementation (FS-109):** residents have a select checkbox; shift-click selects a range; "Select all" and "Clear" act on the visible collection. A review lists each selected name, ID, generation and quote plus the total before one atomic `sell-batch` command. Switching tank or archive view clears the selection. Batch rehoming is still planned (FS-406). Sex is shown as a larger pink ♀ or blue ♂ with a text label or hidden text, so colour is never the only cue (FS-108). All / Females / Males buttons with counts filter both the resident and archive views; changing the filter clears the batch selection so a sale never includes hidden fish (FS-110).
+**Lab implementation (FS-109):** residents have a select checkbox; shift-click selects a range; "Select all" and "Clear" act on the visible collection. A review lists each selected name, ID, generation and quote plus the total before one atomic `sell-batch` command. Switching tank or archive view clears the selection. Batch rehoming arrived with FS-406 (below). Sex is shown as a larger pink ♀ or blue ♂ with a text label or hidden text, so colour is never the only cue (FS-108). All / Females / Males buttons with counts filter both the resident and archive views; changing the filter clears the batch selection so a sale never includes hidden fish (FS-110).
+
+**Lab implementation (FS-406):**
+- **Clutch filter:** when the chosen parent pair has more than one clutch, a **Clutch** filter (listed by ID range and size) narrows the view to fish laid together. A lab cross and **Show clutch** open that clutch directly.
+- **Selection:** any living fish in view can be selected, and cards say when a selected favorite or egg is kept from sales. **Select all N** (with "in this clutch" when filtered) and **Select all saleable N** fill the selection.
+- **Move review:** **Review move of N** opens a review naming the source and destination, with a destination select showing free places. It states the destination's free places, reservations and places left, warns when a courting fish would leave its partner, and lists every selected fish with ID, generation and stage. **Confirm move of N** sends one `move-batch` command; afterwards **Open** navigates to the destination.
+- **Sale review:** lists only saleable fish and says how many selected favorites or eggs stay.
+- **Research:** **Two generations** runs the seeded M4 demonstration and shows its clutches, timeline, instant-cross count, rehomed fish and replay result.
 
 For online fixed-price purchase, show pending state, then one authoritative receipt. If a listing changes or another buyer wins, refresh the specific listing and explain. Never optimistically create a tradeable fish before server confirmation.
 

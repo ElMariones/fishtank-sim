@@ -59,6 +59,8 @@ The family view (FS-404) derives everything from parent IDs in `src/core/genealo
 
 Kinship (FS-405) comes from one `createKinshipCache` instance in App state. Its validity rests on recorded parents and generations never changing; if a future feature edits ancestry, `sync` must see the change, which it detects and rebuilds from. Keep the one-off `kinship()` routed through the cache so existing reference tests keep covering it. Founders and unrecorded parent IDs follow the explicit `FounderAssumption`; a parent record missing from the world hides that line's relatedness, so surface missing parents rather than silently lowering F.
 
+Batch rehoming (FS-406) is the `move-batch` command. Keep it atomic and reservation-aware, like `sell-batch`. Clutches within a parent pair are grouped by shared birth time (`birthGroupsOf`), so anything that changes how `bornAt` is assigned would split or merge clutches in the collection. `src/core/lifecycleScenario.ts` is M4's gate evidence: it must keep issuing no `breed` command and keep replaying its journal. Re-run it and check its day counts whenever breeding, growth or care constants change.
+
 The live Canvas’s transient actors are outside React state. Motion is deterministic for the same initial actors and tick sequence, but positions are not persisted; switching tanks reconstructs visual trajectories. Birth/genome outcomes do persist.
 
 Sales preserve the full fish record, including parent IDs and genome. The archive assumes sold fish are no longer locally living; online ownership/death states must be modeled separately later.
@@ -75,7 +77,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> M3 is DONE (FS-305 `d425639`, FS-306 `325ceb4`, FS-307 `a5d5ddc`). FS-401/402 normal breeding is DONE, pushed `9aabfdb`. FS-404's bounded six-generation family graph is DONE, pushed `b7c3e37`. FS-405's incremental kinship cache is DONE, pushed `850f501` (see the FS-405 report). Finish M4 with FS-406: a two-generation normal-mode demonstration, cohort selection and batch rehoming with review. Rehoming must count nursery reservations and reject a batch atomically, like batch sale. Keep migrations writing keys in schema order, family views bounded, and kinship served from the session cache.
+> M3 is DONE (FS-305 `d425639`, FS-306 `325ceb4`, FS-307 `a5d5ddc`). FS-401/402 normal breeding is DONE, pushed `9aabfdb`. FS-404's bounded six-generation family graph is DONE, pushed `b7c3e37`. FS-405's incremental kinship cache is DONE, pushed `850f501`. FS-406's clutch selection, batch rehoming and two-generation demonstration are delivered (see the backlog and the FS-406 report), completing M4's task list. Next is M5: start with FS-501's bounded NPC demand and price rules with a currency ledger, including an economy-neutral way to rehome fish out of the aquarium. Keep `move-batch` and `sell-batch` atomic and reservation-aware, migrations writing keys in schema order, and the two-generation demonstration free of instant crosses.
 
 ## 7. Subsequent task briefs
 

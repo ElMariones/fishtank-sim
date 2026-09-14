@@ -94,6 +94,25 @@ export function cohortsOf(fish: readonly Fish[]): Cohort[] {
   return [...cohorts.values()].sort((a, b) => b.newest - a.newest);
 }
 
+export type BirthGroup = { key: string; bornAt: string; size: number; firstId: string; lastId: string };
+
+/**
+ * Clutches within one parent pair (FS-406). Fish laid together share their parents and birth time, from a normal clutch
+ * or an instant lab cross, so the birth time keys the group. Newest group first.
+ */
+export function birthGroupsOf(fish: readonly Fish[], motherId: string, fatherId: string): BirthGroup[] {
+  const groups = new Map<string, BirthGroup>(), number = (id: string) => Number(id.slice(4));
+  for (const f of fish) {
+    if (f.parents?.[0] !== motherId || f.parents?.[1] !== fatherId) continue;
+    const group = groups.get(f.bornAt);
+    if (!group) { groups.set(f.bornAt, { key: f.bornAt, bornAt: f.bornAt, size: 1, firstId: f.id, lastId: f.id }); continue; }
+    group.size++;
+    if (number(f.id) < number(group.firstId)) group.firstId = f.id;
+    if (number(f.id) > number(group.lastId)) group.lastId = f.id;
+  }
+  return [...groups.values()].sort((a, b) => number(b.firstId) - number(a.firstId));
+}
+
 /** Highest-ranked living, hatched fish of each sex for the goal: a convenience, not a universal "best match". Eggs cannot breed. */
 export function goalLeaders(fish: readonly Fish[], goal: BreedingGoal): { mother: Fish | null; father: Fish | null } {
   const ranked = sortCollection(fish.filter(f => f.status === 'living' && !isEgg(f.life)), 'goal', goal);
