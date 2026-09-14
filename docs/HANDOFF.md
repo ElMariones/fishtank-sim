@@ -65,7 +65,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> FS-305 care controls are delivered (see the backlog for push status and the FS-305 report for limits). Continue M3 with FS-306: juvenile appearance derived from life state in pure core, smooth body/fin animation in the renderer, and a clear distinction between the actual stage and the adult preview. Then FS-307's healthy/stressed demonstration, absence summary and recovery. Keep the renderer consuming phenotype only, keep care previews equal to applied results, and complete M3 before FS-401/402 normal breeding.
+> FS-305 care controls are DONE, pushed `d425639` (see the FS-305 report for limits). Continue M3 with FS-306: juvenile appearance derived from life state in pure core, smooth body/fin animation in the renderer, and a clear distinction between the actual stage and the adult preview. Then FS-307's healthy/stressed demonstration, absence summary and recovery. Keep the renderer consuming phenotype only, keep care previews equal to applied results, and complete M3 before FS-401/402 normal breeding.
 
 ## 7. Subsequent task briefs
 

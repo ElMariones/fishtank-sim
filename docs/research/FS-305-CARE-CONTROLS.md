@@ -1,6 +1,6 @@
 # FS-305 care controls and actionable warnings
 
-**Recorded:** 14 September 2026 · **Status:** delivered; push reference in the [backlog](../BACKLOG.md)
+**Recorded:** 14 September 2026 · **Status:** DONE, pushed `d425639`
 **Models:** world save v4 · care model v1 · water model v1 · life model v1 · genome v2 · development v4 · renderer v5
 
 ## Starting state
