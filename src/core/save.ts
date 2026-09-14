@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { BLOCKER_CODES, CLUTCH_SIZES, CLUTCH_STAGES, idleBreeding, reservedPlaces } from './breeding';
 import { defaultCare, RATION_KEYS, THERMOSTAT_RANGE } from './care';
-import { ALL_LOCI, LOCI } from './catalog';
+import { ALL_LOCI, APPEARANCE_LOCI, LOCI } from './catalog';
 import { adultLife } from './development';
 import { BUYER_BY_ID, defaultMarket, LEDGER_LIMIT, LEDGER_REASONS, ledgerBalance, openingLedger } from './economy';
 import { metabolicPotential } from './genetics';
+import { CARRIER_LOCI, initialShop, LISTING_PRICES, SHOP_SIZE } from './shop';
 import type { Fish, Tank, World } from './types';
 import { defaultWater, WATER_LIMITS } from './water';
 import { MAX_LIVING, MAX_RECORDS, MAX_TANKS } from './world';
@@ -57,6 +58,15 @@ const ledger = z.object({
     fish: z.number().int().min(0).max(MAX_LIVING), detail: z.string().max(120),
   }).strict()).max(LEDGER_LIMIT),
 }).strict();
+/** Persistent shop stock, world v7 (FS-502). */
+const listing = z.object({
+  id: z.string().regex(/^LS-\d{6,16}$/), category: z.enum(['founder', 'variant', 'carrier']), name: z.string().min(1).max(32), sex: z.enum(['F', 'M']),
+  genome, birthSeed: z.number().int().min(0).max(4294967295), price: z.number().int().positive().max(1e6), expiresDay: z.number().int().min(0).max(1e12),
+  note: z.string().max(120), carries: z.object({ locus: z.enum(APPEARANCE_LOCI), allele: z.number().int().min(1).max(5) }).strict().nullable(),
+}).strict();
+const shop = z.object({
+  model: z.literal(1), nextListing: z.number().int().positive(), refreshedDay: z.number().int().min(0).max(1e12), listings: z.array(listing).max(SHOP_SIZE),
+}).strict();
 const tank = { id: z.string().max(50), name: z.string().min(1).max(32), capacity: z.number().int().min(1).max(60), planted: z.boolean() };
 const header = { seed: z.number().int().min(0).max(4294967295), nextId: z.number().int().positive(), credits: z.number().int().nonnegative().max(1e9) };
 const fishRecord = {
@@ -85,6 +95,11 @@ const schema = z.discriminatedUnion('version', [
     fish: z.array(z.object({ ...fishRecord, status: z.enum(['living', 'sold', 'rehomed']), life, breeding })).max(MAX_RECORDS), clutches: z.array(clutch).max(MAX_RECORDS),
     market, ledger,
   }),
+  z.object({
+    version: z.literal(7), ...header, nextClutchId: z.number().int().positive(), tanks: tanksWithCare,
+    fish: z.array(z.object({ ...fishRecord, status: z.enum(['living', 'sold', 'rehomed']), life, breeding })).max(MAX_RECORDS), clutches: z.array(clutch).max(MAX_RECORDS),
+    market, ledger, shop,
+  }),
 ]);
 
 /**
@@ -93,22 +108,25 @@ const schema = z.discriminatedUnion('version', [
  * Worlds v1–v3 predate care (FS-305): their tanks feed measured rations with a thermostat at the water's temperature.
  * Worlds v1–v4 predate normal breeding (FS-401/402): their fish are rested and no clutch is courting.
  * Worlds v1–v5 predate the economy (FS-501): every buyer's demand is full and the ledger opens at the saved balance.
+ * Worlds v1–v6 predate the shop (FS-502): they open with a first delivery of listings.
  */
 export function decodeSave(raw: string): World {
   if (raw.length > 12_000_000) throw new Error('Save is too large for this lab.');
   const parsed = schema.parse(JSON.parse(raw));
   let world: World;
-  if (parsed.version === 6) world = parsed;
-  // Keys follow the v6 schema order, which appends market and ledger to the v5 order.
-  else if (parsed.version === 5) world = { ...parsed, version: 6, market: defaultMarket(), ledger: openingLedger(parsed.credits) };
+  if (parsed.version === 7) world = parsed;
+  // Keys follow the v7 schema order: v6 appended market and ledger to the v5 order, and v7 appends the shop.
+  else if (parsed.version === 6) world = { ...parsed, version: 7, shop: initialShop(parsed.seed) };
+  else if (parsed.version === 5) world = { ...parsed, version: 7, market: defaultMarket(), ledger: openingLedger(parsed.credits), shop: initialShop(parsed.seed) };
   else {
     const watered: Omit<Tank, 'care'>[] = parsed.version === 1 ? parsed.tanks.map(entry => ({ ...entry, water: defaultWater() })) : parsed.tanks;
     const cared: Tank[] = parsed.version === 4 ? parsed.tanks : watered.map(entry => ({ ...entry, care: defaultCare(entry.water) }));
     const lived: Omit<Fish, 'breeding'>[] = parsed.version === 3 || parsed.version === 4 ? parsed.fish : parsed.fish.map(member => ({ ...member, life: adultLife(member.genome) }));
     // Keys follow the v5 schema order: replay validation compares serialized worlds, so a migrated world must
     // serialize exactly like a decoded current one or every older save would fail to load.
-    world = { version: 6, seed: parsed.seed, nextId: parsed.nextId, credits: parsed.credits, nextClutchId: 1, tanks: cared,
-      fish: lived.map(member => ({ ...member, breeding: idleBreeding() })), clutches: [], market: defaultMarket(), ledger: openingLedger(parsed.credits) };
+    world = { version: 7, seed: parsed.seed, nextId: parsed.nextId, credits: parsed.credits, nextClutchId: 1, tanks: cared,
+      fish: lived.map(member => ({ ...member, breeding: idleBreeding() })), clutches: [], market: defaultMarket(), ledger: openingLedger(parsed.credits),
+      shop: initialShop(parsed.seed) };
   }
   const ids = new Map(world.fish.map(f => [f.id, f]));
   const tanks = new Set(world.tanks.map(t => t.id));
@@ -151,6 +169,20 @@ export function decodeSave(raw: string): World {
   world.ledger.entries.forEach((entry, i) => {
     if (entry.seq >= world.ledger.next || (i > 0 && entry.seq <= world.ledger.entries[i - 1].seq)) throw new Error('Ledger entries are out of order.');
   });
+  const listingIds = new Set<string>();
+  for (const entry of world.shop.listings) {
+    const sequence = Number(entry.id.slice(3));
+    if (listingIds.has(entry.id) || !Number.isSafeInteger(sequence) || sequence < 1 || sequence >= world.shop.nextListing
+      || entry.expiresDay <= world.shop.refreshedDay || entry.price !== LISTING_PRICES[entry.category]) throw new Error('Invalid shop listing.');
+    if (entry.category === 'carrier') {
+      const carrier = entry.carries;
+      if (!carrier || !CARRIER_LOCI.some(locus => locus === carrier.locus) || entry.genome.version !== 2) throw new Error('Invalid shop carrier.');
+      const offset = LOCI.length + APPEARANCE_LOCI.indexOf(carrier.locus);
+      const pair = [entry.genome.maternal[offset], entry.genome.paternal[offset]];
+      if (!pair.includes(0) || !pair.includes(carrier.allele)) throw new Error('Shop carrier does not match its genome.');
+    } else if (entry.carries !== null) throw new Error('Only carrier listings may document a hidden copy.');
+    listingIds.add(entry.id);
+  }
   return world;
 }
 

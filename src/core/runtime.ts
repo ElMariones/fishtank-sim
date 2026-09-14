@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { advanceWorld, type DayReport } from './habitat';
 import { decodeSave } from './save';
+import { initialShop } from './shop';
+import { TICKS_PER_GAME_DAY } from './water';
 import { applyCommand, commandSchema, WORLD_VERSION, type Command } from './world';
 import type { World } from './types';
 import { offlineWindow, TICK_MS, timelineSegments, type OfflineWindow } from '../simulation/time';
@@ -115,7 +117,11 @@ export function decodeRuntime(raw: string): Runtime {
   const tankIds = new Set(world.tanks.map(tank => tank.id));
   if (Object.keys(simulation.tankTicks).length !== tankIds.size || Object.entries(simulation.tankTicks).some(([id, tick]) => !tankIds.has(id) || tick !== parsed.tick))
     throw new Error('Simulation clocks do not agree with the world tick.');
-  if (legacyWorld) return { ...replayed, world, tick: parsed.tick, simulation, checkpoint: { world, tick: parsed.tick, revision: parsed.revision }, events: [] };
+  if (legacyWorld) {
+    // The first delivery arrives at migration, not at the old world's day zero.
+    world.shop = initialShop(world.seed, Math.floor(parsed.tick / TICKS_PER_GAME_DAY));
+    return { ...replayed, world, tick: parsed.tick, simulation, checkpoint: { world, tick: parsed.tick, revision: parsed.revision }, events: [] };
+  }
   return { ...replayed, world, tick: parsed.tick, simulation };
 }
 
@@ -125,7 +131,7 @@ export function decodeRuntime(raw: string): Runtime {
  */
 function recordsOnly(world: World) {
   return {
-    ...world, market: null, ledger: null,
+    ...world, market: null, ledger: null, shop: null,
     tanks: world.tanks.map(tank => ({ id: tank.id, name: tank.name, capacity: tank.capacity, planted: tank.planted })),
     fish: world.fish.map(member => ({ ...member, life: null, breeding: null })),
   };

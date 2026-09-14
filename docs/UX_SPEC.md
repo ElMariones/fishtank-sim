@@ -196,3 +196,7 @@ Large collection and offspring lists paginate at 60 rows (FS-112). Filters/searc
 **Lab status (FS-106):** skip links lead to the collection and the inspector. Choosing a fish from a card by keyboard, or any relative in Family, moves focus to the inspector's name heading, and "↩ Collection" returns focus to that fish's card; pointer selection leaves focus where it was. On coarse pointers every button, select, link and checkbox row is at least 44 × 44 px. The header, trait rows, genome rows and inspector tabs reflow at 200% text without clipping or horizontal page overflow. The live canvas is not keyboard-focusable; the collection is the keyboard path to every fish. A screen-reader audit remains open (FS-704).
 
 The verification evidence for the current lab is tracked separately in [TESTING.md](TESTING.md).
+
+## Implemented NPC shop (FS-502)
+
+The collection toolbar opens **NPC shop**. Fixed specimen cards show sex, category, adult length potential, carrier notes, expiry, price and current resale estimate. Sex/category filters and price/length/expiry sorting do not change inventory. **Deliver to** states free places after nursery reservations. Purchases explain credit/capacity/record blockers and select the newcomer after clearing collection filters. Refreshing preserves stock. See [FS-502 verification](research/FS-502-PERSISTENT-SHOP.md).

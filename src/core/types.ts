@@ -1,3 +1,5 @@
+import type { AppearanceLocus } from './catalog';
+
 /** Genome v1 holds 48 loci per copy; genome v2 appends the 12 Color and Ornament loci (60 per copy). */
 export type Genome = { version: 1 | 2; maternal: number[]; paternal: number[] };
 export type Mutation = { locus: number; copy: 'maternal' | 'paternal'; from: number; to: number };
@@ -86,13 +88,25 @@ export type LedgerReason = 'sale' | 'stock' | 'equipment' | 'waterChange' | 'reh
 export type LedgerEntry = { seq: number; reason: LedgerReason; amount: number; fish: number; detail: string };
 /** Credits always equal `opening` plus every total; only the latest entries are kept. */
 export type Ledger = { model: 1; opening: number; next: number; totals: Record<LedgerReason, number>; entries: LedgerEntry[] };
+export type ListingCategory = 'founder' | 'variant' | 'carrier';
+/** A shop specimen (FS-502): genome, sex and price are fixed from arrival until it is bought or leaves. */
+export type Listing = {
+  id: string; category: ListingCategory; name: string; sex: 'F' | 'M'; genome: Genome; birthSeed: number; price: number;
+  /** Absolute game day at whose boundary the listing leaves the shop. */
+  expiresDay: number;
+  note: string;
+  /** For documented carriers: the appearance locus and the variant allele carried as one hidden copy. */
+  carries: { locus: AppearanceLocus; allele: number } | null;
+};
+export type ShopState = { model: 1; nextListing: number; refreshedDay: number; listings: Listing[] };
 /**
  * World v2 added per-tank water (FS-301), v3 fish life state (FS-302), v4 tank care (FS-305), v5 breeding state and
- * clutches (FS-401/402), v6 NPC demand, a credit ledger and rehomed fish (FS-501). Older saves migrate with defaults.
+ * clutches (FS-401/402), v6 NPC demand, a credit ledger and rehomed fish (FS-501), v7 persistent shop stock (FS-502).
+ * Older saves migrate with defaults.
  */
 export type World = {
-  version: 6; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
-  market: MarketState; ledger: Ledger;
+  version: 7; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
+  market: MarketState; ledger: Ledger; shop: ShopState;
 };
 /**
  * Development v2 inherited marking anchor, derived from one phased two-locus haplotype block.

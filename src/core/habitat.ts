@@ -1,5 +1,6 @@
 import { advanceClutches } from './breeding';
 import { recoverDemand } from './economy';
+import { refreshShop } from './shop';
 import { CARE_RATES, closeCareDay, integrateTank, type CareLoad } from './care';
 import { developDay, environmentFor, nutritionFactor, type Environment } from './development';
 import { metabolicPotential } from './genetics';
@@ -92,8 +93,8 @@ export function advanceWorld(world: World, fromTick: number, toTick: number, onD
     current = integrateTanks(current, cursor, end);
     if (end === boundary) {
       // Development first, then breeding (FS-402): eggs laid at this boundary start developing at the next one. NPC
-      // demand recovers last (FS-501).
-      const developed = developResidents(current), bred = recoverDemand(advanceClutches(developed.world));
+      // demand recovers (FS-501) and the shop delivers (FS-502) last.
+      const developed = developResidents(current), bred = refreshShop(recoverDemand(advanceClutches(developed.world)), boundary / TICKS_PER_GAME_DAY);
       onDay?.({ tick: boundary, before: current, after: bred, environments: developed.environments });
       current = bred;
     }

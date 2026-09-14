@@ -5,6 +5,7 @@ import {
   waterChangeCost, type WaterChangePercent,
 } from './care';
 import { defaultMarket, openingLedger, planSales, recordEntry, saleDetail } from './economy';
+import { initialShop } from './shop';
 import { express, founderGenome, inherit } from './genetics';
 import { adultLife, eggLife, isEgg } from './development';
 import { tankLoad } from './habitat';
@@ -25,9 +26,9 @@ export const MAX_RECORDS = 10_000;
 export const STOCK_PRICE = 250;
 /**
  * World v6: tanks carry water (FS-301) and care (FS-305); fish carry life (FS-302) and breeding state; clutches
- * (FS-401/402); NPC demand and the credit ledger (FS-501).
+ * (FS-401/402); NPC demand and the credit ledger (FS-501). World v7 adds persistent shop stock (FS-502).
  */
-export const WORLD_VERSION = 6;
+export const WORLD_VERSION = 7;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -48,10 +49,10 @@ function newTank(id: string, name: string, planted: boolean): Tank {
 
 /** New worlds use the current genome. Research fixtures pass genome version 1 to reproduce the frozen FS-101 founders. */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = GENOME_VERSION): World {
-  const world: World = { version: 6, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
+  const world: World = { version: 7, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
-  ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200) };
+  ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed) };
   ['Haru', 'Sumi', 'Kohaku', 'Yuki', 'Akira', 'Momo'].forEach((name, i) => {
     world.fish.push(founder(world, name, i % 2 === 0 ? 'F' : 'M', timestamp, genomeVersion)); world.nextId++;
   });
@@ -71,6 +72,7 @@ export type Command =
   | { type: 'sell-batch'; fishIds: string[]; priceModel?: 1 }
   | { type: 'rehome-batch'; fishIds: string[] }
   | { type: 'buy'; tankId: string; timestamp: string; genomeVersion?: GenomeVersion }
+  | { type: 'buy-listing'; listingId: string; tankId: string; timestamp: string }
   | { type: 'add-tank' }
   | { type: 'decorate'; tankId: string }
   | { type: 'feed'; tankId: string }
@@ -95,6 +97,7 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('sell-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING), priceModel: z.literal(1).optional() }).strict(),
   z.object({ type: z.literal('rehome-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING) }).strict(),
   z.object({ type: z.literal('buy'), tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema }).strict(),
+  z.object({ type: z.literal('buy-listing'), listingId: z.string().regex(/^LS-\d{6,16}$/), tankId: tankIdSchema, timestamp: z.string().datetime() }).strict(),
   z.object({ type: z.literal('add-tank') }).strict(),
   z.object({ type: z.literal('decorate'), tankId: tankIdSchema }).strict(),
   z.object({ type: z.literal('feed'), tankId: tankIdSchema }).strict(),
@@ -221,6 +224,22 @@ export function applyCommand(world: World, command: Command): World {
       fish.tankId = command.tankId;
       next.fish.push(fish); next.nextId++; next.credits -= STOCK_PRICE;
       next.ledger = recordEntry(next.ledger, 'stock', -STOCK_PRICE, 1, fish.name);
+      break;
+    }
+    case 'buy-listing': {
+      // A shop specimen (FS-502): the listed genome, sex and name become a founder in the chosen tank.
+      const listing = next.shop.listings.find(entry => entry.id === command.listingId);
+      if (!listing) throw new Error('That listing is no longer in the shop.');
+      space(command.tankId, 1);
+      room(1);
+      afford(listing.price, `${listing.name} (${listing.id})`);
+      next.fish.push({
+        id: id(next.nextId), name: listing.name, sex: listing.sex, genome: listing.genome, birthSeed: listing.birthSeed, generation: 0, parents: null,
+        bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', mutations: [], life: adultLife(listing.genome), breeding: idleBreeding(),
+      });
+      next.nextId++;
+      next.shop = { ...next.shop, listings: next.shop.listings.filter(entry => entry.id !== listing.id) };
+      next.ledger = recordEntry(next.ledger, 'stock', -listing.price, 1, `${listing.name} from ${listing.id}`);
       break;
     }
     case 'add-tank':

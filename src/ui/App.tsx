@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { appearanceAlleleLabel, describeAppearance } from '../core/appearance';
 import { daysToHatch, environmentLimits, INCUBATION_DAYS, isEgg, lifeStage, type LifeStage } from '../core/development';
 import { advanceWorld, tankEnvironment, tankLoad } from '../core/habitat';
@@ -14,6 +14,7 @@ import { breedingStatus, courtingClutchOf, reservedPlaces, type ClutchSize } fro
 import { offersFor, planSales, PRICE_MODEL, saleDetail, type TraitCache } from '../core/economy';
 import { BreedingPlanner } from './BreedingPlanner';
 import { MarketPanel } from './MarketPanel';
+import { ShopPanel } from './ShopPanel';
 import { NormalBreeding } from './NormalBreeding';
 import { express, fingerprint, heterozygosity, metabolicPotential } from '../core/genetics';
 import { MARKING_BLOCKS, MARKING_VISIBLE_ALPHA } from '../core/pattern';
@@ -23,15 +24,17 @@ import { advanceRuntime, commandEnvelope, executeCommand, TICK_MS } from '../cor
 import type { LoadedSession } from '../persistence/session';
 import { ACTIVE_CHECKPOINT_MS } from '../simulation/time';
 import { downloadText, SavePanel } from './SavePanel';
-import type { Clutch, Fish, World } from '../core/types';
-import { COHORT_SIZE, STOCK_PRICE, type Command } from '../core/world';
+import type { Clutch, Fish, Listing, World } from '../core/types';
+import { TICKS_PER_GAME_DAY } from '../core/water';
+import { COHORT_SIZE, type Command } from '../core/world';
 import { Pagination, SexMark } from './Controls';
 import { FamilyView } from './FamilyView';
 import { FishPortrait, type PortraitView } from './FishPortrait';
-import { ResearchLab } from './ResearchLab';
 import { TankCanvas } from './TankCanvas';
-import { VisualFixtureLab } from './VisualFixtureLab';
 import './styles.css';
+
+const ResearchLab = lazy(() => import('./ResearchLab').then(module => ({ default: module.ResearchLab })));
+const VisualFixtureLab = lazy(() => import('./VisualFixtureLab').then(module => ({ default: module.VisualFixtureLab })));
 
 const percent = (n: number) => `${(n * 100).toFixed(1)}%`;
 const wholePercent = (n: number) => `${Math.round(n * 100)}%`;
@@ -104,6 +107,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [movedTo, setMovedTo] = useState<string | null>(null);
   const [rehomeId, setRehomeId] = useState<string | null>(null);
   const [showMarket, setShowMarket] = useState(false);
+  const [showShop, setShowShop] = useState(false);
   // Buyer traits depend only on genomes, so one cache serves every offer this session (FS-501).
   const [traitCache] = useState<TraitCache>(() => new Map());
   const [lastBatchId, setLastBatchId] = useState<string | null>(null);
@@ -319,6 +323,16 @@ export function App({ initial }: { initial: LoadedSession }) {
     }
   }
 
+  /** A shop listing becomes a founder in the chosen tank (FS-502); the collection then shows it. */
+  function buyListing(listing: Listing, destinationId: string) {
+    const next = run({ type: 'buy-listing', listingId: listing.id, tankId: destinationId, timestamp: new Date().toISOString() },
+      `${listing.name} joined ${tankName(destinationId)} for ◈ ${listing.price}. ${listing.note}.`);
+    if (next) {
+      setSelectedId(next.fish[next.fish.length - 1].id); setTankId(destinationId); setShowArchived(false); setQuery('');
+      setSexFilter('all'); setFavoritesOnly(false); setCohortKey('all'); setBirthKey('all'); setCollectionPage(0);
+    }
+  }
+
   function openMoveReview() {
     const fits = moveDestinations.find(t => freePlaces(t.id) >= batch.filter(f => f.tankId !== t.id).length);
     setMoveTarget(current => moveDestinations.some(t => t.id === current) ? current : (fits ?? moveDestinations[0]).id);
@@ -348,7 +362,7 @@ export function App({ initial }: { initial: LoadedSession }) {
       <div className="save-navigation"><div className="save-state">{saveError === 'Saving…' ? 'Saving…' : saveError ? 'Session not saved' : 'Saved on this device'}</div><button aria-expanded={showSaves} onClick={() => setShowSaves(value => !value)}>Saves</button></div>
       {showSaves ? <SavePanel runtime={runtime} session={initial.session} blocked={blocked} readOnly={initial.readOnly} onBusy={value => { saveBusy.current = value; }} onSaved={() => { setBlocked(false); setSaveError(''); }} /> : null}
       {showMarket ? <MarketPanel world={world} onClose={() => setShowMarket(false)} /> : null}
-    {view === 'fixtures' ? <VisualFixtureLab onClose={() => setView('aquarium')} /> : view === 'research' ? <ResearchLab onClose={() => setView('aquarium')} /> : <div className="workspace">
+    {view === 'fixtures' ? <Suspense fallback={<p role="status">Loading visual fixtures…</p>}><VisualFixtureLab onClose={() => setView('aquarium')} /></Suspense> : view === 'research' ? <Suspense fallback={<p role="status">Loading research…</p>}><ResearchLab onClose={() => setView('aquarium')} /></Suspense> : <div className="workspace">
       <aside className="tank-sidebar">
         <div className="eyebrow">YOUR AQUARIUMS</div>
         <nav aria-label="Aquariums">{world.tanks.map((t, i) => <button key={t.id} className={`tank-link ${t.id === tank.id ? 'active' : ''}`} aria-current={t.id === tank.id ? 'true' : undefined} onClick={() => { setTankId(t.id); setShowArchived(false); setQuery(''); }}>
@@ -399,10 +413,8 @@ export function App({ initial }: { initial: LoadedSession }) {
         <div className="status-line" role="status" aria-live="polite">{notice}</div>
         <section className="collection" id="collection" tabIndex={-1} aria-labelledby="collection-title">
           <div className="collection-heading"><h2 id="collection-title">{showArchived ? 'Archived fish' : 'Your collection'} <span>{collection.length}</span></h2><button className="quiet" onClick={() => { setShowArchived(v => !v); setQuery(''); }}>{showArchived ? 'Show residents' : 'View archive'}</button></div>
-          <div className="collection-toolbar"><input aria-label="Search fish" placeholder="Search by name or ID…" value={query} onChange={e => setQuery(e.target.value)} /><button onClick={() => {
-            const next = run({ type: 'buy', tankId: tank.id, timestamp: new Date().toISOString(), genomeVersion: GENOME_VERSION }, 'Unrelated founder stock introduced. This is a local NPC purchase.');
-            if (next) { setSelectedId(next.fish.at(-1)!.id); setShowArchived(false); setQuery(''); }
-          }}>＋ Unrelated stock <span>◈ {STOCK_PRICE}</span></button></div>
+          <div className="collection-toolbar"><input aria-label="Search fish" placeholder="Search by name or ID…" value={query} onChange={e => setQuery(e.target.value)} /><button aria-expanded={showShop} aria-controls="shop-title" onClick={() => setShowShop(value => !value)}>NPC shop <span>{world.shop.listings.length} listed</span></button></div>
+          {showShop ? <ShopPanel world={world} tank={tank} day={Math.floor(liveTick / TICKS_PER_GAME_DAY)} readOnly={initial.readOnly} traitCache={traitCache} onBuy={buyListing} onClose={() => setShowShop(false)} /> : null}
           <div className="collection-filters">
             <div className="sex-filter" role="group" aria-label="Show fish by sex">
               {(['all', 'F', 'M'] as const).map(value => <button key={value} aria-pressed={sexFilter === value} onClick={() => setSexFilter(value)}>

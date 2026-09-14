@@ -37,7 +37,7 @@ Genetics use 48 legacy loci, or 60 loci in genome v2, with two phased array copi
 
 Mutations are 0.003 **per copy**. There are 96 transmitted copies, so about one quarter of lab births carry a small de novo mutation. This is a research setting.
 
-The current portrait is adult potential, not current life stage. Growth, longevity, metabolism and oxygen demand are integrated. Food uses transient worker pellets; persistent nutrition is still inactive. The habitat button toggles shared permeable plant cover and solid rock footprints (FS-304). Body-center clearance is a visual proxy; extreme fins may overlap. Lab credits are local NPC plumbing, not a balanced economy.
+Portraits offer Now (current stage) and Adult potential (genetic preview). Growth, longevity, metabolism and oxygen demand are integrated. Worker pellets are visual; persistent nutrition is integrated through the shared tank food pool. The habitat button toggles shared permeable plant cover and solid rock footprints (FS-304). Body-center clearance is a visual proxy; extreme fins may overlap. Lab credits use bounded NPC buyers and a reconciled ledger; tank, breeding and food costs remain incomplete.
 
 Geometry lives in `src/core/anatomy.ts` (anatomy v2). The Canvas renderer draws it, portraits frame from its bounds, and the tank uses `src/rendering/tankLayout.ts` for both drawing and picking. Change anchors there and extend `tests/anatomy.test.ts`; do not add renderer-only geometry exceptions.
 
@@ -63,6 +63,8 @@ Batch rehoming (FS-406) is the `move-batch` command. Keep it atomic and reservat
 
 World save v6 (FS-501) adds `market` and `ledger`, plus the `rehomed` fish status. Every command that changes credits must write a ledger entry, because `decodeSave` rejects credits that differ from the opening balance plus the totals. Sales price through `planSales` in `src/core/economy.ts`, which the commands, reviews and E-05 share, so change pricing there, not in UI code. Sale commands carry `priceModel: 1`; commands without it are journal entries from before the economy and must keep the lab quote, or older saves stop replaying. Rehomed and sold fish are both archived, so check `status !== 'living'` rather than `status === 'sold'`.
 
+World save v7 (FS-502) adds the persistent shop. Buy through `buy-listing`; retain legacy `buy` for journals/research. Runtime migration dates the first delivery from the saved game day. Listing IDs, genomes and prices are stable until purchase or expiry; never generate stock while rendering or opening the shop. See [shop evidence](research/FS-502-PERSISTENT-SHOP.md).
+
 The live Canvas’s transient actors are outside React state. Motion is deterministic for the same initial actors and tick sequence, but positions are not persisted; switching tanks reconstructs visual trajectories. Birth/genome outcomes do persist.
 
 Sales preserve the full fish record, including parent IDs and genome. The archive assumes sold fish are no longer locally living; online ownership/death states must be modeled separately later.
@@ -79,7 +81,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> M3 is DONE (FS-305 `d425639`, FS-306 `325ceb4`, FS-307 `a5d5ddc`). FS-401/402 normal breeding is DONE, pushed `9aabfdb`. FS-404's bounded six-generation family graph is DONE, pushed `b7c3e37`. FS-405's incremental kinship cache is DONE, pushed `850f501`. FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE, pushed `44d7d98`, completing M4's task list. M5 has started: FS-501's economy model v1 is DONE, pushed `006b500` (see the FS-501 report). Continue with FS-502: persistent shop stock with stable IDs and expiry, filters, no reroll on refresh, and capacity-respecting purchases that write ledger entries. Keep sale commands carrying a price model, the ledger reconciled, and migrations writing keys in schema order.
+> M3 is DONE (FS-305 `d425639`, FS-306 `325ceb4`, FS-307 `a5d5ddc`). FS-401/402 normal breeding is DONE, pushed `9aabfdb`. FS-404's bounded six-generation family graph is DONE, pushed `b7c3e37`. FS-405's incremental kinship cache is DONE, pushed `850f501`. FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE, pushed `44d7d98`, completing M4's task list. M5 has started: FS-501's economy model v1 is DONE, pushed `006b500` (see the FS-501 report). FS-502 persistent shop is implemented and verified, awaiting push; see its research report. Continue with FS-503: tank purchase/upgrades and persisted decoration placement with functional footprints. Keep sale commands carrying a price model, the ledger reconciled, and migrations writing keys in schema order.
 
 ## 7. Subsequent task briefs
 

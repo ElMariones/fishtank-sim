@@ -2,7 +2,13 @@
 
 **Updated:** 14 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`). FS-405's incremental kinship cache with stated founder assumptions is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. M5 has started: FS-501's economy model v1 is DONE (`006b500`).
 
-## Current continuation — FS-501 DONE, pushed `006b500`
+## Current continuation — FS-502 implemented, awaiting push
+
+Completed review of the existing uncommitted shop work on `5704c4b`, verified equal to freshly fetched `origin/main`. Added day-correct migration, shop metadata validation, purchase filter reset, cached listing previews, responsive destination controls, and deferred research bundles. `npm test`: 162 tests in 27 files pass; strict production build passes. Browser purchase, reload, ledger, filter, low-credit and phone checks passed on isolated port 5178. See [FS-502 shop evidence](research/FS-502-PERSISTENT-SHOP.md).
+
+Next is FS-503: tank purchase/upgrades and persisted decoration placement. M5 remains open. `.claude/launch.json` remains untracked.
+
+## Previous continuation — FS-501 DONE, pushed `006b500`
 
 14 September 2026: FS-501 started from `85db06b` (FS-406 marked DONE), equal to `origin/main`. `.claude/launch.json` stays untracked; `fishtank-qa` (port 5176) serves the QA world.
 
@@ -127,7 +133,7 @@
 | Breeding | Normal breeding enforces adult stage, condition, rest days, a shared tank and a reserved nursery, with recorded pause reasons; the instant lab cross still bypasses them as a labeled shortcut; no courtship animation, mate preference, natural breeding or cost | FS-906 |
 | Environment | One-compartment water and care per tank: feeder rations, filter and aeration tiers, thermostat and water changes with previews; poor care lowers condition and slows growth but never kills; no pH, nitrite/nitrate, light, plant uptake or disease; food and equipment have no running cost | M5 |
 | Decorations | Shared cover/rock footprints and body-center clearance; extreme fins can overlap; no user placement or collision mesh | FS-503 FS-701 |
-| Economy | Economy model v1: five NPC buyers with bounded, recovering demand and explained offers; founders resell below the stock price; a reconciled ledger; free rehoming. Tanks, breeding and food are free, stock is generated at purchase, and there is no upkeep, collector order, persistent shop stock or real market | FS-502–505 |
+| Economy | Economy model v1: five NPC buyers with bounded, recovering demand and explained offers; founders resell below the stock price; a reconciled ledger; free rehoming. Persistent shop stock has fixed specimens, filters, expiry and ledger-backed purchases (FS-502). Tanks, breeding and food are free; no upkeep, collector orders or real market | FS-503–505 |
 | Batch management | Reviewed batch moves, sales and rehoming; selection clears when the tank, archive view or a filter changes; the move review checks places, not crowding | FS-505 |
 | Rarity | Only founder-stock rarity labels for appearance (FS-113); no measured reference population or global service | FS-603 FS-805 |
 | Topology | No extra tail lobes/eyes/fins or genome v3 topology; FS-113 scale types are drawn textures, not scale geometry | FS-601–602 |
@@ -245,4 +251,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**Continue M5 with FS-502: persistent shop stock and filters.** Refreshing must not reroll stock, and purchases must respect capacity. Buy commands should record their ledger entry and keep stock resale below its price. Keep sale commands carrying a price model, migrations writing keys in schema order, and the ledger reconciled. FS-403 prediction is available early; it does not establish M4's two-generation gate.
+**Continue M5 with FS-503: tank purchases/upgrades and decoration placement.** Persist decoration transforms and update functional footprints. Preserve the fixed shop specimens, nursery reservations and atomic ledger-backed purchases. Keep sale commands carrying a price model, migrations writing keys in schema order, and the ledger reconciled. FS-403 prediction is available early; it does not establish M4's two-generation gate.

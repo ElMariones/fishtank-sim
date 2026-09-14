@@ -22,10 +22,10 @@ const uniform = (allele: number): Genome => ({ version: 2, maternal: Array(60).f
 const adult = (n: number, genome: Genome): Fish => ({ ...base.fish[0], id: fishId(n), name: `Fish ${n}`, sex: n % 2 ? 'M' : 'F', genome, tankId: 'tank-2', life: adultLife(genome) });
 const withFish = (fish: Fish[]): World => ({ ...base, nextId: Math.max(...fish.map(f => Number(f.id.slice(4)))) + 1, fish: [...base.fish, ...fish] });
 const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
-/** A world v6 save written as world v5: no demand, no ledger, and the older version number. */
+/** A current save written as world v5: no demand, ledger or shop, and the older version number. */
 function asV5(world: World) {
-  const { market, ledger, ...rest } = world;
-  void market; void ledger;
+  const { market, ledger, shop, ...rest } = world;
+  void market; void ledger; void shop;
   return { ...rest, version: 5 };
 }
 

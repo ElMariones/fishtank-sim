@@ -444,3 +444,7 @@ Run npm ci, npm test, npm run build. Static output is dist/. Changes are pushed 
 Add continuous integration for supported Node, unit tests and build. Add browser automation only after stable controls and a reproducible test harness exist. Source assets must have known licenses. Google Fonts currently supplies optional typefaces; system fonts are fallbacks. Self-host approved fonts when offline asset independence becomes a requirement.
 
 Before each milestone, freeze relevant contracts and fixtures. Finish a vertical user flow before expanding adjacent subsystems. Keep a short implementation status and evidence log so subsequent agents do not infer completion from aspirational interfaces.
+
+## Persistent shop (FS-502)
+
+World v7 appends `shop` after the market and ledger. `src/core/shop.ts` generates seeded fixed specimens and refreshes stock at game-day boundaries. `buy-listing` consumes one specimen atomically with capacity, reservation and balance checks, preserving its genome in a new fish record. Old `buy` commands remain replayable. Runtime migration rebases the first shop delivery to the saved day; bare world imports begin at day zero. `ShopPanel` reads these records and never generates stock. Research and visual fixture modules load on navigation. See [FS-502 evidence](research/FS-502-PERSISTENT-SHOP.md).

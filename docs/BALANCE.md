@@ -17,7 +17,7 @@ All planned values below are game hypotheses. They are not real aquarium-care re
 | Living fish limit | 480 across eight tanks | Sold fish free living capacity but retain ancestry |
 | Total record limit | 10,000 including sold fish | IndexedDB storage and bounded UI pages; actual quota can still fail |
 | Initial credits | 1,200 | Local NPC workflow demonstration |
-| Unrelated stock | 250 credits | Deterministically generated founder on purchase |
+| NPC shop stock (FS-502) | Founders 250, visible variants 320, documented carriers 360 credits | Six fixed specimens; refill empty places every 3 game days; expire after 9; founder resale capped at 150. Legacy generated purchases remain for journals and E-05 |
 | Legacy lab sale quote | round(35 + 0.5 × sizeCm + 25 × metallic + 25 × tail) | Replays only sales recorded before FS-501; new sales use economy model v1 |
 | Breeding / new lab tank cost | 0 | Deliberately unbalanced experimentation |
 | Motion tick | 50 ms | Visual motion only |
