@@ -58,31 +58,41 @@ function integrateTanks(world: World, fromTick: number, toTick: number): World {
 }
 
 /** One game day for every living fish, under its tank's environment at the day boundary, after closing the feeding day. */
-function developResidents(world: World): World {
+function developResidents(world: World): { world: World; environments: Map<string, Environment> } {
   const tanks = world.tanks.map(tank => ({ ...tank, care: closeCareDay(tank.care) }));
   const loads = tankLoads(world.fish);
   const environments = new Map(tanks.map(tank => [tank.id, tankEnvironment(tank, loads.get(tank.id) ?? emptyLoad())]));
   return {
-    ...world,
-    tanks,
-    fish: world.fish.map(member => {
-      const environment = member.status === 'living' ? environments.get(member.tankId) : undefined;
-      return environment ? { ...member, life: developDay(member.life, metabolicPotential(member.genome), environment) } : member;
-    }),
+    environments,
+    world: {
+      ...world,
+      tanks,
+      fish: world.fish.map(member => {
+        const environment = member.status === 'living' ? environments.get(member.tankId) : undefined;
+        return environment ? { ...member, life: developDay(member.life, metabolicPotential(member.genome), environment) } : member;
+      }),
+    },
   };
 }
 
+/** One game-day boundary as it happened: the world before and after development and the environment each tank applied. */
+export type DayReport = { tick: number; before: World; after: World; environments: ReadonlyMap<string, Environment> };
+
 /**
  * Tanks advance in fixed steps and development at every absolute game-day boundary, in that order. Any split of the
- * interval (visible, background, offline or replayed) therefore produces the same world.
+ * interval (visible, background, offline or replayed) therefore produces the same world. `onDay` only observes.
  */
-export function advanceWorld(world: World, fromTick: number, toTick: number): World {
+export function advanceWorld(world: World, fromTick: number, toTick: number, onDay?: (report: DayReport) => void): World {
   if (!Number.isSafeInteger(fromTick) || !Number.isSafeInteger(toTick) || toTick < fromTick) throw new Error('World time cannot move backwards.');
   let current = world;
   for (let cursor = fromTick; cursor < toTick;) {
     const boundary = (Math.floor(cursor / TICKS_PER_GAME_DAY) + 1) * TICKS_PER_GAME_DAY, end = Math.min(toTick, boundary);
     current = integrateTanks(current, cursor, end);
-    if (end === boundary) current = developResidents(current);
+    if (end === boundary) {
+      const developed = developResidents(current);
+      onDay?.({ tick: boundary, before: current, after: developed.world, environments: developed.environments });
+      current = developed.world;
+    }
     cursor = end;
   }
   return current;

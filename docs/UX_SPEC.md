@@ -140,6 +140,10 @@ Notebook keeps player notes, favorite crosses, observed mutations and experiment
 | Listing race | Explain no longer available | No debit or partial transfer |
 | Browser visibility change | Pause visual work; lifecycle follows documented mode | No genetics reroll |
 
+### Implemented return summary (FS-307)
+
+After protected offline catch-up of at least one game day, a **While you were away** panel sits above the tank. It states how many game days passed and whether the eight-hour cap was reached. Each tank with something to report gets a row: fish count, eggs hatched, fish that became juvenile or adult, mean condition before and after, how many declined, the causes that limited condition with their day counts, what needs attention now, and an **Open** button for that tank. Quiet tanks are counted in one line. The panel closes with a statement that every decline had a named cause, or asks the player to export and report the save if one did not. **Dismiss** removes it; the live status line only points to it, so the notice is not announced twice.
+
 ### Implemented saves panel (FS-203/204)
 
 The save status is visible above the workspace on desktop and mobile. **Saves** offers export, preserved legacy export, retry, two backup previews and file/paste import. Imports validate completely before showing record/living/tank/credit counts and an explicit **Replace world with reviewed import** action. The current valid save rotates into backups. Invalid or future data is rejected without replacing the current world; unreadable stored data blocks automatic writes and is preserved during explicit recovery. Preferences remain device-local, stated beside the export controls.

@@ -6,6 +6,7 @@ import {
   type ChannelResult, type StudyFish, type StudyMode, type StudyResults,
 } from '../core/resemblanceStudy';
 import { DEFAULT_SELECTION_CONFIG, selectionReport, type LineResult, type SelectionReport, type TargetResult } from '../core/selectionExperiment';
+import { CareScenarios } from './CareScenarios';
 import { PhenotypePortrait } from './FishPortrait';
 
 const TRIAL_COUNT = 12;
@@ -30,19 +31,20 @@ function readResults(): StudyResults {
 }
 
 export function ResearchLab({ onClose }: { onClose: () => void }) {
-  const [tab, setTab] = useState<'study' | 'selection'>('study');
+  const [tab, setTab] = useState<'study' | 'selection' | 'care'>('study');
   return <main className="fixture-lab research-lab">
     <div className="fixture-hero">
-      <div><div className="eyebrow">FS-105 · RESEMBLANCE AND SELECTION</div><h1>Research studies</h1><p>Seeded experiments for the M1 visible-inheritance gate. They use their own fish and never read or change your aquarium save.</p></div>
+      <div><div className="eyebrow">FS-105 · FS-307 · RESEMBLANCE, SELECTION AND CARE</div><h1>Research studies</h1><p>Seeded experiments for the M1 visible-inheritance gate and the M3 care demonstration. They use their own fish and never read or change your aquarium save.</p></div>
       <div className="fixture-actions">
         <div className="framing-toggle" role="group" aria-label="Research study">
           <button aria-pressed={tab === 'study'} onClick={() => setTab('study')}>Resemblance study</button>
           <button aria-pressed={tab === 'selection'} onClick={() => setTab('selection')}>Selection experiment</button>
+          <button aria-pressed={tab === 'care'} onClick={() => setTab('care')}>Care scenarios</button>
         </div>
         <button onClick={onClose}>Return to aquarium</button>
       </div>
     </div>
-    {tab === 'study' ? <ResemblanceStudy /> : <SelectionExperiment />}
+    {tab === 'study' ? <ResemblanceStudy /> : tab === 'selection' ? <SelectionExperiment /> : <CareScenarios />}
   </main>;
 }
 

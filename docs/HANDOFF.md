@@ -51,6 +51,8 @@ World save v4 (FS-305) adds `care` to every tank: feeder ration, thermostat and 
 
 Stage appearance v1 (FS-306) lives in `src/core/juvenile.ts`: a pure function of the adult phenotype and saved life state. The tank and **Now** portraits draw it; the adult phenotype is the labeled genetic preview and what goals, planner previews and research surfaces use. Keep new visual development there, not in the renderer. Renderer v6 motion is optional and never grows a structure, so portrait framing and anatomy bounds hold.
 
+FS-307 adds an optional `onDay` observer to `advanceWorld`, `advanceRuntime` and `applyOfflineCatchup`. Keep it purely observational: the absence summary and care scenarios depend on the observed advance being identical to the plain one. The summary's unexplained-decline count must stay zero; if a new environment factor is added, list it in `environmentLimits` too.
+
 The live Canvas’s transient actors are outside React state. Motion is deterministic for the same initial actors and tick sequence, but positions are not persisted; switching tanks reconstructs visual trajectories. Birth/genome outcomes do persist.
 
 Sales preserve the full fish record, including parent IDs and genome. The archive assumes sold fish are no longer locally living; online ownership/death states must be modeled separately later.
@@ -67,7 +69,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> FS-305 care controls are DONE, pushed `d425639`, and FS-306 juvenile reveal is DONE, pushed `325ceb4` (see the FS-306 report). Finish M3 with FS-307: a reproducible healthy versus stressed tank demonstration, a per-tank absence summary on return, and recovery, with a check that condition never falls without a named cause. Keep care previews equal to applied results, then start FS-401/402 normal breeding.
+> FS-305 (`d425639`) and FS-306 (`325ceb4`) are DONE, and FS-307's care demonstration and absence summary is delivered (see the backlog and the FS-307 report), completing M3's task list. Start M4 with FS-401: maturity, condition, cooldown and shared-habitat checks with transparent courtship blockers, then FS-402's reserved clutch scheduler and bounded nursery. Keep the instant `breed` command replayable for old journals, reserve nursery places atomically, bump the world version for new persisted state, and keep the absence summary's unexplained-decline count at zero.
 
 ## 7. Subsequent task briefs
 

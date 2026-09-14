@@ -3,6 +3,7 @@ import { appearanceAlleleLabel, describeAppearance } from '../core/appearance';
 import { daysToHatch, environmentLimits, INCUBATION_DAYS, isEgg, lifeStage, type LifeStage } from '../core/development';
 import { advanceWorld, tankEnvironment, tankLoad } from '../core/habitat';
 import { describeBehavior, type BehaviorSummary } from '../simulation/behavior';
+import { AbsencePanel } from './AbsencePanel';
 import { CarePanel } from './CarePanel';
 import { ALL_LOCI, CHROMOSOMES, GENOME_VERSION, label } from '../core/catalog';
 import {
@@ -75,7 +76,9 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [speed, setSpeed] = useState(1);
   const [feedSignal, setFeedSignal] = useState(0);
   const [behavior, setBehavior] = useState<BehaviorSummary | null>(null);
-  const [notice, setNotice] = useState(initial.resumeNotice || 'Select a fish to explore its traits and ancestry.');
+  // The absence summary already carries the resume notice, so the live status line only points to it.
+  const [notice, setNotice] = useState(initial.absence ? 'While you were away: the summary above shows what changed in each tank.'
+    : initial.resumeNotice || 'Select a fish to explore its traits and ancestry.');
   const [saveError, setSaveError] = useState(initial.warning);
   const [motherId, setMotherId] = useState(initial.runtime.world.fish.find(f => f.sex === 'F' && f.status === 'living')?.id ?? '');
   const [fatherId, setFatherId] = useState(initial.runtime.world.fish.find(f => f.sex === 'M' && f.status === 'living')?.id ?? '');
@@ -94,6 +97,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [focusRequest, setFocusRequest] = useState(0);
   const [breedingOpen, setBreedingOpen] = useState(true);
   const [heroView, setHeroView] = useState<PortraitView>('current');
+  const [absence, setAbsence] = useState(initial.absence);
   const inspectorHeading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -259,6 +263,8 @@ export function App({ initial }: { initial: LoadedSession }) {
       </aside>
       <main>
         {saveError && saveError !== 'Saving…' ? <p className="warning" role="alert">{saveError}</p> : null}
+        {absence ? <AbsencePanel summary={absence} notice={initial.resumeNotice} onDismiss={() => setAbsence(null)}
+          onOpenTank={id => { setTankId(id); setShowArchived(false); setQuery(''); }} /> : null}
         <div className="tank-heading"><div><div className="eyebrow">AQUARIUM / {String(world.tanks.indexOf(tank) + 1).padStart(2, '0')}</div><h1>{tank.name}</h1></div><span className="count-tag">{residents.length} inhabitants</span></div>
         {tank.care ? <CarePanel world={world} tank={tank} tick={liveTick} readOnly={initial.readOnly} onRun={(command, message) => run(command, message) !== null} /> : null}
         <section className="aquarium" aria-label="Live aquarium">

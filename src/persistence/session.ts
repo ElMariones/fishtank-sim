@@ -1,3 +1,4 @@
+import { absenceObserver, type AbsenceSummary } from '../core/absence';
 import { applyOfflineCatchup, createRuntime, importRuntime, type Runtime } from '../core/runtime';
 import { SAVE_KEY } from '../core/save';
 import { createWorld } from '../core/world';
@@ -30,6 +31,8 @@ function formatDuration(seconds: number) {
 
 export type LoadedSession = {
   runtime: Runtime; session: SaveSession | null; blocked: boolean; readOnly: boolean; warning: string; resumeNotice: string;
+  /** What changed per tank during protected offline catch-up (FS-307); null when less than a game day passed. */
+  absence: AbsenceSummary | null;
 };
 export async function loadSession(): Promise<LoadedSession> {
   const worldId = crypto.randomUUID();
@@ -43,23 +46,27 @@ export async function loadSession(): Promise<LoadedSession> {
     session = new SaveSession(database, slots.current?.token ?? null, lease);
     if (slots.current) {
       const stored = importRuntime(slots.current.raw, worldId);
-      const caughtUp = lease.writable ? applyOfflineCatchup(stored, Date.parse(slots.current.savedAt), Date.now()) : { runtime: stored, window: null };
+      // The observer only watches the ordinary catch-up, so the restored world is identical with or without a summary.
+      const observer = absenceObserver(stored.world);
+      const caughtUp = lease.writable ? applyOfflineCatchup(stored, Date.parse(slots.current.savedAt), Date.now(), observer.onDay) : { runtime: stored, window: null };
       const seconds = caughtUp.window ? Math.round(caughtUp.window.appliedTicks * TICK_MS / 1000) : 0;
+      const summary = seconds ? observer.summarize(caughtUp.runtime.world) : null;
       const resumeNotice = seconds
-        ? `${formatDuration(seconds)} of protected research time restored${caughtUp.window?.remainingTicks ? '; the eight-hour offline cap was reached' : ''}. Tank water, feeding and fish development kept going; each tank's care panel shows what changed.`
+        ? `${formatDuration(seconds)} of protected research time restored${caughtUp.window?.remainingTicks ? '; the eight-hour offline cap was reached' : ''}. Tank water, feeding and fish development kept going.`
         : '';
       return { runtime: caughtUp.runtime, session, blocked: false, readOnly: !lease.writable,
-        warning: lease.writable ? '' : 'Read-only: another tab controls this world. Close it, then reload this tab to continue.', resumeNotice };
+        warning: lease.writable ? '' : 'Read-only: another tab controls this world. Close it, then reload this tab to continue.', resumeNotice,
+        absence: summary && summary.gameDays > 0 ? summary : null };
     }
     if (slots.backup1 || slots.backup2) throw new Error('The current snapshot is missing. Review a recovery copy before saving.');
     const legacy = localStorage.getItem(SAVE_KEY);
     if (legacy !== null) fallback = importRuntime(legacy, worldId);
     await session.save(fallback);
     // Keep the original v1 localStorage data intact even after successful migration/read-back.
-    return { runtime: fallback, session, blocked: false, readOnly: false, warning: '', resumeNotice: '' };
+    return { runtime: fallback, session, blocked: false, readOnly: false, warning: '', resumeNotice: '', absence: null };
   } catch (error) {
     if (!session) lease?.release();
-    return { runtime: fallback, session, blocked: true, readOnly: false, resumeNotice: '',
+    return { runtime: fallback, session, blocked: true, readOnly: false, resumeNotice: '', absence: null,
       warning: `Stored data has been preserved. This session will not autosave. ${error instanceof Error ? error.message : 'Storage is unavailable.'} Open Saves to export or recover.` };
   }
 }

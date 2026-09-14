@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { advanceWorld } from './habitat';
+import { advanceWorld, type DayReport } from './habitat';
 import { decodeSave } from './save';
 import { applyCommand, commandSchema, WORLD_VERSION, type Command } from './world';
 import type { World } from './types';
@@ -32,20 +32,20 @@ export function createRuntime(world: World, worldId: string): Runtime {
 }
 
 /**
- * Visible and background tanks use this same tick integration. Water advances through fixed absolute steps, so fine,
- * coarse, background and offline advances agree exactly. Fish biology stays inactive until its M3 contracts exist.
+ * Visible and background tanks use this same tick integration. Care and water advance through fixed absolute steps and
+ * development at day boundaries, so fine, coarse, background and offline advances agree exactly. `onDay` only observes.
  */
-export function advanceRuntime(runtime: Runtime, targetTick: number, eventTicks: readonly number[] = []): Runtime {
+export function advanceRuntime(runtime: Runtime, targetTick: number, eventTicks: readonly number[] = [], onDay?: (report: DayReport) => void): Runtime {
   const segments = timelineSegments(runtime.tick, targetTick, eventTicks);
   if (!segments.length) return runtime;
   const tankTicks = { ...runtime.simulation.tankTicks };
   for (const tank of runtime.world.tanks) tankTicks[tank.id] = (tankTicks[tank.id] ?? runtime.tick) + (targetTick - runtime.tick);
-  return { ...runtime, world: advanceWorld(runtime.world, runtime.tick, targetTick), tick: targetTick, simulation: { version: 1, tankTicks } };
+  return { ...runtime, world: advanceWorld(runtime.world, runtime.tick, targetTick, onDay), tick: targetTick, simulation: { version: 1, tankTicks } };
 }
 
-export function applyOfflineCatchup(runtime: Runtime, savedAtMs: number, nowMs: number): { runtime: Runtime; window: OfflineWindow } {
+export function applyOfflineCatchup(runtime: Runtime, savedAtMs: number, nowMs: number, onDay?: (report: DayReport) => void): { runtime: Runtime; window: OfflineWindow } {
   const window = offlineWindow(savedAtMs, nowMs);
-  return { runtime: advanceRuntime(runtime, runtime.tick + window.appliedTicks), window };
+  return { runtime: advanceRuntime(runtime, runtime.tick + window.appliedTicks, [], onDay), window };
 }
 
 export function commandEnvelope(runtime: Runtime, payload: Command, tick = runtime.tick): Envelope {

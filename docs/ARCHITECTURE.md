@@ -29,6 +29,8 @@ src/
     habitat.ts      Resident load and food need per tank, world advance (care and water steps plus daily development) and stocking bands
     care.ts         Care model v1: feeder rations, shared food pool, equipment tiers, thermostat, water changes and costs
     careAdvice.ts   Care status, warnings with priced fixes, and projections that preview a change on a copy of the tank
+    absence.ts      Day observer and per-tank absence summary: hatching, stages, growth, condition, limiting causes, warnings
+    careScenario.ts Seeded healthy and stressed care scenarios with a keeper that applies warning fixes
     development.ts  Life model v1: egg/fry/juvenile/adult/elderly stages, logistic growth, lagged condition and environment curves
     juvenile.ts     Stage appearance v1: body and pigment maturity from life state, hatchling proportions and reveal fixtures
     save.ts         Legacy world-v1 schema and reference validation
@@ -53,6 +55,8 @@ src/
     Startup.tsx     Validated async loading before interactive controls
     SavePanel.tsx   Export, import review, retry and backup recovery
     CarePanel.tsx   Care chips, warnings with fixes, and previewed feeder/equipment/thermostat/water-change controls
+    AbsencePanel.tsx "While you were away" per-tank return summary with links to each tank
+    CareScenarios.tsx Research tab charting the healthy and stressed care scenarios
     TankCanvas.tsx  Paints worker motion frames, fish picking and the motion-fault recovery notice
     FishPortrait.tsx Shared procedural renderer at portrait scale, fitted or shared-scale framing
     VisualFixtureLab.tsx Deterministic fixture, anatomy and marking-resemblance comparison surface
@@ -71,6 +75,7 @@ tests/
   water.test.ts    Zero/overload/recovery conservation fixtures, split-interval equality, habitat load, replay and world v1 migration
   development.test.ts Hatching, healthy maturity range, declared-condition fixtures, condition history, egg rules and world v2 migration
   juvenile.test.ts Maturity, hatchling interpolation, stage anatomy and framing sweeps, ornament reveal, turning poses and reveal series
+  absence.test.ts  Day observer neutrality, no unexplained decline across random care, scenario recovery and absence summaries
   care.test.ts     Ration conservation, development under rations and temperature, split/offline/replay equality, costs, warnings, projections and world v3 migration
   limits.test.ts   Living/record limits, deep and wide pedigree queries and atomic rejection
   runtime.test.ts  Command envelopes, retries, replay, compaction, migration and tamper rejection
@@ -292,6 +297,12 @@ The step uses only basic arithmetic, so saved doubles match across browsers.
 - **Commands:** `feed` adds a quarter day of need, `set-care` charges the price difference for higher equipment tiers, and `change-water` charges ◈ 1 per m³ replaced. No-ops, unaffordable changes and feeding a tank without hatched fish reject atomically.
 - **Advice:** `careAdvice.ts` derives status bands, warnings with priced fixes and `projectTank`, which advances a copy holding only that tank and its residents. The UI opens a preview from a warning; only an explicit Apply or Change command mutates the world.
 - **Older saves:** worlds v1–v3 migrate with Measured rations and a thermostat at the rounded water temperature, and rebase at their snapshot (ADR-038).
+
+### Implemented absence summary and care scenarios (FS-307)
+
+- **Observer hook:** `advanceWorld`, `advanceRuntime` and `applyOfflineCatchup` accept an optional `onDay` callback. At each game-day boundary it receives the world before and after development and the environment each tank applied. It only observes; tests assert the advanced world is identical with or without it.
+- **Absence summary:** `loadSession` attaches `absenceObserver` to the ordinary protected catch-up and returns a per-tank `AbsenceSummary`: eggs hatched, fish becoming juvenile or adult, length gained, mean condition before and after, fish that declined, limiting causes with day counts, and the care warnings waiting on return. It also counts fish-days whose condition fell without a named cause; the environment model makes this zero, so the count is a standing check. `AbsencePanel` shows the summary above the tank until dismissed.
+- **Care scenarios:** `careScenario.ts` runs two seeded worlds through the same advance for 40 game days. A simulated keeper applies the stressed tank's warning fixes through ordinary commands from day 16 and reviews every five days. Research → **Care scenarios** charts both; nothing touches the player's world (ADR-021).
 
 ## 7. Worker and renderer protocol
 

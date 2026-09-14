@@ -62,7 +62,7 @@ React + TypeScript + Vite. Pure seeded genetics and pedigree core, with genome v
 
 M2 (FS-201–206) is complete. Five human observers scored 54/60 in the M1 resemblance study (FS-111), meeting M1's human-resemblance gate. Care controls, juvenile appearance reveal, PixiJS and an authoritative database-backed market remain planned. See the [M2 runtime report](docs/research/M2-RUNTIME-AND-RECOVERY.md) and [human resemblance results](docs/research/FS-111-HUMAN-RESEMBLANCE.md).
 
-FS-304 adds spatial steering around shared rock and plant-cover footprints. FS-403 offers exact single-locus odds and sampled offspring ranges early in the lab. M3 care/recovery and M4 normal breeding/nursery/genealogy remain unfinished. See [spatial and prediction evidence](docs/research/FS-304-403-SPATIAL-AND-PREDICTION.md).
+FS-304 adds spatial steering around shared rock and plant-cover footprints. FS-403 offers exact single-locus odds and sampled offspring ranges early in the lab. M3 is delivered: care controls with previews and warnings (FS-305), juvenile reveal and swim animation (FS-306), and a per-tank return summary plus healthy and stressed care scenarios in Research (FS-307). M4 normal breeding, nursery and genealogy remain unfinished. See [spatial and prediction evidence](docs/research/FS-304-403-SPATIAL-AND-PREDICTION.md).
 
 ## Repository status
 

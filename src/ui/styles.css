@@ -119,6 +119,32 @@ footer a{display:inline-flex;align-items:center;min-height:24px}
 .hero-toggle button, .portrait-toggle button { font-size: .72rem; padding: 6px 10px; }
 .hero-portrait > span { margin-top: -4px; }
 @media (pointer: coarse) { .hero-toggle button, .portrait-toggle button { min-width: 44px; min-height: 44px; } }
+/* FS-307 absence summary and care scenarios. */
+.absence-panel { margin: 0 0 16px; padding: 16px; border: 1px solid #4f7d68; border-radius: 9px; background: #15302b; }
+.absence-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.absence-heading h2 { font-size: 1.05rem; font-weight: 500; margin-top: 6px; }
+.absence-heading p { font-size: .74rem; color: #a9c0b5; margin-top: 6px; line-height: 1.5; }
+.absence-panel ul { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.absence-panel li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 10px 12px; border: 1px solid #2f4541; border-radius: 8px; background: #122326; }
+.absence-panel li strong { display: block; font-size: .82rem; font-weight: 600; }
+.absence-panel li span, .absence-panel li p { font-size: .72rem; color: #b8ccbf; line-height: 1.5; margin: 0; }
+.absence-panel li p { grid-column: 1; }
+.absence-panel li button { grid-column: 2; grid-row: 1 / span 3; font-size: .72rem; }
+.absence-panel li p.absence-warnings { color: #f0d88f; }
+.absence-panel > .help-copy { margin: 10px 0 0; }
+@media (max-width: 650px) { .absence-panel li { grid-template-columns: minmax(0, 1fr); } .absence-panel li button { grid-column: 1; grid-row: auto; justify-self: start; } }
+.scenario-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 22px; }
+.scenario-card svg { display: block; width: 100%; height: auto; }
+.scenario-card .help-copy { margin: 4px 0 8px; }
+.scenario-stress { fill: #6a3040; opacity: .35; }
+.scenario-condition { fill: none; stroke: #9fd89b; stroke-width: 2.4; stroke-linejoin: round; }
+.scenario-oxygen { fill: none; stroke: #6db9ff; stroke-width: 1.6; stroke-linejoin: round; }
+.scenario-ammonia { fill: none; stroke: #d9b86c; stroke-width: 1.6; stroke-dasharray: 5 4; }
+.scenario-action { stroke: #f0d88f; stroke-width: 1.4; stroke-dasharray: 2 3; }
+.legend.oxygen { color: #6db9ff; }
+.legend.review { color: #f0d88f; }
+.scenario-actions { margin: 8px 0 0; padding-left: 18px; font-size: .7rem; color: #b8ccbf; line-height: 1.6; }
+@media (max-width: 900px) { .scenario-grid { grid-template-columns: minmax(0, 1fr); } }
 .fixture-grid.reveal-strip { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 @media (max-width: 1180px) { .fixture-grid.reveal-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .fixture-grid.reveal-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

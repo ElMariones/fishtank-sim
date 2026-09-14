@@ -100,6 +100,19 @@ Display rules in `src/core/juvenile.ts`, `src/rendering/fish.ts` and `src/ui/Tan
 | Turning | Facing eases 4 per second through side-on | Picking treats facing below 0.35 as 0.35 |
 | Interpolation | Positions and time blend over each 50 ms worker frame | Paused tanks hold the last frame |
 
+### Care scenarios (FS-307)
+
+Seeded demonstration settings in `src/core/careScenario.ts`; they are not tuning targets for real tanks.
+
+| Parameter | Value | Reason / limitation |
+|---|---:|---|
+| Length | 40 game days | Long enough to show decline and full recovery |
+| Healthy tank | 30 founder-distribution adults, Measured rations, Standard filter and aeration, 22 °C | Stays at 100% condition with no warnings |
+| Stressed tank | 45 adults, Generous rations, Compact filter, Standard aeration, 28 °C thermostat | Warnings from day 1 while fish are above 90%; condition falls to 13% by day 15 with oxygen 4.1–4.7 mg/L |
+| Keeper | From day 16, applies every settings fix and water change named by the warnings; reviews every 5 days while warnings remain | One review (◈ 360) cleared every warning by day 18 |
+| Rejected setup | 60 adults, Heavy rations, Compact filter, Gentle aeration, 29 °C | Oxygen 0.0 mg/L by day 1 and ammonia 73.55 mg N/L by day 15; condition kept falling six days after the first fix |
+| Decline tolerance | 0.5 percentage points over an absence | Smaller changes do not count a fish as declined in the return summary |
+
 ## 2. Proposed solo launch tuning
 
 | System | Initial experiment range | Measure |
