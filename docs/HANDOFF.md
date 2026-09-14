@@ -37,7 +37,7 @@ Genetics use 48 legacy loci, or 60 loci in genome v2, with two phased array copi
 
 Mutations are 0.003 **per copy**. There are 96 transmitted copies, so about one quarter of lab births carry a small de novo mutation. This is a research setting.
 
-The current portrait is adult potential, not current life stage. Growth, longevity, metabolism and oxygen demand are integrated. Food uses transient worker pellets; persistent nutrition is still inactive. The plant button changes visual cover targets; plants have no obstacle footprint yet. Lab credits are local NPC plumbing, not a balanced economy.
+The current portrait is adult potential, not current life stage. Growth, longevity, metabolism and oxygen demand are integrated. Food uses transient worker pellets; persistent nutrition is still inactive. The habitat button toggles shared permeable plant cover and solid rock footprints (FS-304). Body-center clearance is a visual proxy; extreme fins may overlap. Lab credits are local NPC plumbing, not a balanced economy.
 
 Geometry lives in `src/core/anatomy.ts` (anatomy v2). The Canvas renderer draws it, portraits frame from its bounds, and the tank uses `src/rendering/tankLayout.ts` for both drawing and picking. Change anchors there and extend `tests/anatomy.test.ts`; do not add renderer-only geometry exceptions.
 
@@ -63,7 +63,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> FS-303 utility behavior and the compound breeding/Genome 2 improvements are DONE, pushed as `e7aefc1`. The requested breeding disclosure and sticky desktop inspector are DONE, pushed as `c50e579`; continue with FS-304 spatial hashing and shelter/obstacle footprints. Read GDD §8, architecture §7 and the FS-303 evidence. Keep behavior in the motion worker as transient visual state, and separate desire selection from steering. Expose each fish's current state and reason to the inspector. Behavior must not be saved or change biology, and visual motion speed must not alter persistent biology. M1 FS-111 pooled five observers (54/60); the unanimously missed markings trial-9 is a follow-up, not a blocker.
+> FS-304 spatial steering and FS-403 independent prediction are verified, awaiting push; see the backlog for final push status and the FS-304/403 report for limits. Continue M3 with FS-305 feeding/equipment/water controls, cost/effect previews and actionable care warnings. Read GDD §5/9 and the water/development contracts. Keep domain care separate from transient worker pellets and motion speed, preserve protected absence, and verify active/background/offline/replay equality and rejected-command atomicity. Complete FS-306/307 before FS-401/402 normal breeding. FS-403 was delivered early in the lab; it does not complete M4's lifecycle or two-generation gate.
 
 ## 7. Subsequent task briefs
 

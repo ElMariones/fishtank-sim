@@ -5,6 +5,7 @@ import { drawFish } from '../rendering/fish';
 import { fishPose, pickActor, visualGrowth } from '../rendering/tankLayout';
 import { BEHAVIOR_STATES, type BehaviorSummary } from '../simulation/behavior';
 import { createActor, type Actor } from '../simulation/motion';
+import { habitatFootprints } from '../simulation/footprints';
 import { MotionWorkerClient } from '../simulation/motionClient';
 import { TRANSFORM_STRIDE, type FromMotionWorker, type PlaybackSpeed } from '../simulation/protocol';
 import { TICK_MS } from '../simulation/time';
@@ -118,12 +119,21 @@ export function TankCanvas(props: Props) {
         ctx.fillStyle = '#a5e0cf04'; ctx.beginPath(); ctx.moveTo(width * i / 5, 0); ctx.lineTo(width * i / 5 + width * 0.18, 0); ctx.lineTo(width * i / 5 - width * 0.1 + Math.sin(time * 0.1) * 30, height); ctx.lineTo(width * i / 5 - width * 0.16, height); ctx.fill();
       }
       ctx.fillStyle = '#30433f'; ctx.beginPath(); ctx.moveTo(0, height); ctx.lineTo(0, height - 24); ctx.bezierCurveTo(width * 0.3, height - 2, width * 0.7, height - 45, width, height - 24); ctx.lineTo(width, height); ctx.fill();
-      if (current.tank.planted) {
-        for (let i = 0; i < 25; i++) {
-          const x = (i < 14 ? i * 12 : width - (i - 14) * 14), plantHeight = 45 + (i * 31 % 115);
+      for (const cover of habitatFootprints(current.tank.planted).filter(f => f.kind === 'cover')) {
+        for (let i = 0; i < 13; i++) {
+          const x = (cover.x + (i / 12 - 0.5) * cover.radius * 2) * width;
+          const bottom = (cover.y + cover.radius) * height, plantHeight = cover.radius * height * (1 + (i * 31 % 100) / 100);
           ctx.strokeStyle = i % 2 ? '#42685380' : '#294f4680'; ctx.lineWidth = 3 + i % 5;
-          ctx.beginPath(); ctx.moveTo(x, height); ctx.bezierCurveTo(x - 20, height - plantHeight * 0.4, x + 30, height - plantHeight * 0.7, x + Math.sin(time * 0.6 + i) * 12, height - plantHeight); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(x, bottom); ctx.bezierCurveTo(x - 10, bottom - plantHeight * 0.4, x + 15, bottom - plantHeight * 0.7, x + Math.sin(time * 0.6 + i) * 8, bottom - plantHeight); ctx.stroke();
         }
+      }
+      for (const footprint of habitatFootprints(current.tank.planted)) {
+        if (footprint.kind !== 'rock') continue;
+        const x = footprint.x * width, y = footprint.y * height;
+        const stone = ctx.createLinearGradient(x, y - footprint.radius * height, x, y + footprint.radius * height);
+        stone.addColorStop(0, '#72847b'); stone.addColorStop(1, '#34463f');
+        ctx.fillStyle = stone; ctx.strokeStyle = '#9aa99a70'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.ellipse(x, y, footprint.radius * width, footprint.radius * height, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       }
       for (let i = 0; i < 26; i++) {
         const x = (i * 137.3 + Math.sin(time * 0.2 + i) * 10) % width, y = height - ((i * 53.7 + time * (3 + i % 3)) % height);

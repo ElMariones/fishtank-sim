@@ -75,6 +75,12 @@ Core modules import neither React nor browser globals. The Canvas renderer recei
 
 There is currently **no backend, WebGL mesh, biological life-stage scheduler, authentication, or online market**. The Web Worker handles visual motion; commands, save validation and the persistent clock remain separate pure/domain or persistence modules.
 
+### FS-304/403 continuation, 14 September 2026
+
+`simulation/spatial.ts` indexes the immutable actor snapshot once per motion step. `behavior.ts` reuses ordered local candidates for utility and steering, with an ID map for leader lookup. `simulation/footprints.ts` defines the normalized cover and solid rocks used by Canvas and motion. Anticipatory forces and body-center exclusion are visual-only; the saved planted flag selects the preset. Behavior model 2 keeps motion protocol 2 and all persistent schemas unchanged.
+
+`core/prediction.ts` reads genomes only: exact unordered single-locus genotype odds before mutation, plus 256 linked/meiosis samples from a dedicated prediction namespace. `ui/OffspringPrediction.tsx` memoizes by genome/goal content and labels empirical ranges, expression scores and exact odds separately. It is available in the lab ahead of normal breeding, independent of clock, commands, fish IDs and nursery records. It predicts current genome-v2 births; legacy replay rules are unchanged.
+
 ## 2. Stack decisions
 
 | Concern | Current | Next target | Reason |
@@ -82,7 +88,7 @@ There is currently **no backend, WebGL mesh, biological life-stage scheduler, au
 | UI and tooling | React, strict TypeScript, Vite | Retain | Browser simulation does not require server rendering |
 | Renderer | Canvas 2D procedural paths | PixiJS mesh/shaders after core proof | Validate phenotype contract without GPU setup overhead |
 | Genetics | Pure synchronous TypeScript | Same core in worker/server | Share one tested rule implementation |
-| Motion | 20 Hz module worker, transferable transform frames | Render interpolation and spatial hash | Keep O(N²) reference steering away from UI |
+| Motion | 20 Hz module worker, spatial hash and shared cover/rock footprints | Render interpolation and morphology-aware clearance | Remove unconditional all-pairs scans; dense clusters still cost more |
 | Persistence | IndexedDB transactions, two backups, v1 migration and Web Locks writer lease | Worker-assisted incremental persistence | Larger archives need async storage and explicit recovery |
 | State | React state + motion refs | UI store only if needed | Avoid global subscription to every swimming coordinate |
 | Genealogy | Exact memoized ancestor queries and paginated relatives | Worker query + incremental kinship cache | Preserve history without world-sized matrix allocation |

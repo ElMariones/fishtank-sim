@@ -2,9 +2,15 @@
 
 **Updated:** 13 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`) and FS-302 (life stages and growth, `5821f46`) and FS-303 (utility behavior, `e7aefc1`) are DONE.
 
-## Current continuation — DONE, pushed `e7aefc1`
+## Current continuation — verified, awaiting push
 
-FS-303 utility behavior and user requests FS-114 (compound breeding planner and favorite-safe bulk sales) and FS-115 (Genome 2 inspection/ornament refinement) are DONE, pushed `e7aefc1`. The requested planner collapse and sticky inspector follow-up is DONE, pushed `c50e579`. See [behavior and breeding evidence](research/FS-303-BEHAVIOR-AND-BREEDING.md). FS-304 is next; FS-305–307 remain open.
+14 September 2026: FS-304 spatial steering and FS-403 offspring prediction are implemented and verified, awaiting push. FS-403 is delivered early as a pure prediction feature in the lab; it does not complete the FS-401/402 lifecycle dependencies or M4's gate. See [spatial and prediction evidence](research/FS-304-403-SPATIAL-AND-PREDICTION.md). Next is FS-305 care; FS-306/307 and FS-401/402/404–406 remain open.
+
+The starting checkout was at `953143d`, equal to freshly fetched `origin/main`, with no tracked changes or unpushed commits. The unrelated `.claude/launch.json` remains untouched and untracked. Prior FS-303/114/115 work (`e7aefc1`) and the planner/inspector follow-up (`c50e579`) were already pushed.
+
+- FS-304: one spatial hash per motion step supplies stable ordered local neighbors; a map resolves school leaders. Shared normalized plant cover and rock footprints drive Canvas and avoidance. Rocks use anticipatory steering plus body-center clearance; extreme fins can overlap. Fixed habitat presets, no placement editor or saved trajectories.
+- FS-403: all 60 loci have exact pre-mutation genotype odds. A separate 256-offspring preview shows adult length and up to four goal scores with median and 10th–90th percentiles; linkage and lab mutation are sampled. Previews leave future births unchanged. Parent-pair and goal content keys prevent repeat sampling on live clock updates.
+- Browser review also fixed the narrow Breed button caused by the capacity text sharing its mobile grid row.
 
 ## Delivered
 
@@ -62,7 +68,7 @@ FS-303 utility behavior and user requests FS-114 (compound breeding planner and 
 | Curiosity/life-history genes | growth_rate, longevity, metabolism and oxygen_demand are active; fertility and curiosity remain display-only | FS-303 FS-401 |
 | Breeding | Eggs cannot breed, but the lab bypasses maturity, courtship, shared habitat, cost and cooldown; fixed 20 eggs | FS-401–402 |
 | Environment | One-compartment water per tank (litres, temperature, oxygen, ammonia, food) with read-only bands; poor water slows growth but does not harm fish; no pH, nitrite/nitrate, light or plant uptake; no care controls | FS-305 |
-| Decorations | Plants provide visual cover targets; no placement or collision footprint | FS-304 FS-503 |
+| Decorations | Shared cover/rock footprints and body-center clearance; extreme fins can overlap; no user placement or collision mesh | FS-503 FS-701 |
 | Economy | Free breeding/tanks make profit farming trivial, and batch sale makes it faster; stock is generated at purchase; sale quotes ignore appearance and current size; no real market | FS-501–502 |
 | Batch management | Batch sale only; no batch move/rehome, and selection does not persist across tank or archive views | FS-406 |
 | Rarity | Only founder-stock rarity labels for appearance (FS-113); no measured reference population or global service | FS-603 FS-805 |
@@ -128,4 +134,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**Continue M3 with FS-304 spatial hashing and shelter/obstacle footprints.**
+**Continue M3 with FS-305 feeding/equipment/water controls and actionable care warnings.** Preserve protected absence and deterministic active/offline/replay integration. Then finish FS-306/307 before FS-401/402 normal breeding. FS-403 prediction is available early; it does not establish M4's two-generation gate.

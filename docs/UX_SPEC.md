@@ -78,7 +78,7 @@ The current lab shows all 48 loci and marks new mutations with an asterisk. Carr
 
 **Blocked cases:** same fish; wrong reproductive role; underage; archived/listed parent; unhealthy/unready parent; different breeding habitat; nursery full; pending clutch cap; stale world version. Messages say what can change.
 
-**Probability language:** “Estimated from 1,024 simulated offspring” versus “25% at this single locus.” Never imply the actual committed clutch will contain exactly the predicted percentage.
+**Implemented probability language (FS-403):** “256 independent samples” with linkage and 0.3% mutation per copy, versus exact single-locus genotype odds before mutation. Show median and 10th–90th percentiles, explain they are empirical ranges rather than confidence intervals, and distinguish normalized expression scores from inheritance probabilities. Exact allele IDs are available for all 60 loci. Normal breeding/courtship/nursery flows remain planned. Never imply a committed clutch will contain exactly the predicted percentage.
 
 ## 6. Family navigation
 

@@ -1,13 +1,15 @@
 import { clamp, hash, random } from '../core/random';
 import type { Fish } from '../core/types';
 import { createActor, type Actor } from './motion';
+import { SpatialHash } from './spatial';
+import { habitatFootprints, obstacleForce, resolveObstacles } from './footprints';
 
 /**
- * Behavior model v1 (FS-303). A utility system chooses each fish's desire (cruise, forage, eat, hide or school), then
+ * Behavior model v2 (FS-303/304). A utility system chooses each fish's desire (cruise, forage, eat, hide or school), then
  * steering pursues it. Hunger and fear are transient drives in the motion worker: they are never saved and never change
  * growth or condition, which belong to the persistent world. Every step is seeded and deterministic for the same inputs.
  */
-export const BEHAVIOR_MODEL = 1;
+export const BEHAVIOR_MODEL = 2;
 export const STEP_SECONDS = 0.05;
 /** Utilities are re-evaluated every half second. */
 export const DECISION_STEPS = 10;
@@ -73,15 +75,15 @@ export function startle(world: BehaviorWorld, x: number, y: number): BehaviorWor
 }
 
 /** Plants along the lower edges give cover; an open tank only offers its bottom corners, which count for less. */
-export const coverPoints = (planted: boolean) => planted ? [{ x: 0.13, y: 0.8 }, { x: 0.87, y: 0.8 }] : [{ x: 0.12, y: 0.86 }, { x: 0.88, y: 0.86 }];
+export const coverPoints = (planted: boolean) => planted ? habitatFootprints(true).filter(f => f.kind === 'cover') : [{ x: 0.12, y: 0.86 }, { x: 0.88, y: 0.86 }];
 
 type Choice = { state: BehaviorState; score: number; reasons: number; leader: string | null };
 
 /** Utility scores for one fish; the current state gets a small stickiness bonus, and ties keep declaration order. */
-export function chooseBehavior(actor: BehaviorActor, world: BehaviorWorld): Choice {
+export function chooseBehavior(actor: BehaviorActor, world: BehaviorWorld, nearby: readonly BehaviorActor[] = world.actors): Choice {
   const p = actor.phenotype, food = world.pellets.length > 0;
   let neighbors = 0, leader: BehaviorActor | null = null;
-  for (const other of world.actors) {
+  for (const other of nearby) {
     if (other.id === actor.id || Math.hypot(other.x - actor.x, other.y - actor.y) > NEIGHBOR_RADIUS) continue;
     neighbors++;
     if (!leader || other.phenotype.bold > leader.phenotype.bold || (other.phenotype.bold === leader.phenotype.bold && other.id < leader.id)) leader = other;
@@ -105,13 +107,17 @@ export function stepBehavior(world: BehaviorWorld): BehaviorWorld {
     .map(pellet => pellet.y < BOTTOM_Y ? { ...pellet, y: Math.min(BOTTOM_Y, pellet.y + 0.035 * STEP_SECONDS) } : { ...pellet, settled: pellet.settled + STEP_SECONDS })
     .filter(pellet => pellet.settled < 20);
   const context: BehaviorWorld = { ...world, pellets }, eaten = new Set<number>();
+  const spatial = new SpatialHash(world.actors, NEIGHBOR_RADIUS);
+  const byId = new Map(world.actors.map(actor => [actor.id, actor]));
+  const rocks = habitatFootprints(world.planted).filter(f => f.kind === 'rock');
   const actors = world.actors.map(actor => {
+    const nearby = spatial.query(actor, NEIGHBOR_RADIUS);
     const p = actor.phenotype;
     let { state, reasons, leader, dwell, meals } = actor;
     let hunger = clamp(actor.hunger + STEP_SECONDS * HUNGER_PER_SECOND * p.metabolism);
     const fear = Math.max(0, actor.fear - STEP_SECONDS * FEAR_DECAY_PER_SECOND);
     if (decide) {
-      const choice = chooseBehavior({ ...actor, hunger, fear }, context);
+      const choice = chooseBehavior({ ...actor, hunger, fear }, context, nearby);
       if (choice.state === state) ({ reasons, leader } = choice);
       else if (dwell >= MIN_DWELL_STEPS || choice.state === 'eat' || choice.state === 'hide') {
         ({ state, reasons, leader } = choice);
@@ -143,13 +149,13 @@ export function stepBehavior(world: BehaviorWorld): BehaviorWorld {
       seek(cover.x, cover.y, 0.06);
       speedScale = fear > 0.5 ? 1.35 : 0.8;
     } else if (state === 'school') {
-      const guide = leader ? world.actors.find(other => other.id === leader) : undefined;
+      const guide = leader ? byId.get(leader) : undefined;
       if (guide) {
         seek(guide.x - guide.vx * 2, guide.y - guide.vy * 2, 0.02 + p.social * 0.03);
         ax += (guide.vx - actor.vx) * 0.4; ay += (guide.vy - actor.vy) * 0.4;
       }
     }
-    for (const other of world.actors) {
+    for (const other of nearby) {
       if (other.id === actor.id) continue;
       const dx = other.x - actor.x, dy = other.y - actor.y, distance = Math.hypot(dx, dy);
       if (distance < SEPARATION_RADIUS) { ax -= dx * 0.7; ay -= dy * 0.7; }
@@ -159,13 +165,16 @@ export function stepBehavior(world: BehaviorWorld): BehaviorWorld {
     if (actor.x > 0.85) ax -= (actor.x - 0.85) * 1.4;
     if (actor.y < 0.18) ay += (0.18 - actor.y) * 0.8;
     if (actor.y > 0.83) ay -= (actor.y - 0.83) * 0.8;
+    const avoidance = obstacleForce(actor, { x: actor.vx, y: actor.vy }, rocks);
+    ax += avoidance.x; ay += avoidance.y;
     let vx = actor.vx + ax * STEP_SECONDS * p.turning, vy = actor.vy + ay * STEP_SECONDS * p.turning;
     const maxSpeed = p.speed * (0.7 + p.activity * 0.6) * speedScale, speed = Math.hypot(vx, vy);
     if (speed > maxSpeed) { vx *= maxSpeed / speed; vy *= maxSpeed / speed; }
     const x = clamp(actor.x + vx * STEP_SECONDS, 0.08, 0.92), y = clamp(actor.y + vy * STEP_SECONDS, 0.12, 0.88);
     if (x === 0.08 || x === 0.92) vx = x === 0.08 ? Math.abs(vx) : -Math.abs(vx);
     if (y === 0.12 || y === 0.88) vy = y === 0.12 ? Math.abs(vy) : -Math.abs(vy);
-    return { ...actor, x, y, vx, vy, state, reasons, leader, dwell, hunger, fear, meals };
+    const resolved = resolveObstacles({ x, y }, { x: vx, y: vy }, rocks);
+    return { ...actor, ...resolved, state, reasons, leader, dwell, hunger, fear, meals };
   });
   if (eaten.size) pellets = pellets.filter((_, index) => !eaten.has(index));
   return { ...world, actors, pellets, step };

@@ -334,6 +334,12 @@ Heterozygosity = heterozygous loci / assayed loci. It is not “genetic diversit
 
 FS-112 uses memoized ancestor-pair queries with an explicit stack, including diagonal terms. It preserves all recorded generations without a depth cutoff and avoids allocating a world-sized matrix. Pathological pedigrees can still require O(N²) pairs; worker execution and cross-query caching remain future work. The lab caps permanent records at 10,000 and living fish at 480.
 
+### Implemented offspring guidance (FS-403)
+
+The planner offers exact unordered genotype odds at every locus, before mutation. Each parental homolog contributes with probability one half; linkage changes joint outcomes but not these marginal probabilities. Genome v1 uses the classic baseline at appended appearance loci.
+
+A separate deterministic 256-offspring sample uses current genome v2, linked meiosis and the lab mutation rate. It reports median and empirical 10th–90th percentiles for adult length and up to four expressed goal scores. The seed namespace depends on parental genome fingerprints and sample index, never world birth sequence state. Changing goals measures the same sample. These are adult-potential ranges, not guaranteed clutch results, joint probabilities, care forecasts or confidence intervals. See [verification](research/FS-304-403-SPATIAL-AND-PREDICTION.md).
+
 ## 13. Validation gates
 
 - Exact repeatability from seed, parents, parameters and version.

@@ -4,6 +4,7 @@ import { goalValue, sortCollection, type BreedingGoal } from '../core/collection
 import { isEgg } from '../core/development';
 import type { Fish, Tank } from '../core/types';
 import { FishPortrait } from './FishPortrait';
+import { OffspringPrediction } from './OffspringPrediction';
 
 const groups = [...new Set(GOAL_DESCRIPTORS.map(d => d.group))];
 const percent = (n: number) => `${Math.round(n * 100)}%`;
@@ -55,6 +56,7 @@ export function BreedingPlanner({ fish, tanks, goal, onGoal, motherId, fatherId,
       const odds = targetCopyOdds(selectedMother, selectedFather, t.descriptor);
       return odds ? <p key={t.descriptor}>{GOAL_BY_KEY.get(t.descriptor)?.label}: <b>{percent(odds.atLeastOne)}</b> at least one copy · <b>{percent(odds.both)}</b> two copies</p> : null;
     })}<small>Exact single-locus copy odds before mutation. Dominance, blends and other genes determine the visible result; these are not combined-trait probabilities.</small></div> : null}
+    {selectedMother && selectedFather ? <OffspringPrediction mother={selectedMother.genome} father={selectedFather.genome} goals={traits.map(t => t.descriptor)} /> : null}
     <p className="help-copy">Match ranks expressed adult traits, not offspring odds. Target copies reveal hidden carriers; a blend can match both colors. Combined goals average their scores. Leaders are ranked individually; review the pair’s pedigree F below. Filtering keeps your selected parents.</p>
   </div>;
 }

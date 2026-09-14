@@ -252,6 +252,12 @@ The user supplied five anonymous complete `study-v1-12x4` result records; the fi
 - **Console:** tabs still holding a pre-life world during hot reload threw "Cannot read properties of undefined (reading 'lengthCm')". A newly opened tab loaded the same world with no console errors.
 - **Not verified:** juvenile rendering (FS-306), feeding and nutrition (FS-305), health effects, and real-time hatching without an offline jump.
 
+## FS-304 spatial steering and FS-403 prediction verification
+
+14 September 2026, Windows, Node 24.11.1 / npm 11.6.2. `npm run check`: 111 tests in 18 files, strict TypeScript and production build passed. Ten new fixtures cover ordered spatial-query correctness, utility parity, candidate scaling, obstacle exclusion/tangent motion, exact Mendelian odds, mixed genomes, prediction determinism and unchanged future births. `node scripts/check-docs.mjs` and `git diff --check` passed. Full [evidence and limitations](research/FS-304-403-SPATIAL-AND-PREDICTION.md).
+
+In-app Chromium on isolated port 5175: verified goal and parent changes update sampled adult ranges; exact base-color odds; habitat off/on; reload with saved world and goal; and narrow table layout at 375 × 812. Browser review found and fixed a squeezed Breed button by placing capacity feedback on a separate grid row (rechecked at 290 px button width). Breeding after preview produced one 20-egg cohort; reload retained 26 fish. No warning/error logs were reported. Rock exclusion and constant-density scaling are test evidence, not a claim of full silhouette collision or a production device benchmark. M3/M4 milestone gates remain open.
+
 ## 4. Required next verification
 
 ### Visual inheritance / FS-101–107, FS-111

@@ -29,7 +29,7 @@ The npm cache is configured inside this checkout for compatibility with the work
 1. Select a swimming fish or its collection card. Rename it and inspect its 48- or 60-locus genome, including named Genome 2 appearance alleles.
 2. Choose a mother and father. Breed twenty eggs into the current tank and watch them hatch and grow.
 3. Select a child, then open Family and choose a parent.
-4. Move interesting offspring to another aquarium and select them as the next parents.
+4. Review the planner's exact single-locus odds and 256-sample adult-potential ranges, then move interesting offspring to another aquarium and select them as the next parents.
 5. Use unrelated NPC stock for outcrossing. Selling preserves the fish’s family record.
 6. Open **Saves** to export, preview a v1/v2 import, or restore one of two backups. The app automatically reloads its validated IndexedDB save and preserves the original v1 localStorage data.
 
@@ -61,6 +61,8 @@ New contributors and agents should start with [AGENTS.md](AGENTS.md), then [impl
 React + TypeScript + Vite. Pure seeded genetics and pedigree core, with genome v2 color and ornament chromosomes. Procedural Canvas fish shared between live tank and portraits, including body and eye colors, fine spots, tiger stripes, marbling, calico, rosettes, scale types, shimmer and tail/dorsal patterns. A versioned Web Worker runs fixed-step visual motion. The persistent clock integrates visible, background and protected offline time, including a one-compartment water model per tank; life stages and accumulated growth are active; persistent feeding and health remain planned. Versioned command replay, transactional IndexedDB backups and a single-writer browser lock protect local worlds.
 
 M2 (FS-201–206) is complete. Five human observers scored 54/60 in the M1 resemblance study (FS-111), meeting M1's human-resemblance gate. Care controls, juvenile appearance reveal, PixiJS and an authoritative database-backed market remain planned. See the [M2 runtime report](docs/research/M2-RUNTIME-AND-RECOVERY.md) and [human resemblance results](docs/research/FS-111-HUMAN-RESEMBLANCE.md).
+
+FS-304 adds spatial steering around shared rock and plant-cover footprints. FS-403 offers exact single-locus odds and sampled offspring ranges early in the lab. M3 care/recovery and M4 normal breeding/nursery/genealogy remain unfinished. See [spatial and prediction evidence](docs/research/FS-304-403-SPATIAL-AND-PREDICTION.md).
 
 ## Repository status
 
