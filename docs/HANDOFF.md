@@ -75,7 +75,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> M3 is DONE (FS-305 `d425639`, FS-306 `325ceb4`, FS-307 `a5d5ddc`). FS-401/402 normal breeding is DONE, pushed `9aabfdb`. FS-404's bounded six-generation family graph is DONE, pushed `b7c3e37`. FS-405's incremental kinship cache is delivered (see the backlog and the FS-405 report). Finish M4 with FS-406: a two-generation normal-mode demonstration, cohort selection and batch rehoming with review. Rehoming must count nursery reservations and reject a batch atomically, like batch sale. Keep migrations writing keys in schema order, family views bounded, and kinship served from the session cache.
+> M3 is DONE (FS-305 `d425639`, FS-306 `325ceb4`, FS-307 `a5d5ddc`). FS-401/402 normal breeding is DONE, pushed `9aabfdb`. FS-404's bounded six-generation family graph is DONE, pushed `b7c3e37`. FS-405's incremental kinship cache is DONE, pushed `850f501` (see the FS-405 report). Finish M4 with FS-406: a two-generation normal-mode demonstration, cohort selection and batch rehoming with review. Rehoming must count nursery reservations and reject a batch atomically, like batch sale. Keep migrations writing keys in schema order, family views bounded, and kinship served from the session cache.
 
 ## 7. Subsequent task briefs
 

@@ -1,6 +1,6 @@
 # FS-405 incremental kinship cache and founder assumptions
 
-**Recorded:** 14 September 2026 · **Status:** delivered; push reference in the [backlog](../BACKLOG.md)
+**Recorded:** 14 September 2026 · **Status:** DONE, pushed `850f501`
 **Models:** world save v5 (unchanged) · genome v2 · kinship values unchanged under the default founder assumption
 
 ## Starting state
