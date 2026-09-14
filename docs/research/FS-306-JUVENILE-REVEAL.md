@@ -1,6 +1,6 @@
 # FS-306 juvenile reveal and swim animation
 
-**Recorded:** 14 September 2026 · **Status:** delivered; push reference in the [backlog](../BACKLOG.md)
+**Recorded:** 14 September 2026 · **Status:** DONE, pushed `325ceb4`
 **Models:** world save v4 (unchanged) · stage appearance v1 · genome v2 · development v4 · anatomy v2 · renderer v6
 
 ## Starting state

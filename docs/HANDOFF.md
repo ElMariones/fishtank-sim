@@ -67,7 +67,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> FS-305 care controls are DONE, pushed `d425639`, and FS-306 juvenile reveal is delivered (see the backlog and the FS-306 report). Finish M3 with FS-307: a reproducible healthy versus stressed tank demonstration, a per-tank absence summary on return, and recovery, with a check that condition never falls without a named cause. Keep care previews equal to applied results, then start FS-401/402 normal breeding.
+> FS-305 care controls are DONE, pushed `d425639`, and FS-306 juvenile reveal is DONE, pushed `325ceb4` (see the FS-306 report). Finish M3 with FS-307: a reproducible healthy versus stressed tank demonstration, a per-tank absence summary on return, and recovery, with a check that condition never falls without a named cause. Keep care previews equal to applied results, then start FS-401/402 normal breeding.
 
 ## 7. Subsequent task briefs
 
