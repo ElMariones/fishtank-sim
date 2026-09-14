@@ -1,14 +1,21 @@
 # Implementation status
 
-**Updated:** 14 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list.
+**Updated:** 14 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is delivered; the backlog records the push.
 
-## Current continuation — FS-307 DONE, pushed `a5d5ddc`
+## Current continuation — FS-401/402 normal breeding
+
+14 September 2026: FS-401/402 started from `00e291c` (FS-307 marked DONE), equal to `origin/main`. `.claude/launch.json` stays untracked; its `fishtank-qa` entry (port 5176) is the isolated QA origin.
+
+- FS-401/402: world save v5 adds per-fish rest days and clutch records. A pairing checks roles, adult stage, condition, rest, existing courtships, a shared tank, the nursery and population limits, then reserves nursery places that every arrival counts. Courtship progresses once per game day or records why it paused, lays tracked eggs into the reserved places, rests the parents and marks the clutch hatched. The instant lab cross remains as a labeled shortcut and for replay. See [FS-401/402 breeding lifecycle](research/FS-401-402-BREEDING-LIFECYCLE.md).
+- Next: FS-404 bounded ancestor graph with portraits and six-generation navigation, then FS-405's kinship cache and FS-406's two-generation normal-mode demonstration with batch rehoming.
+
+## Previous continuation — FS-307 DONE, pushed `a5d5ddc`
 
 14 September 2026: FS-307 started from `45c0063` (FS-306 marked DONE), equal to `origin/main`. `.claude/launch.json` stays untracked; its extra `fishtank-qa` entry (port 5176) is the isolated QA origin.
 
 - FS-307: an optional per-day observer on the ordinary advance feeds a per-tank **While you were away** summary after protected catch-up (hatching, stage changes, growth, condition, limiting causes with day counts, waiting warnings) and a standing count of declines without a named cause, which is zero. Research → **Care scenarios** runs a healthy tank and a stressed tank that recovers when a simulated keeper follows its warnings. See [FS-307 care demonstration and absence](research/FS-307-CARE-DEMO-AND-ABSENCE.md).
 - M3 (FS-301–307) task list is delivered. Its gate, "fish react legibly; habitat affects development", is demonstrated by the FS-303, FS-305 and FS-307 fixtures and browser journeys, not by an external playtest.
-- Next: M4, starting with FS-401 maturity, health, cooldown and shared-habitat checks with transparent courtship blockers, then FS-402's reserved clutch scheduler and bounded nursery.
+- Followed by M4 FS-401/402 (above).
 
 ## Delivered
 
@@ -52,7 +59,8 @@
 - FS-305: world save v4 tank care with feeder rations, a shared food pool, filter and aeration tiers, a thermostat, manual feeding and water changes. Nutrition and temperature join the daily environment; condition names every limiting cause. The care panel shows chips, warnings with priced fixes, and controls with cost and a three-day projection before applying. See [FS-305 care controls](research/FS-305-CARE-CONTROLS.md).
 - FS-306: stage appearance v1 in `src/core/juvenile.ts` (body maturity from length, pigment maturity from age) and renderer v6 swim motion with eased turns, interpolation and eggs. Inspector and collection toggles separate **Now** from **Adult potential**; Visual fixtures adds a juvenile reveal strip. See [FS-306 juvenile reveal](research/FS-306-JUVENILE-REVEAL.md).
 - FS-307: `onDay` observer on the shared advance, `absence.ts` per-tank return summary with an unexplained-decline check, the **While you were away** panel, and seeded healthy/stressed care scenarios in Research with a keeper that applies warning fixes. See [FS-307 care demonstration and absence](research/FS-307-CARE-DEMO-AND-ABSENCE.md).
-- 128 automated tests; production build; Chrome verification of worker load/cleanup/faults, two-tab takeover, offline limits, transaction recovery, migration and 10,000-record import/restore, with the runtime journeys repeated in the in-app Chromium pane after the M2 review fixes.
+- FS-401/402: `breeding.ts` pairing and courtship blockers, day-boundary courtship and spawning into reserved nursery places, rest days, cancel and sale guards; world save v5 with validated clutch records; the Normal breeding panel, clutch list and inspector Breeding row. See [FS-401/402 breeding lifecycle](research/FS-401-402-BREEDING-LIFECYCLE.md).
+- 134 automated tests; production build; Chrome verification of worker load/cleanup/faults, two-tab takeover, offline limits, transaction recovery, migration and 10,000-record import/restore, with the runtime journeys repeated in the in-app Chromium pane after the M2 review fixes.
 
 ## Prototype shortcuts and limitations
 
@@ -67,8 +75,8 @@
 | World size | 10,000 records and 480 living fish; tested large snapshot round trip about 755 ms, with validation still on the main thread; pathological pedigrees can require quadratic ancestor-pair work | FS-405 FS-702 |
 | Life stages | Eggs, fry, juveniles, adults and an elderly label with age, growth and condition; condition is the health measure; hatchling proportions ease with length and pigment reveals by age only; fry steer with adult movement traits; no disease or death | FS-906 |
 | Behavior | Utility cruise/forage/eat/hide/school with transient visual pellets; domain feeding is one shared pool per tank; no courtship, territorial utility or learned memory | FS-401 FS-906 |
-| Curiosity/life-history genes | growth_rate, longevity, metabolism and oxygen_demand are active; fertility and curiosity remain display-only | FS-303 FS-401 |
-| Breeding | Eggs cannot breed, but the lab bypasses maturity, courtship, shared habitat, cost and cooldown; fixed 20 eggs | FS-401–402 |
+| Curiosity/life-history genes | growth_rate, longevity, metabolism and oxygen_demand are active; fertility sets courtship speed; curiosity remains display-only | FS-906 |
+| Breeding | Normal breeding enforces adult stage, condition, rest days, a shared tank and a reserved nursery, with recorded pause reasons; the instant lab cross still bypasses them as a labeled shortcut; no courtship animation, mate preference, natural breeding or cost; the Parents filter groups every clutch of a pair | FS-406 FS-906 |
 | Environment | One-compartment water and care per tank: feeder rations, filter and aeration tiers, thermostat and water changes with previews; poor care lowers condition and slows growth but never kills; no pH, nitrite/nitrate, light, plant uptake or disease; food and equipment have no running cost | M5 |
 | Decorations | Shared cover/rock footprints and body-center clearance; extreme fins can overlap; no user placement or collision mesh | FS-503 FS-701 |
 | Economy | Free breeding/tanks make profit farming trivial, and batch sale makes it faster; stock is generated at purchase; sale quotes ignore appearance and current size; no real market | FS-501–502 |
@@ -88,6 +96,8 @@
 | Delivery | Pushed to GitHub `main`; no public deployment or continuous integration | FS-706 |
 
 ## Evidence
+
+**FS-401/402 normal breeding, Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium (isolated port 5176):** 134 tests and build pass. Six fixtures cover pairing blockers, courtship pauses and spawning, reservations under seeded random command walks, no duplication across reloads and offline catch-up, cancel and sale guards, and world v4 migration with clutch validation. Before commit, the fixtures caught a migration key-order bug that would have sent every older save to recovery mode. In the browser, the world v4 QA save loaded cleanly. Haru × Sumi reserved 20 nursery places, refused a sale while courting, paused while separated (45% frozen over 3 game days) and, once reunited, laid 20 eggs into the reserved places and rested for 7 and 3 game days. See [FS-401/402 breeding lifecycle](research/FS-401-402-BREEDING-LIFECYCLE.md).
 
 **FS-307 care demonstration and absence, Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium (isolated port 5176):** 128 tests and build pass. Four fixtures cover observer neutrality, no unexplained decline across 12 random care setups, the healthy and stressed scenarios, and absence summaries including the eight-hour cap. In the browser, a 20-minute absence showed a per-tank summary (20 fish reached adulthood, nothing limited, one quiet tank). The stressed scenario fell from 94% to 13% over 15 game days with oxygen never below 4.1 mg/L, cleared every warning two days after one review, and returned to 100%, with 0 of 675 declines unexplained. See [FS-307 care demonstration and absence](research/FS-307-CARE-DEMO-AND-ABSENCE.md).
 
@@ -142,4 +152,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**Start M4 with FS-401: maturity, health, cooldown and shared-habitat checks with transparent courtship blockers, then FS-402's reserved clutch scheduler and bounded nursery.** Keep the existing instant `breed` command replayable for old journals, reserve nursery places atomically, and keep the absence summary's unexplained-decline count at zero. FS-403 prediction is available early; it does not establish M4's two-generation gate.
+**Continue M4 with FS-404: a bounded ancestor graph with portraits, cross-tank and archived focus, and six-generation navigation.** Then FS-405's incremental kinship cache with unknown-founder assumptions, and FS-406's two-generation normal-mode demonstration with cohort selection and batch rehoming. Keep migrations writing keys in schema order, and keep every arrival counting nursery reservations. FS-403 prediction is available early; it does not establish M4's two-generation gate.

@@ -124,7 +124,7 @@ function recordsOnly(world: World) {
   return {
     ...world,
     tanks: world.tanks.map(tank => ({ id: tank.id, name: tank.name, capacity: tank.capacity, planted: tank.planted })),
-    fish: world.fish.map(member => ({ ...member, life: null })),
+    fish: world.fish.map(member => ({ ...member, life: null, breeding: null })),
   };
 }
 

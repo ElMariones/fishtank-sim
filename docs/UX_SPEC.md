@@ -82,6 +82,13 @@ The current lab shows all 48 loci and marks new mutations with an asterisk. Carr
 
 **Implemented probability language (FS-403):** “256 independent samples” with linkage and 0.3% mutation per copy, versus exact single-locus genotype odds before mutation. Show median and 10th–90th percentiles, explain they are empirical ranges rather than confidence intervals, and distinguish normalized expression scores from inheritance probabilities. Exact allele IDs are available for all 60 loci. Normal breeding/courtship/nursery flows remain planned. Never imply a committed clutch will contain exactly the predicted percentage.
 
+**Lab implementation (FS-401/402):** the breeding panel defaults to **Normal breeding**, with **Instant lab cross** as a labeled research shortcut. Both modes share the parent pickers, goals and predictions.
+- **Setup:** normal breeding adds a nursery select showing free places and a tracked-egg count (8–24).
+- **Blockers:** every hard blocker is listed with its fix. When none remain, a ready line names the courtship tank, the expected game days and the places that will be reserved. A second list warns if courtship would pause right now.
+- **Commit:** **Start courtship · reserve N places** commits the pairing.
+- **Clutches list:** courting clutches show a progress bar, game days, reserved places, live pause reasons and **Cancel courtship**. Incubating and recently hatched clutches offer **Show clutch**, which opens the nursery filtered to that pair.
+- **Elsewhere:** the inspector adds a **Breeding** row (ready, not yet adult, resting, condition too low, or courting with progress). The return summary lists eggs laid and paused courtships.
+
 ## 6. Family navigation
 
 Tree is a directed ancestry graph. Repeated ancestors share identity rather than becoming unrelated duplicate records.

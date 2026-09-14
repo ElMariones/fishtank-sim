@@ -5,6 +5,7 @@ const plural = (count: number, one: string, many = `${one}s`) => `${count} ${cou
 
 function changes(tank: TankAbsence): string {
   const parts = [plural(tank.residents, 'fish', 'fish')];
+  if (tank.eggsLaid) parts.push(`${plural(tank.eggsLaid, 'egg')} laid`);
   if (tank.eggsHatched) parts.push(`${plural(tank.eggsHatched, 'egg')} hatched`);
   if (tank.becameJuvenile) parts.push(`${tank.becameJuvenile} became juvenile`);
   if (tank.becameAdult) parts.push(`${tank.becameAdult} reached adulthood`);
@@ -25,6 +26,7 @@ export function AbsencePanel({ summary, notice, onOpenTank, onDismiss }: { summa
     {reported.length ? <ul>{reported.map(tank => <li key={tank.tankId}>
       <div><strong>{tank.name}</strong><span>{changes(tank)}</span></div>
       <p>{tank.limitDays.length ? `Condition was limited by ${tank.limitDays.map(limit => `${limit.cause} (${plural(limit.days, 'day')})`).join(', ')}.` : 'Nothing limited these fish.'}</p>
+      {tank.courtships.map(text => <p key={text}>{text}</p>)}
       {tank.warnings.length ? <p className="absence-warnings">Needs attention now: {tank.warnings.map(warning => `${warning.severity === 'critical' ? 'urgent ' : ''}${warning.title.toLowerCase()}`).join(', ')}.</p> : null}
       <button onClick={() => onOpenTank(tank.tankId)}>Open {tank.name}</button>
     </li>)}</ul> : null}

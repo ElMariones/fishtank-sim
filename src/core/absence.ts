@@ -1,3 +1,4 @@
+import { courtshipBlockers } from './breeding';
 import { careWarnings, type CareWarning } from './careAdvice';
 import { environmentLimits, lifeStage, type LifeStage } from './development';
 import { metabolicPotential } from './genetics';
@@ -16,6 +17,8 @@ export const DECLINE_TOLERANCE = 0.005;
 
 export type TankAbsence = {
   tankId: string; name: string; residents: number;
+  /** Eggs laid into this tank by clutches during the absence (FS-402). */
+  eggsLaid: number;
   eggsHatched: number; becameJuvenile: number; becameAdult: number; lengthGainedCm: number;
   conditionBefore: number | null; conditionAfter: number | null;
   /** Fish whose condition ended the absence lower than it started. */
@@ -25,6 +28,8 @@ export type TankAbsence = {
   /** Fish-days whose condition fell with no named cause. */
   unexplainedDeclines: number;
   warnings: Pick<CareWarning, 'code' | 'severity' | 'title'>[];
+  /** Courtships in this tank on return, with the reasons any of them is paused. */
+  courtships: string[];
 };
 export type AbsenceSummary = { gameDays: number; tanks: TankAbsence[]; unexplainedDeclines: number };
 
@@ -54,10 +59,10 @@ export function absenceObserver(start: World) {
     const started = new Map(start.fish.map(f => [f.id, f]));
     const tanks = end.tanks.map((tank): TankAbsence => {
       const residents = end.fish.filter(f => f.status === 'living' && f.tankId === tank.id);
-      let eggsHatched = 0, becameJuvenile = 0, becameAdult = 0, lengthGainedCm = 0, declined = 0, beforeSum = 0, afterSum = 0, compared = 0;
+      let eggsLaid = 0, eggsHatched = 0, becameJuvenile = 0, becameAdult = 0, lengthGainedCm = 0, declined = 0, beforeSum = 0, afterSum = 0, compared = 0;
       for (const member of residents) {
         const was = started.get(member.id);
-        if (!was) continue;
+        if (!was) { eggsLaid++; continue; }
         const potential = metabolicPotential(member.genome), from = lifeStage(was.life, potential), to = lifeStage(member.life, potential);
         if (from === 'egg' && to !== 'egg') eggsHatched++;
         if (to === 'juvenile' && from !== 'juvenile') becameJuvenile++;
@@ -66,8 +71,13 @@ export function absenceObserver(start: World) {
         if (member.life.condition < was.life.condition - DECLINE_TOLERANCE) declined++;
         beforeSum += was.life.condition; afterSum += member.life.condition; compared++;
       }
+      const nameOf = (id: string) => end.fish.find(f => f.id === id)?.name ?? id;
+      const courtships = end.clutches.filter(entry => entry.stage === 'courting' && end.fish.find(f => f.id === entry.motherId)?.tankId === tank.id).map(entry => {
+        const reasons = courtshipBlockers(end, entry).map(blocker => blocker.message), pairName = `${nameOf(entry.motherId)} × ${nameOf(entry.fatherId)}`;
+        return reasons.length ? `${pairName}: courtship paused. ${reasons.join(' ')}` : `${pairName}: courting, ${Math.round(entry.progress * 100)}% complete.`;
+      });
       return {
-        tankId: tank.id, name: tank.name, residents: residents.length, eggsHatched, becameJuvenile, becameAdult, lengthGainedCm,
+        tankId: tank.id, name: tank.name, residents: residents.length, eggsLaid, eggsHatched, becameJuvenile, becameAdult, lengthGainedCm, courtships,
         conditionBefore: compared ? beforeSum / compared : null, conditionAfter: compared ? afterSum / compared : null, declined,
         limitDays: [...(limitDays.get(tank.id) ?? new Map<string, number>())].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([cause, days]) => ({ cause, days })),
         unexplainedDeclines: unexplained.get(tank.id) ?? 0,
@@ -82,4 +92,4 @@ export function absenceObserver(start: World) {
 
 /** A tank with nothing to report: no hatching, stage change, decline, limiting cause or waiting warning. */
 export const quietTank = (tank: TankAbsence) =>
-  !tank.eggsHatched && !tank.becameJuvenile && !tank.becameAdult && !tank.declined && !tank.limitDays.length && !tank.warnings.length;
+  !tank.eggsLaid && !tank.eggsHatched && !tank.becameJuvenile && !tank.becameAdult && !tank.declined && !tank.limitDays.length && !tank.warnings.length && !tank.courtships.length;

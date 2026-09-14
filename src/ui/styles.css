@@ -145,6 +145,29 @@ footer a{display:inline-flex;align-items:center;min-height:24px}
 .legend.review { color: #f0d88f; }
 .scenario-actions { margin: 8px 0 0; padding-left: 18px; font-size: .7rem; color: #b8ccbf; line-height: 1.6; }
 @media (max-width: 900px) { .scenario-grid { grid-template-columns: minmax(0, 1fr); } }
+/* FS-401/402 normal breeding: mode switch, pairing blockers and clutches. */
+.breeding-mode { width: max-content; max-width: 100%; flex-wrap: wrap; margin-top: 14px; }
+.breeding-mode button { font-size: .74rem; padding: 7px 12px; }
+.normal-breeding { display: grid; gap: 12px; }
+.pairing-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.pairing-options label { display: grid; gap: 6px; font-size: .78rem; color: #b5c8bd; }
+.pairing-options select { margin: 0; }
+.blocker-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.blocker-list li { padding: 8px 10px; border: 1px solid #8a7440; border-radius: 7px; background: #2b2a1e; font-size: .74rem; color: #eee3c3; line-height: 1.5; }
+.blocker-list.soft li { border-color: #4f7d68; background: #17352d; color: #cae8d5; }
+.blocker-list li small { display: block; color: #cfc4a0; margin-top: 2px; }
+.blocker-list.soft li small { color: #a9c9b8; }
+.pairing-ready { font-size: .76rem; color: #b8d9ac; line-height: 1.6; margin: 0; }
+.clutch-heading { font-size: .82rem; font-weight: 600; margin: 4px 0 8px; }
+.clutch-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.clutch-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; padding: 10px 12px; border: 1px solid #2f4541; border-radius: 8px; background: #122326; font-size: .74rem; color: #b8ccbf; }
+.clutch-list li strong { font-size: .8rem; font-weight: 600; color: #dce7e2; }
+.clutch-list li small { display: block; margin-top: 4px; line-height: 1.5; }
+.clutch-list progress { display: block; width: 100%; height: 8px; margin-top: 6px; accent-color: #9fd89b; }
+.clutch-list .clutch-paused { color: #f0d88f; }
+.clutch-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.clutch-actions button { font-size: .72rem; }
+@media (max-width: 680px) { .pairing-options { grid-template-columns: minmax(0, 1fr); } .clutch-list li { grid-template-columns: minmax(0, 1fr); } .clutch-actions { justify-content: flex-start; } }
 .fixture-grid.reveal-strip { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 @media (max-width: 1180px) { .fixture-grid.reveal-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .fixture-grid.reveal-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

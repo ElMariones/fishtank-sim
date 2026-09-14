@@ -340,6 +340,8 @@ The planner offers exact unordered genotype odds at every locus, before mutation
 
 A separate deterministic 256-offspring sample uses current genome v2, linked meiosis and the lab mutation rate. It reports median and empirical 10th–90th percentiles for adult length and up to four expressed goal scores. The seed namespace depends on parental genome fingerprints and sample index, never world birth sequence state. Changing goals measures the same sample. These are adult-potential ranges, not guaranteed clutch results, joint probabilities, care forecasts or confidence intervals. See [verification](research/FS-304-403-SPATIAL-AND-PREDICTION.md).
 
+**Fertility in normal breeding (FS-401):** the `fertility` locus now sets courtship speed. A pair gains 0.5 progress per game day at average fertility (0.6), bounded to 0.25–0.75, so courtship takes two to four unpaused game days. Fertility does not change clutch size, which the player reserves, or how offspring genomes are inherited; eggs from normal breeding use the same linked meiosis and lab mutation rate as the instant cross.
+
 ## 13. Validation gates
 
 - Exact repeatability from seed, parents, parameters and version.

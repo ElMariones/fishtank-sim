@@ -1,13 +1,15 @@
 import { z } from 'zod';
+import { BLOCKER_CODES, CLUTCH_SIZES, CLUTCH_STAGES, idleBreeding, reservedPlaces } from './breeding';
 import { defaultCare, RATION_KEYS, THERMOSTAT_RANGE } from './care';
 import { ALL_LOCI, LOCI } from './catalog';
 import { adultLife } from './development';
 import { metabolicPotential } from './genetics';
-import type { World } from './types';
+import type { Fish, Tank, World } from './types';
 import { defaultWater, WATER_LIMITS } from './water';
 import { MAX_RECORDS, MAX_TANKS } from './world';
 
 const alleles = (count: number) => z.array(z.number().int().min(0).max(5)).length(count);
+const fishIdSchema = z.string().regex(/^FSH-\d{6}$/);
 /** Genome v1 records stay valid unchanged; genome v2 records carry the appended Color and Ornament loci. */
 const genome = z.discriminatedUnion('version', [
   z.object({ version: z.literal(1), maternal: alleles(LOCI.length), paternal: alleles(LOCI.length) }),
@@ -20,7 +22,7 @@ const water = z.object({
   oxygenMgL: bounded(WATER_LIMITS.oxygenMgL), ammoniaMgL: bounded(WATER_LIMITS.ammoniaMgL), foodG: bounded(WATER_LIMITS.foodG),
   filterMgNPerDay: bounded(WATER_LIMITS.filterMgNPerDay), aerationPerDay: bounded(WATER_LIMITS.aerationPerDay),
 }).strict();
-/** Care model v1 state, carried by every world v4 tank. */
+/** Care model v1 state, carried by every world v4+ tank. */
 const care = z.object({
   model: z.literal(1), ration: z.enum(RATION_KEYS), targetC: z.number().int().min(THERMOSTAT_RANGE[0]).max(THERMOSTAT_RANGE[1]),
   dayNeedG: z.number().min(0).max(1e12), dayEatenG: z.number().min(0).max(1e12), fed: z.number().min(0).max(1),
@@ -29,10 +31,20 @@ const care = z.object({
 const life = z.object({
   model: z.literal(1), ageDays: z.number().int().min(0).max(10_000_000), lengthCm: z.number().min(0).max(200), condition: z.number().min(0).max(1),
 }).strict();
+/** Breeding model v1 state, carried by every world v5 fish. */
+const breeding = z.object({ model: z.literal(1), cooldownDays: z.number().int().min(0).max(365) }).strict();
+/** Clutch records, world v5 (FS-402). */
+const clutch = z.object({
+  id: z.string().regex(/^CL-\d{6}$/), motherId: fishIdSchema, fatherId: fishIdSchema, tankId: z.string().max(50), nurseryId: z.string().max(50),
+  size: z.union([z.literal(CLUTCH_SIZES[0]), z.literal(CLUTCH_SIZES[1]), z.literal(CLUTCH_SIZES[2]), z.literal(CLUTCH_SIZES[3]), z.literal(CLUTCH_SIZES[4])]),
+  genomeVersion: z.union([z.literal(1), z.literal(2)]), pairedAt: z.string().datetime(), stage: z.enum(CLUTCH_STAGES),
+  days: z.number().int().min(0).max(10_000_000), progress: z.number().min(0).max(1), blockers: z.array(z.enum(BLOCKER_CODES)).max(BLOCKER_CODES.length),
+  spawnedDay: z.number().int().min(0).max(10_000_000).nullable(), firstFishId: fishIdSchema.nullable(),
+}).strict();
 const tank = { id: z.string().max(50), name: z.string().min(1).max(32), capacity: z.number().int().min(1).max(60), planted: z.boolean() };
 const header = { seed: z.number().int().min(0).max(4294967295), nextId: z.number().int().positive(), credits: z.number().int().nonnegative().max(1e9) };
 const fishRecord = {
-  id: z.string().regex(/^FSH-\d{6}$/), name: z.string().min(1).max(32), sex: z.enum(['F', 'M']),
+  id: fishIdSchema, name: z.string().min(1).max(32), sex: z.enum(['F', 'M']),
   genome,
   birthSeed: z.number().int().min(0).max(4294967295), generation: z.number().int().min(0).max(MAX_RECORDS),
   parents: z.tuple([z.string(), z.string()]).nullable(), bornAt: z.string().datetime(),
@@ -42,27 +54,37 @@ const fishRecord = {
 const recordsOnly = z.array(z.object(fishRecord)).max(MAX_RECORDS);
 const withLife = z.array(z.object({ ...fishRecord, life })).max(MAX_RECORDS);
 const tanksWithWater = z.array(z.object({ ...tank, water })).min(1).max(MAX_TANKS);
+const tanksWithCare = z.array(z.object({ ...tank, water, care })).min(1).max(MAX_TANKS);
 const schema = z.discriminatedUnion('version', [
   z.object({ version: z.literal(1), ...header, tanks: z.array(z.object(tank)).min(1).max(MAX_TANKS), fish: recordsOnly }),
   z.object({ version: z.literal(2), ...header, tanks: tanksWithWater, fish: recordsOnly }),
   z.object({ version: z.literal(3), ...header, tanks: tanksWithWater, fish: withLife }),
-  z.object({ version: z.literal(4), ...header, tanks: z.array(z.object({ ...tank, water, care })).min(1).max(MAX_TANKS), fish: withLife }),
+  z.object({ version: z.literal(4), ...header, tanks: tanksWithCare, fish: withLife }),
+  z.object({
+    version: z.literal(5), ...header, nextClutchId: z.number().int().positive(), tanks: tanksWithCare,
+    fish: z.array(z.object({ ...fishRecord, life, breeding })).max(MAX_RECORDS), clutches: z.array(clutch).max(MAX_RECORDS),
+  }),
 ]);
 
 /**
  * World v1 predates water (FS-301): its tanks start with default, clean, oxygen-saturated water. Worlds v1–v2 predate
  * life state (FS-302): their fish become young adults at their adult length potential, as the lab always drew them.
  * Worlds v1–v3 predate care (FS-305): their tanks feed measured rations with a thermostat at the water's temperature.
+ * Worlds v1–v4 predate normal breeding (FS-401/402): their fish are rested and no clutch is courting.
  */
 export function decodeSave(raw: string): World {
   if (raw.length > 12_000_000) throw new Error('Save is too large for this lab.');
   const parsed = schema.parse(JSON.parse(raw));
   let world: World;
-  if (parsed.version === 4) world = parsed;
+  if (parsed.version === 5) world = parsed;
   else {
-    const watered = parsed.version === 1 ? parsed.tanks.map(entry => ({ ...entry, water: defaultWater() })) : parsed.tanks;
-    const fish = parsed.version === 3 ? parsed.fish : parsed.fish.map(member => ({ ...member, life: adultLife(member.genome) }));
-    world = { ...parsed, version: 4, tanks: watered.map(entry => ({ ...entry, care: defaultCare(entry.water) })), fish };
+    const watered: Omit<Tank, 'care'>[] = parsed.version === 1 ? parsed.tanks.map(entry => ({ ...entry, water: defaultWater() })) : parsed.tanks;
+    const cared: Tank[] = parsed.version === 4 ? parsed.tanks : watered.map(entry => ({ ...entry, care: defaultCare(entry.water) }));
+    const lived: Omit<Fish, 'breeding'>[] = parsed.version === 3 || parsed.version === 4 ? parsed.fish : parsed.fish.map(member => ({ ...member, life: adultLife(member.genome) }));
+    // Keys follow the v5 schema order: replay validation compares serialized worlds, so a migrated world must
+    // serialize exactly like a decoded current one or every older save would fail to load.
+    world = { version: 5, seed: parsed.seed, nextId: parsed.nextId, credits: parsed.credits, nextClutchId: 1, tanks: cared,
+      fish: lived.map(member => ({ ...member, breeding: idleBreeding() })), clutches: [] };
   }
   const ids = new Map(world.fish.map(f => [f.id, f]));
   const tanks = new Set(world.tanks.map(t => t.id));
@@ -76,8 +98,29 @@ export function decodeSave(raw: string): World {
       if (!m || !p || m.id === p.id || m.sex !== 'F' || p.sex !== 'M' || Math.max(m.generation, p.generation) + 1 !== member.generation) throw new Error('Invalid pedigree.');
     } else if (member.generation !== 0) throw new Error('Founder generation must be zero.');
   }
+  const clutchIds = new Set<string>(), courtingNurseries = new Set<string>(), courtingParents = new Set<string>();
+  for (const entry of world.clutches) {
+    const mother = ids.get(entry.motherId), father = ids.get(entry.fatherId);
+    if (clutchIds.has(entry.id) || Number(entry.id.slice(3)) >= world.nextClutchId || !mother || !father || mother.sex !== 'F' || father.sex !== 'M'
+      || !tanks.has(entry.tankId) || !tanks.has(entry.nurseryId)) throw new Error('Invalid clutch record.');
+    clutchIds.add(entry.id);
+    if (entry.stage === 'courting' || entry.stage === 'cancelled') {
+      if (entry.firstFishId !== null || entry.spawnedDay !== null) throw new Error('A clutch without eggs lists egg records.');
+      if (entry.stage === 'courting') {
+        if (courtingNurseries.has(entry.nurseryId) || courtingParents.has(entry.motherId) || courtingParents.has(entry.fatherId)) throw new Error('Overlapping courtships in save.');
+        courtingNurseries.add(entry.nurseryId); courtingParents.add(entry.motherId); courtingParents.add(entry.fatherId);
+      }
+    } else {
+      if (entry.firstFishId === null || entry.spawnedDay === null || entry.progress !== 1) throw new Error('A laid clutch is missing its eggs.');
+      const first = Number(entry.firstFishId.slice(4));
+      for (let n = first; n < first + entry.size; n++) {
+        const egg = ids.get(`FSH-${String(n).padStart(6, '0')}`);
+        if (!egg || egg.parents?.[0] !== entry.motherId || egg.parents?.[1] !== entry.fatherId) throw new Error('Clutch eggs do not match their record.');
+      }
+    }
+  }
   for (const entry of world.tanks) {
-    if (world.fish.filter(f => f.status === 'living' && f.tankId === entry.id).length > entry.capacity) throw new Error('Tank exceeds capacity.');
+    if (world.fish.filter(f => f.status === 'living' && f.tankId === entry.id).length + reservedPlaces(world, entry.id) > entry.capacity) throw new Error('Tank exceeds capacity.');
     if (entry.care.dayEatenG > entry.care.dayNeedG) throw new Error('A tank ate more food than its residents needed.');
   }
   return world;

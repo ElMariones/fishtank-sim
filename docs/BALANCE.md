@@ -61,7 +61,7 @@ Game rules in `src/core/development.ts`; not biological growth laws.
 | Temperature | Comfort 1 from 18 to 26 °C, 0.2 at 8 and 34 °C; growth × (1 + 0.04 × (T − 22)), bounded 0.8–1.2 | FS-305; warmth speeds growth but holds less oxygen and raises demand |
 | Stock and migrated fish | Young adults aged 30 game days at adult length potential | Matches how lab fish were always drawn |
 | Water load | Mass from current length | Eggs add no load |
-| Eggs | Cannot breed or be sold | GDD §5; the lab still lets hatched fish breed until FS-401 |
+| Eggs | Cannot breed or be sold | GDD §5; normal breeding also requires adults (FS-401), while the instant lab cross still accepts any hatched fish |
 
 ### Care model v1 (FS-305)
 
@@ -112,6 +112,22 @@ Seeded demonstration settings in `src/core/careScenario.ts`; they are not tuning
 | Keeper | From day 16, applies every settings fix and water change named by the warnings; reviews every 5 days while warnings remain | One review (◈ 360) cleared every warning by day 18 |
 | Rejected setup | 60 adults, Heavy rations, Compact filter, Gentle aeration, 29 °C | Oxygen 0.0 mg/L by day 1 and ammonia 73.55 mg N/L by day 15; condition kept falling six days after the first fix |
 | Decline tolerance | 0.5 percentage points over an absence | Smaller changes do not count a fish as declined in the return summary |
+
+### Breeding model v1 (FS-401/402)
+
+Game rules in `src/core/breeding.ts`.
+
+| Parameter | Value | Reason / limitation |
+|---|---:|---|
+| Tracked eggs per clutch | 8, 12, 16, 20 or 24, chosen when pairing | GDD first-playable range; reserved in the nursery before conception |
+| Maturity | Adult stage: at least 70% of adult length | Same threshold as the life stage label |
+| Condition | At least 70% to pair and to keep courting | Links breeding to care |
+| Rest after spawning | Female 8, male 4 game days | Inside the 6–12 day cooldown hypothesis for females |
+| Courtship speed | 0.5 progress per game day × fertility ÷ 0.6, bounded 0.25–0.75 | Two to four unpaused game days; the fertility locus is now active |
+| Courtship pauses | Parents in different tanks, a parent below 70% condition, critical oxygen, high ammonia, or water outside 18–28 °C | Recorded daily with a reason and fix |
+| Nursery limit | One courting clutch per nursery tank | Bounded, readable nursery management |
+| Egg timestamp | Pairing time + game days × 60 real seconds | One game day per real minute at 1× |
+| Instant lab cross | 20 eggs at once in the current tank, no courtship checks | Research shortcut; counts reservations |
 
 ## 2. Proposed solo launch tuning
 

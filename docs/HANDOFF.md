@@ -53,6 +53,8 @@ Stage appearance v1 (FS-306) lives in `src/core/juvenile.ts`: a pure function of
 
 FS-307 adds an optional `onDay` observer to `advanceWorld`, `advanceRuntime` and `applyOfflineCatchup`. Keep it purely observational: the absence summary and care scenarios depend on the observed advance being identical to the plain one. The summary's unexplained-decline count must stay zero; if a new environment factor is added, list it in `environmentLimits` too.
 
+World save v5 (FS-401/402) adds `breeding.cooldownDays` to fish and `clutches` with `nextClutchId` to the world. A courting clutch reserves nursery places; every command that adds residents must count `reservedPlaces`, or a nursery can overflow at spawning. Courtship and spawning run in `advanceClutches` after development at each game-day boundary. Keep the instant `breed` command's behavior unchanged apart from reservations, because older journals replay through it. Migrations must write top-level and nested keys in schema order: replay validation compares serialized worlds, and a misordered key sends every older save to recovery mode.
+
 The live Canvas’s transient actors are outside React state. Motion is deterministic for the same initial actors and tick sequence, but positions are not persisted; switching tanks reconstructs visual trajectories. Birth/genome outcomes do persist.
 
 Sales preserve the full fish record, including parent IDs and genome. The archive assumes sold fish are no longer locally living; online ownership/death states must be modeled separately later.
@@ -69,7 +71,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> FS-305 (`d425639`) and FS-306 (`325ceb4`) are DONE, and FS-307's care demonstration and absence summary is DONE, pushed `a5d5ddc` (see the FS-307 report), completing M3's task list. Start M4 with FS-401: maturity, condition, cooldown and shared-habitat checks with transparent courtship blockers, then FS-402's reserved clutch scheduler and bounded nursery. Keep the instant `breed` command replayable for old journals, reserve nursery places atomically, bump the world version for new persisted state, and keep the absence summary's unexplained-decline count at zero.
+> M3 is DONE (FS-305 `d425639`, FS-306 `325ceb4`, FS-307 `a5d5ddc`). FS-401/402 normal breeding with courtship blockers and reserved nurseries is delivered (see the backlog and the FS-401/402 report). Continue M4 with FS-404: a bounded ancestor graph (repeated ancestors shown once) with portraits, focus that follows living fish across tanks and shows archived records, and six-generation navigation with history. Then FS-405's incremental kinship cache with unknown-founder assumptions, then FS-406's two-generation normal-mode demonstration with cohort selection and batch rehoming. Keep every arrival counting nursery reservations and migrations writing keys in schema order.
 
 ## 7. Subsequent task briefs
 

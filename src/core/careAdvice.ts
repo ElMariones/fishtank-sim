@@ -133,7 +133,8 @@ export function projectTank(world: World, tankId: string, fromTick: number, days
   let adjusted = change.settings ? applyCareSettings(tank, change.settings) : tank;
   if (change.waterChangePercent) adjusted = { ...adjusted, water: applyWaterChange(adjusted.water, change.waterChangePercent) };
   const residents = world.fish.filter(f => f.status === 'living' && f.tankId === tankId);
-  const later = advanceWorld({ ...world, tanks: [adjusted], fish: residents }, fromTick, fromTick + days * TICKS_PER_GAME_DAY);
+  // No clutches: a preview must never court, spawn or reserve anything.
+  const later = advanceWorld({ ...world, tanks: [adjusted], fish: residents, clutches: [] }, fromTick, fromTick + days * TICKS_PER_GAME_DAY);
   const { water, care } = later.tanks[0], bands = waterStatus(water);
   return {
     days, oxygenMgL: water.oxygenMgL, ammoniaMgL: water.ammoniaMgL, foodG: water.foodG, temperatureC: water.temperatureC, fed: care.fed,

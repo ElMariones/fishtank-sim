@@ -1,3 +1,4 @@
+import { advanceClutches } from './breeding';
 import { CARE_RATES, closeCareDay, integrateTank, type CareLoad } from './care';
 import { developDay, environmentFor, nutritionFactor, type Environment } from './development';
 import { metabolicPotential } from './genetics';
@@ -89,9 +90,10 @@ export function advanceWorld(world: World, fromTick: number, toTick: number, onD
     const boundary = (Math.floor(cursor / TICKS_PER_GAME_DAY) + 1) * TICKS_PER_GAME_DAY, end = Math.min(toTick, boundary);
     current = integrateTanks(current, cursor, end);
     if (end === boundary) {
-      const developed = developResidents(current);
-      onDay?.({ tick: boundary, before: current, after: developed.world, environments: developed.environments });
-      current = developed.world;
+      // Development first, then breeding (FS-402): eggs laid at this boundary start developing at the next one.
+      const developed = developResidents(current), bred = advanceClutches(developed.world);
+      onDay?.({ tick: boundary, before: current, after: bred, environments: developed.environments });
+      current = bred;
     }
     cursor = end;
   }

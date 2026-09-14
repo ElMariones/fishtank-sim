@@ -1,4 +1,5 @@
 import { GENOME_VERSION, MUTATION_RATE, type GenomeVersion } from './catalog';
+import { CLUTCH_SIZES, clutchId, courtingClutchOf, idleBreeding, pairingBlockers, reservedPlaces, type ClutchSize } from './breeding';
 import {
   AERATION_TIERS, applyCareSettings, applyWaterChange, CARE_RATES, careCost, defaultCare, FILTER_TIERS, RATION_KEYS, THERMOSTAT_RANGE,
   waterChangeCost, type WaterChangePercent,
@@ -21,8 +22,8 @@ export const MAX_LIVING = MAX_TANKS * TANK_CAPACITY;
  */
 export const MAX_RECORDS = 10_000;
 export const STOCK_PRICE = 250;
-/** World v4: tanks carry water (FS-301) and care (FS-305); fish carry life state (FS-302). */
-export const WORLD_VERSION = 4;
+/** World v5: tanks carry water (FS-301) and care (FS-305); fish carry life (FS-302) and breeding state; clutches (FS-401/402). */
+export const WORLD_VERSION = 5;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -33,7 +34,7 @@ const count = (n: number) => n.toLocaleString('en');
 function founder(world: World, name: string, sex: Fish['sex'], timestamp: string, version: GenomeVersion = GENOME_VERSION): Fish {
   const birthSeed = hash(`${world.seed}:founder:${world.nextId}`), genome = founderGenome(birthSeed, version);
   return { id: id(world.nextId), name, sex, genome, birthSeed,
-    generation: 0, parents: null, bornAt: iso(timestamp), tankId: world.tanks[0].id, status: 'living', mutations: [], life: adultLife(genome) };
+    generation: 0, parents: null, bornAt: iso(timestamp), tankId: world.tanks[0].id, status: 'living', mutations: [], life: adultLife(genome), breeding: idleBreeding() };
 }
 
 function newTank(id: string, name: string, planted: boolean): Tank {
@@ -43,10 +44,10 @@ function newTank(id: string, name: string, planted: boolean): Tank {
 
 /** New worlds use the current genome. Research fixtures pass genome version 1 to reproduce the frozen FS-101 founders. */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = GENOME_VERSION): World {
-  const world: World = { version: 4, seed, nextId: 1, credits: 1200, fish: [], tanks: [
+  const world: World = { version: 5, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
-  ] };
+  ], clutches: [] };
   ['Haru', 'Sumi', 'Kohaku', 'Yuki', 'Akira', 'Momo'].forEach((name, i) => {
     world.fish.push(founder(world, name, i % 2 === 0 ? 'F' : 'M', timestamp, genomeVersion)); world.nextId++;
   });
@@ -69,7 +70,9 @@ export type Command =
   | { type: 'decorate'; tankId: string }
   | { type: 'feed'; tankId: string }
   | { type: 'set-care'; tankId: string; ration: Ration; filterTier: number; aerationTier: number; targetC: number }
-  | { type: 'change-water'; tankId: string; percent: WaterChangePercent };
+  | { type: 'change-water'; tankId: string; percent: WaterChangePercent }
+  | { type: 'pair'; motherId: string; fatherId: string; nurseryId: string; size: ClutchSize; timestamp: string; genomeVersion: GenomeVersion }
+  | { type: 'cancel-clutch'; clutchId: string };
 
 const fishIdSchema = z.string().regex(/^FSH-\d{6}$/);
 const tankIdSchema = z.string().max(50);
@@ -94,6 +97,12 @@ export const commandSchema = z.discriminatedUnion('type', [
     targetC: z.number().int().min(THERMOSTAT_RANGE[0]).max(THERMOSTAT_RANGE[1]),
   }).strict(),
   z.object({ type: z.literal('change-water'), tankId: tankIdSchema, percent: z.union([z.literal(10), z.literal(25), z.literal(50)]) }).strict(),
+  z.object({
+    type: z.literal('pair'), motherId: fishIdSchema, fatherId: fishIdSchema, nurseryId: tankIdSchema,
+    size: z.union([z.literal(CLUTCH_SIZES[0]), z.literal(CLUTCH_SIZES[1]), z.literal(CLUTCH_SIZES[2]), z.literal(CLUTCH_SIZES[3]), z.literal(CLUTCH_SIZES[4])]),
+    timestamp: z.string().datetime(), genomeVersion: z.union([z.literal(1), z.literal(2)]),
+  }).strict(),
+  z.object({ type: z.literal('cancel-clutch'), clutchId: z.string().regex(/^CL-\d{6}$/) }).strict(),
 ]);
 
 /** Validate before mutation; rejected commands leave the original world untouched. */
@@ -105,16 +114,23 @@ export function applyCommand(world: World, command: Command): World {
     if (!fish) throw new Error('This fish is archived or unavailable.');
     return fish;
   };
+  // Courting clutches reserve nursery places, so every arrival counts them (FS-402).
   const space = (tankId: string, required: number) => {
     const tank = next.tanks.find(t => t.id === tankId);
     if (!tank) throw new Error('Tank not found.');
-    if (next.fish.filter(f => f.tankId === tankId && f.status === 'living').length + required > tank.capacity) throw new Error(`This tank needs ${required} free places. Move fish or add a lab tank.`);
+    const residents = next.fish.filter(f => f.tankId === tankId && f.status === 'living').length, reserved = reservedPlaces(next, tankId);
+    if (residents + reserved + required > tank.capacity) throw new Error(reserved
+      ? `This tank needs ${required} free places, and ${reserved} are reserved for a courting clutch. Move fish, choose another tank or add a lab tank.`
+      : `This tank needs ${required} free places. Move fish or add a lab tank.`);
     return tank;
   };
   const room = (arriving: number) => {
-    const living = next.fish.filter(f => f.status === 'living').length;
-    if (living + arriving > MAX_LIVING) throw new Error(`The lab holds at most ${count(MAX_LIVING)} living fish and you have ${count(living)}. Sell fish to make room; sold fish stay in the family archive.`);
-    if (next.fish.length + arriving > MAX_RECORDS) throw new Error(`This save holds ${count(next.fish.length)} fish records, and this lab supports ${count(MAX_RECORDS)}. Export your save before starting another experiment.`);
+    const living = next.fish.filter(f => f.status === 'living').length, reserved = reservedPlaces(next);
+    if (living + reserved + arriving > MAX_LIVING) throw new Error(`The lab holds at most ${count(MAX_LIVING)} living fish and you have ${count(living)}${reserved ? ` plus ${count(reserved)} reserved eggs` : ''}. Sell fish to make room; sold fish stay in the family archive.`);
+    if (next.fish.length + reserved + arriving > MAX_RECORDS) throw new Error(`This save holds ${count(next.fish.length)} fish records, and this lab supports ${count(MAX_RECORDS)}. Export your save before starting another experiment.`);
+  };
+  const notCourting = (fish: Fish) => {
+    if (courtingClutchOf(next, fish.id)) throw new Error(`${fish.name} is courting. Cancel the courtship before selling.`);
   };
   const afford = (cost: number, what: string) => {
     if (next.credits < cost) throw new Error(`${what} costs ◈ ${count(cost)} and you have ◈ ${count(next.credits)}.`);
@@ -134,6 +150,7 @@ export function applyCommand(world: World, command: Command): World {
       break;
     }
     case 'breed': {
+      // The instant lab cross: a research shortcut with no courtship, maturity, condition or rest checks.
       const mother = getFish(command.motherId), father = getFish(command.fatherId);
       if (mother.id === father.id || mother.sex !== 'F' || father.sex !== 'M') throw new Error('Choose a female and a male.');
       if (isEgg(mother.life) || isEgg(father.life)) throw new Error('Eggs cannot breed. Wait until they hatch.');
@@ -146,7 +163,7 @@ export function applyCommand(world: World, command: Command): World {
         const result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, version);
         next.fish.push({ id: id(next.nextId), name: `Fry ${next.nextId}`, sex: hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M',
           ...result, birthSeed, generation: Math.max(mother.generation, father.generation) + 1,
-          parents: [mother.id, father.id], bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', life: eggLife() });
+          parents: [mother.id, father.id], bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', life: eggLife(), breeding: idleBreeding() });
         next.nextId++;
       }
       break;
@@ -154,6 +171,7 @@ export function applyCommand(world: World, command: Command): World {
     case 'sell': {
       const fish = getFish(command.fishId);
       if (isEgg(fish.life)) throw new Error('Eggs cannot be sold.');
+      notCourting(fish);
       next.credits += quote(fish); fish.status = 'sold';
       break;
     }
@@ -162,6 +180,7 @@ export function applyCommand(world: World, command: Command): World {
       if (new Set(command.fishIds).size !== command.fishIds.length) throw new Error('Each fish can only be sold once.');
       const batch = command.fishIds.map(getFish); // Every member is validated before any sale is applied.
       if (batch.some(member => isEgg(member.life))) throw new Error('Eggs cannot be sold.');
+      batch.forEach(notCourting);
       for (const fish of batch) { next.credits += quote(fish); fish.status = 'sold'; }
       break;
     }
@@ -202,6 +221,28 @@ export function applyCommand(world: World, command: Command): World {
       const tank = space(command.tankId, 0);
       afford(waterChangeCost(tank.water, command.percent), `A ${command.percent}% water change`);
       tank.water = applyWaterChange(tank.water, command.percent);
+      break;
+    }
+    case 'pair': {
+      // Normal breeding (FS-401/402): every hard rule is checked, then nursery places are reserved until spawning.
+      const blockers = pairingBlockers(next, { motherId: command.motherId, fatherId: command.fatherId, nurseryId: command.nurseryId, size: command.size },
+        { maxLiving: MAX_LIVING, maxRecords: MAX_RECORDS });
+      if (blockers.length) throw new Error(blockers.map(blocker => blocker.message).join(' '));
+      const mother = getFish(command.motherId), father = getFish(command.fatherId);
+      if (command.genomeVersion === 1 && (mother.genome.version !== 1 || father.genome.version !== 1)) throw new Error('Genome v2 parents cannot produce a genome v1 clutch.');
+      next.clutches.push({
+        id: clutchId(next.nextClutchId), motherId: mother.id, fatherId: father.id, tankId: mother.tankId, nurseryId: command.nurseryId,
+        size: command.size, genomeVersion: command.genomeVersion, pairedAt: iso(command.timestamp), stage: 'courting', days: 0, progress: 0,
+        blockers: [], spawnedDay: null, firstFishId: null,
+      });
+      next.nextClutchId++;
+      break;
+    }
+    case 'cancel-clutch': {
+      const clutch = next.clutches.find(entry => entry.id === command.clutchId);
+      if (!clutch) throw new Error('Clutch not found.');
+      if (clutch.stage !== 'courting') throw new Error('Only a courtship can be cancelled; once laid, its eggs are tracked fish.');
+      clutch.stage = 'cancelled'; clutch.blockers = [];
       break;
     }
   }

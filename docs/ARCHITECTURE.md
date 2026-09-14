@@ -31,6 +31,7 @@ src/
     careAdvice.ts   Care status, warnings with priced fixes, and projections that preview a change on a copy of the tank
     absence.ts      Day observer and per-tank absence summary: hatching, stages, growth, condition, limiting causes, warnings
     careScenario.ts Seeded healthy and stressed care scenarios with a keeper that applies warning fixes
+    breeding.ts     Breeding model v1: pairing and courtship blockers, reserved nursery places, day-boundary courtship, spawning and rest
     development.ts  Life model v1: egg/fry/juvenile/adult/elderly stages, logistic growth, lagged condition and environment curves
     juvenile.ts     Stage appearance v1: body and pigment maturity from life state, hatchling proportions and reveal fixtures
     save.ts         Legacy world-v1 schema and reference validation
@@ -57,6 +58,7 @@ src/
     CarePanel.tsx   Care chips, warnings with fixes, and previewed feeder/equipment/thermostat/water-change controls
     AbsencePanel.tsx "While you were away" per-tank return summary with links to each tank
     CareScenarios.tsx Research tab charting the healthy and stressed care scenarios
+    NormalBreeding.tsx Pairing options, blockers with fixes, and the courting, incubating and hatched clutch list
     TankCanvas.tsx  Paints worker motion frames, fish picking and the motion-fault recovery notice
     FishPortrait.tsx Shared procedural renderer at portrait scale, fitted or shared-scale framing
     VisualFixtureLab.tsx Deterministic fixture, anatomy and marking-resemblance comparison surface
@@ -76,6 +78,7 @@ tests/
   development.test.ts Hatching, healthy maturity range, declared-condition fixtures, condition history, egg rules and world v2 migration
   juvenile.test.ts Maturity, hatchling interpolation, stage anatomy and framing sweeps, ornament reveal, turning poses and reveal series
   absence.test.ts  Day observer neutrality, no unexplained decline across random care, scenario recovery and absence summaries
+  breeding.test.ts Pairing blockers, courtship pauses and spawning, reservations under random commands, reload/offline no-duplication, cancel/sale guards, world v4 migration
   care.test.ts     Ration conservation, development under rations and temperature, split/offline/replay equality, costs, warnings, projections and world v3 migration
   limits.test.ts   Living/record limits, deep and wide pedigree queries and atomic rejection
   runtime.test.ts  Command envelopes, retries, replay, compaction, migration and tamper rejection
@@ -224,7 +227,7 @@ type Result<T> =
 
 Representative commands: RenameFish, TransferFishBatch, ReserveClutch, CancelCourtship, PlaceDecoration, FeedTank, SetEquipment, RehomeFish, CreateListing, BuyListing, CancelListing. Each has declared preconditions, events, failure codes, and replay rules.
 
-The lab reducer currently implements `rename`, `move`, `breed`, `sell`, `sell-batch`, `buy`, `add-tank`, `decorate`, and the FS-305 care commands `feed`, `set-care` and `change-water`. `breed` and `buy` carry an optional `genomeVersion`: the app sends the current genome version, and commands recorded before FS-113 omit it and replay exactly as genome v1 (ADR-034). `sell-batch` validates every member (non-empty, unique, living) before paying for any of them, so one invalid member rejects the whole batch.
+The lab reducer currently implements `rename`, `move`, `breed` (the instant lab cross), `sell`, `sell-batch`, `buy`, `add-tank`, `decorate`, the FS-305 care commands `feed`, `set-care` and `change-water`, and the FS-401/402 breeding commands `pair` and `cancel-clutch`. `breed` and `buy` carry an optional `genomeVersion`: the app sends the current genome version, and commands recorded before FS-113 omit it and replay exactly as genome v1 (ADR-034). `sell-batch` validates every member (non-empty, unique, living) before paying for any of them, so one invalid member rejects the whole batch.
 
 **Breed:** validate eligible parents and current ownership; reserve cohort slots; commit courtship/clutch record; scheduler emits hatch events at an exact tick. Recheck relevant health/status rules at conception and handle interrupted courtship without losing reservations.
 
@@ -303,6 +306,22 @@ The step uses only basic arithmetic, so saved doubles match across browsers.
 - **Observer hook:** `advanceWorld`, `advanceRuntime` and `applyOfflineCatchup` accept an optional `onDay` callback. At each game-day boundary it receives the world before and after development and the environment each tank applied. It only observes; tests assert the advanced world is identical with or without it.
 - **Absence summary:** `loadSession` attaches `absenceObserver` to the ordinary protected catch-up and returns a per-tank `AbsenceSummary`: eggs hatched, fish becoming juvenile or adult, length gained, mean condition before and after, fish that declined, limiting causes with day counts, and the care warnings waiting on return. It also counts fish-days whose condition fell without a named cause; the environment model makes this zero, so the count is a standing check. `AbsencePanel` shows the summary above the tank until dismissed.
 - **Care scenarios:** `careScenario.ts` runs two seeded worlds through the same advance for 40 game days. A simulated keeper applies the stressed tank's warning fixes through ordinary commands from day 16 and reviews every five days. Research → **Care scenarios** charts both; nothing touches the player's world (ADR-021).
+
+### Implemented breeding lifecycle (FS-401/402)
+
+- **State:** world save v5 adds `breeding.cooldownDays` to every fish and a `clutches` list with `nextClutchId`. A clutch records its parents, courtship tank, nursery, tracked size (8–24), genome version and pairing timestamp. It also tracks stage (courting → incubating → hatched, or cancelled), game days, courtship progress, the latest day's blocker codes, the spawn day and the first egg ID.
+- **Pairing (`pair`):** `pairingBlockers` checks roles, availability, adult stage, condition of at least 70%, rest days, an existing courtship and a shared tank. It also checks the nursery (it exists, no other courtship holds it, it has enough free places) and the population limits. Any blocker rejects the command with every message; otherwise the clutch reserves its places.
+- **Reservations:** `reservedPlaces` counts courting clutches. Every arrival (`move`, `buy`, the lab `breed`, `pair`) and the living and record limits include it, so a courting nursery cannot overflow. Save validation rejects:
+  - a tank whose residents plus reservations exceed its capacity;
+  - overlapping courtships;
+  - laid clutches whose eggs do not match their record.
+- **Scheduler:** `advanceWorld` calls `advanceClutches` after development at each game-day boundary.
+  - Rest days count down.
+  - A courtship either records why it paused (`courtshipBlockers`: separated parents, condition below 70%, critical oxygen, high ammonia, or water outside 18–28 °C) or progresses by a fertility-based daily rate.
+  - When courtship completes, the reserved places become consecutive tracked eggs in the nursery, dated from the pairing timestamp, and both parents rest.
+  - An incubating clutch becomes hatched at the boundary where no egg remains.
+  - Reloads, offline catch-up and replay therefore lay each clutch once.
+- **Guards and compatibility:** courting parents cannot be sold, and `cancel-clutch` releases a courtship's reservation but cannot cancel laid eggs. The instant `breed` command is unchanged apart from counting reservations; it replays old journals and remains a labeled research shortcut. Care projections run without clutches. Worlds v1–v4 migrate with rested fish and no clutches, with keys written in schema order so replay comparison still holds.
 
 ## 7. Worker and renderer protocol
 

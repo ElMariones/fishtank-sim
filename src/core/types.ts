@@ -11,10 +11,39 @@ export type LifeState = {
   /** Developmental condition 0–1: a moving average of recent environment, so deficits and recovery both take days. */
   condition: number;
 };
+/** Breeding model v1 state per fish (FS-401): whole game days until it can court again after spawning. */
+export type BreedingState = { model: 1; cooldownDays: number };
 export type Fish = {
   id: string; name: string; sex: 'F' | 'M'; genome: Genome; birthSeed: number;
   generation: number; parents: [string, string] | null; bornAt: string;
-  tankId: string; status: 'living' | 'sold'; mutations: Mutation[]; life: LifeState;
+  tankId: string; status: 'living' | 'sold'; mutations: Mutation[]; life: LifeState; breeding: BreedingState;
+};
+/** Why a pairing is refused or a courtship is paused (FS-401). */
+export type BlockerCode = 'role' | 'unavailable' | 'immature' | 'condition' | 'cooldown' | 'busy' | 'apart' | 'water' | 'nursery-missing' | 'nursery-full' | 'nursery-busy' | 'limit';
+export type ClutchStage = 'courting' | 'incubating' | 'hatched' | 'cancelled';
+/**
+ * Clutch record (FS-402). While courting it reserves `size` places in the nursery. When courtship completes those places
+ * become tracked eggs with consecutive IDs from `firstFishId`. Records are kept after hatching as the clutch's history.
+ */
+export type Clutch = {
+  id: string; motherId: string; fatherId: string;
+  /** Tank where the pair started courting. */
+  tankId: string;
+  /** Tank that receives the eggs and holds the reservation until spawning. */
+  nurseryId: string;
+  size: number; genomeVersion: 1 | 2;
+  /** Timestamp of the pairing command; eggs are dated from it at one game day per real minute. */
+  pairedAt: string;
+  stage: ClutchStage;
+  /** Whole game days since pairing. */
+  days: number;
+  /** Courtship progress 0–1. */
+  progress: number;
+  /** Blockers that paused courtship on the latest game day; empty while it progresses. */
+  blockers: BlockerCode[];
+  /** Value of `days` when the eggs were laid. */
+  spawnedDay: number | null;
+  firstFishId: string | null;
 };
 /** Water model v1 state for one tank (FS-301). Units are explicit; values are game approximations, not care advice. */
 export type WaterState = {
@@ -49,8 +78,11 @@ export type TankCare = {
   fed: number;
 };
 export type Tank = { id: string; name: string; capacity: number; planted: boolean; water: WaterState; care: TankCare };
-/** World v2 added per-tank water (FS-301), v3 fish life state (FS-302), v4 tank care (FS-305). Older saves migrate with defaults. */
-export type World = { version: 4; seed: number; nextId: number; credits: number; fish: Fish[]; tanks: Tank[] };
+/**
+ * World v2 added per-tank water (FS-301), v3 fish life state (FS-302), v4 tank care (FS-305), v5 breeding state and
+ * clutches (FS-401/402). Older saves migrate with defaults.
+ */
+export type World = { version: 5; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[] };
 /**
  * Development v2 inherited marking anchor, derived from one phased two-locus haplotype block.
  * Body coordinates: u 0 = snout tip … 1 = peduncle; v −1 = dorsal edge … 1 = ventral edge.
