@@ -71,7 +71,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> M3 is DONE (FS-305 `d425639`, FS-306 `325ceb4`, FS-307 `a5d5ddc`). FS-401/402 normal breeding with courtship blockers and reserved nurseries is delivered (see the backlog and the FS-401/402 report). Continue M4 with FS-404: a bounded ancestor graph (repeated ancestors shown once) with portraits, focus that follows living fish across tanks and shows archived records, and six-generation navigation with history. Then FS-405's incremental kinship cache with unknown-founder assumptions, then FS-406's two-generation normal-mode demonstration with cohort selection and batch rehoming. Keep every arrival counting nursery reservations and migrations writing keys in schema order.
+> M3 is DONE (FS-305 `d425639`, FS-306 `325ceb4`, FS-307 `a5d5ddc`). FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE, pushed `9aabfdb` (see the FS-401/402 report). Continue M4 with FS-404: a bounded ancestor graph (repeated ancestors shown once) with portraits, focus that follows living fish across tanks and shows archived records, and six-generation navigation with history. Then FS-405's incremental kinship cache with unknown-founder assumptions, then FS-406's two-generation normal-mode demonstration with cohort selection and batch rehoming. Keep every arrival counting nursery reservations and migrations writing keys in schema order.
 
 ## 7. Subsequent task briefs
 

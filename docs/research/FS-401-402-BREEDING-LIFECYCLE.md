@@ -1,6 +1,6 @@
 # FS-401/402 normal breeding, courtship blockers and reserved nurseries
 
-**Recorded:** 14 September 2026 · **Status:** delivered; push reference in the [backlog](../BACKLOG.md)
+**Recorded:** 14 September 2026 · **Status:** DONE, pushed `9aabfdb`
 **Models:** world save v5 · breeding model v1 · care model v1 · life model v1 · stage appearance v1 · genome v2
 
 ## Starting state

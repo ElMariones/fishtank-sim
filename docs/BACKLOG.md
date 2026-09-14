@@ -64,8 +64,8 @@ FS-108 to FS-110 were requested during M1, and FS-113 after M2; all are outside 
 
 | ID | Pri | Days | Role | Depends | Task and acceptance |
 |---|---|---:|---|---|---|
-| FS-401 | P0 | 3 | Breeding | FS-307 | Maturity/health/cooldown and shared habitat checks; transparent courtship blockers |
-| FS-402 | P0 | 3 | Breeding/runtime | FS-401 | Reserved clutch scheduler and bounded nursery; no overflow or duplicated hatch on reload |
+| FS-401 | DONE | 3 | Breeding | FS-307 | Maturity/health/cooldown and shared habitat checks; transparent courtship blockers. Pushed `9aabfdb`; [evidence](research/FS-401-402-BREEDING-LIFECYCLE.md) |
+| FS-402 | DONE | 3 | Breeding/runtime | FS-401 | Reserved clutch scheduler and bounded nursery; no overflow or duplicated hatch on reload. Pushed `9aabfdb`; [evidence](research/FS-401-402-BREEDING-LIFECYCLE.md) |
 | FS-403 | DONE | 2 | UI/genetics | FS-402 | Independent prediction stream; exact single-locus odds and labeled sampled polygenic ranges. Delivered early in the lab; FS-402 lifecycle integration remains a milestone dependency. Pushed `5dbfb73`; [Evidence](research/FS-304-403-SPATIAL-AND-PREDICTION.md) |
 | FS-404 | P0 | 3 | Genealogy | FS-203 FS-402 | Bounded ancestor graph with portraits and cross-tank/archived focus; six-generation navigation |
 | FS-405 | P1 | 2 | Genetics/data | FS-404 | Incremental kinship cache with unknown-founder assumptions and reference fixtures |
@@ -127,7 +127,7 @@ M8 total: 40–60 days. Provider costs and moderation operations require separat
 
 ## Suggested next-agent task
 
-M1, M2 and FS-301–304 are pushed, with the independent FS-403 prediction (`5dbfb73`). M3 is DONE: FS-305 care controls (`d425639`), FS-306 juvenile reveal (`325ceb4`) and FS-307 care demonstration and absence summary (`a5d5ddc`). Next is M4, starting with FS-401/402. Normal breeding and M4's two-generation gate remain open; predictions do not enforce eligibility or reserve a nursery.
+M1, M2 and FS-301–304 are pushed, with the independent FS-403 prediction (`5dbfb73`). M3 is DONE: FS-305 care controls (`d425639`), FS-306 juvenile reveal (`325ceb4`) and FS-307 care demonstration and absence summary (`a5d5ddc`). M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). Next is FS-404; M4's two-generation gate remains open.
 
 ## Current user-requested additions — DONE, pushed `e7aefc1`
 
