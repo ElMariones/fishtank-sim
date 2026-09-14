@@ -79,7 +79,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> M3 is DONE (FS-305 `d425639`, FS-306 `325ceb4`, FS-307 `a5d5ddc`). FS-401/402 normal breeding is DONE, pushed `9aabfdb`. FS-404's bounded six-generation family graph is DONE, pushed `b7c3e37`. FS-405's incremental kinship cache is DONE, pushed `850f501`. FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE, pushed `44d7d98`, completing M4's task list. M5 has started: FS-501's economy model v1 is delivered (see the backlog and the FS-501 report). Continue with FS-502: persistent shop stock with stable IDs and expiry, filters, no reroll on refresh, and capacity-respecting purchases that write ledger entries. Keep sale commands carrying a price model, the ledger reconciled, and migrations writing keys in schema order.
+> M3 is DONE (FS-305 `d425639`, FS-306 `325ceb4`, FS-307 `a5d5ddc`). FS-401/402 normal breeding is DONE, pushed `9aabfdb`. FS-404's bounded six-generation family graph is DONE, pushed `b7c3e37`. FS-405's incremental kinship cache is DONE, pushed `850f501`. FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE, pushed `44d7d98`, completing M4's task list. M5 has started: FS-501's economy model v1 is DONE, pushed `006b500` (see the FS-501 report). Continue with FS-502: persistent shop stock with stable IDs and expiry, filters, no reroll on refresh, and capacity-respecting purchases that write ledger entries. Keep sale commands carrying a price model, the ledger reconciled, and migrations writing keys in schema order.
 
 ## 7. Subsequent task briefs
 

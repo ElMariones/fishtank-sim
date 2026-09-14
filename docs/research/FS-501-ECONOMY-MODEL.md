@@ -1,6 +1,6 @@
 # FS-501 economy model v1: NPC demand, explained offers, ledger and rehoming
 
-**Recorded:** 14 September 2026 · **Status:** delivered; push reference in the [backlog](../BACKLOG.md)
+**Recorded:** 14 September 2026 · **Status:** DONE, pushed `006b500`
 **Models:** world save v6 · economy model v1 · price model 1 · breeding model v1 · genome v2
 
 ## Starting state
