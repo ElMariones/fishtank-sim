@@ -83,3 +83,34 @@ footer a{display:inline-flex;align-items:center;min-height:24px}
 .prediction-table table { width: 100%; border-collapse: collapse; font-size: 0.82rem; text-align: left; }
 .prediction-table th, .prediction-table td { padding: 8px 6px; border-bottom: 1px solid #ffffff18; }
 .genotype-odds { display: inline-block; margin-right: 12px; }
+/* FS-305 care panel: status chips, warnings with fixes, and previewed controls. */
+.care-panel { margin: 0 0 14px; }
+.water-chip small { margin-left: 6px; color: inherit; opacity: .75; font-size: .92em; }
+.water-chip.underfed, .water-chip.uncomfortable { border-color: #b69a52; color: #f0d88f; background: #332f20; }
+.water-chip.starving, .water-chip.harsh { border-color: #c0799b; color: #ffc3de; background: #3a2230; }
+.care-toggle { margin-left: auto; font-size: .74rem; padding: 6px 12px; background: #1b302b; border-color: #3c5547; }
+.care-ok { font-size: .74rem; color: #9fbfae; margin: 2px 0 0; }
+.care-warnings { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 8px; }
+.care-warnings li { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 10px 12px; border: 1px solid #8a7440; border-radius: 8px; background: #2b2a1e; }
+.care-warnings li.care-critical { border-color: #b0607f; background: #33202a; }
+.care-warnings strong { display: block; font-size: .82rem; color: #f1e6c2; font-weight: 600; }
+.care-warnings li.care-critical strong { color: #ffd0e3; }
+.care-warnings span { font-size: .74rem; color: #d7cba6; line-height: 1.5; }
+.care-fixes { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.care-fixes button { font-size: .72rem; padding: 6px 10px; background: #1d2f2b; border-color: #56745f; }
+.care-hint { font-size: .72rem; color: #cfc4a0; padding: 4px 2px; }
+.care-controls { margin-top: 12px; padding: 14px; border: 1px solid #35473f; border-radius: 9px; background: #142326; display: grid; gap: 12px; }
+.care-settings { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.care-settings label { display: grid; gap: 6px; font-size: .74rem; }
+.care-settings select { margin: 0; font-size: .74rem; }
+.care-preview caption { text-align: left; font-size: .72rem; color: #9fb6aa; padding-bottom: 6px; }
+.care-preview td { font-variant-numeric: tabular-nums; }
+.care-apply, .care-water { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; font-size: .74rem; color: #a9c0b5; }
+.care-apply > span { flex: 1 1 220px; }
+.care-water button { font-size: .72rem; padding: 6px 10px; }
+.care-water button[aria-pressed="true"] { background: #284037; border-color: #94b995; color: #e3f1e5; }
+.care-water-preview { font-size: .74rem; color: #b8ccbf; line-height: 1.6; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin: 0; }
+.care-controls .help-copy { margin: 0; }
+@media (max-width: 900px) { .care-settings { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 650px) { .care-toggle { margin-left: 0; } }
+@media (pointer: coarse) { .care-fixes button, .care-water button, .care-toggle { min-height: 44px; } }

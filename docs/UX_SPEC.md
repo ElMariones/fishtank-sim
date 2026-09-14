@@ -100,6 +100,8 @@ Tank selector shows name, role, stocking warning and unresolved urgent issues. O
 
 **Care:** concise trend and source. “Oxygen low; 7 fish affected” links to aeration, stock transfer or feeding reduction. Avoid scientific-looking precision unsupported by the model.
 
+**Lab implementation (FS-305):** above the live tank, chips show oxygen, ammonia, stocking, the fed share of the last game day and water temperature (with the thermostat target while it moves). Warnings list the problem, the number of fish affected and fixes with their cost; a fix opens **Care controls** with the change pre-selected rather than applying it. Care controls hold feeder ration, filter, aeration and thermostat selects, a table comparing now, three game days with the current settings and three game days with the chosen settings, the equipment cost, and **Apply settings**. Water change buttons (10/25/50%) preview the immediate ammonia and oxygen change before **Change N%**. **＋ Feed** adds a real portion as well as the visual pellets. The inspector's Condition row names every limiting cause.
+
 **Transfer:** select fish → destination → compare capacity/environment → submit → one transactional result → offer navigation to destination. Keep source and destination fish counts consistent. Failure leaves all fish in the source.
 
 **Decorate:** inventory/price list, object preview, drag/rotate, clear functional footprint, placement validation, apply/cancel, undo for local placement. Plants should not cover essential fish-selection controls.

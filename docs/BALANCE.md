@@ -22,7 +22,7 @@ All planned values below are game hypotheses. They are not real aquarium-care re
 | Breeding / new lab tank cost | 0 | Deliberately unbalanced experimentation |
 | Motion tick | 50 ms | Visual motion only |
 | Motion speed | 1× / 2× / 4× | Does not age fish |
-| Food target lifetime | 8 simulated motion seconds | Attraction demo; no nourishment or waste |
+| Visual pellets | Sink, can be eaten once, dissolve after 20 motion seconds | Transient worker display; the domain Feed command adds real food (FS-305) |
 
 ### Water model v1 (FS-301)
 
@@ -33,8 +33,8 @@ Game-rule approximations in `src/core/water.ts`; not aquarium-care advice.
 | Care time | 1 game day = 1,200 ticks = 60 real seconds at 1× | GDD pacing hypothesis; motion speed does not change it |
 | Integration step | 25 ticks (half a game hour) | Fixed absolute steps; aeration and decay cannot overshoot |
 | Default tank | 20,000 L at 22 °C, filter 60,000 mg N/day, aeration 24/day | A full tank of average adult lab fish stays "good" and "clean" |
-| Fish respiration | 6,000 mg O₂ per kg per day × metabolism × oxygen demand | Lab fish count at adult genetic potential until FS-302 |
-| Fish excretion | 100 mg ammonia N per kg per day × metabolism | Basal only; food-derived excretion arrives with feeding |
+| Fish respiration | 6,000 mg O₂ per kg per day × metabolism × oxygen demand | Fish count at their current size (FS-302) |
+| Fish excretion | 40 mg ammonia N per kg per day × metabolism while fasting, plus 6 mg N per gram eaten | FS-305 split: a fully fed fish still excretes the original 100 mg N per kg per day |
 | Fish mass | 0.0148 g × length³ (cm) | Koi-like proportions: 52 cm ≈ 2.1 kg |
 | Food decay | 2 per day; 50 mg N and 1,000 mg O₂ per gram | Uneaten food fouls water |
 | Biofilter | Half capacity at 0.5 mg N/L and at 2 mg/L oxygen; 4.57 mg O₂ per mg N | Saturates under overload |
@@ -57,10 +57,31 @@ Game rules in `src/core/development.ts`; not biological growth laws.
 | Oxygen factor | 0.1 at 0 mg/L → 0.6 at 4 → 1 at 6 | Matches the water bands |
 | Ammonia factor | 1 at 0.5 mg N/L → 0.6 at 1.5 → 0.1 at 4 | Matches the water bands |
 | Crowding factor | 1 at 8 kg/m³ → 0.8 at 12 → 0.4 at 24 | Soft stocking pressure |
-| Nutrition | 1: lab residents count as fed | FS-305 adds feeding |
+| Nutrition | Factor 0.1 at 0% of need eaten → 0.55 at 50% → 1 at 85% or more | FS-305 feeding day; the factor multiplies the environment |
+| Temperature | Comfort 1 from 18 to 26 °C, 0.2 at 8 and 34 °C; growth × (1 + 0.04 × (T − 22)), bounded 0.8–1.2 | FS-305; warmth speeds growth but holds less oxygen and raises demand |
 | Stock and migrated fish | Young adults aged 30 game days at adult length potential | Matches how lab fish were always drawn |
 | Water load | Mass from current length | Eggs add no load |
 | Eggs | Cannot breed or be sold | GDD §5; the lab still lets hatched fish breed until FS-401 |
+
+### Care model v1 (FS-305)
+
+Game rules in `src/core/care.ts` and `src/core/careAdvice.ts`; not aquarium-care advice.
+
+| Parameter | Value | Reason / limitation |
+|---|---:|---|
+| Food need | 10 g per kg of fish per game day × metabolism × temperature rate | Eggs weigh nothing and need nothing |
+| Feeder rations | Off 0×, Light 0.8×, Measured 1×, Generous 1.2×, Heavy 1.6× the current need | Dispensed every half-hour step from current biomass |
+| Eating | Fish find 60% of the food present per step, never more than that step's need | Measured rations leave about 3% uneaten; extra food decays |
+| Fed share | Food eaten ÷ food needed over each game day; a tank with no need counts as fed | One shared pool per tank, like the water model |
+| Filter tiers | Compact 30, Standard 60, Strong 120, Industrial 240 g N per day | Prices ◈ 0 / 150 / 400 / 900; pay the difference to upgrade, lower tiers free |
+| Aeration tiers | Gentle 12, Standard 24, Strong 36, Maximum 48 per day | Prices ◈ 0 / 100 / 300 / 650 |
+| Thermostat | 16–30 °C, moves at most 0.1 °C per half-hour step | No running cost |
+| Water change | 10%, 25% or 50%; ◈ 1 per m³ replaced (◈ 2 / 5 / 10 for 20 m³) | Siphons the same share of uneaten food |
+| Manual portion | A quarter of a game day of the residents' need | Rejected when no hatched fish need food |
+| Warning bands | Underfed below 85% fed, starving below 50%; leftovers above 5% of a day's need | Warnings open a preview; nothing applies until confirmed |
+| Food cost | None | At one game day per minute, recurring food cost would dominate the lab economy and risk softlocks during protected absence; revisit in M5 |
+
+Probe with 60 founder-distribution adults (155 kg, 7.8 kg/m³) and default equipment over 10 game days: Measured rations kept ammonia clean (0.31 mg N/L) with oxygen just low (5.8 mg/L); Generous reached elevated ammonia and low oxygen; Heavy reached high ammonia and critical oxygen. Half that stock on Measured rations had no warnings. A tank of 60 of the largest adults (836 kg) stays critical under any equipment; only moving fish helps.
 
 ## 2. Proposed solo launch tuning
 

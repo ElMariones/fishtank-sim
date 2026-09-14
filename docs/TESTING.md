@@ -1,6 +1,6 @@
 # Testing and verification
 
-**Latest recorded run:** 13 September 2026 (FS-302 life stages, after FS-301, FS-113, the M2 completion review and the FS-111 five-observer pool), Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium 152.0.7977.76 (Claude desktop browser pane). The earlier FS-202/205/206 run used Node 24.11.1, npm 11.6.2 and Google Chrome 153.0.8010.36 via bundled Playwright. Browser checks use independent fixtures, fresh browser contexts or the browser pane's own QA world; no user lineage is reset.
+**Latest recorded run:** 14 September 2026 (FS-305 care controls, after FS-304/403), Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium (Claude desktop browser pane) on an isolated QA origin. Earlier: 13 September 2026 (FS-302 life stages, after FS-301, FS-113, the M2 completion review and the FS-111 five-observer pool), in-app Chromium 152.0.7977.76. The earlier FS-202/205/206 run used Node 24.11.1, npm 11.6.2 and Google Chrome 153.0.8010.36 via bundled Playwright. Browser checks use independent fixtures, fresh browser contexts or the browser pane's own QA world; no user lineage is reset.
 
 ## 1. Commands
 
@@ -10,7 +10,7 @@ npm test
 npm run build
 ```
 
-Vitest runs every `tests/*.test.ts` file. The M2 additions are `runtime.test.ts`, `time.test.ts`, `motionClient.test.ts` and `limits.test.ts`; `resemblancePool.test.ts` validates human records; `appearance.test.ts` covers genome v2 appearance (FS-113); `water.test.ts` covers the FS-301 water model; `development.test.ts` covers FS-302 life stages and growth. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **91 tests**, and all passed. The production build passed.
+Vitest runs every `tests/*.test.ts` file. The M2 additions are `runtime.test.ts`, `time.test.ts`, `motionClient.test.ts` and `limits.test.ts`; `resemblancePool.test.ts` validates human records; `appearance.test.ts` covers genome v2 appearance (FS-113); `water.test.ts` covers the FS-301 water model; `development.test.ts` covers FS-302 life stages and growth; `care.test.ts` covers FS-305 care. The build first type-checks all app and test TypeScript in strict mode, then creates dist/. The current suite has **118 tests** in 19 files, and all passed. The production build passed.
 
 ## 2. Automated coverage
 
@@ -52,6 +52,8 @@ Vitest runs every `tests/*.test.ts` file. The M2 additions are `runtime.test.ts`
 | Appearance (FS-113) | For 300 seeds, genome v1 loci, mutations and non-appearance phenotype are identical under genome v2. Chromosomes 9–10 transmit from the parent homologs. Dominance, blends, carrier and mixed strengths, recessive scales and rainbow dots are independent of phase. Founder weights sum to 1; 10,000 founders show a new feature in 20–34% of cases, with striking variants under 1%. Rarity descriptions are checked. Mixed v1/v2 saves round-trip, and wrong genome shapes reject. A legacy breed/buy journal replays as genome v1, and an explicit v1 child of v2 parents rejects. Ornament geometry is finite, bounded and deterministic |
 | Water model (FS-301) | Zero load keeps clean water saturated, and depleted oxygen recovers monotonically. Overload raises ammonia every day, drives oxygen critical and records unmet demand. Two 50% changes plus a typical load return good, clean water. Every fixture balances oxygen, ammonia and food against its ledger within 1e-7 relative, with nothing negative. Split intervals match a single integration exactly. Food decays into ammonia and oxygen demand. Inputs stay unmutated, and invalid time, food and water changes reject. Habitat load counts living residents and matches `express`. Every tank, empty ones included, advances. Replay reproduces saved water and rejects tampering. Fine and coarse advances agree. A world v1 runtime migrates with a rebased checkpoint, and invalid water rejects |
 | Life stages (FS-302) | Environment curves give 1 when healthy, 0.475 hypoxic, 0.5 at high ammonia and 0.667 crowded, with limits listed most severe first. A healthy egg hatches on day 3 and becomes an adult within 18–30 game days through fry and juvenile, never shrinking or passing its potential. At day 30 the same genome ranks healthy > crowded > ammonia > hypoxic. Condition lags the environment in both directions, and growth resumes after recovery. In the world, eggs hatch at the day boundary, biomass rises, founders only age, splits and replay agree, and tampered length rejects. Eggs cannot be sold, batch-sold or bred, atomically. World v2 saves and runtimes migrate as young adults, and invalid life state rejects. Goal leaders are never eggs |
+
+| Care (FS-305) | Rations from Off to Heavy order fed share, uneaten food and ammonia as declared, never feed beyond need, and balance food, ammonia and oxygen within 1e-7. Rations and temperature change development directionally; extra food gives identical growth. The thermostat reaches its target without overshoot. Splits, single-tick advances, offline catch-up and replay agree, and tampered care rejects. Upgrades, downgrades, water changes and feeding charge or reject atomically. A stressed tank's warnings, applied in rounds, clear every warning, and each projection equals the applied result. World v3 migrates with default care |
 
 These statistical checks use fixed seeds and wide tolerances to catch implementation regressions. They do not establish biological validity or rigorous randomness certification.
 
@@ -257,6 +259,17 @@ The user supplied five anonymous complete `study-v1-12x4` result records; the fi
 14 September 2026, Windows, Node 24.11.1 / npm 11.6.2. `npm run check`: 111 tests in 18 files, strict TypeScript and production build passed. Ten new fixtures cover ordered spatial-query correctness, utility parity, candidate scaling, obstacle exclusion/tangent motion, exact Mendelian odds, mixed genomes, prediction determinism and unchanged future births. `node scripts/check-docs.mjs` and `git diff --check` passed. Full [evidence and limitations](research/FS-304-403-SPATIAL-AND-PREDICTION.md).
 
 In-app Chromium on isolated port 5175: verified goal and parent changes update sampled adult ranges; exact base-color odds; habitat off/on; reload with saved world and goal; and narrow table layout at 375 × 812. Browser review found and fixed a squeezed Breed button by placing capacity feedback on a separate grid row (rechecked at 290 px button width). Breeding after preview produced one 20-egg cohort; reload retained 26 fish. No warning/error logs were reported. Rock exclusion and constant-density scaling are test evidence, not a claim of full silhouette collision or a production device benchmark. M3/M4 milestone gates remain open.
+
+## FS-305 care controls verification
+
+14 September 2026, Windows 11, Node 22.18.0 / npm 10.9.3. `npm run check`: 118 tests in 19 files, strict TypeScript and production build passed; `node scripts/check-docs.mjs` and `git diff --check` passed. In-app Chromium on the isolated origin `http://localhost:5176` (new QA world; the usual port 5173 world was not opened).
+
+- Fresh garden: Oxygen good 8.4 mg/L, Ammonia clean 0.01 mg N/L, Fed 100%, 22.0 °C, no warnings. Heavy rations with a Strong filter previewed uneaten food 2 → 42 g and ◈ 250; applying moved credits 1,200 → 950. A 25% water change cost ◈ 5. The resulting leftovers warning's preview loaded Measured rations at no cost; **＋ Feed** reported the portion.
+- Stress: Compact filter, Gentle aeration and 29 °C (no cost), 20 eggs bred into the garden, `savedAt` moved back 45 minutes. After reload: Oxygen critical 1.7 mg/L, Ammonia high 9.23 mg N/L, 29.0 °C, four warnings with priced fixes, Haru "Condition 16% · limited by ammonia, low oxygen, temperature".
+- Recovery: a previewed fix (oxygen 1.5 → 7.1 mg/L, ammonia 14.25 → 4.52 over three days) applied for ◈ 250, and a 50% change for ◈ 10. After another 30 simulated minutes: Oxygen good 7.2, Ammonia clean 0.12, Fed 97%, no warnings, Haru 100%. No save or replay warning after either reload.
+- 375 × 812 with coarse pointer: document width 375 px, projection table inside its panel, no care control under 44 px.
+- Found and fixed: "26 fishs affected"; care warnings reused the save banner's `.warning` class; the resume notice still said health was not simulated; chip text lacked a space before values.
+- No console or dev-server errors. Details: [FS-305 care controls](research/FS-305-CARE-CONTROLS.md).
 
 ## 4. Required next verification
 

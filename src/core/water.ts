@@ -16,7 +16,7 @@ export const STEP_DAYS = WATER_STEP_TICKS / TICKS_PER_GAME_DAY;
 export const WATER_RATES = {
   /** Fish oxygen use at 20 °C for average metabolism, mg O₂ per kg of fish per game day. */
   oxygenMgPerKgDay: 6_000,
-  /** Basal fish excretion, mg ammonia nitrogen per kg per game day. */
+  /** Fully fed fish excretion, mg ammonia nitrogen per kg per game day; care.ts splits it into fasting and eaten-food parts. */
   ammoniaMgNPerKgDay: 100,
   /** Uneaten food breakdown, fraction per game day at 20 °C. */
   foodDecayPerDay: 2,
@@ -57,21 +57,21 @@ export function defaultWater(): WaterState {
   return { model: 1, volumeL, temperatureC, oxygenMgL: oxygenSaturationMgL(temperatureC), ammoniaMgL: 0, foodG: 0, filterMgNPerDay, aerationPerDay };
 }
 
-/** Residents' oxygen use and ammonia excretion at 20 °C. */
-export type WaterLoad = { oxygenMgPerDay: number; ammoniaMgNPerDay: number };
+/** Residents' oxygen use and ammonia excretion at 20 °C, plus any ammonia already produced this step (eaten food, FS-305). */
+export type WaterLoad = { oxygenMgPerDay: number; ammoniaMgNPerDay: number; stepAmmoniaMgN?: number };
 export const NO_LOAD: WaterLoad = { oxygenMgPerDay: 0, ammoniaMgNPerDay: 0 };
 
 /** Cumulative fluxes for conservation checks: oxygen and ammonia in mg, food in g. Aeration and oxygen exchange are net. */
 export type WaterLedger = {
   oxygen: { aeration: number; exchange: number; respiration: number; foodDecay: number; nitrification: number; unmet: number };
   ammonia: { excretion: number; foodDecay: number; nitrification: number; exchange: number };
-  food: { added: number; decayed: number; removed: number };
+  food: { added: number; eaten: number; decayed: number; removed: number };
   steps: number;
 };
 export const emptyLedger = (): WaterLedger => ({
   oxygen: { aeration: 0, exchange: 0, respiration: 0, foodDecay: 0, nitrification: 0, unmet: 0 },
   ammonia: { excretion: 0, foodDecay: 0, nitrification: 0, exchange: 0 },
-  food: { added: 0, decayed: 0, removed: 0 },
+  food: { added: 0, eaten: 0, decayed: 0, removed: 0 },
   steps: 0,
 });
 
@@ -80,7 +80,7 @@ export function stepWater(state: WaterState, load: WaterLoad, ledger?: WaterLedg
   const litres = state.volumeL, rate = temperatureFactor(state.temperatureC), saturated = oxygenSaturationMgL(state.temperatureC);
   // Uneaten food breaks down, releasing ammonia and consuming oxygen.
   const decayed = state.foodG * Math.min(1, WATER_RATES.foodDecayPerDay * rate * STEP_DAYS);
-  const excreted = load.ammoniaMgNPerDay * rate * STEP_DAYS, fromFood = decayed * WATER_RATES.foodAmmoniaMgNPerG;
+  const excreted = load.ammoniaMgNPerDay * rate * STEP_DAYS + (load.stepAmmoniaMgN ?? 0), fromFood = decayed * WATER_RATES.foodAmmoniaMgNPerG;
   let ammonia = state.ammoniaMgL * litres + excreted + fromFood;
   // The biofilter saturates at high ammonia and slows when oxygen is low.
   const concentration = ammonia / litres, oxygenLimit = state.oxygenMgL / (state.oxygenMgL + WATER_RATES.filterOxygenHalfMgL);

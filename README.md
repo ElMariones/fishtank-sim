@@ -33,7 +33,7 @@ The npm cache is configured inside this checkout for compatibility with the work
 5. Use unrelated NPC stock for outcrossing. Selling preserves the fish’s family record.
 6. Open **Saves** to export, preview a v1/v2 import, or restore one of two backups. The app automatically reloads its validated IndexedDB save and preserves the original v1 localStorage data.
 
-Offspring start as eggs. They hatch after 3 game days and grow toward their genetic adult length, faster in good water; one game day passes per real minute. Portraits still show **adult genetic potential**. Feeding drives visual pellet consumption and utility behavior; it does not yet simulate nutrition. Motion speed does not change growth. The local NPC economy is intentionally unbalanced because lab breeding and tanks are free.
+Offspring start as eggs. They hatch after 3 game days and grow toward their genetic adult length, faster in well-kept water; one game day passes per real minute. Portraits still show **adult genetic potential**. Each tank has a feeder, filter, aeration and thermostat under **Care controls**, with previews and costs; warnings name what to fix. Poor care lowers condition and slows growth, and fish never die. Motion speed does not change growth. The local NPC economy is intentionally unbalanced because lab breeding and tanks are free.
 
 Limits: 60 residents per tank, eight tanks, 480 living fish and 10,000 total fish records including archives. A full twenty-fish cohort must fit before any birth is created.
 
@@ -58,7 +58,7 @@ New contributors and agents should start with [AGENTS.md](AGENTS.md), then [impl
 
 ## Technical foundation
 
-React + TypeScript + Vite. Pure seeded genetics and pedigree core, with genome v2 color and ornament chromosomes. Procedural Canvas fish shared between live tank and portraits, including body and eye colors, fine spots, tiger stripes, marbling, calico, rosettes, scale types, shimmer and tail/dorsal patterns. A versioned Web Worker runs fixed-step visual motion. The persistent clock integrates visible, background and protected offline time, including a one-compartment water model per tank; life stages and accumulated growth are active; persistent feeding and health remain planned. Versioned command replay, transactional IndexedDB backups and a single-writer browser lock protect local worlds.
+React + TypeScript + Vite. Pure seeded genetics and pedigree core, with genome v2 color and ornament chromosomes. Procedural Canvas fish shared between live tank and portraits, including body and eye colors, fine spots, tiger stripes, marbling, calico, rosettes, scale types, shimmer and tail/dorsal patterns. A versioned Web Worker runs fixed-step visual motion. The persistent clock integrates visible, background and protected offline time, including a one-compartment water model and care (feeding, equipment, thermostat) per tank; life stages, accumulated growth and condition are active. Versioned command replay, transactional IndexedDB backups and a single-writer browser lock protect local worlds.
 
 M2 (FS-201–206) is complete. Five human observers scored 54/60 in the M1 resemblance study (FS-111), meeting M1's human-resemblance gate. Care controls, juvenile appearance reveal, PixiJS and an authoritative database-backed market remain planned. See the [M2 runtime report](docs/research/M2-RUNTIME-AND-RECOVERY.md) and [human resemblance results](docs/research/FS-111-HUMAN-RESEMBLANCE.md).
 

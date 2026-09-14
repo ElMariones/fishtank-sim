@@ -192,6 +192,8 @@ Each habitat records volume, usable area, temperature, dissolved oxygen proxy, w
 
 **Decoration:** plants create cover and break sight lines; rocks/caves supply shelter; current devices create preferred flow zones; substrates influence visual context and spawning suitability. Initial placement uses a 2D coordinate and rotation with explicit collision/cover footprints. Separate cosmetic detail from functional footprint.
 
+**Current lab (FS-305):** per-tank feeder rations, filter and aeration tiers, a thermostat, manual feeding and water changes, with cost and projected effect shown before applying. Warnings name the cause, fish affected and fixes. Poor care lowers condition and slows growth; fish never die. Food has no recurring cost in the lab (ADR-046).
+
 **Tank roles:** display, nursery, controlled breeding, outcross stock, specialist lineage, and quarantine. Roles are presets, not hard-coded categories preventing experimentation.
 
 **Transfers:** choose one or multiple fish and a destination. Preview added biomass, space, and temperature difference. Commit all selected transfers atomically, or explain why none moved. Clicking a relative can navigate between tanks without transferring it.

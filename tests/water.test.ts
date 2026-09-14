@@ -10,7 +10,7 @@ import {
   addFood, changeWater, defaultWater, emptyLedger, integrateWater, NO_LOAD, oxygenSaturationMgL, stepWater, temperatureFactor,
   TICKS_PER_GAME_DAY, WATER_STEP_TICKS, waterStatus, type WaterLedger, type WaterLoad,
 } from '../src/core/water';
-import { applyCommand, createWorld, type Command } from '../src/core/world';
+import { applyCommand, createWorld, WORLD_VERSION, type Command } from '../src/core/world';
 
 const NOW = '2026-09-13T12:00:00.000Z';
 const DAY = TICKS_PER_GAME_DAY;
@@ -175,7 +175,7 @@ describe('FS-301 habitat load and persistent water', () => {
     const legacy = JSON.parse(JSON.stringify(runtime));
     for (const stored of [legacy.world, legacy.checkpoint.world]) { stored.version = 1; for (const entry of stored.tanks) delete entry.water; }
     const decoded = decodeRuntime(JSON.stringify(legacy));
-    expect(decoded.world.version).toBe(3);
+    expect(decoded.world.version).toBe(WORLD_VERSION);
     expect(decoded.world.tanks.map(entry => entry.water)).toEqual([defaultWater(), defaultWater()]);
     const records = (world: typeof runtime.world) => world.fish.map(member => ({ ...member, life: null }));
     expect(records(decoded.world)).toEqual(records(runtime.world));

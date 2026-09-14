@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { defaultCare } from '../src/core/care';
 import { kinship } from '../src/core/pedigree';
 import { random } from '../src/core/random';
 import { decodeSave } from '../src/core/save';
@@ -48,7 +49,7 @@ describe('FS-112 larger lab worlds', () => {
     // A hypothetical ninth tank isolates the living cap from tank capacity.
     const crowded: World = {
       ...structuredClone(base), nextId: MAX_LIVING - 9,
-      tanks: Array.from({ length: MAX_TANKS + 1 }, (_, i) => ({ id: `tank-${i + 1}`, name: `Tank ${i + 1}`, capacity: TANK_CAPACITY, planted: false, water: defaultWater() })),
+      tanks: Array.from({ length: MAX_TANKS + 1 }, (_, i) => ({ id: `tank-${i + 1}`, name: `Tank ${i + 1}`, capacity: TANK_CAPACITY, planted: false, water: defaultWater(), care: defaultCare(defaultWater()) })),
       fish: Array.from({ length: MAX_LIVING - 10 }, (_, i) => ({ ...make(i + 1, i % 2 ? 'M' : 'F', null), tankId: `tank-${Math.ceil((i + 1) / TANK_CAPACITY)}` })),
     };
     const before = JSON.stringify(crowded);

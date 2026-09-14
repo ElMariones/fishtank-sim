@@ -34,9 +34,23 @@ export type WaterState = {
   /** Aeration transfer coefficient (kLa), per game day. */
   aerationPerDay: number;
 };
-export type Tank = { id: string; name: string; capacity: number; planted: boolean; water: WaterState };
-/** World v2 added per-tank water (FS-301); world v3 adds fish life state (FS-302). Older saves migrate with defaults. */
-export type World = { version: 3; seed: number; nextId: number; credits: number; fish: Fish[]; tanks: Tank[] };
+export type Ration = 'off' | 'light' | 'measured' | 'generous' | 'heavy';
+/** Care model v1 state for one tank (FS-305). Equipment capacity lives on the water; settings and the feeding day live here. */
+export type TankCare = {
+  model: 1;
+  /** Auto-feeder ration as a multiple of the residents' current food need. */
+  ration: Ration;
+  /** Thermostat setpoint, whole °C. Water temperature moves toward it at a bounded rate. */
+  targetC: number;
+  /** Food needed and eaten since the current game day began, grams. */
+  dayNeedG: number;
+  dayEatenG: number;
+  /** Share of the residents' need eaten over the last completed game day, 0–1. */
+  fed: number;
+};
+export type Tank = { id: string; name: string; capacity: number; planted: boolean; water: WaterState; care: TankCare };
+/** World v2 added per-tank water (FS-301), v3 fish life state (FS-302), v4 tank care (FS-305). Older saves migrate with defaults. */
+export type World = { version: 4; seed: number; nextId: number; credits: number; fish: Fish[]; tanks: Tank[] };
 /**
  * Development v2 inherited marking anchor, derived from one phased two-locus haplotype block.
  * Body coordinates: u 0 = snout tip … 1 = peduncle; v −1 = dorsal edge … 1 = ventral edge.

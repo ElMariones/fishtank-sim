@@ -146,7 +146,8 @@ describe('FS-302 life stages and accumulated growth', () => {
     for (const stored of [legacy.world, legacy.checkpoint.world]) { stored.version = 2; for (const member of stored.fish) delete member.life; }
     const decoded = decodeRuntime(JSON.stringify(legacy));
     expect(decoded).toMatchObject({ tick: 2 * DAY, revision: 1, events: [], checkpoint: { tick: 2 * DAY, revision: 1 } });
-    expect(decoded.world.tanks).toEqual(runtime.world.tanks);
+    // The stored water carries over; care did not exist in world v2 and starts from defaults at the snapshot.
+    expect(decoded.world.tanks.map(tank => tank.water)).toEqual(runtime.world.tanks.map(tank => tank.water));
     expect(decoded.world.fish.every(member => member.life.ageDays === STOCK_AGE_DAYS)).toBe(true);
   });
 });

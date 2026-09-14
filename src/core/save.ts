@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { defaultCare, RATION_KEYS, THERMOSTAT_RANGE } from './care';
 import { ALL_LOCI, LOCI } from './catalog';
 import { adultLife } from './development';
 import { metabolicPotential } from './genetics';
@@ -19,7 +20,12 @@ const water = z.object({
   oxygenMgL: bounded(WATER_LIMITS.oxygenMgL), ammoniaMgL: bounded(WATER_LIMITS.ammoniaMgL), foodG: bounded(WATER_LIMITS.foodG),
   filterMgNPerDay: bounded(WATER_LIMITS.filterMgNPerDay), aerationPerDay: bounded(WATER_LIMITS.aerationPerDay),
 }).strict();
-/** Life model v1 state, carried by every world v3 fish. */
+/** Care model v1 state, carried by every world v4 tank. */
+const care = z.object({
+  model: z.literal(1), ration: z.enum(RATION_KEYS), targetC: z.number().int().min(THERMOSTAT_RANGE[0]).max(THERMOSTAT_RANGE[1]),
+  dayNeedG: z.number().min(0).max(1e12), dayEatenG: z.number().min(0).max(1e12), fed: z.number().min(0).max(1),
+}).strict();
+/** Life model v1 state, carried by every world v3+ fish. */
 const life = z.object({
   model: z.literal(1), ageDays: z.number().int().min(0).max(10_000_000), lengthCm: z.number().min(0).max(200), condition: z.number().min(0).max(1),
 }).strict();
@@ -34,25 +40,29 @@ const fishRecord = {
   mutations: z.array(z.object({ locus: z.number().int().min(0).max(ALL_LOCI.length - 1), copy: z.enum(['maternal', 'paternal']), from: z.number().int().min(0).max(5), to: z.number().int().min(0).max(5) })).max(ALL_LOCI.length * 2),
 };
 const recordsOnly = z.array(z.object(fishRecord)).max(MAX_RECORDS);
+const withLife = z.array(z.object({ ...fishRecord, life })).max(MAX_RECORDS);
 const tanksWithWater = z.array(z.object({ ...tank, water })).min(1).max(MAX_TANKS);
 const schema = z.discriminatedUnion('version', [
   z.object({ version: z.literal(1), ...header, tanks: z.array(z.object(tank)).min(1).max(MAX_TANKS), fish: recordsOnly }),
   z.object({ version: z.literal(2), ...header, tanks: tanksWithWater, fish: recordsOnly }),
-  z.object({ version: z.literal(3), ...header, tanks: tanksWithWater, fish: z.array(z.object({ ...fishRecord, life })).max(MAX_RECORDS) }),
+  z.object({ version: z.literal(3), ...header, tanks: tanksWithWater, fish: withLife }),
+  z.object({ version: z.literal(4), ...header, tanks: z.array(z.object({ ...tank, water, care })).min(1).max(MAX_TANKS), fish: withLife }),
 ]);
 
 /**
  * World v1 predates water (FS-301): its tanks start with default, clean, oxygen-saturated water. Worlds v1–v2 predate
  * life state (FS-302): their fish become young adults at their adult length potential, as the lab always drew them.
+ * Worlds v1–v3 predate care (FS-305): their tanks feed measured rations with a thermostat at the water's temperature.
  */
 export function decodeSave(raw: string): World {
   if (raw.length > 12_000_000) throw new Error('Save is too large for this lab.');
   const parsed = schema.parse(JSON.parse(raw));
   let world: World;
-  if (parsed.version === 3) world = parsed;
+  if (parsed.version === 4) world = parsed;
   else {
-    const tanks = parsed.version === 2 ? parsed.tanks : parsed.tanks.map(entry => ({ ...entry, water: defaultWater() }));
-    world = { ...parsed, version: 3, tanks, fish: parsed.fish.map(member => ({ ...member, life: adultLife(member.genome) })) };
+    const watered = parsed.version === 1 ? parsed.tanks.map(entry => ({ ...entry, water: defaultWater() })) : parsed.tanks;
+    const fish = parsed.version === 3 ? parsed.fish : parsed.fish.map(member => ({ ...member, life: adultLife(member.genome) }));
+    world = { ...parsed, version: 4, tanks: watered.map(entry => ({ ...entry, care: defaultCare(entry.water) })), fish };
   }
   const ids = new Map(world.fish.map(f => [f.id, f]));
   const tanks = new Set(world.tanks.map(t => t.id));
@@ -68,6 +78,7 @@ export function decodeSave(raw: string): World {
   }
   for (const entry of world.tanks) {
     if (world.fish.filter(f => f.status === 'living' && f.tankId === entry.id).length > entry.capacity) throw new Error('Tank exceeds capacity.');
+    if (entry.care.dayEatenG > entry.care.dayNeedG) throw new Error('A tank ate more food than its residents needed.');
   }
   return world;
 }

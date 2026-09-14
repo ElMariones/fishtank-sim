@@ -47,6 +47,8 @@ World save v2 (FS-301) gives every tank water. Advance time only through `advanc
 
 World save v3 (FS-302) adds `life` to every fish: age in game days, current length and condition, updated once per absolute game-day boundary. Eggs cannot breed or be sold. Current size and genetic adult length are separate values; never substitute one for the other.
 
+World save v4 (FS-305) adds `care` to every tank: feeder ration, thermostat and the current feeding day. Domain feeding is one shared food pool per tank inside `advanceWorld`; worker pellets remain visual. Condition is the health measure, and every factor in the environment must also appear in `environmentLimits`, so no decline is unexplained. Care previews advance a copy of the tank with the same rules; keep them equal to applying the change. Fish never die.
+
 The live Canvas’s transient actors are outside React state. Motion is deterministic for the same initial actors and tick sequence, but positions are not persisted; switching tanks reconstructs visual trajectories. Birth/genome outcomes do persist.
 
 Sales preserve the full fish record, including parent IDs and genome. The archive assumes sold fish are no longer locally living; online ownership/death states must be modeled separately later.
@@ -63,7 +65,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> FS-304 spatial steering and FS-403 independent prediction are DONE, pushed `5dbfb73`; see the backlog for final push status and the FS-304/403 report for limits. Continue M3 with FS-305 feeding/equipment/water controls, cost/effect previews and actionable care warnings. Read GDD §5/9 and the water/development contracts. Keep domain care separate from transient worker pellets and motion speed, preserve protected absence, and verify active/background/offline/replay equality and rejected-command atomicity. Complete FS-306/307 before FS-401/402 normal breeding. FS-403 was delivered early in the lab; it does not complete M4's lifecycle or two-generation gate.
+> FS-305 care controls are delivered (see the backlog for push status and the FS-305 report for limits). Continue M3 with FS-306: juvenile appearance derived from life state in pure core, smooth body/fin animation in the renderer, and a clear distinction between the actual stage and the adult preview. Then FS-307's healthy/stressed demonstration, absence summary and recovery. Keep the renderer consuming phenotype only, keep care previews equal to applied results, and complete M3 before FS-401/402 normal breeding.
 
 ## 7. Subsequent task briefs
 

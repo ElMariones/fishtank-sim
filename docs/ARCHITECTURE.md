@@ -26,7 +26,9 @@ src/
     pedigree.ts     Exact memoized ancestry-pair queries with an explicit stack
     world.ts        Validated world commands and local NPC transactions
     water.ts        Water model v1: one-compartment oxygen/ammonia/food chemistry, fixed steps, ledger and status bands
-    habitat.ts      Resident load per tank, world advance (water steps plus daily development) and stocking bands
+    habitat.ts      Resident load and food need per tank, world advance (care and water steps plus daily development) and stocking bands
+    care.ts         Care model v1: feeder rations, shared food pool, equipment tiers, thermostat, water changes and costs
+    careAdvice.ts   Care status, warnings with priced fixes, and projections that preview a change on a copy of the tank
     development.ts  Life model v1: egg/fry/juvenile/adult/elderly stages, logistic growth, lagged condition and environment curves
     save.ts         Legacy world-v1 schema and reference validation
     runtime.ts      Versioned command envelope, integer tick, event IDs and checkpoint replay
@@ -48,6 +50,7 @@ src/
     App.tsx         Lab controls, command runtime, inspector and paginated collection
     Startup.tsx     Validated async loading before interactive controls
     SavePanel.tsx   Export, import review, retry and backup recovery
+    CarePanel.tsx   Care chips, warnings with fixes, and previewed feeder/equipment/thermostat/water-change controls
     TankCanvas.tsx  Paints worker motion frames, fish picking and the motion-fault recovery notice
     FishPortrait.tsx Shared procedural renderer at portrait scale, fitted or shared-scale framing
     VisualFixtureLab.tsx Deterministic fixture, anatomy and marking-resemblance comparison surface
@@ -65,6 +68,7 @@ tests/
   appearance.test.ts Genome v2 stream isolation, dominance, founder rarity, mixed-version saves and ornament bounds
   water.test.ts    Zero/overload/recovery conservation fixtures, split-interval equality, habitat load, replay and world v1 migration
   development.test.ts Hatching, healthy maturity range, declared-condition fixtures, condition history, egg rules and world v2 migration
+  care.test.ts     Ration conservation, development under rations and temperature, split/offline/replay equality, costs, warnings, projections and world v3 migration
   limits.test.ts   Living/record limits, deep and wide pedigree queries and atomic rejection
   runtime.test.ts  Command envelopes, retries, replay, compaction, migration and tamper rejection
   time.test.ts     Tick segments, shared tank clocks, offline cap and backwards clocks
@@ -93,7 +97,7 @@ There is currently **no backend, WebGL mesh, biological life-stage scheduler, au
 | State | React state + motion refs | UI store only if needed | Avoid global subscription to every swimming coordinate |
 | Genealogy | Exact memoized ancestor queries and paginated relatives | Worker query + incremental kinship cache | Preserve history without world-sized matrix allocation |
 | Backend | None | Authoritative HTTP service + PostgreSQL | Durable transactions and trusted online ownership |
-| Shared simulation | Persistent 50 ms clock, event-boundary integrator, fixed-step water per tank (FS-301) and daily life stages and growth (FS-302); no health yet | Water, development and scheduled lifecycle events | One deterministic integrator must serve visible/background/offline modes |
+| Shared simulation | Persistent 50 ms clock, event-boundary integrator, fixed-step care and water per tank (FS-301, FS-305) and daily life stages, growth and condition (FS-302) | Water, development and scheduled lifecycle events | One deterministic integrator must serve visible/background/offline modes |
 
 React documents Vite as one option for a custom setup; Vite provides the React TypeScript build workflow. These choices fit this single-page research application, rather than implying every React app needs this stack. [React guidance](https://react.dev/learn/creating-a-react-app), [Vite guide](https://vite.dev/guide/).
 
@@ -212,7 +216,7 @@ type Result<T> =
 
 Representative commands: RenameFish, TransferFishBatch, ReserveClutch, CancelCourtship, PlaceDecoration, FeedTank, SetEquipment, RehomeFish, CreateListing, BuyListing, CancelListing. Each has declared preconditions, events, failure codes, and replay rules.
 
-The lab reducer currently implements `rename`, `move`, `breed`, `sell`, `sell-batch`, `buy`, `add-tank` and `decorate`. `breed` and `buy` carry an optional `genomeVersion`: the app sends the current genome version, and commands recorded before FS-113 omit it and replay exactly as genome v1 (ADR-034). `sell-batch` validates every member (non-empty, unique, living) before paying for any of them, so one invalid member rejects the whole batch.
+The lab reducer currently implements `rename`, `move`, `breed`, `sell`, `sell-batch`, `buy`, `add-tank`, `decorate`, and the FS-305 care commands `feed`, `set-care` and `change-water`. `breed` and `buy` carry an optional `genomeVersion`: the app sends the current genome version, and commands recorded before FS-113 omit it and replay exactly as genome v1 (ADR-034). `sell-batch` validates every member (non-empty, unique, living) before paying for any of them, so one invalid member rejects the whole batch.
 
 **Breed:** validate eligible parents and current ownership; reserve cohort slots; commit courtship/clutch record; scheduler emits hatch events at an exact tick. Recheck relevant health/status rules at conception and handle interrupted courtship without losing reservations.
 
@@ -275,6 +279,16 @@ The step uses only basic arithmetic, so saved doubles match across browsers.
 - **Breeding:** breeding lays eggs. Eggs cannot breed or be sold, and goal leaders skip them; the lab still lets hatched fish breed until FS-401.
 - **Display:** the app previews the clock every five seconds without saving. The tank draws fish at their current size, with an eggs-incubating count, and cards and the inspector show stage, age and condition beside adult potential.
 - **Older saves:** older world versions are validated against records only and rebased with migrated young-adult life state (ADR-038).
+
+### Implemented care model (FS-305)
+
+`src/core/care.ts` holds care model v1, and world save v4 stores each tank's `care`: feeder ration, thermostat setpoint, the current feeding day's needed and eaten grams, and the last day's fed share. Filter and aeration capacity stay on the water state and map to priced tiers.
+
+- **Each half-hour step:** the feeder dispenses the ration × the residents' current need into the tank's single food pool; fish eat 60% of the food present, never beyond that step's need; `stepWater` then runs with the eaten food's excretion added; the thermostat moves the temperature by at most 0.1 °C.
+- **Each game day:** `advanceWorld` closes the feeding day before development, so nutrition (fed share on a curve), temperature comfort and a bounded temperature growth multiplier join oxygen, ammonia and crowding in the environment. `environmentLimits` lists every factor in the product, so condition cannot fall without a named cause.
+- **Commands:** `feed` adds a quarter day of need, `set-care` charges the price difference for higher equipment tiers, and `change-water` charges ◈ 1 per m³ replaced. No-ops, unaffordable changes and feeding a tank without hatched fish reject atomically.
+- **Advice:** `careAdvice.ts` derives status bands, warnings with priced fixes and `projectTank`, which advances a copy holding only that tank and its residents. The UI opens a preview from a warning; only an explicit Apply or Change command mutates the world.
+- **Older saves:** worlds v1–v3 migrate with Measured rations and a thermostat at the rounded water temperature, and rebase at their snapshot (ADR-038).
 
 ## 7. Worker and renderer protocol
 

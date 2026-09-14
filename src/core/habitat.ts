@@ -1,20 +1,22 @@
-import { developDay, environmentFor } from './development';
+import { CARE_RATES, closeCareDay, integrateTank, type CareLoad } from './care';
+import { developDay, environmentFor, nutritionFactor, type Environment } from './development';
 import { metabolicPotential } from './genetics';
-import type { Fish, WaterState, World } from './types';
-import { integrateWater, NO_LOAD, TICKS_PER_GAME_DAY, WATER_RATES, waterSteps, type WaterLoad } from './water';
+import type { Fish, Tank, WaterState, World } from './types';
+import { TICKS_PER_GAME_DAY, WATER_RATES, waterSteps } from './water';
 
 /**
- * Habitat (FS-301, FS-302): living residents load each tank's water at their current size, and every game day each
- * resident develops under its tank's water and crowding at that day boundary. Water slows growth but does not yet harm fish.
+ * Habitat (FS-301, FS-302, FS-305): living residents load each tank's water and food need at their current size. Every
+ * half-hour step feeds the tank and advances its water; every game day closes the feeding day and each resident develops
+ * under its tank's water, temperature, crowding and nutrition at that boundary. Poor care lowers condition; fish never die.
  */
 
 /** Game length–weight rule with koi-like proportions: grams = 0.0148 × cm³. Eggs weigh nothing in this model. */
 export const massKg = (lengthCm: number) => 0.0000148 * lengthCm * lengthCm * lengthCm;
 
-export type TankLoad = WaterLoad & { fish: number; biomassKg: number };
-const emptyLoad = (): TankLoad => ({ fish: 0, biomassKg: 0, ...NO_LOAD });
+export type TankLoad = CareLoad & { fish: number; hatched: number; biomassKg: number };
+const emptyLoad = (): TankLoad => ({ fish: 0, hatched: 0, biomassKg: 0, oxygenMgPerDay: 0, ammoniaMgNPerDay: 0, foodNeedGPerDay: 0 });
 
-/** One pass over every record: living residents' count, current biomass, respiration and excretion per tank at 20 °C. */
+/** One pass over every record: living residents' count, current biomass, respiration, fasting excretion and food need per tank at 20 °C. */
 export function tankLoads(fish: readonly Fish[]): Map<string, TankLoad> {
   const loads = new Map<string, TankLoad>();
   for (const member of fish) {
@@ -22,9 +24,11 @@ export function tankLoads(fish: readonly Fish[]): Map<string, TankLoad> {
     const potential = metabolicPotential(member.genome), mass = massKg(member.life.lengthCm);
     const load = loads.get(member.tankId) ?? emptyLoad();
     load.fish++;
+    if (mass > 0) load.hatched++;
     load.biomassKg += mass;
     load.oxygenMgPerDay += WATER_RATES.oxygenMgPerKgDay * mass * potential.metabolism * potential.oxygenDemand;
-    load.ammoniaMgNPerDay += WATER_RATES.ammoniaMgNPerKgDay * mass * potential.metabolism;
+    load.ammoniaMgNPerDay += CARE_RATES.fastingAmmoniaMgNPerKgDay * mass * potential.metabolism;
+    load.foodNeedGPerDay += CARE_RATES.foodNeedGPerKgDay * mass * potential.metabolism;
     loads.set(member.tankId, load);
   }
   return loads;
@@ -42,18 +46,25 @@ export function stocking(load: TankLoad, water: WaterState): { densityKgM3: numb
   return { densityKgM3, level };
 }
 
+/** The environment a tank's residents develop under: water, temperature, crowding and the last closed feeding day. */
+export function tankEnvironment(tank: Tank, load: TankLoad): Environment {
+  return environmentFor(tank.water, stocking(load, tank.water).densityKgM3, nutritionFactor(tank.care.fed));
+}
+
 function integrateTanks(world: World, fromTick: number, toTick: number): World {
   if (waterSteps(fromTick, toTick) === 0) return world;
   const loads = tankLoads(world.fish);
-  return { ...world, tanks: world.tanks.map(tank => ({ ...tank, water: integrateWater(tank.water, loads.get(tank.id) ?? NO_LOAD, fromTick, toTick) })) };
+  return { ...world, tanks: world.tanks.map(tank => integrateTank(tank, loads.get(tank.id) ?? emptyLoad(), fromTick, toTick)) };
 }
 
-/** One game day for every living fish, under its tank's water and crowding at the day boundary. */
+/** One game day for every living fish, under its tank's environment at the day boundary, after closing the feeding day. */
 function developResidents(world: World): World {
+  const tanks = world.tanks.map(tank => ({ ...tank, care: closeCareDay(tank.care) }));
   const loads = tankLoads(world.fish);
-  const environments = new Map(world.tanks.map(tank => [tank.id, environmentFor(tank.water, stocking(loads.get(tank.id) ?? emptyLoad(), tank.water).densityKgM3)]));
+  const environments = new Map(tanks.map(tank => [tank.id, tankEnvironment(tank, loads.get(tank.id) ?? emptyLoad())]));
   return {
     ...world,
+    tanks,
     fish: world.fish.map(member => {
       const environment = member.status === 'living' ? environments.get(member.tankId) : undefined;
       return environment ? { ...member, life: developDay(member.life, metabolicPotential(member.genome), environment) } : member;
@@ -62,7 +73,7 @@ function developResidents(world: World): World {
 }
 
 /**
- * Water advances in fixed steps and development at every absolute game-day boundary, in that order. Any split of the
+ * Tanks advance in fixed steps and development at every absolute game-day boundary, in that order. Any split of the
  * interval (visible, background, offline or replayed) therefore produces the same world.
  */
 export function advanceWorld(world: World, fromTick: number, toTick: number): World {

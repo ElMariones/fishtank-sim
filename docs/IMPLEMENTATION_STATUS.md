@@ -1,16 +1,13 @@
 # Implementation status
 
-**Updated:** 14 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`) and FS-302 (life stages and growth, `5821f46`) and FS-303 (utility behavior, `e7aefc1`) are DONE.
+**Updated:** 14 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are delivered; the backlog records the push.
 
-## Current continuation — DONE, pushed `5dbfb73`
+## Current continuation — FS-305 care controls
 
-14 September 2026: FS-304 spatial steering and FS-403 offspring prediction are DONE, pushed `5dbfb73`. FS-403 is delivered early as a pure prediction feature in the lab; it does not complete the FS-401/402 lifecycle dependencies or M4's gate. See [spatial and prediction evidence](research/FS-304-403-SPATIAL-AND-PREDICTION.md). Next is FS-305 care; FS-306/307 and FS-401/402/404–406 remain open.
+14 September 2026: the starting checkout was `b282836`, equal to freshly fetched `origin/main`, with no tracked changes or unpushed commits. Only `.claude/launch.json` was untracked; an extra isolated `fishtank-qa` preview entry (port 5176) was added there and is not committed.
 
-The starting checkout was at `953143d`, equal to freshly fetched `origin/main`, with no tracked changes or unpushed commits. The unrelated `.claude/launch.json` remains untouched and untracked. Prior FS-303/114/115 work (`e7aefc1`) and the planner/inspector follow-up (`c50e579`) were already pushed.
-
-- FS-304: one spatial hash per motion step supplies stable ordered local neighbors; a map resolves school leaders. Shared normalized plant cover and rock footprints drive Canvas and avoidance. Rocks use anticipatory steering plus body-center clearance; extreme fins can overlap. Fixed habitat presets, no placement editor or saved trajectories.
-- FS-403: all 60 loci have exact pre-mutation genotype odds. A separate 256-offspring preview shows adult length and up to four goal scores with median and 10th–90th percentiles; linkage and lab mutation are sampled. Previews leave future births unchanged. Parent-pair and goal content keys prevent repeat sampling on live clock updates.
-- Browser review also fixed the narrow Breed button caused by the capacity text sharing its mobile grid row.
+- FS-305: world save v4 gives every tank care: a feeder ration of the residents' current need, filter and aeration tiers, a thermostat and water changes. One shared food pool per tank feeds development through the fed share of each game day; temperature adds comfort and a bounded growth multiplier. Controls show cost and a three-day projection before applying; warnings name the fish affected and priced fixes, and open those fixes as previews. Condition only falls with a named cause, and fish never die. See [FS-305 care controls](research/FS-305-CARE-CONTROLS.md).
+- Next: FS-306 juvenile reveal and animation, then FS-307's integrated demo and absence summary, before FS-401/402 normal breeding.
 
 ## Delivered
 
@@ -50,7 +47,9 @@ The starting checkout was at `953143d`, equal to freshly fetched `origin/main`, 
 - FS-113 (user request): genome v2 appends Color and Ornament chromosomes. They add body, accent, dot and eye colors (with blends and two-tone eyes), fine multicolor spots, tiger stripes, marbling, calico, rosettes and motif mixes, five scale types, shimmer, and tail and dorsal patterns, with body motifs that can reach the fins. About one founder in four shows a new feature, and striking variants stay under 1%. Genome v1 fish keep their exact look, and FS-101–111 fixtures are unchanged. The inspector lists appearance with founder-stock rarity, and Visual fixtures shows 15 variants and a founder survey. See [FS-113 appearance genetics](research/FS-113-APPEARANCE-GENETICS.md).
 - FS-301: world save v2 gives every tank a unit-aware, one-compartment water model: litres, temperature, dissolved oxygen, ammonia nitrogen and uneaten food, with biofilter and aeration. It advances through the shared clock in fixed half-game-hour steps; visible, background, offline and replayed intervals agree exactly, and a mass-balance ledger backs zero, overload and recovery fixtures. Residents load the water at their adult genetic potential. The aquarium shows read-only oxygen, ammonia and stocking bands. World v1 saves migrate with default water. See [FS-301 water model](research/FS-301-WATER-MODEL.md).
 - FS-302: world save v3 gives every fish a life state (age, current length, condition). Breeding lays eggs that hatch after 3 game days. Fry and juveniles grow logistically toward their genetic adult length, reaching adulthood in about 18–30 game days in good water, slower under low oxygen, ammonia or crowding. Condition carries recent conditions forward, so deficits and recovery take days. Development runs once per game day through the shared clock, including offline and replay. The tank draws fish at current size and counts incubating eggs; cards and the inspector show stage, age and condition beside adult potential. Eggs cannot breed or be sold. Older saves migrate as young adults. See [FS-302 life stages](research/FS-302-LIFE-STAGES.md).
-- 101 automated tests; production build; Chrome verification of worker load/cleanup/faults, two-tab takeover, offline limits, transaction recovery, migration and 10,000-record import/restore, with the runtime journeys repeated in the in-app Chromium pane after the M2 review fixes.
+- FS-304 (`5dbfb73`): one spatial hash per motion step supplies stable ordered local neighbors, and shared plant-cover and rock footprints drive Canvas and avoidance with body-center clearance. FS-403 (`5dbfb73`): exact pre-mutation genotype odds at all 60 loci and a separate 256-offspring preview of adult length and goal scores that never changes future births. See [spatial and prediction evidence](research/FS-304-403-SPATIAL-AND-PREDICTION.md).
+- FS-305: world save v4 tank care with feeder rations, a shared food pool, filter and aeration tiers, a thermostat, manual feeding and water changes. Nutrition and temperature join the daily environment; condition names every limiting cause. The care panel shows chips, warnings with priced fixes, and controls with cost and a three-day projection before applying. See [FS-305 care controls](research/FS-305-CARE-CONTROLS.md).
+- 118 automated tests; production build; Chrome verification of worker load/cleanup/faults, two-tab takeover, offline limits, transaction recovery, migration and 10,000-record import/restore, with the runtime journeys repeated in the in-app Chromium pane after the M2 review fixes.
 
 ## Prototype shortcuts and limitations
 
@@ -63,11 +62,11 @@ The starting checkout was at `953143d`, equal to freshly fetched `origin/main`, 
 | Research data | Five anonymous records pooled in-repo by hand; no cue notes, observer context or remote collection | FS-705 |
 | Collection preferences | Up to four compound goals, sort and favorites are device-local and not in exported saves; filters and parent picks reset on reload; the Parents filter groups every clutch of a pair | FS-203–204 |
 | World size | 10,000 records and 480 living fish; tested large snapshot round trip about 755 ms, with validation still on the main thread; pathological pedigrees can require quadratic ancestor-pair work | FS-405 FS-702 |
-| Life stages | Eggs, fry, juveniles, adults and an elderly label with age, growth and condition; drawings keep adult shape and pigment at current size; no hunger, health, disease or death | FS-305 FS-306 |
-| Behavior | Visual pellet consumption and utility cruise/forage/eat/hide/school; no persistent nutrition, courtship, territorial utility or learned memory | FS-303 |
+| Life stages | Eggs, fry, juveniles, adults and an elderly label with age, growth and condition; condition is the health measure; drawings keep adult shape and pigment at current size; no disease or death | FS-306 |
+| Behavior | Utility cruise/forage/eat/hide/school with transient visual pellets; domain feeding is one shared pool per tank; no courtship, territorial utility or learned memory | FS-401 FS-906 |
 | Curiosity/life-history genes | growth_rate, longevity, metabolism and oxygen_demand are active; fertility and curiosity remain display-only | FS-303 FS-401 |
 | Breeding | Eggs cannot breed, but the lab bypasses maturity, courtship, shared habitat, cost and cooldown; fixed 20 eggs | FS-401–402 |
-| Environment | One-compartment water per tank (litres, temperature, oxygen, ammonia, food) with read-only bands; poor water slows growth but does not harm fish; no pH, nitrite/nitrate, light or plant uptake; no care controls | FS-305 |
+| Environment | One-compartment water and care per tank: feeder rations, filter and aeration tiers, thermostat and water changes with previews; poor care lowers condition and slows growth but never kills; no pH, nitrite/nitrate, light, plant uptake or disease; food and equipment have no running cost | M5 |
 | Decorations | Shared cover/rock footprints and body-center clearance; extreme fins can overlap; no user placement or collision mesh | FS-503 FS-701 |
 | Economy | Free breeding/tanks make profit farming trivial, and batch sale makes it faster; stock is generated at purchase; sale quotes ignore appearance and current size; no real market | FS-501–502 |
 | Batch management | Batch sale only; no batch move/rehome, and selection does not persist across tank or archive views | FS-406 |
@@ -81,11 +80,13 @@ The starting checkout was at `953143d`, equal to freshly fetched `origin/main`, 
 | Performance | Motion runs in a worker; a synthetic 200-fish/100-step run kept measured input delay under 2 ms, but Canvas rendering and large-save validation remain on the main thread. A 10,000-record commit costs about 1.3 s of serialization and validation, so idle clock checkpoints run every five minutes | FS-701–702 |
 | Selection | Body and caudal-fin shaped picking with 6 px slop; dorsal/pectoral fins only through slop; the live canvas is not keyboard-focusable (the collection is the keyboard path); no animated camera travel | FS-704 |
 | UI scale | Inspector stacks below the collection on phones; collection and relative lists paginate at 60 rows; no screen-reader audit yet | FS-404 FS-704 |
-| Offline | Catch-up for at most eight hours integrates tank water and development (480 game days at 1×); no health state exists yet | FS-305 |
+| Offline | Catch-up for at most eight hours integrates care, water and development (480 game days at 1×); the return notice is one line without per-tank changes | FS-307 |
 | Online | No accounts, server, database, actual player listings, payments or external telemetry | M8 |
 | Delivery | Pushed to GitHub `main`; no public deployment or continuous integration | FS-706 |
 
 ## Evidence
+
+**FS-305 care controls, Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium (isolated port 5176):** 118 tests and build pass. Seven fixtures cover ration conservation, directional development, the thermostat, split/offline/replay equality, atomic costs, warnings whose fixes clear a stressed tank with exact projections, and world v3 migration. In the browser, a stressed tank (Compact filter, Gentle aeration, 29 °C, Heavy rations, 26 fish, 45 offline minutes) read oxygen critical 1.7 mg/L and ammonia high 9.23 mg N/L with priced fixes; after a previewed fix, a 50% water change and 30 more minutes it read good, clean, 97% fed and 100% condition with no warnings. See [FS-305 care controls](research/FS-305-CARE-CONTROLS.md).
 
 **FS-302 life stages, Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium 152:** 91 tests and build pass. One genome raised under declared conditions reaches adulthood within 18–30 game days in healthy water, and ranks healthy > crowded > high ammonia > hypoxic in length at day 30. Recovery takes days and never shrinks a fish. The existing QA world (a world v2 snapshot) loaded as adult stock without a replay warning. Twenty bred eggs showed "20 eggs incubating", were fry drawn small after 12 game minutes, and were all adults after 25 more. See [FS-302 life stages](research/FS-302-LIFE-STAGES.md).
 
@@ -134,4 +135,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**Continue M3 with FS-305 feeding/equipment/water controls and actionable care warnings.** Preserve protected absence and deterministic active/offline/replay integration. Then finish FS-306/307 before FS-401/402 normal breeding. FS-403 prediction is available early; it does not establish M4's two-generation gate.
+**Continue M3 with FS-306 juvenile reveal and smooth animation, then FS-307's healthy/stressed demonstration and absence summary.** Keep the renderer consuming phenotype only and keep care previews equal to applied results. Then FS-401/402 normal breeding. FS-403 prediction is available early; it does not establish M4's two-generation gate.

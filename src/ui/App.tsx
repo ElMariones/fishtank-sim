@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { appearanceAlleleLabel, describeAppearance } from '../core/appearance';
-import { daysToHatch, environmentFor, environmentLimits, INCUBATION_DAYS, isEgg, lifeStage, type LifeStage } from '../core/development';
-import { advanceWorld, stocking, tankLoad } from '../core/habitat';
-import { waterStatus } from '../core/water';
+import { daysToHatch, environmentLimits, INCUBATION_DAYS, isEgg, lifeStage, type LifeStage } from '../core/development';
+import { advanceWorld, tankEnvironment, tankLoad } from '../core/habitat';
 import { describeBehavior, type BehaviorSummary } from '../simulation/behavior';
+import { CarePanel } from './CarePanel';
 import { ALL_LOCI, CHROMOSOMES, GENOME_VERSION, label } from '../core/catalog';
 import {
   cohortsOf, decodePreferences, batchSaleCandidates, goalMatch, PREFERENCES_KEY, sortCollection, toggleFavorite, type BreedingGoal, type CollectionSort,
@@ -50,21 +50,6 @@ function lifeSummary(fish: Fish): string {
   }
   const length = fish.life.lengthCm;
   return `${STAGE_LABELS[stage]} · ${length.toFixed(length < 10 ? 1 : 0)} of ${potential.adultLengthCm.toFixed(0)} cm`;
-}
-
-/** Read-only water readout (FS-301) for the live world preview; care controls arrive in FS-305. */
-function WaterStatus({ world, tankId }: { world: World; tankId: string }) {
-  const tank = world.tanks.find(t => t.id === tankId);
-  const load = useMemo(() => tankLoad(world.fish, tankId), [world.fish, tankId]);
-  // A hot-reloaded session can still hold a pre-water world in memory; decoded worlds always carry water.
-  if (!tank?.water) return null;
-  const status = waterStatus(tank.water), stock = stocking(load, tank.water);
-  return <div className="water-status" role="group" aria-label="Water model">
-    <span className={`water-chip ${status.oxygen}`} title={`${tank.water.oxygenMgL.toFixed(1)} mg/L dissolved oxygen`}>Oxygen {status.oxygen}</span>
-    <span className={`water-chip ${status.ammonia}`} title={`${tank.water.ammoniaMgL.toFixed(2)} mg/L ammonia nitrogen`}>Ammonia {status.ammonia}</span>
-    <span className={`water-chip ${stock.level}`} title={`${load.biomassKg.toFixed(0)} kg of fish in ${(tank.water.volumeL / 1000).toFixed(0)} m³ of water`}>Stocking {stock.level}</span>
-    <small>Water model v1 · poor water slows growth; care controls come later</small>
-  </div>;
 }
 
 export function App({ initial }: { initial: LoadedSession }) {
@@ -156,7 +141,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const p = useMemo(() => fish ? express(fish.genome) : null, [fish]);
   const selectedLimits = useMemo(() => {
     const home = fish?.status === 'living' ? world.tanks.find(t => t.id === fish.tankId) : undefined;
-    return home ? environmentLimits(environmentFor(home.water, stocking(tankLoad(world.fish, home.id), home.water).densityKgM3)) : [];
+    return home ? environmentLimits(tankEnvironment(home, tankLoad(world.fish, home.id))) : [];
   }, [fish, world]);
   const appearanceRows = useMemo(() => fish ? describeAppearance(fish.genome) : [], [fish]);
   const prospectiveF = useMemo(() => kinship(world.fish, motherId, fatherId), [world.fish, motherId, fatherId]);
@@ -273,12 +258,14 @@ export function App({ initial }: { initial: LoadedSession }) {
       <main>
         {saveError && saveError !== 'Saving…' ? <p className="warning" role="alert">{saveError}</p> : null}
         <div className="tank-heading"><div><div className="eyebrow">AQUARIUM / {String(world.tanks.indexOf(tank) + 1).padStart(2, '0')}</div><h1>{tank.name}</h1></div><span className="count-tag">{residents.length} inhabitants</span></div>
-        <WaterStatus world={world} tankId={tank.id} />
+        {tank.care ? <CarePanel world={world} tank={tank} tick={liveTick} readOnly={initial.readOnly} onRun={(command, message) => run(command, message) !== null} /> : null}
         <section className="aquarium" aria-label="Live aquarium">
           <TankCanvas fish={swimmers} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={speed} feedSignal={feedSignal} onBehavior={setBehavior} />
           <div className="tank-overlay"><span>{paused ? 'PAUSED' : 'LIVE AQUARIUM'}</span><span>{tank.planted ? 'Planted habitat' : 'Open water'}{residents.length > swimmers.length ? ` · ${residents.length - swimmers.length} eggs incubating` : ''}</span></div>
           {!residents.length ? <div className="empty-tank">A little room to evolve.<small>Move a fish here or introduce unrelated stock, which can carry new colors and patterns.</small></div> : null}
-          <div className="tank-controls"><div><button aria-label={paused ? 'Resume aquarium' : 'Pause aquarium'} onClick={() => setPaused(v => !v)}>{paused ? '▶' : 'Ⅱ'}</button><button onClick={() => setSpeed(v => v === 1 ? 2 : v === 2 ? 4 : 1)} aria-label={`Motion speed ${speed} times`}>{speed}×</button></div><span>Click a fish to inspect · click the water to startle</span><button className="feed-button" onClick={() => { setFeedSignal(v => v + 1); setNotice('Pellets sink through the water; hungry, bold fish reach them first. Feeding is still visual only: nutrition and water effects arrive with FS-305.'); }}>＋ Feed</button></div>
+          <div className="tank-controls"><div><button aria-label={paused ? 'Resume aquarium' : 'Pause aquarium'} onClick={() => setPaused(v => !v)}>{paused ? '▶' : 'Ⅱ'}</button><button onClick={() => setSpeed(v => v === 1 ? 2 : v === 2 ? 4 : 1)} aria-label={`Motion speed ${speed} times`}>{speed}×</button></div><span>Click a fish to inspect · click the water to startle</span><button className="feed-button" onClick={() => {
+            if (run({ type: 'feed', tankId: tank.id }, 'A portion of food joined the water, a quarter of a game day of what these fish need. They eat it over the next hours and leftovers decay. The sinking pellets show hungry, bold fish reaching food first.')) setFeedSignal(v => v + 1);
+          }}>＋ Feed</button></div>
         </section>
         <div className="habitat-toolbar"><span>Laboratory mode · offspring show adult genetic potential</span><button className="quiet" onClick={() => run({ type: 'decorate', tankId: tank.id }, 'Habitat updated. Plants offer cover and fish steer around rocks. Water and growth are unchanged by decorations.')}>{tank.planted ? 'Remove plants and rocks' : 'Add plants and rocks'}</button></div>
         <section className={`breeding-panel ${breedingOpen ? 'is-open' : 'is-collapsed'}`} aria-labelledby="breeding-title">
