@@ -11,7 +11,9 @@ import {
 } from '../core/collection';
 import { GOAL_DESCRIPTORS } from '../core/breedingGoals';
 import { breedingStatus, courtingClutchOf, reservedPlaces, type ClutchSize } from '../core/breeding';
+import { offersFor, planSales, PRICE_MODEL, saleDetail, type TraitCache } from '../core/economy';
 import { BreedingPlanner } from './BreedingPlanner';
+import { MarketPanel } from './MarketPanel';
 import { NormalBreeding } from './NormalBreeding';
 import { express, fingerprint, heterozygosity, metabolicPotential } from '../core/genetics';
 import { MARKING_BLOCKS, MARKING_VISIBLE_ALPHA } from '../core/pattern';
@@ -22,7 +24,7 @@ import type { LoadedSession } from '../persistence/session';
 import { ACTIVE_CHECKPOINT_MS } from '../simulation/time';
 import { downloadText, SavePanel } from './SavePanel';
 import type { Clutch, Fish, World } from '../core/types';
-import { COHORT_SIZE, quote, STOCK_PRICE, type Command } from '../core/world';
+import { COHORT_SIZE, STOCK_PRICE, type Command } from '../core/world';
 import { Pagination, SexMark } from './Controls';
 import { FamilyView } from './FamilyView';
 import { FishPortrait, type PortraitView } from './FishPortrait';
@@ -33,6 +35,7 @@ import './styles.css';
 
 const percent = (n: number) => `${(n * 100).toFixed(1)}%`;
 const wholePercent = (n: number) => `${Math.round(n * 100)}%`;
+const signedCredits = (n: number) => `${n < 0 ? '−' : '+'}◈ ${Math.abs(n)}`;
 const date = (timestamp: string) => new Date(timestamp).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 const descriptorLabel = new Map(GOAL_DESCRIPTORS.map(descriptor => [descriptor.key, descriptor.label]));
 type SexFilter = 'all' | Fish['sex'];
@@ -95,10 +98,14 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [saleId, setSaleId] = useState<string | null>(null);
   const [view, setView] = useState<View>('aquarium');
   const [batchIds, setBatchIds] = useState<string[]>([]);
-  const [batchReview, setBatchReview] = useState<'sale' | 'move' | null>(null);
+  const [batchReview, setBatchReview] = useState<'sale' | 'move' | 'rehome' | null>(null);
   const [birthKey, setBirthKey] = useState('all');
   const [moveTarget, setMoveTarget] = useState('');
   const [movedTo, setMovedTo] = useState<string | null>(null);
+  const [rehomeId, setRehomeId] = useState<string | null>(null);
+  const [showMarket, setShowMarket] = useState(false);
+  // Buyer traits depend only on genomes, so one cache serves every offer this session (FS-501).
+  const [traitCache] = useState<TraitCache>(() => new Map());
   const [lastBatchId, setLastBatchId] = useState<string | null>(null);
   const [collectionPage, setCollectionPage] = useState(0);
   const [familyDepth, setFamilyDepth] = useState(2);
@@ -169,11 +176,12 @@ export function App({ initial }: { initial: LoadedSession }) {
   const pairFounders = useMemo(() => pedigree.founders([motherId, fatherId]).founders.length, [pedigree, world.fish, motherId, fatherId]);
   const currentF = useMemo(() => fish ? pedigree.inbreeding(fish.id) : 0, [pedigree, world.fish, fish]);
   const fishFounders = useMemo(() => fish && tab === 'Family' ? pedigree.founders([fish.id]).founders.length : 0, [pedigree, world.fish, fish, tab]);
+  const offers = useMemo(() => fish ? offersFor(world, fish, traitCache) : [], [world, fish, traitCache]);
   // The family index is built only while the Family tab is open (FS-404).
   const genealogy = useMemo(() => tab === 'Family' ? genealogyIndex(world.fish) : null, [tab, world.fish]);
 
   // Collection pipeline: view → cohort → favorites → sex → sort. Counts show what each filter would reveal.
-  const viewFish = (showArchived ? world.fish.filter(f => f.status === 'sold') : residents).filter(f => `${f.name} ${f.id}`.toLowerCase().includes(query.toLowerCase()));
+  const viewFish = (showArchived ? world.fish.filter(f => f.status !== 'living') : residents).filter(f => `${f.name} ${f.id}`.toLowerCase().includes(query.toLowerCase()));
   const cohorts = cohortsOf(viewFish);
   const cohort = cohorts.find(c => c.key === cohortKey) ?? null;
   // Within a parent pair, the clutch filter narrows the view to fish laid together (FS-406).
@@ -195,7 +203,11 @@ export function App({ initial }: { initial: LoadedSession }) {
   const saleable = batchSaleCandidates(collection, favoriteIds);
   const batch = selectable.filter(f => batchIds.includes(f.id));
   const saleBatch = batchSaleCandidates(batch, favoriteIds);
-  const batchTotal = saleBatch.reduce((sum, f) => sum + quote(f), 0);
+  // The review shows exactly what the batch command pays: each fish to its best offer, in order, using up demand.
+  const saleIds = saleBatch.map(f => f.id).join(',');
+  const salePlan = useMemo(() => planSales(world, saleIds ? saleIds.split(',') : [], traitCache), [world, saleIds, traitCache]);
+  const batchTotal = salePlan.total;
+  const rehomeBatch = batch.filter(f => !isEgg(f.life) && !courtingClutchOf(world, f.id));
   const freePlaces = (id: string) => {
     const home = world.tanks.find(t => t.id === id);
     return home ? home.capacity - living.filter(f => f.tankId === id).length - reservedPlaces(world, id) : 0;
@@ -237,7 +249,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   function select(id: string, focusInspector = false, trail: string[] = []) {
     const target = world.fish.find(f => f.id === id);
     if (!target) return;
-    setSelectedId(id); setSaleId(null); setFamilyTrail(trail);
+    setSelectedId(id); setSaleId(null); setRehomeId(null); setFamilyTrail(trail);
     if (target.status === 'living') { setTankId(target.tankId); setShowArchived(false); }
     if (focusInspector) setFocusRequest(n => n + 1);
   }
@@ -293,9 +305,17 @@ export function App({ initial }: { initial: LoadedSession }) {
   }
 
   function sellBatch() {
-    const count = saleBatch.length, total = batchTotal;
-    if (run({ type: 'sell-batch', fishIds: saleBatch.map(f => f.id) }, `${count} fish sold to the local NPC for ◈ ${total.toLocaleString()}. Their archived profiles remain in the family tree.`)) {
+    const ids = salePlan.sales.map(sale => sale.fishId), total = batchTotal, buyers = saleDetail(salePlan);
+    if (run({ type: 'sell-batch', fishIds: ids, priceModel: PRICE_MODEL }, `${ids.length} fish sold for ◈ ${total.toLocaleString()} (${buyers}). Their archived profiles remain in the family tree.`)) {
       setBatchIds([]); setBatchReview(null); setSaleId(null);
+    }
+  }
+
+  /** Economy-neutral rehoming (FS-501): the fish leave the aquarium, no credits change and their records stay. */
+  function rehomeSelected() {
+    const ids = rehomeBatch.map(f => f.id);
+    if (run({ type: 'rehome-batch', fishIds: ids }, `${ids.length} fish rehomed outside your aquarium. No credits changed; their archived profiles remain in the family tree.`)) {
+      setBatchIds([]); setBatchReview(null);
     }
   }
 
@@ -321,12 +341,13 @@ export function App({ initial }: { initial: LoadedSession }) {
     <header className="topbar">
       <a className="brand" href="#"><img src="/favicon.svg" alt="" /><span>fishtank<span className="brand-light"> sim</span></span></a>
       <div className="project-label">GENETICS LAB <span>0.1</span></div>
-      <div className="top-actions"><span className="credits">◈ {world.credits.toLocaleString()} <small>lab credits</small></span>
+      <div className="top-actions"><button className="credits" aria-expanded={showMarket} aria-controls="market-title" aria-label={`${world.credits.toLocaleString()} lab credits: buyers and ledger`} title="Buyers and ledger" onClick={() => setShowMarket(value => !value)}>◈ {world.credits.toLocaleString()} <small>lab credits · buyers and ledger</small></button>
         <nav className="view-switch" aria-label="Lab views">{VIEWS.map(([value, text]) => <button key={value} className="quiet" aria-current={view === value ? 'page' : undefined} onClick={() => setView(value)}>{text}</button>)}</nav>
         <button className="quiet" onClick={() => downloadText(JSON.stringify(runtime), 'fishtank-save-v2.json')}>Export save</button></div>
     </header>
       <div className="save-navigation"><div className="save-state">{saveError === 'Saving…' ? 'Saving…' : saveError ? 'Session not saved' : 'Saved on this device'}</div><button aria-expanded={showSaves} onClick={() => setShowSaves(value => !value)}>Saves</button></div>
       {showSaves ? <SavePanel runtime={runtime} session={initial.session} blocked={blocked} readOnly={initial.readOnly} onBusy={value => { saveBusy.current = value; }} onSaved={() => { setBlocked(false); setSaveError(''); }} /> : null}
+      {showMarket ? <MarketPanel world={world} onClose={() => setShowMarket(false)} /> : null}
     {view === 'fixtures' ? <VisualFixtureLab onClose={() => setView('aquarium')} /> : view === 'research' ? <ResearchLab onClose={() => setView('aquarium')} /> : <div className="workspace">
       <aside className="tank-sidebar">
         <div className="eyebrow">YOUR AQUARIUMS</div>
@@ -404,24 +425,34 @@ export function App({ initial }: { initial: LoadedSession }) {
             </div>
           </div>
           {cohort ? <div className="cohort-parents" role="group" aria-label="Parents of this cohort">{[cohort.motherId, cohort.fatherId].flatMap(id => world.fish.filter(f => f.id === id)).map(parent => <button className="cohort-parent" key={parent.id} onClick={event => select(parent.id, event.detail === 0)}>
-            <FishPortrait fish={parent} view={portraitView} /><span><strong>{parent.name}</strong><small>{parent.sex === 'F' ? 'Mother' : 'Father'} · G{parent.generation}{goal ? ` · ${goalLabel} ${wholePercent(goalMatch(parent, goal))}` : ''}{parent.status === 'sold' ? ' · Sold' : ''}</small></span>
+            <FishPortrait fish={parent} view={portraitView} /><span><strong>{parent.name}</strong><small>{parent.sex === 'F' ? 'Mother' : 'Father'} · G{parent.generation}{goal ? ` · ${goalLabel} ${wholePercent(goalMatch(parent, goal))}` : ''}{parent.status !== 'living' ? ` · ${parent.status === 'sold' ? 'Sold' : 'Rehomed'}` : ''}</small></span>
           </button>)}</div> : null}
           {!showArchived && collection.length ? <div className="batch-bar" role="group" aria-label="Batch selection">
-            <span className="batch-summary">{batch.length ? <><strong>{batch.length}</strong> selected{saleBatch.length ? ` · ${saleBatch.length} saleable for ◈ ${batchTotal.toLocaleString()}` : ' · none saleable'}</> : 'Select fish to move or sell together. Favorites and eggs are never sold in bulk. Shift-click selects a range.'}</span>
+            <span className="batch-summary">{batch.length ? <><strong>{batch.length}</strong> selected{salePlan.sales.length ? ` · ${salePlan.sales.length} with offers for ◈ ${batchTotal.toLocaleString()}` : ' · no offers'}</> : 'Select fish to move, sell or rehome together. Favorites and eggs are never sold in bulk. Shift-click selects a range.'}</span>
             <div className="batch-actions">
               <button className="quiet" onClick={() => { setBatchIds(selectable.map(f => f.id)); setBatchReview(null); setMovedTo(null); }}>Select all {selectable.length}{birth ? ' in this clutch' : ''}</button>
               <button className="quiet" onClick={() => { setBatchIds(saleable.map(f => f.id)); setBatchReview(null); setMovedTo(null); }}>Select all saleable {saleable.length}</button>
               {batch.length ? <button className="quiet" onClick={() => { setBatchIds([]); setBatchReview(null); }}>Clear</button> : null}
               {batch.length && moveDestinations.length ? <button aria-expanded={batchReview === 'move'} aria-controls="batch-review" onClick={openMoveReview}>Review move of {batch.length}</button> : null}
-              {saleBatch.length ? <button className="batch-sell" aria-expanded={batchReview === 'sale'} aria-controls="batch-review" onClick={() => setBatchReview('sale')}>Review sale of {saleBatch.length}</button> : null}
+              {rehomeBatch.length ? <button aria-expanded={batchReview === 'rehome'} aria-controls="batch-review" onClick={() => setBatchReview('rehome')}>Review rehoming of {rehomeBatch.length}</button> : null}
+              {salePlan.sales.length ? <button className="batch-sell" aria-expanded={batchReview === 'sale'} aria-controls="batch-review" onClick={() => setBatchReview('sale')}>Review sale of {salePlan.sales.length}</button> : null}
             </div>
           </div> : null}
           {movedTo && !batch.length ? <p className="batch-done" role="status">Moved to {tankName(movedTo)}. <button className="quiet" onClick={() => { setTankId(movedTo); setShowArchived(false); setQuery(''); }}>Open {tankName(movedTo)}</button></p> : null}
-          {batchReview === 'sale' && saleBatch.length ? <div className="batch-review" id="batch-review" role="region" aria-labelledby="batch-review-title">
-            <h3 id="batch-review-title">Sell {saleBatch.length} fish to the local NPC for ◈ {batchTotal.toLocaleString()}?</h3>
-            <p>Their genomes and family links stay in the archive. Sold fish cannot breed, move or be sold again.{batch.length > saleBatch.length ? ` ${batch.length - saleBatch.length} selected ${batch.length - saleBatch.length === 1 ? 'fish is a favorite or an egg and stays' : 'fish are favorites or eggs and stay'}.` : ''}</p>
-            <ul>{saleBatch.map(f => <li key={f.id}><SexMark sex={f.sex} /><span>{f.name}<small>{f.id} · G{f.generation}</small></span><span>◈ {quote(f)}</span></li>)}</ul>
-            <div className="batch-review-actions"><button className="confirm" onClick={sellBatch}>Confirm sale of {saleBatch.length}</button><button className="quiet" onClick={() => setBatchReview(null)}>Cancel</button></div>
+          {batchReview === 'sale' && salePlan.sales.length ? <div className="batch-review" id="batch-review" role="region" aria-labelledby="batch-review-title">
+            <h3 id="batch-review-title">Sell {salePlan.sales.length} fish to NPC buyers for ◈ {batchTotal.toLocaleString()}?</h3>
+            <p>Each fish goes to its best offer in this order, and every sale uses up some of that buyer’s demand. Genomes and family links stay in the archive; sold fish cannot breed, move or be sold again.{batch.length > saleBatch.length ? ` ${batch.length - saleBatch.length} selected ${batch.length - saleBatch.length === 1 ? 'fish is a favorite or an egg and stays' : 'fish are favorites or eggs and stay'}.` : ''}{salePlan.unsold.length ? ` ${salePlan.unsold.length} selected ${salePlan.unsold.length === 1 ? 'fish has no buyer today and stays' : 'fish have no buyer today and stay'}.` : ''}</p>
+            <ul>{salePlan.sales.map(sale => {
+              const f = world.fish.find(member => member.id === sale.fishId)!;
+              return <li key={f.id}><SexMark sex={f.sex} /><span>{f.name}<small>{f.id} · G{f.generation} · {sale.offer.buyerName}</small></span><span>◈ {sale.offer.amount}</span></li>;
+            })}</ul>
+            <div className="batch-review-actions"><button className="confirm" onClick={sellBatch}>Confirm sale of {salePlan.sales.length}</button><button className="quiet" onClick={() => setBatchReview(null)}>Cancel</button></div>
+          </div> : null}
+          {batchReview === 'rehome' && rehomeBatch.length ? <div className="batch-review" id="batch-review" role="region" aria-labelledby="batch-review-title">
+            <h3 id="batch-review-title">Rehome {rehomeBatch.length} fish outside your aquarium?</h3>
+            <p>They leave for new homes. No credits change, and their genomes and family links stay in the archive.{batch.length > rehomeBatch.length ? ` ${batch.length - rehomeBatch.length} selected ${batch.length - rehomeBatch.length === 1 ? 'fish is an egg or courting and stays' : 'fish are eggs or courting and stay'}.` : ''}</p>
+            <ul>{rehomeBatch.map(f => <li key={f.id}><SexMark sex={f.sex} /><span>{f.name}<small>{f.id} · G{f.generation} · {lifeSummary(f)}</small></span><span>{favoriteIds.has(f.id) ? '★' : ''}</span></li>)}</ul>
+            <div className="batch-review-actions"><button className="confirm" disabled={initial.readOnly} onClick={rehomeSelected}>Confirm rehoming of {rehomeBatch.length}</button><button className="quiet" onClick={() => setBatchReview(null)}>Cancel</button></div>
           </div> : null}
           {batchReview === 'move' && batch.length && moveDestination ? <div className="batch-review move-review" id="batch-review" role="region" aria-labelledby="batch-review-title">
             <h3 id="batch-review-title">Move {batch.length} fish from {tank.name} to {moveDestination.name}?</h3>
@@ -442,7 +473,7 @@ export function App({ initial }: { initial: LoadedSession }) {
                 <button className="favorite-toggle" aria-pressed={favorite} aria-label={`Favorite ${f.name}`} onClick={() => setPreferences(current => toggleFavorite(current, f.id))}>{favorite ? '★' : '☆'}</button><SexMark sex={f.sex} />
               </span></div>
               <button className="fish-card-main" id={`card-${f.id}`} aria-pressed={f.id === selectedId} onClick={event => select(f.id, event.detail === 0)}>
-                <FishPortrait fish={f} view={portraitView} /><div className="fish-card-bottom"><strong>{f.name}</strong><small>{f.status === 'sold' ? 'Archived' : lifeSummary(f)}</small>{goal ? <span className="goal-chip">Match · {goalLabel} {wholePercent(goalMatch(f, goal))}</span> : null}</div>
+                <FishPortrait fish={f} view={portraitView} /><div className="fish-card-bottom"><strong>{f.name}</strong><small>{f.status === 'living' ? lifeSummary(f) : f.status === 'sold' ? 'Sold · archived' : 'Rehomed · archived'}</small>{goal ? <span className="goal-chip">Match · {goalLabel} {wholePercent(goalMatch(f, goal))}</span> : null}</div>
               </button>
               {f.status === 'living' ? <label className="batch-check"><input type="checkbox" checked={inBatch} aria-label={`Select ${f.name} for a batch move or sale`}
                 onChange={event => toggleBatch(f.id, (event.nativeEvent as MouseEvent).shiftKey === true)} /><span aria-hidden="true">{inBatch ? 'Selected' : 'Select'}{favorite ? ' · kept from sales' : isEgg(f.life) ? ' · egg, not for sale' : ''}</span></label> : null}
@@ -467,14 +498,20 @@ export function App({ initial }: { initial: LoadedSession }) {
           <div className="inspector-tabs" role="group" aria-label="Inspector views">{(['Overview', 'Genome', 'Family'] as const).map(t => <button key={t} aria-pressed={tab === t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>)}</div>
           {tab === 'Overview' ? <>
             <form className="rename-form" key={fish.id} onSubmit={event => { event.preventDefault(); const data = new FormData(event.currentTarget); run({ type: 'rename', fishId: fish.id, name: String(data.get('name')) }, 'Fish name updated.'); }}><label>Given name<input name="name" aria-label="Given name" defaultValue={fish.name} maxLength={32} required disabled={fish.status !== 'living'} /></label><button disabled={fish.status !== 'living'}>Save</button></form>
-            <dl className="facts"><div><dt>Born in the lab</dt><dd>{date(fish.bornAt)}</dd></div><div><dt>Life stage</dt><dd>{lifeSummary(fish)}</dd></div><div><dt>Age</dt><dd>{fish.life.ageDays} game day{fish.life.ageDays === 1 ? '' : 's'}</dd></div><div><dt>Condition</dt><dd>{wholePercent(fish.life.condition)}{selectedLimits.length ? ` · limited by ${selectedLimits.join(', ')}` : ''}</dd></div>{fish.status === 'living' ? <div><dt>Breeding</dt><dd>{breedingStatus(world, fish)}</dd></div> : null}{fish.status === 'living' ? <div><dt>Behavior now</dt><dd>{isEgg(fish.life) ? 'Incubating' : fish.tankId !== tank.id ? 'In another aquarium' : behavior ? describeBehavior(behavior, fishName) : 'Watching…'}</dd></div> : null}<div><dt>Adult length potential</dt><dd>{p.adultLengthCm.toFixed(1)} cm</dd></div>{goal ? <div><dt>Goal · {goalLabel}</dt><dd>{wholePercent(goalMatch(fish, goal))}</dd></div> : null}<div><dt>Lab sale quote</dt><dd>◈ {quote(fish)}</dd></div><div><dt>Heterozygous loci</dt><dd>{percent(heterozygosity(fish.genome))}</dd></div><div><dt>Pedigree inbreeding F</dt><dd>{percent(currentF)}</dd></div><div><dt>New mutations at birth</dt><dd>{fish.mutations.length}</dd></div></dl>
+            <dl className="facts"><div><dt>Born in the lab</dt><dd>{date(fish.bornAt)}</dd></div><div><dt>Life stage</dt><dd>{lifeSummary(fish)}</dd></div><div><dt>Age</dt><dd>{fish.life.ageDays} game day{fish.life.ageDays === 1 ? '' : 's'}</dd></div><div><dt>Condition</dt><dd>{wholePercent(fish.life.condition)}{selectedLimits.length ? ` · limited by ${selectedLimits.join(', ')}` : ''}</dd></div>{fish.status === 'living' ? <div><dt>Breeding</dt><dd>{breedingStatus(world, fish)}</dd></div> : null}{fish.status === 'living' ? <div><dt>Behavior now</dt><dd>{isEgg(fish.life) ? 'Incubating' : fish.tankId !== tank.id ? 'In another aquarium' : behavior ? describeBehavior(behavior, fishName) : 'Watching…'}</dd></div> : null}<div><dt>Adult length potential</dt><dd>{p.adultLengthCm.toFixed(1)} cm</dd></div>{goal ? <div><dt>Goal · {goalLabel}</dt><dd>{wholePercent(goalMatch(fish, goal))}</dd></div> : null}<div><dt>Best NPC offer</dt><dd>{fish.status !== 'living' ? '—' : offers[0] ? `◈ ${offers[0].amount} · ${offers[0].buyerName}` : isEgg(fish.life) ? 'Eggs cannot be sold' : 'No buyer wants this fish today'}</dd></div><div><dt>Heterozygous loci</dt><dd>{percent(heterozygosity(fish.genome))}</dd></div><div><dt>Pedigree inbreeding F</dt><dd>{percent(currentF)}</dd></div><div><dt>New mutations at birth</dt><dd>{fish.mutations.length}</dd></div></dl>
+            {offers[0] ? <details className="offer-details"><summary>Why ◈ {offers[0].amount} from the {offers[0].buyerName.toLowerCase()}</summary>
+              <ol>{offers[0].terms.map(term => <li key={term.label}><span>{term.label}</span><span>{signedCredits(term.amount)}</span></li>)}</ol>
+              <p>{offers.length > 1 ? `Other offers: ${offers.slice(1).map(offer => `${offer.buyerName} ◈ ${offer.amount}`).join(' · ')}.` : 'No other buyer wants this fish today.'} Offers change as buyers’ demand is used up and recovers each game day.</p>
+            </details> : null}
             <div className="trait-block"><div className="eyebrow">INHERITED TENDENCIES</div>{[['Sociability', p.social], ['Boldness', p.bold], ['Activity', p.activity], ['Curiosity', p.curious]].map(([name, value]) => <div className="trait" key={name}><span>{name}</span><meter min="0" max="1" value={Number(value)} aria-label={String(name)} /><span>{Math.round(Number(value) * 100)}</span></div>)}</div>
             <div className="trait-block appearance-block"><div className="eyebrow">APPEARANCE · GENOME V{fish.genome.version}</div>{fish.genome.version === 1 ? <p className="help-copy">Genome v1 fish carry no Color or Ornament chromosomes and keep the classic look. Their offspring carry both chromosomes, where a new mutation can appear.</p> : null}<dl className="appearance-traits">{appearanceRows.map(row => <div key={row.trait}><dt>{row.trait}</dt><dd>{row.value}{row.rarity ? <span className={`rarity ${row.rarity.replace(' ', '-')}`}>{row.rarity}</span> : null}</dd></div>)}</dl>{appearanceRows.some(row => row.rarity) ? <p className="help-copy">Rarity describes founder stock, not your aquarium or any global population.</p> : null}</div>
             {fish.status === 'living' ? <div className="fish-actions"><label>Move to aquarium<select aria-label="Move to aquarium" value={fish.tankId} onChange={event => {
               if (run({ type: 'move', fishId: fish.id, tankId: event.target.value }, `${fish.name} moved to another aquarium.`)) setTankId(event.target.value);
             }}>{world.tanks.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label><button onClick={() => { if (fish.sex === 'F') setMotherId(fish.id); else setFatherId(fish.id); setNotice(`${fish.name} selected as ${fish.sex === 'F' ? 'mother' : 'father'}.${goal ? ' Your breeding goal is unchanged.' : ''}`); }}>Select as {fish.sex === 'F' ? 'mother' : 'father'}</button>
-              {saleId === fish.id ? <div className="sale-confirm"><p>Sell {fish.name} to the local NPC for ◈ {quote(fish)}? Their family record remains available.</p><button onClick={() => { run({ type: 'sell', fishId: fish.id }, `${fish.name} sold. The archived profile remains in the family tree.`); setSaleId(null); }}>Confirm sale</button><button className="quiet" onClick={() => setSaleId(null)}>Cancel</button></div> : <button className="quiet sell" onClick={() => setSaleId(fish.id)}>Sell to local NPC · ◈ {quote(fish)}</button>}
-            </div> : <p className="archive-note">This fish was sold to the local NPC. Its genome and family links are preserved.</p>}
+              {saleId === fish.id && offers[0] ? <div className="sale-confirm"><p>Sell {fish.name} to the {offers[0].buyerName.toLowerCase()} for ◈ {offers[0].amount}? Their family record remains available.</p><button onClick={() => { const offer = offers[0]; run({ type: 'sell', fishId: fish.id, priceModel: PRICE_MODEL }, `${fish.name} sold to the ${offer.buyerName.toLowerCase()} for ◈ ${offer.amount}. The archived profile remains in the family tree.`); setSaleId(null); }}>Confirm sale</button><button className="quiet" onClick={() => setSaleId(null)}>Cancel</button></div>
+                : rehomeId === fish.id ? <div className="sale-confirm"><p>Rehome {fish.name} outside your aquarium? No credits change, and their family record remains available.</p><button onClick={() => { run({ type: 'rehome-batch', fishIds: [fish.id] }, `${fish.name} was rehomed. The archived profile remains in the family tree.`); setRehomeId(null); }}>Confirm rehoming</button><button className="quiet" onClick={() => setRehomeId(null)}>Cancel</button></div>
+                : <>{offers[0] ? <button className="quiet sell" onClick={() => { setSaleId(fish.id); setRehomeId(null); }}>Sell to {offers[0].buyerName} · ◈ {offers[0].amount}</button> : <button className="quiet sell" disabled>No buyer today</button>}<button className="quiet" disabled={isEgg(fish.life)} onClick={() => { setRehomeId(fish.id); setSaleId(null); }}>Rehome · no credits</button></>}
+            </div> : <p className="archive-note">{fish.status === 'rehomed' ? 'This fish was rehomed outside your aquarium.' : 'This fish was sold to an NPC buyer.'} Its genome and family links are preserved.</p>}
           </> : null}
           {tab === 'Genome' ? <div className="genome-view"><div className="genome-fingerprint"><span>Genome checksum</span><code>{fingerprint(fish.genome)}</code></div><p className="help-copy">Two phased copies per locus. A0–A5 are allele IDs. Most blend; A5/A5 at the metallic switch expresses strong metallic color. Chromosomes 09–10 (genome v2) hold color and ornament, with named categorical alleles and additive intensity levels. Classic dominates body, accent and eye colors; variants need two nonclassic copies. One motif copy shows faintly, and different motifs mix. Smooth scales dominate variants. Hidden copies can still pass to offspring.</p>{CHROMOSOMES.map((chromosome, chromosomeIndex) => <div className="chromosome" key={chromosome}><h3>{String(chromosomeIndex + 1).padStart(2, '0')} / {chromosome}{chromosomeIndex * 6 >= fish.genome.maternal.length ? ' · not carried by genome v1' : ''}</h3>{ALL_LOCI.slice(chromosomeIndex * 6, chromosomeIndex * 6 + 6).map((locus, j) => {
             const i = chromosomeIndex * 6 + j, mutation = fish.mutations.some(m => m.locus === i);
@@ -490,6 +527,6 @@ export function App({ initial }: { initial: LoadedSession }) {
         </> : <p className="empty-copy">Select a fish from the aquarium or collection.</p>}
       </aside>
     </div>}
-    <footer>Fishtank Sim <span>Research prototype · synthetic genetics · local saves · unbalanced lab economy</span><a href="https://github.com/ElMariones/fishtank-sim" target="_blank" rel="noreferrer">Project repository ↗</a></footer>
+    <footer>Fishtank Sim <span>Research prototype · synthetic genetics · local saves · bounded NPC buyers with free lab tanks</span><a href="https://github.com/ElMariones/fishtank-sim" target="_blank" rel="noreferrer">Project repository ↗</a></footer>
   </div>;
 }

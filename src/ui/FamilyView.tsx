@@ -39,7 +39,7 @@ export function FamilyView({ world, index, fish, depth, trail, pedigreeF, founde
   const found = useMemo(() => findRecords(world.fish, query), [world.fish, query]);
   const record = (id: string) => index.byId.get(id)!;
   const name = (id: string) => index.byId.get(id)?.name ?? id;
-  const where = (member: Fish) => member.status === 'sold' ? 'Sold · archived record' : world.tanks.find(t => t.id === member.tankId)?.name ?? 'Unknown aquarium';
+  const where = (member: Fish) => member.status !== 'living' ? `${member.status === 'sold' ? 'Sold' : 'Rehomed'} · archived record` : world.tanks.find(t => t.id === member.tankId)?.name ?? 'Unknown aquarium';
 
   // Generations after the last recorded ancestor hold only founder or missing positions, so one note replaces them.
   const lastRecorded = graph.generations.reduce((last, generation, i) => generation.recorded ? i : last, -1);

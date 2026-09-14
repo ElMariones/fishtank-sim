@@ -1,8 +1,23 @@
 # Implementation status
 
-**Updated:** 14 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`). FS-405's incremental kinship cache with stated founder assumptions is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list.
+**Updated:** 14 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`). FS-405's incremental kinship cache with stated founder assumptions is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. M5 has started: FS-501's economy model v1 is delivered; the backlog records the push.
 
-## Current continuation — FS-406 DONE, pushed `44d7d98`
+## Current continuation — FS-501 economy model v1
+
+14 September 2026: FS-501 started from `85db06b` (FS-406 marked DONE), equal to `origin/main`. `.claude/launch.json` stays untracked; `fishtank-qa` (port 5176) serves the QA world.
+
+- FS-501 adds:
+  - **World save v6:** five NPC buyers with bounded demand that recovers each game day, and explained offers.
+  - **Founder resale limit:** founders and bought stock resell for at most ◈ 150, below the stock price.
+  - **Credit ledger:** it must reconcile with the balance.
+  - **Rehoming:** economy-neutral, via `rehome-batch`.
+  - **Journal compatibility:** sale commands carry a price model, so journals recorded before FS-501 replay at the lab quote.
+  - **Research → Economy experiment:** runs E-05's six strategies.
+
+  See [FS-501 economy model](research/FS-501-ECONOMY-MODEL.md).
+- Next: FS-502, persistent shop stock and filters, where refreshing cannot reroll stock and purchases respect capacity.
+
+## Previous continuation — FS-406 DONE, pushed `44d7d98`
 
 14 September 2026: FS-406 started from `deafb89` (FS-405 marked DONE), equal to `origin/main`. `.claude/launch.json` stays untracked; the QA world (`localhost:5176`) and the generated deep lineage (`127.0.0.1:5176`) remain the isolated browser origins.
 
@@ -15,7 +30,7 @@
 - M4's task list (FS-401–406) is delivered. Its gate, "complete two generations without instant-lab shortcuts", is met in two ways, neither an external playtest:
   - by that demonstration;
   - by a QA-world lineage bred twice in normal mode through the UI, with time advanced by protected offline catch-up.
-- Next: M5, starting with FS-501's bounded NPC demand and price rules, a currency ledger, and an economy-neutral way to rehome fish out of the aquarium.
+- Followed by M5 FS-501 (above).
 
 ## Previous continuation — FS-405 DONE, pushed `850f501`
 
@@ -92,7 +107,8 @@
 - FS-404: `genealogy.ts` bounded ancestor graph with repeated ancestors listed once, per-generation completeness, descendant generations, record search and breadcrumbs. `FamilyView.tsx` shows up to six generations each way with portraits, cross-tank and archived focus. See [FS-404 family graph](research/FS-404-FAMILY-GRAPH.md).
 - FS-405: `createKinshipCache` in `pedigree.ts` keeps computed ancestor pairs for the session as births are added. It rebuilds only when recorded history changes, and treats founders and unrecorded parents under an explicit, validated assumption (unrelated and not inbred by default). The breeding panel and Family view state how many founders an F value assumes. See [FS-405 kinship cache](research/FS-405-KINSHIP-CACHE.md).
 - FS-406: the `move-batch` command, clutch groups within a pair, the Clutch filter, move and sale reviews for any selected living fish, and `lifecycleScenario.ts` with the Research **Two generations** tab. See [FS-406 two generations](research/FS-406-TWO-GENERATIONS.md).
-- 151 automated tests; production build; Chrome verification of worker load/cleanup/faults, two-tab takeover, offline limits, transaction recovery, migration and 10,000-record import/restore, with the runtime journeys repeated in the in-app Chromium pane after the M2 review fixes.
+- FS-501: `economy.ts` buyers, offers with explained terms, ordered sale plans, demand recovery and the ledger; world save v6 with market, ledger and the rehomed status; inspector offers, sale and rehoming reviews, **Buyers and ledger**, and `economyExperiment.ts` with the Research **Economy experiment** tab. See [FS-501 economy model](research/FS-501-ECONOMY-MODEL.md).
+- 157 automated tests; production build; Chrome verification of worker load/cleanup/faults, two-tab takeover, offline limits, transaction recovery, migration and 10,000-record import/restore, with the runtime journeys repeated in the in-app Chromium pane after the M2 review fixes.
 
 ## Prototype shortcuts and limitations
 
@@ -111,8 +127,8 @@
 | Breeding | Normal breeding enforces adult stage, condition, rest days, a shared tank and a reserved nursery, with recorded pause reasons; the instant lab cross still bypasses them as a labeled shortcut; no courtship animation, mate preference, natural breeding or cost | FS-906 |
 | Environment | One-compartment water and care per tank: feeder rations, filter and aeration tiers, thermostat and water changes with previews; poor care lowers condition and slows growth but never kills; no pH, nitrite/nitrate, light, plant uptake or disease; food and equipment have no running cost | M5 |
 | Decorations | Shared cover/rock footprints and body-center clearance; extreme fins can overlap; no user placement or collision mesh | FS-503 FS-701 |
-| Economy | Free breeding/tanks make profit farming trivial, and batch sale makes it faster; stock is generated at purchase; sale quotes ignore appearance and current size; no real market | FS-501–502 |
-| Batch management | Reviewed batch moves between your tanks and batch sales; selection clears when the tank, archive view or a filter changes; no rehoming out of the aquarium; the move review checks places, not crowding | FS-501 |
+| Economy | Economy model v1: five NPC buyers with bounded, recovering demand and explained offers; founders resell below the stock price; a reconciled ledger; free rehoming. Tanks, breeding and food are free, stock is generated at purchase, and there is no upkeep, collector order, persistent shop stock or real market | FS-502–505 |
+| Batch management | Reviewed batch moves, sales and rehoming; selection clears when the tank, archive view or a filter changes; the move review checks places, not crowding | FS-505 |
 | Rarity | Only founder-stock rarity labels for appearance (FS-113); no measured reference population or global service | FS-603 FS-805 |
 | Topology | No extra tail lobes/eyes/fins or genome v3 topology; FS-113 scale types are drawn textures, not scale geometry | FS-601–602 |
 | Family | Six generations back and forward as generation lists with text edges; no drawn pedigree chart or lineage registration; breadcrumbs, depth and the kinship cache are session-only; F assumes founders unrelated rather than measuring them | FS-603 FS-604 |
@@ -128,6 +144,24 @@
 | Delivery | Pushed to GitHub `main`; no public deployment or continuous integration | FS-706 |
 
 ## Evidence
+
+**FS-501 economy model v1, Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium (isolated port 5176):** 157 tests and build pass. Six fixtures cover:
+- offer terms and the founder resale limit;
+- demand use, recovery and batch plans;
+- a reconciled, bounded ledger under a 900-step walk;
+- rehoming;
+- legacy sales and world v5 migration;
+- E-05 bounds.
+
+E-05 over 60 game days: resale lost ◈ 143–236 a cycle; selective and collector breeders earned about ◈ 3,100 selling 40–49 fish; farming strategies earned ◈ 536–643 selling 230–290 fish at about ◈ 2.
+
+In the browser:
+- **Migration:** the world v5 QA save migrated.
+- **Offers and sales:** Haru's ◈ 150 founder-limited offer showed its terms. Fry 7 sold to the pond keeper for ◈ 77, and a three-fish batch paid its reviewed ◈ 317.
+- **Rehoming:** it changed no credits.
+- **Ledger:** it reconciled throughout.
+
+See [FS-501 economy model](research/FS-501-ECONOMY-MODEL.md).
 
 **FS-406 two generations and batch rehoming, Windows 11, Node 22.18.0, npm 10.9.3, in-app Chromium (isolated origins on port 5176):** 151 tests and build pass. Three fixtures cover `move-batch` atomicity and reservations, clutch groups within a pair, and the seeded two-generation demonstration.
 
@@ -211,4 +245,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**Start M5 with FS-501: bounded NPC demand and price rules with a currency ledger.** Include an economy-neutral way to rehome fish out of the aquarium, and document purchase, resale and breeder-farming experiments. Keep `move-batch` and `sell-batch` atomic and reservation-aware, migrations writing keys in schema order, and the two-generation demonstration free of instant crosses. FS-403 prediction is available early; it does not establish M4's two-generation gate.
+**Continue M5 with FS-502: persistent shop stock and filters.** Refreshing must not reroll stock, and purchases must respect capacity. Buy commands should record their ledger entry and keep stock resale below its price. Keep sale commands carrying a price model, migrations writing keys in schema order, and the ledger reconciled. FS-403 prediction is available early; it does not establish M4's two-generation gate.

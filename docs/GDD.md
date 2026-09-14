@@ -208,6 +208,13 @@ NPC breeders offer unrelated founders, common visible variants, and occasional d
 
 Collector requests reward different descriptors: elegant long tails, low-maintenance fish, unusual pigment boundaries, tiny adults, or stable multi-generation traits. This distributes demand across morphologies.
 
+**Lab implementation (FS-501):** economy model v1 has five NPC buyers: a corner pet shop for any hatched fish, a long-fin collector, a pond keeper who wants large, easy-to-feed adults, a miniature keeper and a color collector.
+- **Demand and budgets:** each buyer takes a bounded number of fish, a limit that recovers every game day, and pays within a budget.
+- **Offers:** each offer explains its terms. Fish bred here earn a capped bonus, and founders or bought stock never resell above ◈ 150.
+- **Ledger and rehoming:** a ledger records every credit change, and rehoming is free.
+
+Persistent shop stock, upkeep, tank prices and time-limited collector orders are still to come.
+
 ### Value model
 
 Quote a range based on base category, visible traits, age/health eligibility, bounded rarity evidence, demand, and documented breeding results. Record the price-model version and explain top contributions. Actual sale price can differ. Prestige requires verifiable provenance and has a capped effect.

@@ -18,7 +18,7 @@ All planned values below are game hypotheses. They are not real aquarium-care re
 | Total record limit | 10,000 including sold fish | IndexedDB storage and bounded UI pages; actual quota can still fail |
 | Initial credits | 1,200 | Local NPC workflow demonstration |
 | Unrelated stock | 250 credits | Deterministically generated founder on purchase |
-| Lab sale quote | round(35 + 0.5 × sizeCm + 25 × metallic + 25 × tail) | No rarity/demand/age model |
+| Legacy lab sale quote | round(35 + 0.5 × sizeCm + 25 × metallic + 25 × tail) | Replays only sales recorded before FS-501; new sales use economy model v1 |
 | Breeding / new lab tank cost | 0 | Deliberately unbalanced experimentation |
 | Motion tick | 50 ms | Visual motion only |
 | Motion speed | 1× / 2× / 4× | Does not age fish |
@@ -129,6 +129,24 @@ Game rules in `src/core/breeding.ts`.
 | Egg timestamp | Pairing time + game days × 60 real seconds | One game day per real minute at 1× |
 | Instant lab cross | 20 eggs at once in the current tank, no courtship checks | Research shortcut; counts reservations |
 
+### Economy model v1 (FS-501)
+
+Game rules in `src/core/economy.ts`, not real market data. Buyers are listed in this order everywhere: corner pet shop, long-fin collector, pond keeper, miniature keeper, color collector.
+
+| Parameter | Value | Reason / limitation |
+|---|---|---|
+| Demand: capacity / recovery per game day | 10 / 5 · 3 / 1 · 4 / 1 · 3 / 1 · 2 / 0.5 | A sale uses one unit; below one unit a buyer makes no offer |
+| Base / weight / budget | ◈ 14 / 0 / 20 · 35 / 180 / 240 · 30 / 120 / 170 · 35 / 150 / 200 · 40 / 200 / 260 | Offer = (base + weight × interest + bred-here bonus) × stage × condition × demand, then capped |
+| Interest | Pet shop: 0 for any hatched fish. Long-fin: (tail − 0.55) ÷ 0.45 from tail 55%. Pond keeper: 0.7 × (length − 60) ÷ 38 + 0.3 × (1.6 − metabolism) from 60 cm. Miniature: (40 − length) ÷ 18 up to 40 cm. Color: rarest founder-stock appearance rarity ÷ 3 | Genetic potential, so a fish's interest does not change as it grows |
+| Stage | Egg not for sale · fry 25% (pet shop only) · juvenile 60% · adult 100% · elderly 80% | Collectors buy juveniles and adults |
+| Condition | × condition ÷ 70% below 70% | Poor care lowers offers |
+| Demand | × (0.5 + 0.5 × demand ÷ capacity) | The last fish a buyer takes pays a little over half |
+| Bred-here bonus | +◈ 6 per generation, at most +◈ 30, trait buyers only | Capped provenance |
+| Founder resale limit | ◈ 150 | Below the ◈ 250 stock price: buying to resell always loses |
+| Daily demand ceiling | ◈ 840 | Recovery × budget, summed, once starting demand is used |
+| Ledger | Latest 100 entries; totals for sales, stock, equipment, water changes and rehoming | Credits must equal opening balance plus totals when a save loads |
+| Rehoming | 0 credits | Always available for hatched fish that are not courting |
+
 ## 2. Proposed solo launch tuning
 
 | System | Initial experiment range | Measure |
@@ -194,6 +212,23 @@ Raise identical genomes under healthy, underfed, overcrowded and recovering cond
 ### E-05: economy and capacity
 
 Compare observation-focused, selective breeder, maximum-output breeder and collector-contract strategies over a simulated month. Track net credits, fish count, upkeep, rehome count, variance and softlocks. Bound dominant exploit paths before introducing online trade.
+
+**Status (FS-501, reduced):** Research → **Economy experiment** plays six seeded strategies for 60 game days, each from the same six founders and ◈ 1,200, with free tanks.
+
+| Strategy | Net credits | Sold | Average price | Rehomed | Peak living |
+|---|---:|---:|---:|---:|---:|
+| Observation-focused | 0 | 0 | — | 0 | 6 |
+| Purchase and resale loop | −1,105 | 6 | ◈ 66 | 0 | 6 |
+| Selective breeder | +3,188 | 49 | ◈ 65 | 30 | 247 |
+| Collector contracts | +3,134 | 40 | ◈ 78 | 23 | 263 |
+| Maximum-output breeder | +536 | 230 | ◈ 2 | 178 | 78 |
+| Instant lab-cross farmer | +643 | 290 | ◈ 2 | 790 | 126 |
+
+- **Resale:** each resale cycle lost ◈ 143–236, until credits fell below the stock price.
+- **Selective and collector:** these two earned from the pond keeper, miniature keeper and color collector. The long-fin collector bought nothing, because no fish reached 55% tail length within 60 days.
+- **Output farming:** both output strategies sold mostly fry and juveniles to the pet shop, so they earned little.
+
+No strategy was stranded, but upkeep does not exist yet. The selective breeder held up to 247 living fish because free tanks let it keep growing juveniles. Only one seed set was run, and this is not a playtest.
 
 ### E-06: lineage stability
 

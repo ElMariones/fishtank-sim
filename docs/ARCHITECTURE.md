@@ -33,6 +33,8 @@ src/
     absence.ts      Day observer and per-tank absence summary: hatching, stages, growth, condition, limiting causes, warnings
     careScenario.ts Seeded healthy and stressed care scenarios with a keeper that applies warning fixes
     lifecycleScenario.ts Seeded two-generation normal-breeding demonstration with batch rehoming, checked by journal replay
+    economy.ts      Economy model v1: NPC buyers and demand, explained offers, ordered sale plans, demand recovery and the credit ledger
+    economyExperiment.ts Seeded E-05 strategies (observation, resale, selective, collector, maximum output, lab-cross farming)
     breeding.ts     Breeding model v1: pairing and courtship blockers, reserved nursery places, day-boundary courtship, spawning and rest
     development.ts  Life model v1: egg/fry/juvenile/adult/elderly stages, logistic growth, lagged condition and environment curves
     juvenile.ts     Stage appearance v1: body and pigment maturity from life state, hatchling proportions and reveal fixtures
@@ -61,6 +63,8 @@ src/
     AbsencePanel.tsx "While you were away" per-tank return summary with links to each tank
     CareScenarios.tsx Research tab charting the healthy and stressed care scenarios
     LifecycleDemonstration.tsx Research tab running the two-generation demonstration
+    MarketPanel.tsx Buyers with their remaining demand, ledger totals and recent entries
+    EconomyExperiment.tsx Research tab running the E-05 economy strategies
     NormalBreeding.tsx Pairing options, blockers with fixes, and the courting, incubating and hatched clutch list
     FamilyView.tsx  Family tab: ancestor generations with portraits, descendant generations, record search and breadcrumb trail
     Controls.tsx    Shared sex mark and pagination controls
@@ -85,6 +89,7 @@ tests/
   absence.test.ts  Day observer neutrality, no unexplained decline across random care, scenario recovery and absence summaries
   breeding.test.ts Pairing blockers, courtship pauses and spawning, reservations under random commands, reload/offline no-duplication, cancel/sale guards, world v4 migration
   lifecycle.test.ts Batch rehoming atomicity and reservations, clutch grouping within a pair, and the two-generation demonstration
+  economy.test.ts  Offer terms and founder cap, demand use and recovery, batch plans, reconciled ledger, rehoming, legacy replay and E-05 bounds
   kinship.test.ts  Textbook relationships, Wright's recurrences, founder assumptions against the tabular matrix, founder listing, incremental reuse and rebuilds
   genealogy.test.ts Repeated ancestors, position-by-position reference on random inbred pedigrees, ten generations six at a time, sold and cross-tank relatives, 10,000-record bounds, search and trail
   care.test.ts     Ration conservation, development under rations and temperature, split/offline/replay equality, costs, warnings, projections and world v3 migration
@@ -135,6 +140,20 @@ No save, command or kinship calculation changed; pedigree F still uses every rec
 - the chosen fish are paired for a second generation.
 
 It issues no `breed` command, checks every bred fish against a clutch record, and decodes the runtime save so its journal replays to the same world (ADR-052).
+
+### FS-501 economy model v1, 14 September 2026
+
+`core/economy.ts` holds five NPC buyers, each with a capacity, a daily recovery, a base price, a trait weight and a budget.
+- **Offers:** `offersFor` returns every interested buyer's offer for a living, hatched fish, best first. Each offer is a list of terms that add up to it: base price, trait interest and a capped bonus for fish bred here, then stage, condition, demand, and the budget or founder limit.
+- **Sale plans:** `planSales` sells in order, using up each buyer's demand as it goes. The `sell` and `sell-batch` commands and their reviews share it, so a review shows exactly what the command pays.
+- **Demand recovery:** it happens in `advanceWorld` at each game-day boundary, after breeding.
+
+World save v6 adds `market` (demand per buyer), `ledger` (opening balance, totals by reason and the latest 100 entries) and the `rehomed` fish status.
+- **Ledger entries:** `buy`, `set-care`, `change-water`, sales and `rehome-batch` write them.
+- **Validation:** `decodeSave` rejects credits that do not equal the opening balance plus every total.
+- **Compatibility:** sale commands carry `priceModel: 1`, and journal entries without it keep the lab quote. Legacy replay comparison ignores demand and ledger, so v1–v5 saves still decode (ADR-053).
+
+`core/economyExperiment.ts` runs the E-05 strategies through the same commands and clock.
 
 ## 2. Stack decisions
 

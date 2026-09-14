@@ -4,6 +4,7 @@ import {
   AERATION_TIERS, applyCareSettings, applyWaterChange, CARE_RATES, careCost, defaultCare, FILTER_TIERS, RATION_KEYS, THERMOSTAT_RANGE,
   waterChangeCost, type WaterChangePercent,
 } from './care';
+import { defaultMarket, openingLedger, planSales, recordEntry, saleDetail } from './economy';
 import { express, founderGenome, inherit } from './genetics';
 import { adultLife, eggLife, isEgg } from './development';
 import { tankLoad } from './habitat';
@@ -22,8 +23,11 @@ export const MAX_LIVING = MAX_TANKS * TANK_CAPACITY;
  */
 export const MAX_RECORDS = 10_000;
 export const STOCK_PRICE = 250;
-/** World v5: tanks carry water (FS-301) and care (FS-305); fish carry life (FS-302) and breeding state; clutches (FS-401/402). */
-export const WORLD_VERSION = 5;
+/**
+ * World v6: tanks carry water (FS-301) and care (FS-305); fish carry life (FS-302) and breeding state; clutches
+ * (FS-401/402); NPC demand and the credit ledger (FS-501).
+ */
+export const WORLD_VERSION = 6;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -44,10 +48,10 @@ function newTank(id: string, name: string, planted: boolean): Tank {
 
 /** New worlds use the current genome. Research fixtures pass genome version 1 to reproduce the frozen FS-101 founders. */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = GENOME_VERSION): World {
-  const world: World = { version: 5, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
+  const world: World = { version: 6, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
-  ], clutches: [] };
+  ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200) };
   ['Haru', 'Sumi', 'Kohaku', 'Yuki', 'Akira', 'Momo'].forEach((name, i) => {
     world.fish.push(founder(world, name, i % 2 === 0 ? 'F' : 'M', timestamp, genomeVersion)); world.nextId++;
   });
@@ -63,8 +67,9 @@ export type Command =
   | { type: 'rename'; fishId: string; name: string }
   | { type: 'move'; fishId: string; tankId: string }
   | { type: 'breed'; motherId: string; fatherId: string; tankId: string; timestamp: string; genomeVersion?: GenomeVersion }
-  | { type: 'sell'; fishId: string }
-  | { type: 'sell-batch'; fishIds: string[] }
+  | { type: 'sell'; fishId: string; priceModel?: 1 }
+  | { type: 'sell-batch'; fishIds: string[]; priceModel?: 1 }
+  | { type: 'rehome-batch'; fishIds: string[] }
   | { type: 'buy'; tankId: string; timestamp: string; genomeVersion?: GenomeVersion }
   | { type: 'add-tank' }
   | { type: 'decorate'; tankId: string }
@@ -86,8 +91,9 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('rename'), fishId: fishIdSchema, name: z.string().trim().min(1).max(32) }).strict(),
   z.object({ type: z.literal('move'), fishId: fishIdSchema, tankId: tankIdSchema }).strict(),
   z.object({ type: z.literal('breed'), motherId: fishIdSchema, fatherId: fishIdSchema, tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema }).strict(),
-  z.object({ type: z.literal('sell'), fishId: fishIdSchema }).strict(),
-  z.object({ type: z.literal('sell-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING) }).strict(),
+  z.object({ type: z.literal('sell'), fishId: fishIdSchema, priceModel: z.literal(1).optional() }).strict(),
+  z.object({ type: z.literal('sell-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING), priceModel: z.literal(1).optional() }).strict(),
+  z.object({ type: z.literal('rehome-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING) }).strict(),
   z.object({ type: z.literal('buy'), tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema }).strict(),
   z.object({ type: z.literal('add-tank') }).strict(),
   z.object({ type: z.literal('decorate'), tankId: tankIdSchema }).strict(),
@@ -138,6 +144,27 @@ export function applyCommand(world: World, command: Command): World {
     if (next.credits < cost) throw new Error(`${what} costs ◈ ${count(cost)} and you have ◈ ${count(next.credits)}.`);
     next.credits -= cost;
   };
+  const names = (fish: Fish[]) => fish.length <= 3 ? fish.map(f => f.name).join(', ') : `${fish.slice(0, 3).map(f => f.name).join(', ')} and ${fish.length - 3} more`;
+  // A sale with a price model goes to the best NPC offers and uses up their demand (FS-501). Journal entries recorded
+  // before the economy carry no price model and keep the lab quote, so older saves replay to the credits they stored.
+  const sell = (batch: Fish[], priceModel: 1 | undefined) => {
+    if (priceModel === undefined) {
+      const total = batch.reduce((sum, fish) => sum + quote(fish), 0);
+      for (const fish of batch) fish.status = 'sold';
+      next.credits += total;
+      next.ledger = recordEntry(next.ledger, 'sale', total, batch.length, `${names(batch)} at the lab quote`);
+      return;
+    }
+    const plan = planSales(next, batch.map(fish => fish.id));
+    if (plan.unsold.length) {
+      const unsold = batch.filter(fish => plan.unsold.includes(fish.id));
+      throw new Error(`No NPC buyer wants ${names(unsold)} right now. Wait for demand to recover, or rehome ${unsold.length === 1 ? 'it' : 'them'} instead.`);
+    }
+    for (const fish of batch) fish.status = 'sold';
+    next.credits += plan.total;
+    next.market = { ...next.market, demand: plan.demand };
+    next.ledger = recordEntry(next.ledger, 'sale', plan.total, batch.length, saleDetail(plan));
+  };
   switch (command.type) {
     case 'rename': {
       const name = command.name.trim();
@@ -174,7 +201,7 @@ export function applyCommand(world: World, command: Command): World {
       const fish = getFish(command.fishId);
       if (isEgg(fish.life)) throw new Error('Eggs cannot be sold.');
       notCourting(fish);
-      next.credits += quote(fish); fish.status = 'sold';
+      sell([fish], command.priceModel);
       break;
     }
     case 'sell-batch': {
@@ -183,7 +210,7 @@ export function applyCommand(world: World, command: Command): World {
       const batch = command.fishIds.map(getFish); // Every member is validated before any sale is applied.
       if (batch.some(member => isEgg(member.life))) throw new Error('Eggs cannot be sold.');
       batch.forEach(notCourting);
-      for (const fish of batch) { next.credits += quote(fish); fish.status = 'sold'; }
+      sell(batch, command.priceModel);
       break;
     }
     case 'buy': {
@@ -193,6 +220,7 @@ export function applyCommand(world: World, command: Command): World {
       const fish = founder(next, `Newcomer ${next.nextId}`, next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp, command.genomeVersion ?? 1);
       fish.tankId = command.tankId;
       next.fish.push(fish); next.nextId++; next.credits -= STOCK_PRICE;
+      next.ledger = recordEntry(next.ledger, 'stock', -STOCK_PRICE, 1, fish.name);
       break;
     }
     case 'add-tank':
@@ -215,13 +243,17 @@ export function applyCommand(world: World, command: Command): World {
       const wanted = { ration: command.ration, filterTier: command.filterTier, aerationTier: command.aerationTier, targetC: command.targetC };
       const updated = applyCareSettings(tank, wanted);
       if (JSON.stringify(updated) === JSON.stringify(tank)) throw new Error('These care settings are already in use.');
-      afford(careCost(tank, wanted), 'This equipment');
+      const cost = careCost(tank, wanted);
+      afford(cost, 'This equipment');
+      if (cost) next.ledger = recordEntry(next.ledger, 'equipment', -cost, 0, tank.name);
       tank.water = updated.water; tank.care = updated.care;
       break;
     }
     case 'change-water': {
       const tank = space(command.tankId, 0);
-      afford(waterChangeCost(tank.water, command.percent), `A ${command.percent}% water change`);
+      const cost = waterChangeCost(tank.water, command.percent);
+      afford(cost, `A ${command.percent}% water change`);
+      next.ledger = recordEntry(next.ledger, 'waterChange', -cost, 0, `${command.percent}% in ${tank.name}`);
       tank.water = applyWaterChange(tank.water, command.percent);
       break;
     }
@@ -254,6 +286,16 @@ export function applyCommand(world: World, command: Command): World {
       const tank = space(command.tankId, arriving);
       if (!arriving) throw new Error(`These fish already live in ${tank.name}.`);
       for (const fish of batch) fish.tankId = command.tankId;
+      break;
+    }
+    case 'rehome-batch': {
+      // Economy-neutral rehoming (FS-501): fish leave the aquarium for new homes. No credits change and records remain.
+      if (new Set(command.fishIds).size !== command.fishIds.length) throw new Error('Each fish can only be rehomed once.');
+      const batch = command.fishIds.map(getFish);
+      if (batch.some(member => isEgg(member.life))) throw new Error('Eggs cannot be rehomed. Wait until they hatch.');
+      for (const fish of batch) if (courtingClutchOf(next, fish.id)) throw new Error(`${fish.name} is courting. Cancel the courtship before rehoming.`);
+      for (const fish of batch) fish.status = 'rehomed';
+      next.ledger = recordEntry(next.ledger, 'rehome', 0, batch.length, `${names(batch)} rehomed`);
       break;
     }
   }

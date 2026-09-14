@@ -16,7 +16,7 @@ export type BreedingState = { model: 1; cooldownDays: number };
 export type Fish = {
   id: string; name: string; sex: 'F' | 'M'; genome: Genome; birthSeed: number;
   generation: number; parents: [string, string] | null; bornAt: string;
-  tankId: string; status: 'living' | 'sold'; mutations: Mutation[]; life: LifeState; breeding: BreedingState;
+  tankId: string; status: 'living' | 'sold' | 'rehomed'; mutations: Mutation[]; life: LifeState; breeding: BreedingState;
 };
 /** Why a pairing is refused or a courtship is paused (FS-401). */
 export type BlockerCode = 'role' | 'unavailable' | 'immature' | 'condition' | 'cooldown' | 'busy' | 'apart' | 'water' | 'nursery-missing' | 'nursery-full' | 'nursery-busy' | 'limit';
@@ -78,11 +78,22 @@ export type TankCare = {
   fed: number;
 };
 export type Tank = { id: string; name: string; capacity: number; planted: boolean; water: WaterState; care: TankCare };
+export type BuyerId = 'petShop' | 'longFin' | 'pondKeeper' | 'miniature' | 'colorCollector';
+/** Economy model v1 NPC demand (FS-501): how many more fish each buyer will take; it recovers at game-day boundaries. */
+export type MarketState = { model: 1; demand: Record<BuyerId, number> };
+export type LedgerReason = 'sale' | 'stock' | 'equipment' | 'waterChange' | 'rehome';
+/** One credit change: `amount` is signed, `fish` counts the fish involved, `detail` is short readable text. */
+export type LedgerEntry = { seq: number; reason: LedgerReason; amount: number; fish: number; detail: string };
+/** Credits always equal `opening` plus every total; only the latest entries are kept. */
+export type Ledger = { model: 1; opening: number; next: number; totals: Record<LedgerReason, number>; entries: LedgerEntry[] };
 /**
  * World v2 added per-tank water (FS-301), v3 fish life state (FS-302), v4 tank care (FS-305), v5 breeding state and
- * clutches (FS-401/402). Older saves migrate with defaults.
+ * clutches (FS-401/402), v6 NPC demand, a credit ledger and rehomed fish (FS-501). Older saves migrate with defaults.
  */
-export type World = { version: 5; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[] };
+export type World = {
+  version: 6; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
+  market: MarketState; ledger: Ledger;
+};
 /**
  * Development v2 inherited marking anchor, derived from one phased two-locus haplotype block.
  * Body coordinates: u 0 = snout tip … 1 = peduncle; v −1 = dorsal edge … 1 = ventral edge.

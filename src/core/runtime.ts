@@ -119,10 +119,13 @@ export function decodeRuntime(raw: string): Runtime {
   return { ...replayed, world, tick: parsed.tick, simulation };
 }
 
-/** Identity, genome, pedigree, ownership and tank records without water or life state: what older snapshots can prove. */
+/**
+ * Identity, genome, pedigree, ownership, credits and tank records without water, life, demand or ledger state: what older
+ * snapshots can prove.
+ */
 function recordsOnly(world: World) {
   return {
-    ...world,
+    ...world, market: null, ledger: null,
     tanks: world.tanks.map(tank => ({ id: tank.id, name: tank.name, capacity: tank.capacity, planted: tank.planted })),
     fish: world.fish.map(member => ({ ...member, life: null, breeding: null })),
   };

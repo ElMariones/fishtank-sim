@@ -204,6 +204,43 @@ footer a{display:inline-flex;align-items:center;min-height:24px}
 .move-review .move-warning { margin: 0 0 8px; padding: 8px 10px; border: 1px solid #4f7d68; border-radius: 7px; background: #17352d; color: #cae8d5; }
 .batch-done { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; font-size: .74rem; color: #b8d9ac; }
 .batch-done button { font-size: .72rem; }
+/* FS-501 NPC market: credits button, buyers, ledger, offer breakdown and the economy experiment. */
+.top-actions button.credits { display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 12px; border: 1px solid #2f4541; border-radius: 999px; background: transparent; color: inherit; font: inherit; }
+.top-actions button.credits[aria-expanded="true"] { border-color: #9fd89b; }
+.market-panel { max-width: 1180px; margin: 0 auto 16px; padding: 16px 18px; border: 1px solid #2f4541; border-radius: 10px; background: #122326; }
+.market-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.market-heading h2 { margin: 2px 0 0; font-size: 1.05rem; }
+.market-panel h3 { margin: 16px 0 8px; font-size: .82rem; font-weight: 600; }
+.buyer-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; }
+.buyer-list li { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid #2f4541; border-radius: 8px; background: #152a2c; font-size: .74rem; color: #b8ccbf; }
+.buyer-list li strong { color: #dce7e2; font-size: .8rem; font-weight: 600; }
+.buyer-list meter { width: 100%; height: 8px; }
+.ledger-table { width: 100%; max-width: 420px; border-collapse: collapse; font-size: .74rem; }
+.ledger-table th, .ledger-table td { padding: 5px 6px; border-bottom: 1px solid #253b37; text-align: left; font-weight: 400; }
+.ledger-table td { text-align: right; font-variant-numeric: tabular-nums; }
+.ledger-table .ledger-balance th, .ledger-table .ledger-balance td { font-weight: 600; color: #dce7e2; }
+.ledger-entries { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ledger-entries li { display: grid; grid-template-columns: minmax(0, 13rem) minmax(0, 1fr) auto; gap: 8px; padding: 6px 8px; border-bottom: 1px solid #253b37; font-size: .72rem; color: #b8ccbf; }
+.ledger-entries li strong { font-variant-numeric: tabular-nums; color: #dce7e2; }
+.offer-details { margin: 8px 0 14px; font-size: .74rem; color: #b8ccbf; }
+.offer-details summary { cursor: pointer; color: #9fd89b; padding: 6px 0; }
+.offer-details ol { list-style: none; margin: 6px 0; padding: 0; }
+.offer-details li { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px solid #253b37; }
+.offer-details li span:last-child { font-variant-numeric: tabular-nums; }
+.offer-details p { margin: 6px 0 0; line-height: 1.5; }
+.economy-chart { width: 100%; max-width: 100%; height: auto; margin: 12px 0 6px; }
+.economy-line { fill: none; stroke-width: 2; }
+.economy-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 12px; padding: 0; list-style: none; font-size: .72rem; color: #b8ccbf; }
+.economy-legend .swatch { display: inline-block; width: 14px; height: 3px; margin-right: 6px; vertical-align: middle; }
+.economy-notes { margin: 0 0 10px; padding-left: 18px; font-size: .72rem; color: #b8ccbf; line-height: 1.6; }
+.economy-line.observer { stroke: #8caaa2; } .swatch.observer { background: #8caaa2; }
+.economy-line.resale { stroke: #e38b6d; } .swatch.resale { background: #e38b6d; }
+.economy-line.selective { stroke: #9fd89b; } .swatch.selective { background: #9fd89b; }
+.economy-line.collector { stroke: #d9b86c; } .swatch.collector { background: #d9b86c; }
+.economy-line.maxOutput { stroke: #7fb4e8; } .swatch.maxOutput { background: #7fb4e8; }
+.economy-line.labFarm { stroke: #c49be0; } .swatch.labFarm { background: #c49be0; }
+@media (max-width: 680px) { .market-panel { margin: 0 12px 16px; padding: 14px; } .ledger-entries li { grid-template-columns: minmax(0, 1fr) auto; } .ledger-entries li span:nth-child(2) { grid-column: 1 / -1; grid-row: 2; } }
+@media (pointer: coarse) { .offer-details summary { min-height: 44px; display: flex; align-items: center; } }
 .fixture-grid.reveal-strip { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 @media (max-width: 1180px) { .fixture-grid.reveal-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .fixture-grid.reveal-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

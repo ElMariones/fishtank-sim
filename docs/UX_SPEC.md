@@ -139,6 +139,16 @@ Before selling, show fish name, price, destination type and irreversibility with
 - **Sale review:** lists only saleable fish and says how many selected favorites or eggs stay.
 - **Research:** **Two generations** runs the seeded M4 demonstration and shows its clutches, timeline, instant-cross count, rehomed fish and replay result.
 
+**Lab implementation (FS-501):**
+- **Offers:** the inspector shows **Best NPC offer** with the buyer and price. **Why ◈ N from the …** lists the base price, trait interest, bred-here bonus, stage, condition, demand and any limit, followed by other buyers' offers.
+- **One fish:** **Sell to {buyer} · ◈ N** confirms the buyer and price. Without an interested buyer the button reads **No buyer today**. **Rehome · no credits** confirms that the fish leaves the aquarium without payment and stays in the archive.
+- **Batches:** the batch bar counts selected fish with offers and their total.
+  - The sale review lists each fish's buyer and price in selling order, since later sales to one buyer pay less, and says how many favorites, eggs or unwanted fish stay.
+  - **Review rehoming of N** lists the hatched fish that are not courting.
+- **Buyers and ledger:** the credits in the header open **Buyers and ledger**, showing what each buyer wants, how many more fish it will take, its daily recovery and budget. It also shows the opening balance, totals by reason, the balance and the latest entries.
+- **Archive:** sold and rehomed fish share the archive, labeled by how they left.
+- **Research:** **Economy experiment** runs the six E-05 strategies.
+
 For online fixed-price purchase, show pending state, then one authoritative receipt. If a listing changes or another buyer wins, refresh the specific listing and explain. Never optimistically create a tradeable fish before server confirmation.
 
 ## 9. Named lines and notebook

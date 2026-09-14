@@ -61,6 +61,8 @@ Kinship (FS-405) comes from one `createKinshipCache` instance in App state. Its 
 
 Batch rehoming (FS-406) is the `move-batch` command. Keep it atomic and reservation-aware, like `sell-batch`. Clutches within a parent pair are grouped by shared birth time (`birthGroupsOf`), so anything that changes how `bornAt` is assigned would split or merge clutches in the collection. `src/core/lifecycleScenario.ts` is M4's gate evidence: it must keep issuing no `breed` command and keep replaying its journal. Re-run it and check its day counts whenever breeding, growth or care constants change.
 
+World save v6 (FS-501) adds `market` and `ledger`, plus the `rehomed` fish status. Every command that changes credits must write a ledger entry, because `decodeSave` rejects credits that differ from the opening balance plus the totals. Sales price through `planSales` in `src/core/economy.ts`, which the commands, reviews and E-05 share, so change pricing there, not in UI code. Sale commands carry `priceModel: 1`; commands without it are journal entries from before the economy and must keep the lab quote, or older saves stop replaying. Rehomed and sold fish are both archived, so check `status !== 'living'` rather than `status === 'sold'`.
+
 The live Canvas’s transient actors are outside React state. Motion is deterministic for the same initial actors and tick sequence, but positions are not persisted; switching tanks reconstructs visual trajectories. Birth/genome outcomes do persist.
 
 Sales preserve the full fish record, including parent IDs and genome. The archive assumes sold fish are no longer locally living; online ownership/death states must be modeled separately later.
@@ -77,7 +79,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> M3 is DONE (FS-305 `d425639`, FS-306 `325ceb4`, FS-307 `a5d5ddc`). FS-401/402 normal breeding is DONE, pushed `9aabfdb`. FS-404's bounded six-generation family graph is DONE, pushed `b7c3e37`. FS-405's incremental kinship cache is DONE, pushed `850f501`. FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE, pushed `44d7d98` (see the FS-406 report), completing M4's task list. Next is M5: start with FS-501's bounded NPC demand and price rules with a currency ledger, including an economy-neutral way to rehome fish out of the aquarium. Keep `move-batch` and `sell-batch` atomic and reservation-aware, migrations writing keys in schema order, and the two-generation demonstration free of instant crosses.
+> M3 is DONE (FS-305 `d425639`, FS-306 `325ceb4`, FS-307 `a5d5ddc`). FS-401/402 normal breeding is DONE, pushed `9aabfdb`. FS-404's bounded six-generation family graph is DONE, pushed `b7c3e37`. FS-405's incremental kinship cache is DONE, pushed `850f501`. FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE, pushed `44d7d98`, completing M4's task list. M5 has started: FS-501's economy model v1 is delivered (see the backlog and the FS-501 report). Continue with FS-502: persistent shop stock with stable IDs and expiry, filters, no reroll on refresh, and capacity-respecting purchases that write ledger entries. Keep sale commands carrying a price model, the ledger reconciled, and migrations writing keys in schema order.
 
 ## 7. Subsequent task briefs
 

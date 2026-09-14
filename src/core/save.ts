@@ -3,10 +3,11 @@ import { BLOCKER_CODES, CLUTCH_SIZES, CLUTCH_STAGES, idleBreeding, reservedPlace
 import { defaultCare, RATION_KEYS, THERMOSTAT_RANGE } from './care';
 import { ALL_LOCI, LOCI } from './catalog';
 import { adultLife } from './development';
+import { BUYER_BY_ID, defaultMarket, LEDGER_LIMIT, LEDGER_REASONS, ledgerBalance, openingLedger } from './economy';
 import { metabolicPotential } from './genetics';
 import type { Fish, Tank, World } from './types';
 import { defaultWater, WATER_LIMITS } from './water';
-import { MAX_RECORDS, MAX_TANKS } from './world';
+import { MAX_LIVING, MAX_RECORDS, MAX_TANKS } from './world';
 
 const alleles = (count: number) => z.array(z.number().int().min(0).max(5)).length(count);
 const fishIdSchema = z.string().regex(/^FSH-\d{6}$/);
@@ -41,6 +42,21 @@ const clutch = z.object({
   days: z.number().int().min(0).max(10_000_000), progress: z.number().min(0).max(1), blockers: z.array(z.enum(BLOCKER_CODES)).max(BLOCKER_CODES.length),
   spawnedDay: z.number().int().min(0).max(10_000_000).nullable(), firstFishId: fishIdSchema.nullable(),
 }).strict();
+/** NPC demand and the credit ledger, world v6 (FS-501). */
+const demand = (id: keyof typeof BUYER_BY_ID) => z.number().min(0).max(BUYER_BY_ID[id].capacity);
+const market = z.object({
+  model: z.literal(1),
+  demand: z.object({ petShop: demand('petShop'), longFin: demand('longFin'), pondKeeper: demand('pondKeeper'), miniature: demand('miniature'), colorCollector: demand('colorCollector') }).strict(),
+}).strict();
+const credits = z.number().int().min(-1e12).max(1e12);
+const ledger = z.object({
+  model: z.literal(1), opening: z.number().int().min(0).max(1e9), next: z.number().int().positive(),
+  totals: z.object({ sale: credits, stock: credits, equipment: credits, waterChange: credits, rehome: credits }).strict(),
+  entries: z.array(z.object({
+    seq: z.number().int().positive(), reason: z.enum(LEDGER_REASONS), amount: z.number().int().min(-1e9).max(1e9),
+    fish: z.number().int().min(0).max(MAX_LIVING), detail: z.string().max(120),
+  }).strict()).max(LEDGER_LIMIT),
+}).strict();
 const tank = { id: z.string().max(50), name: z.string().min(1).max(32), capacity: z.number().int().min(1).max(60), planted: z.boolean() };
 const header = { seed: z.number().int().min(0).max(4294967295), nextId: z.number().int().positive(), credits: z.number().int().nonnegative().max(1e9) };
 const fishRecord = {
@@ -64,6 +80,11 @@ const schema = z.discriminatedUnion('version', [
     version: z.literal(5), ...header, nextClutchId: z.number().int().positive(), tanks: tanksWithCare,
     fish: z.array(z.object({ ...fishRecord, life, breeding })).max(MAX_RECORDS), clutches: z.array(clutch).max(MAX_RECORDS),
   }),
+  z.object({
+    version: z.literal(6), ...header, nextClutchId: z.number().int().positive(), tanks: tanksWithCare,
+    fish: z.array(z.object({ ...fishRecord, status: z.enum(['living', 'sold', 'rehomed']), life, breeding })).max(MAX_RECORDS), clutches: z.array(clutch).max(MAX_RECORDS),
+    market, ledger,
+  }),
 ]);
 
 /**
@@ -71,20 +92,23 @@ const schema = z.discriminatedUnion('version', [
  * life state (FS-302): their fish become young adults at their adult length potential, as the lab always drew them.
  * Worlds v1–v3 predate care (FS-305): their tanks feed measured rations with a thermostat at the water's temperature.
  * Worlds v1–v4 predate normal breeding (FS-401/402): their fish are rested and no clutch is courting.
+ * Worlds v1–v5 predate the economy (FS-501): every buyer's demand is full and the ledger opens at the saved balance.
  */
 export function decodeSave(raw: string): World {
   if (raw.length > 12_000_000) throw new Error('Save is too large for this lab.');
   const parsed = schema.parse(JSON.parse(raw));
   let world: World;
-  if (parsed.version === 5) world = parsed;
+  if (parsed.version === 6) world = parsed;
+  // Keys follow the v6 schema order, which appends market and ledger to the v5 order.
+  else if (parsed.version === 5) world = { ...parsed, version: 6, market: defaultMarket(), ledger: openingLedger(parsed.credits) };
   else {
     const watered: Omit<Tank, 'care'>[] = parsed.version === 1 ? parsed.tanks.map(entry => ({ ...entry, water: defaultWater() })) : parsed.tanks;
     const cared: Tank[] = parsed.version === 4 ? parsed.tanks : watered.map(entry => ({ ...entry, care: defaultCare(entry.water) }));
     const lived: Omit<Fish, 'breeding'>[] = parsed.version === 3 || parsed.version === 4 ? parsed.fish : parsed.fish.map(member => ({ ...member, life: adultLife(member.genome) }));
     // Keys follow the v5 schema order: replay validation compares serialized worlds, so a migrated world must
     // serialize exactly like a decoded current one or every older save would fail to load.
-    world = { version: 5, seed: parsed.seed, nextId: parsed.nextId, credits: parsed.credits, nextClutchId: 1, tanks: cared,
-      fish: lived.map(member => ({ ...member, breeding: idleBreeding() })), clutches: [] };
+    world = { version: 6, seed: parsed.seed, nextId: parsed.nextId, credits: parsed.credits, nextClutchId: 1, tanks: cared,
+      fish: lived.map(member => ({ ...member, breeding: idleBreeding() })), clutches: [], market: defaultMarket(), ledger: openingLedger(parsed.credits) };
   }
   const ids = new Map(world.fish.map(f => [f.id, f]));
   const tanks = new Set(world.tanks.map(t => t.id));
@@ -123,6 +147,10 @@ export function decodeSave(raw: string): World {
     if (world.fish.filter(f => f.status === 'living' && f.tankId === entry.id).length + reservedPlaces(world, entry.id) > entry.capacity) throw new Error('Tank exceeds capacity.');
     if (entry.care.dayEatenG > entry.care.dayNeedG) throw new Error('A tank ate more food than its residents needed.');
   }
+  if (ledgerBalance(world.ledger) !== world.credits) throw new Error('Credits do not agree with the ledger.');
+  world.ledger.entries.forEach((entry, i) => {
+    if (entry.seq >= world.ledger.next || (i > 0 && entry.seq <= world.ledger.entries[i - 1].seq)) throw new Error('Ledger entries are out of order.');
+  });
   return world;
 }
 
