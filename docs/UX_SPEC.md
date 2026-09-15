@@ -200,3 +200,7 @@ The verification evidence for the current lab is tracked separately in [TESTING.
 ## Implemented NPC shop (FS-502)
 
 The collection toolbar opens **NPC shop**. Fixed specimen cards show sex, category, adult length potential, carrier notes, expiry, price and current resale estimate. Sex/category filters and price/length/expiry sorting do not change inventory. **Deliver to** states free places after nursery reservations. Purchases explain credit/capacity/record blockers and select the newcomer after clearing collection filters. Refreshing preserves stock. See [FS-502 verification](research/FS-502-PERSISTENT-SHOP.md).
+
+## Implemented habitat management (FS-503)
+
+The sidebar's Aquariums & expansion link opens Habitat & expansion below the live tank. Purchase and expansion show cost, resulting capacity/volume and balance before confirmation. The decoration editor keeps a separate draft with a footprint map, piece selection and labeled position/size/rotation sliders. Applying shows total new-piece cost; Cancel discards the draft. Invalid placement and insufficient funds prevent Apply. Removal has no refund. Starter tanks remain included; eight tanks and 60 places per tank remain the hard limits. [Evidence](research/FS-503-HABITAT-EXPANSION.md).

@@ -37,7 +37,7 @@ Genetics use 48 legacy loci, or 60 loci in genome v2, with two phased array copi
 
 Mutations are 0.003 **per copy**. There are 96 transmitted copies, so about one quarter of lab births carry a small de novo mutation. This is a research setting.
 
-Portraits offer Now (current stage) and Adult potential (genetic preview). Growth, longevity, metabolism and oxygen demand are integrated. Worker pellets are visual; persistent nutrition is integrated through the shared tank food pool. The habitat button toggles shared permeable plant cover and solid rock footprints (FS-304). Body-center clearance is a visual proxy; extreme fins may overlap. Lab credits use bounded NPC buyers and a reconciled ledger; tank, breeding and food costs remain incomplete.
+Portraits offer Now (current stage) and Adult potential (genetic preview). Growth, longevity, metabolism and oxygen demand are integrated. Worker pellets are visual; persistent nutrition is integrated through the shared tank food pool. Habitat & expansion edits persistent permeable plant cover and solid rock footprints (FS-503). Body-center clearance is a visual proxy; extreme fins may overlap. Lab credits use bounded NPC buyers and a reconciled ledger; extra tanks and expansions are paid; breeding and food remain free.
 
 Geometry lives in `src/core/anatomy.ts` (anatomy v2). The Canvas renderer draws it, portraits frame from its bounds, and the tank uses `src/rendering/tankLayout.ts` for both drawing and picking. Change anchors there and extend `tests/anatomy.test.ts`; do not add renderer-only geometry exceptions.
 
@@ -71,6 +71,10 @@ Sales preserve the full fish record, including parent IDs and genome. The archiv
 
 Save decoding must continue to reject invalid future schemas without overwriting stored data. Saves now supports v1/v2 import preview, explicit replacement and two-backup recovery. Preserve the IndexedDB compare-and-swap token and legacy raw data. Runtime schema v2 wraps world/genome v1; do not reset revision when compacting the replay journal.
 
+### FS-503 contract
+
+World v8 persists tank decorations. `purchase-tank`, `upgrade-tank` and `place-decorations` debit the equipment ledger atomically (the existing `afford` helper already deducts credits). Keep v7 shop stock, water and ledger checks during migration; omit only new decoration fields from its replay comparison. Legacy free tank/decorate commands remain for historical journals and research. Protocol 3 sends placed footprints and preserves them on worker restart. Layout validation prevents overlapping rock clearance regions and placement against the glass. See [FS-503 evidence](research/FS-503-HABITAT-EXPANSION.md). FS-505 must revisit E-05's free research tanks before claiming paid-economy balance.
+
 ## 5. Verification and task completion
 
 Run npm test and npm run build after core/code changes. Browser verification should exercise the affected journey, not just inspect a screenshot. Read TESTING.md before broadening tests.
@@ -81,7 +85,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> M3 is DONE (FS-305 `d425639`, FS-306 `325ceb4`, FS-307 `a5d5ddc`). FS-401/402 normal breeding is DONE, pushed `9aabfdb`. FS-404's bounded six-generation family graph is DONE, pushed `b7c3e37`. FS-405's incremental kinship cache is DONE, pushed `850f501`. FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE, pushed `44d7d98`, completing M4's task list. M5 has started: FS-501's economy model v1 is DONE, pushed `006b500` (see the FS-501 report). FS-502 persistent shop is DONE, pushed `3945d86`; see its research report. Continue with FS-503: tank purchase/upgrades and persisted decoration placement with functional footprints. Keep sale commands carrying a price model, the ledger reconciled, and migrations writing keys in schema order.
+> M3 is DONE (FS-305 `d425639`, FS-306 `325ceb4`, FS-307 `a5d5ddc`). FS-401/402 normal breeding is DONE, pushed `9aabfdb`. FS-404's bounded six-generation family graph is DONE, pushed `b7c3e37`. FS-405's incremental kinship cache is DONE, pushed `850f501`. FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE, pushed `44d7d98`, completing M4's task list. M5 has started: FS-501's economy model v1 is DONE, pushed `006b500` (see the FS-501 report). FS-502 persistent shop is DONE, pushed `3945d86`; see its research report. FS-503 paid expansion and placed decorations are locally verified, awaiting push. Continue with FS-504 onboarding, no-money recovery and discoverable family inspection. Keep sale commands carrying a price model, the ledger reconciled, and migrations writing keys in schema order.
 
 ## 7. Subsequent task briefs
 

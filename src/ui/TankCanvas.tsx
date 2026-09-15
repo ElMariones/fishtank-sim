@@ -92,7 +92,7 @@ export function TankCanvas(props: Props) {
     frameClock.current = { receivedAt: 0, fromTime: 0 };
     simulationTime.current = 0;
     behaviorFrame.current = null;
-    motion.start(props.fish, 0, playbackSpeed(props), props.tank.planted);
+    motion.start(props.fish, 0, playbackSpeed(props), props.tank.planted, habitatFootprints(props.tank));
     const fault = () => { if (import.meta.env.DEV) motion.simulateFaultForTest(); };
     window.addEventListener('fishtank:simulate-worker-fault', fault);
     return () => {
@@ -104,7 +104,7 @@ export function TankCanvas(props: Props) {
   }, [props.tank.id]);
 
   useEffect(() => { client.current?.synchronize(props.fish); }, [props.fish]);
-  useEffect(() => { client.current?.environment(props.tank.planted); }, [props.tank.planted]);
+  useEffect(() => { client.current?.environment(props.tank.planted, habitatFootprints(props.tank)); }, [props.tank.planted, props.tank.decorations]);
   useEffect(() => {
     const apply = () => client.current?.playback(playbackSpeed(latest.current));
     apply();
@@ -142,21 +142,26 @@ export function TankCanvas(props: Props) {
         ctx.fillStyle = '#a5e0cf04'; ctx.beginPath(); ctx.moveTo(width * i / 5, 0); ctx.lineTo(width * i / 5 + width * 0.18, 0); ctx.lineTo(width * i / 5 - width * 0.1 + Math.sin(time * 0.1) * 30, height); ctx.lineTo(width * i / 5 - width * 0.16, height); ctx.fill();
       }
       ctx.fillStyle = '#30433f'; ctx.beginPath(); ctx.moveTo(0, height); ctx.lineTo(0, height - 24); ctx.bezierCurveTo(width * 0.3, height - 2, width * 0.7, height - 45, width, height - 24); ctx.lineTo(width, height); ctx.fill();
-      for (const cover of habitatFootprints(current.tank.planted).filter(f => f.kind === 'cover')) {
+      for (const cover of habitatFootprints(current.tank).filter(f => f.kind === 'cover')) {
+        ctx.save(); ctx.translate(cover.x * width, cover.y * height); ctx.rotate((cover.rotation ?? 0) * Math.PI / 180); ctx.translate(-cover.x * width, -cover.y * height);
         for (let i = 0; i < 13; i++) {
           const x = (cover.x + (i / 12 - 0.5) * cover.radius * 2) * width;
           const bottom = (cover.y + cover.radius) * height, plantHeight = cover.radius * height * (1 + (i * 31 % 100) / 100);
           ctx.strokeStyle = i % 2 ? '#42685380' : '#294f4680'; ctx.lineWidth = 3 + i % 5;
           ctx.beginPath(); ctx.moveTo(x, bottom); ctx.bezierCurveTo(x - 10, bottom - plantHeight * 0.4, x + 15, bottom - plantHeight * 0.7, x + Math.sin(time * 0.6 + i) * 8, bottom - plantHeight); ctx.stroke();
         }
+        ctx.restore();
       }
-      for (const footprint of habitatFootprints(current.tank.planted)) {
+      for (const footprint of habitatFootprints(current.tank)) {
         if (footprint.kind !== 'rock') continue;
         const x = footprint.x * width, y = footprint.y * height;
         const stone = ctx.createLinearGradient(x, y - footprint.radius * height, x, y + footprint.radius * height);
         stone.addColorStop(0, '#72847b'); stone.addColorStop(1, '#34463f');
         ctx.fillStyle = stone; ctx.strokeStyle = '#9aa99a70'; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.ellipse(x, y, footprint.radius * width, footprint.radius * height, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        const angle = (footprint.rotation ?? 0) * Math.PI / 180;
+        ctx.beginPath(); ctx.moveTo(x - Math.cos(angle) * footprint.radius * width * 0.65, y - Math.sin(angle) * footprint.radius * height * 0.65);
+        ctx.lineTo(x + Math.cos(angle) * footprint.radius * width * 0.65, y + Math.sin(angle) * footprint.radius * height * 0.65); ctx.stroke();
       }
       if (current.eggs > 0) {
         // Incubating eggs rest on the substrate as one cluster; the life model, not the drawing, decides when they hatch.

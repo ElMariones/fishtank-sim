@@ -19,7 +19,10 @@ All planned values below are game hypotheses. They are not real aquarium-care re
 | Initial credits | 1,200 | Local NPC workflow demonstration |
 | NPC shop stock (FS-502) | Founders 250, visible variants 320, documented carriers 360 credits | Six fixed specimens; refill empty places every 3 game days; expire after 9; founder resale capped at 150. Legacy generated purchases remain for journals and E-05 |
 | Legacy lab sale quote | round(35 + 0.5 × sizeCm + 25 × metallic + 25 × tail) | Replays only sales recorded before FS-501; new sales use economy model v1 |
-| Breeding / new lab tank cost | 0 | Deliberately unbalanced experimentation |
+| Breeding cost | 0 | Accelerated research; no recurring food charge |
+| Extra aquarium (FS-503) | 400 credits | 20 places, 10,000 L, Standard equipment; two starter tanks included |
+| Aquarium expansion (FS-503) | 300 credits | Up to 20 extra places and 10,000 L, maximum 60 places |
+| Decoration (FS-503) | 25 credits per new piece | Up to 12 pieces/tank; movement, rotation, resizing/removal free, no refunds |
 | Motion tick | 50 ms | Visual motion only |
 | Motion speed | 1× / 2× / 4× | Does not age fish |
 | Visual pellets | Sink, can be eaten once, dissolve after 20 motion seconds | Transient worker display; the domain Feed command adds real food (FS-305) |
@@ -237,3 +240,7 @@ Select a recognizable pattern/body combination across unrelated outcrosses and i
 ## 5. Reporting template
 
 Experiment ID, code/model version, seed set, population size, retained cohort policy, environment, time settings, measured descriptors, comparison condition, result, uncertainty, plots/fixtures, recommended tuning change, and risks. Save reproducible configurations in the repository. Do not report a universal conclusion from one attractive screenshot.
+
+### FS-503 price rationale and remaining economy gate
+
+A 400-credit aquarium is one third of the initial reserve; two expansions make a 60-place purchased tank cost 1,000 total. A new piece costs 25, so appearance experiments remain cheap without paying players to remove pieces. Two starter tanks, free food and free rehoming preserve the existing recovery routes. These are provisional source/sink hypotheses, not playtest-validated rates. FS-505 must rerun strategies with paid tank commands; historical E-05 above deliberately remains a free-tank research baseline. See [FS-503 evidence](research/FS-503-HABITAT-EXPANSION.md).

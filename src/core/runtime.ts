@@ -103,6 +103,7 @@ const runtimeSchema = z.object({
 export function decodeRuntime(raw: string): Runtime {
   if (raw.length > MAX_SAVE_CHARACTERS) throw new Error('Save exceeds the import size limit.');
   const parsed = runtimeSchema.parse(JSON.parse(raw));
+  const sourceVersion = Number((parsed.world as { version?: unknown } | null)?.version);
   const legacyWorld = (parsed.world as { version?: unknown } | null)?.version !== WORLD_VERSION;
   const checkpoint = { ...parsed.checkpoint, world: decodeSave(JSON.stringify(parsed.checkpoint.world)) };
   let replayed: Runtime = { ...createRuntime(checkpoint.world, parsed.worldId), ...checkpoint, checkpoint };
@@ -115,7 +116,11 @@ export function decodeRuntime(raw: string): Runtime {
   if (replayed.revision !== parsed.revision || replayed.tick > parsed.tick) throw mismatch;
   replayed = advanceRuntime(replayed, parsed.tick);
   const staleNames = world.naming !== NAMING_MODEL;
-  const comparable = (candidate: World) => JSON.stringify(legacyWorld ? recordsOnly(candidate) : staleNames ? withoutNames(candidate) : candidate);
+  const comparable = (candidate: World) => {
+    if (sourceVersion < 7) return JSON.stringify(recordsOnly(candidate));
+    const named = staleNames ? withoutNamesWorld(candidate) : candidate;
+    return JSON.stringify(legacyWorld ? withoutDecorations(named) : named);
+  };
   if (comparable(decodeSave(JSON.stringify(replayed.world))) !== comparable(world)) throw mismatch;
   const simulation = parsed.simulation ?? { version: 1 as const, tankTicks: Object.fromEntries(world.tanks.map(tank => [tank.id, parsed.tick])) };
   const tankIds = new Set(world.tanks.map(tank => tank.id));
@@ -123,7 +128,7 @@ export function decodeRuntime(raw: string): Runtime {
     throw new Error('Simulation clocks do not agree with the world tick.');
   if (legacyWorld || staleNames) {
     // The first delivery arrives at migration, not at the old world's day zero.
-    if (legacyWorld) world.shop = initialShop(world.seed, Math.floor(parsed.tick / TICKS_PER_GAME_DAY));
+    if (sourceVersion < 7) world.shop = initialShop(world.seed, Math.floor(parsed.tick / TICKS_PER_GAME_DAY));
     // Existing fish and listings keep their names; only fish named after the rebase use the current model.
     world.naming = NAMING_MODEL;
     return { ...replayed, world, tick: parsed.tick, simulation, checkpoint: { world, tick: parsed.tick, revision: parsed.revision }, events: [] };
@@ -144,13 +149,17 @@ function recordsOnly(world: World) {
 }
 
 /** Everything a current world v7 snapshot proves except fish and listing names and ledger text, which quotes names. */
-function withoutNames(world: World) {
+function withoutNamesWorld(world: World) {
   return {
     ...world, naming: null,
     fish: world.fish.map(member => ({ ...member, name: null })),
     shop: { ...world.shop, listings: world.shop.listings.map(listing => ({ ...listing, name: null })) },
     ledger: { ...world.ledger, entries: world.ledger.entries.map(entry => ({ ...entry, detail: null })) },
   };
+}
+
+function withoutDecorations(world: ReturnType<typeof withoutNamesWorld> | World) {
+  return { ...world, tanks: world.tanks.map(({ decorations: _decorations, ...tank }) => tank) };
 }
 
 /** Legacy v1 records retain their exact identity, genome, seed and parent links. */

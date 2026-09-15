@@ -40,11 +40,11 @@ scope.onmessage = (event: MessageEvent<ToMotionWorker>) => {
     if (!message || message.protocol !== MOTION_PROTOCOL) throw new Error('Unsupported motion protocol.');
     switch (message.type) {
       case 'initialize':
-        world = createBehaviorWorld(message.fish, message.planted === true); tick = message.tick; speed = message.speed;
+        world = { ...createBehaviorWorld(message.fish, message.planted === true), footprints: message.footprints }; tick = message.tick; speed = message.speed;
         entities('ready'); frame(0); startTimer(); break;
       case 'synchronize': world = synchronizeActors(world, message.fish); entities('entities'); frame(0); break;
       case 'playback': speed = message.speed; break;
-      case 'environment': world = { ...world, planted: message.planted }; break;
+      case 'environment': world = { ...world, planted: message.planted, footprints: message.footprints }; break;
       case 'feed': world = feed(world); frame(0); break;
       case 'startle': world = startle(world, message.x, message.y); frame(0); break;
       case 'benchmark': {

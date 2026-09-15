@@ -1,14 +1,16 @@
+import { decorationRadius, decorationsOf } from '../core/tankManagement';
+import type { Tank } from '../core/types';
 import type { Point } from './spatial';
 
 /** Normalized tank coordinates shared by Canvas and steering. Cover is permeable; rocks are solid. */
-export type Footprint = Point & { id: string; radius: number; kind: 'cover' | 'rock' };
+export type Footprint = Point & { id: string; radius: number; kind: 'cover' | 'rock'; rotation?: number };
 const PLANTED: readonly Footprint[] = [
   { id: 'left-plants', kind: 'cover', x: 0.13, y: 0.8, radius: 0.09 },
   { id: 'right-plants', kind: 'cover', x: 0.87, y: 0.8, radius: 0.09 },
   { id: 'left-rock', kind: 'rock', x: 0.3, y: 0.76, radius: 0.055 },
   { id: 'right-rock', kind: 'rock', x: 0.7, y: 0.76, radius: 0.055 },
 ];
-export const habitatFootprints = (planted: boolean): readonly Footprint[] => planted ? PLANTED : [];
+export const habitatFootprints = (source: boolean | Pick<Tank, 'planted' | 'decorations'>): readonly Footprint[] => typeof source === 'boolean' ? (source ? PLANTED : []) : decorationsOf(source).map(item => ({ ...item, radius: decorationRadius(item) }));
 /** Conservative visual body-center clearance, not anatomy collision physics. Fins may overlap at extreme shapes. */
 export const BODY_CLEARANCE = 0.045;
 

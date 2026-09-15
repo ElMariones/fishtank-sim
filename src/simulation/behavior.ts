@@ -1,3 +1,4 @@
+import type { Footprint } from './footprints';
 import { clamp, hash, random } from '../core/random';
 import type { Fish } from '../core/types';
 import { createActor, type Actor } from './motion';
@@ -36,7 +37,7 @@ export type BehaviorActor = Actor & {
   hunger: number; fear: number; dwell: number; meals: number;
 };
 export type Pellet = { x: number; y: number; settled: number };
-export type BehaviorWorld = { actors: BehaviorActor[]; pellets: Pellet[]; planted: boolean; step: number; feeds: number };
+export type BehaviorWorld = { actors: BehaviorActor[]; pellets: Pellet[]; planted: boolean; footprints?: readonly Footprint[]; step: number; feeds: number };
 export type BehaviorSummary = { state: BehaviorState; reasons: number; leaderId: string | null };
 
 export function createBehaviorActor(fish: Fish): BehaviorActor {
@@ -109,7 +110,7 @@ export function stepBehavior(world: BehaviorWorld): BehaviorWorld {
   const context: BehaviorWorld = { ...world, pellets }, eaten = new Set<number>();
   const spatial = new SpatialHash(world.actors, NEIGHBOR_RADIUS);
   const byId = new Map(world.actors.map(actor => [actor.id, actor]));
-  const rocks = habitatFootprints(world.planted).filter(f => f.kind === 'rock');
+  const rocks = (world.footprints ?? habitatFootprints(world.planted)).filter(f => f.kind === 'rock');
   const actors = world.actors.map(actor => {
     const nearby = spatial.query(actor, NEIGHBOR_RADIUS);
     const p = actor.phenotype;
@@ -145,7 +146,7 @@ export function stepBehavior(world: BehaviorWorld): BehaviorWorld {
       seek(actor.x + Math.cos(time * 0.4 + actor.phase) * 0.2, BOTTOM_Y - 0.04, 0.025);
       speedScale = 0.75;
     } else if (state === 'hide') {
-      const cover = coverPoints(world.planted).reduce((a, b) => Math.hypot(a.x - actor.x, a.y - actor.y) <= Math.hypot(b.x - actor.x, b.y - actor.y) ? a : b);
+      const cover = (world.footprints?.some(f => f.kind === 'cover') ? world.footprints.filter(f => f.kind === 'cover') : coverPoints(world.planted)).reduce((a, b) => Math.hypot(a.x - actor.x, a.y - actor.y) <= Math.hypot(b.x - actor.x, b.y - actor.y) ? a : b);
       seek(cover.x, cover.y, 0.06);
       speedScale = fear > 0.5 ? 1.35 : 0.8;
     } else if (state === 'school') {

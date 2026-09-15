@@ -448,3 +448,7 @@ Before each milestone, freeze relevant contracts and fixtures. Finish a vertical
 ## Persistent shop (FS-502)
 
 World v7 appends `shop` after the market and ledger. `src/core/shop.ts` generates seeded fixed specimens and refreshes stock at game-day boundaries. `buy-listing` consumes one specimen atomically with capacity, reservation and balance checks, preserving its genome in a new fish record. Old `buy` commands remain replayable. Runtime migration rebases the first shop delivery to the saved day; bare world imports begin at day zero. `ShopPanel` reads these records and never generates stock. Research and visual fixture modules load on navigation. See [FS-502 evidence](research/FS-502-PERSISTENT-SHOP.md).
+
+## Habitat expansion (FS-503)
+
+World v8 adds decoration arrays per tank; helpers and game prices live in `core/tankManagement.ts`, boundary schemas in `core/tankSchema.ts`. Commands purchase a 20-place tank, expand up to 60 places, or replace one reviewed layout; all expenses use the equipment ledger. Expansion conserves ammonia mass and food while adding 10,000 L. V7 migration retains shop stock and all previously verified fields. Motion protocol 3 carries footprints to the worker and restarts; Canvas derives the same circles. Rotation is visual, and circular collision radii are unchanged by it. See [evidence](research/FS-503-HABITAT-EXPANSION.md).

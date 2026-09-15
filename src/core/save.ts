@@ -1,3 +1,5 @@
+import { savedDecorationsSchema } from './tankSchema';
+import { decorationsOf, validateLayout } from './tankManagement';
 import { z } from 'zod';
 import { BLOCKER_CODES, CLUTCH_SIZES, CLUTCH_STAGES, idleBreeding, reservedPlaces } from './breeding';
 import { defaultCare, RATION_KEYS, THERMOSTAT_RANGE } from './care';
@@ -83,6 +85,12 @@ const withLife = z.array(z.object({ ...fishRecord, life })).max(MAX_RECORDS);
 const tanksWithWater = z.array(z.object({ ...tank, water })).min(1).max(MAX_TANKS);
 const tanksWithCare = z.array(z.object({ ...tank, water, care })).min(1).max(MAX_TANKS);
 const schema = z.discriminatedUnion('version', [
+  z.object({
+    version: z.literal(8), ...header, nextClutchId: z.number().int().positive(),
+    tanks: z.array(z.object({ ...tank, water, care, decorations: savedDecorationsSchema })).min(1).max(MAX_TANKS),
+    fish: z.array(z.object({ ...fishRecord, status: z.enum(['living', 'sold', 'rehomed']), life, breeding })).max(MAX_RECORDS), clutches: z.array(clutch).max(MAX_RECORDS),
+    market, ledger, shop, naming: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  }),
   z.object({ version: z.literal(1), ...header, tanks: z.array(z.object(tank)).min(1).max(MAX_TANKS), fish: recordsOnly }),
   z.object({ version: z.literal(2), ...header, tanks: tanksWithWater, fish: recordsOnly }),
   z.object({ version: z.literal(3), ...header, tanks: tanksWithWater, fish: withLife }),
@@ -118,19 +126,25 @@ export function decodeSave(raw: string): World {
   if (raw.length > 12_000_000) throw new Error('Save is too large for this lab.');
   const parsed = schema.parse(JSON.parse(raw));
   let world: World;
-  if (parsed.version === 7) world = parsed;
+  if (parsed.version === 8) world = parsed;
+  else if (parsed.version === 7) world = { ...parsed, version: 8 };
   // Keys follow the v7 schema order: v6 appended market and ledger to the v5 order, and v7 appends the shop and naming.
-  else if (parsed.version === 6) world = { ...parsed, version: 7, shop: initialShop(parsed.seed), naming: NAMING_MODEL };
-  else if (parsed.version === 5) world = { ...parsed, version: 7, market: defaultMarket(), ledger: openingLedger(parsed.credits), shop: initialShop(parsed.seed), naming: NAMING_MODEL };
+  else if (parsed.version === 6) world = { ...parsed, version: 8, shop: initialShop(parsed.seed), naming: NAMING_MODEL };
+  else if (parsed.version === 5) world = { ...parsed, version: 8, market: defaultMarket(), ledger: openingLedger(parsed.credits), shop: initialShop(parsed.seed), naming: NAMING_MODEL };
   else {
     const watered: Omit<Tank, 'care'>[] = parsed.version === 1 ? parsed.tanks.map(entry => ({ ...entry, water: defaultWater() })) : parsed.tanks;
     const cared: Tank[] = parsed.version === 4 ? parsed.tanks : watered.map(entry => ({ ...entry, care: defaultCare(entry.water) }));
     const lived: Omit<Fish, 'breeding'>[] = parsed.version === 3 || parsed.version === 4 ? parsed.fish : parsed.fish.map(member => ({ ...member, life: adultLife(member.genome) }));
     // Keys follow the v5 schema order: replay validation compares serialized worlds, so a migrated world must
     // serialize exactly like a decoded current one or every older save would fail to load.
-    world = { version: 7, seed: parsed.seed, nextId: parsed.nextId, credits: parsed.credits, nextClutchId: 1, tanks: cared,
+    world = { version: 8, seed: parsed.seed, nextId: parsed.nextId, credits: parsed.credits, nextClutchId: 1, tanks: cared,
       fish: lived.map(member => ({ ...member, breeding: idleBreeding() })), clutches: [], market: defaultMarket(), ledger: openingLedger(parsed.credits),
       shop: initialShop(parsed.seed), naming: NAMING_MODEL };
+  }
+  world.tanks = world.tanks.map(tank => ({ ...tank, decorations: decorationsOf(tank) }));
+  for (const tank of world.tanks) {
+    validateLayout(decorationsOf(tank));
+    if (parsed.version === 8 && tank.planted !== decorationsOf(tank).some(item => item.kind === 'cover')) throw new Error('Plant cover does not match the saved layout.');
   }
   const ids = new Map(world.fish.map(f => [f.id, f]));
   const tanks = new Set(world.tanks.map(t => t.id));

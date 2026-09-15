@@ -1,3 +1,4 @@
+import type { Decoration } from './tankManagement';
 import type { AppearanceLocus } from './catalog';
 
 /** Genome v1 holds 48 loci per copy; genome v2 appends the 12 Color and Ornament loci (60 per copy). */
@@ -79,7 +80,7 @@ export type TankCare = {
   /** Share of the residents' need eaten over the last completed game day, 0–1. */
   fed: number;
 };
-export type Tank = { id: string; name: string; capacity: number; planted: boolean; water: WaterState; care: TankCare };
+export type Tank = { id: string; name: string; capacity: number; planted: boolean; water: WaterState; care: TankCare; decorations?: Decoration[] };
 export type BuyerId = 'petShop' | 'longFin' | 'pondKeeper' | 'miniature' | 'colorCollector';
 /** Economy model v1 NPC demand (FS-501): how many more fish each buyer will take; it recovers at game-day boundaries. */
 export type MarketState = { model: 1; demand: Record<BuyerId, number> };
@@ -104,10 +105,10 @@ export type NamingModel = 1 | 2 | 3;
 /**
  * World v2 added per-tank water (FS-301), v3 fish life state (FS-302), v4 tank care (FS-305), v5 breeding state and
  * clutches (FS-401/402), v6 NPC demand, a credit ledger and rehomed fish (FS-501), v7 persistent shop stock (FS-502).
- * Older saves migrate with defaults.
+ * World v8 adds persisted decoration transforms (FS-503). Older saves migrate with defaults.
  */
 export type World = {
-  version: 7; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
+  version: 8; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
   market: MarketState; ledger: Ledger; shop: ShopState; naming: NamingModel;
 };
 /**

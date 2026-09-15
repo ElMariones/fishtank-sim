@@ -1,3 +1,4 @@
+import { HabitatPanel } from './HabitatPanel';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { appearanceAlleleLabel, describeAppearance } from '../core/appearance';
 import { daysToHatch, environmentLimits, INCUBATION_DAYS, isEgg, lifeStage, type LifeStage } from '../core/development';
@@ -368,7 +369,7 @@ export function App({ initial }: { initial: LoadedSession }) {
         <nav aria-label="Aquariums">{world.tanks.map((t, i) => <button key={t.id} className={`tank-link ${t.id === tank.id ? 'active' : ''}`} aria-current={t.id === tank.id ? 'true' : undefined} onClick={() => { setTankId(t.id); setShowArchived(false); setQuery(''); }}>
           <span className="tank-number">0{i + 1}</span><span>{t.name}<small>{living.filter(f => f.tankId === t.id).length} / {t.capacity} fish</small></span>
         </button>)}</nav>
-        <button className="add-tank quiet" onClick={() => run({ type: 'add-tank' }, 'A new lab tank is ready.')}>＋ Add lab tank</button>
+        <a className="add-tank quiet" href="#habitat-controls" onClick={() => { const panel = document.getElementById('habitat-controls'); if (panel instanceof HTMLDetailsElement) panel.open = true; }}>Aquariums & expansion</a>
         <div className="sidebar-note"><span className="eyebrow">A LINEAGE STARTS HERE</span><p>Small differences.<br />Extraordinary descendants.</p><span>60 loci · 10 chromosomes<br />One fish at a time.</span></div>
 
       </aside>
@@ -386,7 +387,7 @@ export function App({ initial }: { initial: LoadedSession }) {
             if (run({ type: 'feed', tankId: tank.id }, 'A portion of food joined the water, a quarter of a game day of what these fish need. They eat it over the next hours and leftovers decay. The sinking pellets show hungry, bold fish reaching food first.')) setFeedSignal(v => v + 1);
           }}>＋ Feed</button></div>
         </section>
-        <div className="habitat-toolbar"><span>Fish swim at their current stage and size · portraits can show adult potential</span><button className="quiet" onClick={() => run({ type: 'decorate', tankId: tank.id }, 'Habitat updated. Plants offer cover and fish steer around rocks. Water and growth are unchanged by decorations.')}>{tank.planted ? 'Remove plants and rocks' : 'Add plants and rocks'}</button></div>
+        <HabitatPanel key={tank.id} world={world} tank={tank} readOnly={initial.readOnly} onRun={(command, message) => run(command, message) !== null} />
         <section className={`breeding-panel ${breedingOpen ? 'is-open' : 'is-collapsed'}`} aria-labelledby="breeding-title">
           <div className="breed-intro">
             <div><div className="eyebrow">THE NEXT GENERATION</div><h2 id="breeding-title">What will they inherit?</h2><p>{breedingOpen ? breedingMode === 'normal' ? 'Pair two adults that share a tank; courtship reserves places in a nursery.' : 'Instant lab cross: twenty eggs at once, without courtship.' : goal ? `Goal active · ${goalLabel}` : 'Breeding planner is tucked away.'}</p></div>
@@ -539,6 +540,6 @@ export function App({ initial }: { initial: LoadedSession }) {
         </> : <p className="empty-copy">Select a fish from the aquarium or collection.</p>}
       </aside>
     </div>}
-    <footer>Fishtank Sim <span>Research prototype · synthetic genetics · local saves · bounded NPC buyers with free lab tanks</span><a href="https://github.com/ElMariones/fishtank-sim" target="_blank" rel="noreferrer">Project repository ↗</a></footer>
+    <footer>Fishtank Sim <span>Research prototype · synthetic genetics · local saves · bounded NPC buyers and aquarium expansion</span><a href="https://github.com/ElMariones/fishtank-sim" target="_blank" rel="noreferrer">Project repository ↗</a></footer>
   </div>;
 }

@@ -1,3 +1,5 @@
+import { savedDecorationsSchema } from './tankSchema';
+import { TANK_PRICE, TANK_UPGRADE_PRICE, DECORATION_PRICE, decorationsOf, validateLayout, legacyDecorations, type Decoration } from './tankManagement';
 import { GENOME_VERSION, MUTATION_RATE, type GenomeVersion } from './catalog';
 import { CLUTCH_SIZES, clutchId, courtingClutchOf, idleBreeding, pairingBlockers, reservedPlaces, type ClutchSize } from './breeding';
 import {
@@ -27,9 +29,9 @@ export const MAX_RECORDS = 10_000;
 export const STOCK_PRICE = 250;
 /**
  * World v6: tanks carry water (FS-301) and care (FS-305); fish carry life (FS-302) and breeding state; clutches
- * (FS-401/402); NPC demand and the credit ledger (FS-501). World v7 adds persistent shop stock (FS-502).
+ * (FS-401/402); NPC demand and the credit ledger (FS-501). World v7 adds persistent shop stock (FS-502); v8 adds placed decorations (FS-503).
  */
-export const WORLD_VERSION = 7;
+export const WORLD_VERSION = 8;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -45,12 +47,12 @@ function founder(world: World, name: string, sex: Fish['sex'], timestamp: string
 
 function newTank(id: string, name: string, planted: boolean): Tank {
   const water = defaultWater();
-  return { id, name, capacity: TANK_CAPACITY, planted, water, care: defaultCare(water) };
+  return { id, name, capacity: TANK_CAPACITY, planted, water, care: defaultCare(water), decorations: planted ? legacyDecorations() : [] };
 }
 
 /** New worlds use the current genome. Research fixtures pass genome version 1 to reproduce the frozen FS-101 founders. */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = GENOME_VERSION): World {
-  const world: World = { version: 7, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
+  const world: World = { version: 8, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
   ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed), naming: NAMING_MODEL };
@@ -75,6 +77,9 @@ export type Command =
   | { type: 'buy'; tankId: string; timestamp: string; genomeVersion?: GenomeVersion }
   | { type: 'buy-listing'; listingId: string; tankId: string; timestamp: string }
   | { type: 'add-tank' }
+  | { type: 'purchase-tank' }
+  | { type: 'upgrade-tank'; tankId: string }
+  | { type: 'place-decorations'; tankId: string; decorations: Decoration[] }
   | { type: 'decorate'; tankId: string }
   | { type: 'feed'; tankId: string }
   | { type: 'set-care'; tankId: string; ration: Ration; filterTier: number; aerationTier: number; targetC: number }
@@ -100,6 +105,9 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('buy'), tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema }).strict(),
   z.object({ type: z.literal('buy-listing'), listingId: z.string().regex(/^LS-\d{6,16}$/), tankId: tankIdSchema, timestamp: z.string().datetime() }).strict(),
   z.object({ type: z.literal('add-tank') }).strict(),
+  z.object({ type: z.literal('purchase-tank') }).strict(),
+  z.object({ type: z.literal('upgrade-tank'), tankId: tankIdSchema }).strict(),
+  z.object({ type: z.literal('place-decorations'), tankId: tankIdSchema, decorations: savedDecorationsSchema }).strict(),
   z.object({ type: z.literal('decorate'), tankId: tankIdSchema }).strict(),
   z.object({ type: z.literal('feed'), tankId: tankIdSchema }).strict(),
   z.object({
@@ -132,8 +140,8 @@ export function applyCommand(world: World, command: Command): World {
     if (!tank) throw new Error('Tank not found.');
     const residents = next.fish.filter(f => f.tankId === tankId && f.status === 'living').length, reserved = reservedPlaces(next, tankId);
     if (residents + reserved + required > tank.capacity) throw new Error(reserved
-      ? `This tank needs ${required} free places, and ${reserved} are reserved for a courting clutch. Move fish, choose another tank or add a lab tank.`
-      : `This tank needs ${required} free places. Move fish or add a lab tank.`);
+      ? `This tank needs ${required} free places, and ${reserved} are reserved for a courting clutch. Move fish, choose another tank or buy an aquarium.`
+      : `This tank needs ${required} free places. Move fish or buy an aquarium.`);
     return tank;
   };
   const room = (arriving: number) => {
@@ -247,12 +255,46 @@ export function applyCommand(world: World, command: Command): World {
       next.ledger = recordEntry(next.ledger, 'stock', -listing.price, 1, `${listing.name} from ${listing.id}`);
       break;
     }
+    case 'purchase-tank': {
+      if (next.tanks.length >= MAX_TANKS) throw new Error('This lab supports up to eight tanks.');
+      afford(TANK_PRICE, 'New aquarium');
+      let n = 1; while (next.tanks.some(t => t.id === `tank-${n}`)) n++;
+      const tank = newTank(`tank-${n}`, `Lineage Tank ${n}`, false);
+      tank.capacity = 20; tank.water.volumeL = 10000;
+      next.tanks.push(tank);
+      next.ledger = recordEntry(next.ledger, 'equipment', -TANK_PRICE, 0, `Aquarium: ${tank.name}`);
+      break;
+    }
+    case 'upgrade-tank': {
+      const tank = space(command.tankId, 0);
+      if (tank.capacity >= 60) throw new Error('This aquarium already has the maximum 60 places.');
+      if (tank.water.volumeL > 190000) throw new Error('This imported aquarium is too large to expand.');
+      afford(TANK_UPGRADE_PRICE, 'Aquarium expansion');
+      const volume = tank.water.volumeL;
+      tank.capacity = Math.min(60, tank.capacity + 20);
+      tank.water.volumeL += 10000;
+      tank.water.ammoniaMgL *= volume / tank.water.volumeL;
+      next.ledger = recordEntry(next.ledger, 'equipment', -TANK_UPGRADE_PRICE, 0, `Expansion: ${tank.name}`);
+      break;
+    }
+    case 'place-decorations': {
+      const tank = space(command.tankId, 0), previous = decorationsOf(tank);
+      validateLayout(command.decorations);
+      const added = command.decorations.filter(item => !previous.some(old => old.id === item.id));
+      const cost = added.length * DECORATION_PRICE;
+      afford(cost, 'Decorations');
+      tank.decorations = command.decorations;
+      tank.planted = command.decorations.some(item => item.kind === 'cover');
+      if (cost) next.ledger = recordEntry(next.ledger, 'equipment', -cost, 0, `Decorations: ${tank.name}`);
+      break;
+    }
+    // Historical free commands remain for replay and frozen research scenarios; live UI uses paid commands.
     case 'add-tank':
       if (next.tanks.length >= MAX_TANKS) throw new Error('This lab supports up to eight tanks.');
       next.tanks.push(newTank(`tank-${next.tanks.length + 1}`, `Lineage Tank ${next.tanks.length + 1}`, true));
       break;
     case 'decorate': {
-      const tank = space(command.tankId, 0); tank.planted = !tank.planted; break;
+      const tank = space(command.tankId, 0); tank.planted = !tank.planted; tank.decorations = tank.planted ? legacyDecorations() : []; break;
     }
     case 'feed': {
       // A manual portion joins the tank's food pool; fish eat what they need and the rest decays (FS-305).

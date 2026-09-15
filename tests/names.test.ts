@@ -189,7 +189,7 @@ describe('ADR-056 truthful fish names', () => {
 
     for (const naming of [undefined, 1, 2]) {
       const older = structuredClone(stored);
-      for (const snapshot of [older.world, older.checkpoint.world]) { if (naming === undefined) delete snapshot.naming; else snapshot.naming = naming; }
+      for (const snapshot of [older.world, older.checkpoint.world]) { snapshot.version = 7; snapshot.tanks.forEach((tank: { decorations?: unknown }) => { delete tank.decorations; }); if (naming === undefined) delete snapshot.naming; else snapshot.naming = naming; }
       const decoded = decodeRuntime(JSON.stringify(older));
       expect(names(decoded.world)).toEqual(names(stored.world));
       expect([decoded.world.naming, decoded.checkpoint.world.naming, decoded.events.length]).toEqual([NAMING_MODEL, NAMING_MODEL, 0]);
