@@ -99,8 +99,8 @@ const schema = z.discriminatedUnion('version', [
   z.object({
     version: z.literal(7), ...header, nextClutchId: z.number().int().positive(), tanks: tanksWithCare,
     fish: z.array(z.object({ ...fishRecord, status: z.enum(['living', 'sold', 'rehomed']), life, breeding })).max(MAX_RECORDS), clutches: z.array(clutch).max(MAX_RECORDS),
-    // Naming model 2 (ADR-055) is stored from its release; a world v7 saved before it names new fish under model 1.
-    market, ledger, shop, naming: z.union([z.literal(1), z.literal(2)]).default(1),
+    // The naming model is stored from ADR-055; a world v7 saved before it was named under model 1.
+    market, ledger, shop, naming: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(1),
   }),
 ]);
 

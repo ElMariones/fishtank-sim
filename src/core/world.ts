@@ -195,8 +195,9 @@ export function applyCommand(world: World, command: Command): World {
       for (let i = 0; i < COHORT_SIZE; i++) {
         const birthSeed = hash(`${world.seed}:birth:${next.nextId}:${mother.id}:${father.id}`);
         const result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, version);
-        const name = newFishName(next.naming, `Fry ${next.nextId}`, `${next.seed}:fish:${next.nextId}`, taken);
-        next.fish.push({ id: id(next.nextId), name, sex: hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M',
+        const sex: Fish['sex'] = hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M';
+        const name = newFishName(`${next.seed}:fish:${next.nextId}`, { sex, genome: result.genome }, taken);
+        next.fish.push({ id: id(next.nextId), name, sex,
           ...result, birthSeed, generation: Math.max(mother.generation, father.generation) + 1,
           parents: [mother.id, father.id], bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', life: eggLife(), breeding: idleBreeding() });
         next.nextId++;
@@ -223,8 +224,8 @@ export function applyCommand(world: World, command: Command): World {
       space(command.tankId, 1);
       if (next.credits < STOCK_PRICE) throw new Error('You need 250 lab credits for unrelated stock.');
       room(1);
-      const name = newFishName(next.naming, `Newcomer ${next.nextId}`, `${next.seed}:fish:${next.nextId}`, takenNames(next));
-      const fish = founder(next, name, next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp, command.genomeVersion ?? 1);
+      const fish = founder(next, '', next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp, command.genomeVersion ?? 1);
+      fish.name = newFishName(`${next.seed}:fish:${next.nextId}`, fish, takenNames(next));
       fish.tankId = command.tankId;
       next.fish.push(fish); next.nextId++; next.credits -= STOCK_PRICE;
       next.ledger = recordEntry(next.ledger, 'stock', -STOCK_PRICE, 1, fish.name);

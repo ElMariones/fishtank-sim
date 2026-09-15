@@ -97,7 +97,8 @@ const runtimeSchema = z.object({
  * snapshot tick, so water and development integrated by clock checkpoints must agree as well. A snapshot from an older
  * world version predates some time-integrated state, so it is compared without water and life state; its migrated values
  * start at that snapshot, and the journal folds into a new checkpoint there. A world v7 snapshot under an older naming
- * model is replayed with that model's names, then rebased the same way so fish named from then on get current names.
+ * model replays under the current one, so it is compared without names and the ledger text that quotes them (ADR-056),
+ * then rebased the same way: stored names stay, and fish named from then on get current names.
  */
 export function decodeRuntime(raw: string): Runtime {
   if (raw.length > MAX_SAVE_CHARACTERS) throw new Error('Save exceeds the import size limit.');
@@ -113,13 +114,14 @@ export function decodeRuntime(raw: string): Runtime {
   const mismatch = new Error('Save snapshot does not agree with its replay journal.');
   if (replayed.revision !== parsed.revision || replayed.tick > parsed.tick) throw mismatch;
   replayed = advanceRuntime(replayed, parsed.tick);
-  const comparable = (candidate: World) => JSON.stringify(legacyWorld ? recordsOnly(candidate) : candidate);
+  const staleNames = world.naming !== NAMING_MODEL;
+  const comparable = (candidate: World) => JSON.stringify(legacyWorld ? recordsOnly(candidate) : staleNames ? withoutNames(candidate) : candidate);
   if (comparable(decodeSave(JSON.stringify(replayed.world))) !== comparable(world)) throw mismatch;
   const simulation = parsed.simulation ?? { version: 1 as const, tankTicks: Object.fromEntries(world.tanks.map(tank => [tank.id, parsed.tick])) };
   const tankIds = new Set(world.tanks.map(tank => tank.id));
   if (Object.keys(simulation.tankTicks).length !== tankIds.size || Object.entries(simulation.tankTicks).some(([id, tick]) => !tankIds.has(id) || tick !== parsed.tick))
     throw new Error('Simulation clocks do not agree with the world tick.');
-  if (legacyWorld || world.naming !== NAMING_MODEL) {
+  if (legacyWorld || staleNames) {
     // The first delivery arrives at migration, not at the old world's day zero.
     if (legacyWorld) world.shop = initialShop(world.seed, Math.floor(parsed.tick / TICKS_PER_GAME_DAY));
     // Existing fish and listings keep their names; only fish named after the rebase use the current model.
@@ -138,6 +140,16 @@ function recordsOnly(world: World) {
     ...world, market: null, ledger: null, shop: null, naming: null,
     tanks: world.tanks.map(tank => ({ id: tank.id, name: tank.name, capacity: tank.capacity, planted: tank.planted })),
     fish: world.fish.map(member => ({ ...member, name: null, life: null, breeding: null })),
+  };
+}
+
+/** Everything a current world v7 snapshot proves except fish and listing names and ledger text, which quotes names. */
+function withoutNames(world: World) {
+  return {
+    ...world, naming: null,
+    fish: world.fish.map(member => ({ ...member, name: null })),
+    shop: { ...world.shop, listings: world.shop.listings.map(listing => ({ ...listing, name: null })) },
+    ledger: { ...world.ledger, entries: world.ledger.entries.map(entry => ({ ...entry, detail: null })) },
   };
 }
 

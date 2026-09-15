@@ -185,9 +185,9 @@ export function advanceClutches(world: World): World {
     let nextId = next.nextId;
     for (let k = 0; k < clutch.size; k++, nextId++) {
       const birthSeed = hash(`${next.seed}:spawn:${clutch.id}:${nextId}`);
-      const result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, clutch.genomeVersion);
+      const result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, clutch.genomeVersion), sex: Fish['sex'] = hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M';
       eggs.push({
-        id: fishId(nextId), name: newFishName(next.naming, `Fry ${nextId}`, `${next.seed}:fish:${nextId}`, taken), sex: hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M', ...result, birthSeed,
+        id: fishId(nextId), name: newFishName(`${next.seed}:fish:${nextId}`, { sex, genome: result.genome }, taken), sex, ...result, birthSeed,
         generation: Math.max(mother.generation, father.generation) + 1, parents: [mother.id, father.id], bornAt, tankId: nursery.id,
         status: 'living', life: eggLife(), breeding: idleBreeding(),
       });
