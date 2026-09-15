@@ -1,6 +1,6 @@
 # FS-504 — First-session guide, no-money recovery and family at a glance
 
-**Date:** 15 September 2026. **Status:** verified locally; awaiting push. M5 remains open until FS-505.
+**Date:** 15 September 2026. **Status:** DONE, pushed `6335851`. M5 remains open until FS-505.
 **Models:** world save v9 · relief model 1 · economy model v1 · naming model 3 · genome v2
 
 ## Starting state

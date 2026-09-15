@@ -1,8 +1,8 @@
 # Implementation status
 
-**Updated:** 15 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`). FS-405's incremental kinship cache with stated founder assumptions is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. M5 has started: FS-501's economy model v1 is DONE (`006b500`). FS-502 persistent shop (`3945d86`) and FS-503 habitat expansion (`f78d007`) are DONE. FS-504 onboarding and no-money recovery is verified locally, awaiting push.
+**Updated:** 15 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`). FS-405's incremental kinship cache with stated founder assumptions is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. M5 has started: FS-501's economy model v1 is DONE (`006b500`). FS-502 persistent shop (`3945d86`) and FS-503 habitat expansion (`f78d007`) are DONE. FS-504 onboarding and no-money recovery is DONE (`6335851`).
 
-## Current continuation — FS-504 verified locally, awaiting push
+## Current continuation — FS-504 DONE, pushed `6335851`
 
 15 September 2026: FS-504 started from `e443ef9` (FS-503 marked DONE), equal to `origin/main`. `.claude/launch.json` stays untracked and gains an isolated `fishtank-fs504` entry (port 5182).
 
@@ -12,7 +12,7 @@
   - **Care guidance without credits:** a free fix whenever every priced fix is unaffordable. The crowding warning no longer issues the free legacy tank command.
   - **Family at a glance:** parent links and sibling and offspring counts under every fish's name.
 - `npm run check`: 186 tests in 31 files and the strict production build pass. On isolated port 5182 the browser covered the whole first session, a rescue at ◈ 0 followed by a ready pairing, and 390 px layout. See [FS-504 evidence](research/FS-504-ONBOARDING-AND-RECOVERY.md).
-- Next: push FS-504, then FS-505, the complete-loop playtest and paid-economy source/sink report.
+- Next: FS-505, the complete-loop playtest and paid-economy source/sink report.
 
 ## Previous continuation — FS-503 DONE, pushed `f78d007`
 
@@ -283,4 +283,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**Push FS-504, then continue M5 with FS-505: playtest the complete loop and report paid-economy sources and sinks, including koi rescues.** FS-504 is verified locally; see its evidence above. Preserve the fixed shop specimens, nursery reservations, atomic ledger-backed purchases, a free or affordable fix on every care warning and the rescue's wait. Keep sale commands carrying a price model, migrations writing keys in schema order, and the ledger reconciled. FS-403 prediction is available early; it does not establish M4's two-generation gate.
+**Continue M5 with FS-505: playtest the complete loop and report paid-economy sources and sinks, including koi rescues.** FS-504 is DONE, pushed `6335851`; see its evidence above. Preserve the fixed shop specimens, nursery reservations, atomic ledger-backed purchases, a free or affordable fix on every care warning and the rescue's wait. Keep sale commands carrying a price model, migrations writing keys in schema order, and the ledger reconciled. FS-403 prediction is available early; it does not establish M4's two-generation gate.
