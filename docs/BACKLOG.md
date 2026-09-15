@@ -77,7 +77,7 @@ FS-108 to FS-110 were requested during M1, and FS-113 after M2; all are outside 
 |---|---|---:|---|---|---|
 | FS-501 | DONE | 3 | Economy | FS-406 | Bounded NPC demand/price rules and currency ledger; purchase/resale and breeder farming experiments documented. Pushed `006b500`; [evidence](research/FS-501-ECONOMY-MODEL.md) |
 | FS-502 | DONE | 3 | UI/economy | FS-501 | Persistent shop stock and filters; refresh cannot reroll stock and purchases respect capacity. DONE, pushed `3945d86`; [evidence](research/FS-502-PERSISTENT-SHOP.md) |
-| FS-503 | P0 | 3 | Habitat/UI | FS-304 FS-501 | Tank purchase/upgrades and decoration placement; transforms persist and functional footprints update. Verified locally, awaiting push; [evidence](research/FS-503-HABITAT-EXPANSION.md) |
+| FS-503 | DONE | 3 | Habitat/UI | FS-304 FS-501 | Tank purchase/upgrades and decoration placement; transforms persist and functional footprints update. DONE, pushed `f78d007`; [evidence](research/FS-503-HABITAT-EXPANSION.md) |
 | FS-504 | P0 | 3 | UX | FS-502 FS-503 | First-session onboarding, no-money recovery and discoverable family inspection |
 | FS-505 | P0 | 3 | QA/design | FS-504 | Playtest complete loop and economy source/sink report; resolve softlocks and major confusion |
 
@@ -127,7 +127,7 @@ M8 total: 40–60 days. Provider costs and moderation operations require separat
 
 ## Suggested next-agent task
 
-M1, M2 and FS-301–304 are pushed, with the independent FS-403 prediction (`5dbfb73`). M3 is DONE: FS-305 care controls (`d425639`), FS-306 juvenile reveal (`325ceb4`) and FS-307 care demonstration and absence summary (`a5d5ddc`). M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's six-generation family graph is DONE (`b7c3e37`). FS-405's kinship cache is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. Its gate is demonstrated by the seeded Research demonstration and a QA-world lineage bred twice in normal mode, not by an external playtest. M5 has started: FS-501's economy model v1 is DONE (`006b500`). FS-502 is DONE, pushed `3945d86`. FS-503 is verified locally, awaiting push; FS-504 is the next implementation task.
+M1, M2 and FS-301–304 are pushed, with the independent FS-403 prediction (`5dbfb73`). M3 is DONE: FS-305 care controls (`d425639`), FS-306 juvenile reveal (`325ceb4`) and FS-307 care demonstration and absence summary (`a5d5ddc`). M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's six-generation family graph is DONE (`b7c3e37`). FS-405's kinship cache is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. Its gate is demonstrated by the seeded Research demonstration and a QA-world lineage bred twice in normal mode, not by an external playtest. M5 has started: FS-501's economy model v1 is DONE (`006b500`). FS-502 is DONE, pushed `3945d86`. FS-503 is DONE, pushed `f78d007`; FS-504 is next.
 
 ## Current user-requested additions — DONE, pushed `e7aefc1`
 
