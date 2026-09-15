@@ -99,6 +99,8 @@ export type Listing = {
   carries: { locus: AppearanceLocus; allele: number } | null;
 };
 export type ShopState = { model: 1; nextListing: number; refreshedDay: number; listings: Listing[] };
+/** How new fish are named: 1 numbered ("Fry 12"), 2 generated from name parts (ADR-055). */
+export type NamingModel = 1 | 2;
 /**
  * World v2 added per-tank water (FS-301), v3 fish life state (FS-302), v4 tank care (FS-305), v5 breeding state and
  * clutches (FS-401/402), v6 NPC demand, a credit ledger and rehomed fish (FS-501), v7 persistent shop stock (FS-502).
@@ -106,7 +108,7 @@ export type ShopState = { model: 1; nextListing: number; refreshedDay: number; l
  */
 export type World = {
   version: 7; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
-  market: MarketState; ledger: Ledger; shop: ShopState;
+  market: MarketState; ledger: Ledger; shop: ShopState; naming: NamingModel;
 };
 /**
  * Development v2 inherited marking anchor, derived from one phased two-locus haplotype block.

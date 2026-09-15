@@ -3,8 +3,9 @@ import { idleBreeding } from './breeding';
 import { APPEARANCE_LOCI, GENOME_VERSION, LOCI, type AppearanceLocus } from './catalog';
 import { adultLife } from './development';
 import { founderGenome } from './genetics';
+import { NAMING_MODEL, newFishName, takenNames } from './names';
 import { hash } from './random';
-import type { Fish, Listing, ListingCategory, ShopState, World } from './types';
+import type { Fish, Listing, ListingCategory, NamingModel, ShopState, World } from './types';
 
 /**
  * NPC shop v1 (FS-502). Listings are specimens with stable IDs whose genome, sex and price are fixed when they arrive,
@@ -22,13 +23,15 @@ export const LISTING_LABELS: Record<ListingCategory, string> = { founder: 'Unrel
 /** Classic-dominant or recessive loci, where a single variant copy stays hidden. */
 export const CARRIER_LOCI = ['base_color', 'accent_color', 'iris_color', 'scale_type'] as const satisfies readonly AppearanceLocus[];
 const CARRIER_TRAITS: Record<typeof CARRIER_LOCI[number], string> = { base_color: 'body color', accent_color: 'accent color', iris_color: 'eye color', scale_type: 'scale' };
-const NAMES = ['Aki', 'Ren', 'Mizu', 'Sora', 'Hoshi', 'Kiku', 'Nami', 'Tora', 'Yume', 'Kaze', 'Hana', 'Riku', 'Tama', 'Umi', 'Kin', 'Suzu'];
+/** Naming model 1 listing names, kept so older journals replay their deliveries exactly. */
+const LEGACY_NAMES = ['Aki', 'Ren', 'Mizu', 'Sora', 'Hoshi', 'Kiku', 'Nami', 'Tora', 'Yume', 'Kaze', 'Hana', 'Riku', 'Tama', 'Umi', 'Kin', 'Suzu'];
 /** A founder shows a new feature about one time in four, so this many seeds practically always finds one. */
 const VARIANT_ATTEMPTS = 200;
 
 export const listingId = (n: number) => `LS-${n.toString().padStart(6, '0')}`;
 
-export function makeListing(seed: number, n: number, day: number): Listing {
+/** `taken` holds names already in use; the listing's generated name is added to it. */
+export function makeListing(seed: number, n: number, day: number, naming: NamingModel = NAMING_MODEL, taken = new Set<string>()): Listing {
   const key = `${seed}:shop:${n}`, roll = hash(`${key}:category`) % 100;
   let category: ListingCategory = roll < 50 ? 'founder' : roll < 83 ? 'variant' : 'carrier';
   let birthSeed = hash(`${key}:0`), genome = founderGenome(birthSeed, GENOME_VERSION), note = 'Unrelated founder stock';
@@ -52,14 +55,15 @@ export function makeListing(seed: number, n: number, day: number): Listing {
     note = `Carries one hidden ${appearanceAlleleLabel(locus, allele)} ${CARRIER_TRAITS[locus]} copy`;
   }
   return {
-    id: listingId(n), category, name: NAMES[hash(`${key}:name`) % NAMES.length], sex: hash(`${key}:sex`) % 2 === 0 ? 'F' : 'M',
+    id: listingId(n), category, name: newFishName(naming, LEGACY_NAMES[hash(`${key}:name`) % LEGACY_NAMES.length], key, taken), sex: hash(`${key}:sex`) % 2 === 0 ? 'F' : 'M',
     genome, birthSeed, price: LISTING_PRICES[category], expiresDay: day + SHOP_LISTING_DAYS, note, carries,
   };
 }
 
-export const initialShop = (seed: number, day = 0): ShopState => ({
-  model: 1, nextListing: SHOP_SIZE + 1, refreshedDay: day, listings: Array.from({ length: SHOP_SIZE }, (_, i) => makeListing(seed, i + 1, day)),
-});
+export function initialShop(seed: number, day = 0, naming: NamingModel = NAMING_MODEL): ShopState {
+  const taken = new Set<string>();
+  return { model: 1, nextListing: SHOP_SIZE + 1, refreshedDay: day, listings: Array.from({ length: SHOP_SIZE }, (_, i) => makeListing(seed, i + 1, day, naming, taken)) };
+}
 
 /** One game-day boundary: expired listings leave, and on delivery days new listings refill the empty places. */
 export function refreshShop(world: World, day: number): World {
@@ -67,7 +71,10 @@ export function refreshShop(world: World, day: number): World {
   if (!due && kept.length === shop.listings.length) return world;
   const listings = [...kept];
   let nextListing = shop.nextListing;
-  if (due) while (listings.length < SHOP_SIZE) listings.push(makeListing(world.seed, nextListing++, day));
+  if (due && listings.length < SHOP_SIZE) {
+    const taken = takenNames(world);
+    while (listings.length < SHOP_SIZE) listings.push(makeListing(world.seed, nextListing++, day, world.naming, taken));
+  }
   return { ...world, shop: { ...shop, nextListing, refreshedDay: due ? day : shop.refreshedDay, listings } };
 }
 

@@ -2,7 +2,13 @@
 
 **Updated:** 14 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`). FS-405's incremental kinship cache with stated founder assumptions is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. M5 has started: FS-501's economy model v1 is DONE (`006b500`).
 
-## Current continuation — FS-502 DONE, pushed `3945d86`
+## Current continuation — generated fish names (user request, ADR-055)
+
+New fish get readable names from 1, 2 or 3 parts: 213 prefixes, 555 nouns and 207 suffixes, about 24.7 million names. This covers lab crosses, clutch eggs, bought stock and shop deliveries. A name already used by a fish or listing is rerolled. Names are seeded, so replay stays exact. Worlds store `naming`. A world v7 saved without it replays its journal with the old numbered names, then rebases onto model 2; existing names are kept. `npm test`: 166 tests in 28 files pass, and the strict production build passes. In the browser pane on isolated port 5176, an existing pre-change QA save loaded with no console errors and kept its "Fry N" names. An instant cross then laid eggs such as "Rocket", "Cupcake of Pebblebay" and "Emperor Ruby the Lucky", and the NPC shop showed deliveries such as "Curious Kumo Deepwell" and "Humble Delta of the Sun".
+
+FS-503 remains next.
+
+## Previous continuation — FS-502 DONE, pushed `3945d86`
 
 Completed review of the existing uncommitted shop work on `5704c4b`, verified equal to freshly fetched `origin/main`. Added day-correct migration, shop metadata validation, purchase filter reset, cached listing previews, responsive destination controls, and deferred research bundles. `npm test`: 162 tests in 27 files pass; strict production build passes. Browser purchase, reload, ledger, filter, low-credit and phone checks passed on isolated port 5178. See [FS-502 shop evidence](research/FS-502-PERSISTENT-SHOP.md).
 

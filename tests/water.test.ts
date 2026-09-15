@@ -183,7 +183,8 @@ describe('FS-301 habitat load and persistent water', () => {
     expect(() => executeCommand(decoded, command)).toThrow('Stale');
     const renamed = executeCommand(decoded, commandEnvelope(decoded, { type: 'rename', fishId: 'FSH-000007', name: 'Tide' }, 1000));
     expect(decodeRuntime(JSON.stringify(renamed))).toEqual(renamed);
-    legacy.world.fish[6].name = 'Changed';
+    // Names are mutable text and not proof for older snapshots (ADR-055); where a fish lives is.
+    legacy.world.fish[6].tankId = 'tank-1';
     expect(() => decodeRuntime(JSON.stringify(legacy))).toThrow('replay');
   });
 

@@ -11,6 +11,7 @@ import { adultLife, eggLife, isEgg } from './development';
 import { tankLoad } from './habitat';
 import { addFood, defaultWater, temperatureFactor } from './water';
 import { z } from 'zod';
+import { NAMING_MODEL, newFishName, takenNames } from './names';
 import { hash } from './random';
 import type { Fish, Ration, Tank, World } from './types';
 
@@ -52,7 +53,7 @@ export function createWorld(timestamp: string, seed = 481516, genomeVersion: Gen
   const world: World = { version: 7, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
-  ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed) };
+  ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed), naming: NAMING_MODEL };
   ['Haru', 'Sumi', 'Kohaku', 'Yuki', 'Akira', 'Momo'].forEach((name, i) => {
     world.fish.push(founder(world, name, i % 2 === 0 ? 'F' : 'M', timestamp, genomeVersion)); world.nextId++;
   });
@@ -190,10 +191,12 @@ export function applyCommand(world: World, command: Command): World {
       space(command.tankId, COHORT_SIZE);
       // A pre-FS-113 command could only name genome v1 parents, which then produced genome v1 children.
       const version = command.genomeVersion ?? (mother.genome.version === 1 && father.genome.version === 1 ? 1 : 2);
+      const taken = takenNames(next);
       for (let i = 0; i < COHORT_SIZE; i++) {
         const birthSeed = hash(`${world.seed}:birth:${next.nextId}:${mother.id}:${father.id}`);
         const result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, version);
-        next.fish.push({ id: id(next.nextId), name: `Fry ${next.nextId}`, sex: hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M',
+        const name = newFishName(next.naming, `Fry ${next.nextId}`, `${next.seed}:fish:${next.nextId}`, taken);
+        next.fish.push({ id: id(next.nextId), name, sex: hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M',
           ...result, birthSeed, generation: Math.max(mother.generation, father.generation) + 1,
           parents: [mother.id, father.id], bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', life: eggLife(), breeding: idleBreeding() });
         next.nextId++;
@@ -220,7 +223,8 @@ export function applyCommand(world: World, command: Command): World {
       space(command.tankId, 1);
       if (next.credits < STOCK_PRICE) throw new Error('You need 250 lab credits for unrelated stock.');
       room(1);
-      const fish = founder(next, `Newcomer ${next.nextId}`, next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp, command.genomeVersion ?? 1);
+      const name = newFishName(next.naming, `Newcomer ${next.nextId}`, `${next.seed}:fish:${next.nextId}`, takenNames(next));
+      const fish = founder(next, name, next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp, command.genomeVersion ?? 1);
       fish.tankId = command.tankId;
       next.fish.push(fish); next.nextId++; next.credits -= STOCK_PRICE;
       next.ledger = recordEntry(next.ledger, 'stock', -STOCK_PRICE, 1, fish.name);

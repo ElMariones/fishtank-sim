@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { advanceWorld, type DayReport } from './habitat';
+import { NAMING_MODEL } from './names';
 import { decodeSave } from './save';
 import { initialShop } from './shop';
 import { TICKS_PER_GAME_DAY } from './water';
@@ -95,7 +96,8 @@ const runtimeSchema = z.object({
  * Validate both snapshot and replay, including IDs, order, model versions and resulting world. Replay advances to the
  * snapshot tick, so water and development integrated by clock checkpoints must agree as well. A snapshot from an older
  * world version predates some time-integrated state, so it is compared without water and life state; its migrated values
- * start at that snapshot, and the journal folds into a new checkpoint there.
+ * start at that snapshot, and the journal folds into a new checkpoint there. A world v7 snapshot under an older naming
+ * model is replayed with that model's names, then rebased the same way so fish named from then on get current names.
  */
 export function decodeRuntime(raw: string): Runtime {
   if (raw.length > MAX_SAVE_CHARACTERS) throw new Error('Save exceeds the import size limit.');
@@ -117,23 +119,25 @@ export function decodeRuntime(raw: string): Runtime {
   const tankIds = new Set(world.tanks.map(tank => tank.id));
   if (Object.keys(simulation.tankTicks).length !== tankIds.size || Object.entries(simulation.tankTicks).some(([id, tick]) => !tankIds.has(id) || tick !== parsed.tick))
     throw new Error('Simulation clocks do not agree with the world tick.');
-  if (legacyWorld) {
+  if (legacyWorld || world.naming !== NAMING_MODEL) {
     // The first delivery arrives at migration, not at the old world's day zero.
-    world.shop = initialShop(world.seed, Math.floor(parsed.tick / TICKS_PER_GAME_DAY));
+    if (legacyWorld) world.shop = initialShop(world.seed, Math.floor(parsed.tick / TICKS_PER_GAME_DAY));
+    // Existing fish and listings keep their names; only fish named after the rebase use the current model.
+    world.naming = NAMING_MODEL;
     return { ...replayed, world, tick: parsed.tick, simulation, checkpoint: { world, tick: parsed.tick, revision: parsed.revision }, events: [] };
   }
   return { ...replayed, world, tick: parsed.tick, simulation };
 }
 
 /**
- * Identity, genome, pedigree, ownership, credits and tank records without water, life, demand or ledger state: what older
- * snapshots can prove.
+ * Identity, genome, pedigree, ownership, credits and tank records without water, life, demand, ledger state or fish
+ * names: what older snapshots can prove. Their journals replay under the current naming model, and names are mutable text.
  */
 function recordsOnly(world: World) {
   return {
-    ...world, market: null, ledger: null, shop: null,
+    ...world, market: null, ledger: null, shop: null, naming: null,
     tanks: world.tanks.map(tank => ({ id: tank.id, name: tank.name, capacity: tank.capacity, planted: tank.planted })),
-    fish: world.fish.map(member => ({ ...member, life: null, breeding: null })),
+    fish: world.fish.map(member => ({ ...member, name: null, life: null, breeding: null })),
   };
 }
 
@@ -142,5 +146,6 @@ export function importRuntime(raw: string, legacyWorldId: string): Runtime {
   if (raw.length > MAX_SAVE_CHARACTERS) throw new Error('Save exceeds the import size limit.');
   const parsed: unknown = JSON.parse(raw);
   if (parsed && typeof parsed === 'object' && 'schemaVersion' in parsed) return decodeRuntime(raw);
-  return createRuntime(decodeSave(raw), legacyWorldId);
+  // A bare save has no journal to replay, so it moves to the current naming model at once.
+  return createRuntime({ ...decodeSave(raw), naming: NAMING_MODEL }, legacyWorldId);
 }

@@ -5,6 +5,7 @@ import { ALL_LOCI, APPEARANCE_LOCI, LOCI } from './catalog';
 import { adultLife } from './development';
 import { BUYER_BY_ID, defaultMarket, LEDGER_LIMIT, LEDGER_REASONS, ledgerBalance, openingLedger } from './economy';
 import { metabolicPotential } from './genetics';
+import { NAMING_MODEL } from './names';
 import { CARRIER_LOCI, initialShop, LISTING_PRICES, SHOP_SIZE } from './shop';
 import type { Fish, Tank, World } from './types';
 import { defaultWater, WATER_LIMITS } from './water';
@@ -98,7 +99,8 @@ const schema = z.discriminatedUnion('version', [
   z.object({
     version: z.literal(7), ...header, nextClutchId: z.number().int().positive(), tanks: tanksWithCare,
     fish: z.array(z.object({ ...fishRecord, status: z.enum(['living', 'sold', 'rehomed']), life, breeding })).max(MAX_RECORDS), clutches: z.array(clutch).max(MAX_RECORDS),
-    market, ledger, shop,
+    // Naming model 2 (ADR-055) is stored from its release; a world v7 saved before it names new fish under model 1.
+    market, ledger, shop, naming: z.union([z.literal(1), z.literal(2)]).default(1),
   }),
 ]);
 
@@ -109,15 +111,17 @@ const schema = z.discriminatedUnion('version', [
  * Worlds v1–v4 predate normal breeding (FS-401/402): their fish are rested and no clutch is courting.
  * Worlds v1–v5 predate the economy (FS-501): every buyer's demand is full and the ledger opens at the saved balance.
  * Worlds v1–v6 predate the shop (FS-502): they open with a first delivery of listings.
+ * Worlds v1–v6 predate generated names (ADR-055): they use the current naming model, since the runtime validates their
+ * journals by records without names.
  */
 export function decodeSave(raw: string): World {
   if (raw.length > 12_000_000) throw new Error('Save is too large for this lab.');
   const parsed = schema.parse(JSON.parse(raw));
   let world: World;
   if (parsed.version === 7) world = parsed;
-  // Keys follow the v7 schema order: v6 appended market and ledger to the v5 order, and v7 appends the shop.
-  else if (parsed.version === 6) world = { ...parsed, version: 7, shop: initialShop(parsed.seed) };
-  else if (parsed.version === 5) world = { ...parsed, version: 7, market: defaultMarket(), ledger: openingLedger(parsed.credits), shop: initialShop(parsed.seed) };
+  // Keys follow the v7 schema order: v6 appended market and ledger to the v5 order, and v7 appends the shop and naming.
+  else if (parsed.version === 6) world = { ...parsed, version: 7, shop: initialShop(parsed.seed), naming: NAMING_MODEL };
+  else if (parsed.version === 5) world = { ...parsed, version: 7, market: defaultMarket(), ledger: openingLedger(parsed.credits), shop: initialShop(parsed.seed), naming: NAMING_MODEL };
   else {
     const watered: Omit<Tank, 'care'>[] = parsed.version === 1 ? parsed.tanks.map(entry => ({ ...entry, water: defaultWater() })) : parsed.tanks;
     const cared: Tank[] = parsed.version === 4 ? parsed.tanks : watered.map(entry => ({ ...entry, care: defaultCare(entry.water) }));
@@ -126,7 +130,7 @@ export function decodeSave(raw: string): World {
     // serialize exactly like a decoded current one or every older save would fail to load.
     world = { version: 7, seed: parsed.seed, nextId: parsed.nextId, credits: parsed.credits, nextClutchId: 1, tanks: cared,
       fish: lived.map(member => ({ ...member, breeding: idleBreeding() })), clutches: [], market: defaultMarket(), ledger: openingLedger(parsed.credits),
-      shop: initialShop(parsed.seed) };
+      shop: initialShop(parsed.seed), naming: NAMING_MODEL };
   }
   const ids = new Map(world.fish.map(f => [f.id, f]));
   const tanks = new Set(world.tanks.map(t => t.id));
