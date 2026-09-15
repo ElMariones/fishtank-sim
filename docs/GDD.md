@@ -86,6 +86,11 @@ These are scope boundaries for the first releases, not permanent prohibitions.
 8. Transfer one to a lineage tank; open Family and return to the mother.
 9. End the tutorial with a voluntary breeding goal, not an obligation to log in later.
 
+**Lab implementation (FS-504):**
+- **Guide:** a seven-step first-session guide follows this sequence in the ordinary lab world: select, rename, feed, court, keep a hatched offspring, follow a parent and set an optional goal. It has no tutorial time compression. Its pointers only move focus, and it ends without asking the player to return.
+- **Family:** parent links sit under every fish's name.
+- **Koi rescue:** when every fish of one sex is gone and credits cannot buy stock, the rescue gives one unrelated adult of each missing sex, at most once every 10 game days, so the economy has no permanent dead end.
+
 **First playable pacing hypothesis:** one game day per 60 real seconds at 1×; 1×/4×/12× time controls; maturity around 18–30 game days under healthy development; incubation 2–4 game days; juvenile pattern reveal over approximately 6–12 game days. This implies a first generation in roughly 20–35 minutes at normal speed, much faster with compression. These numbers are game rules awaiting playtests, not biological facts.
 
 Behavior uses real simulated seconds. Growth and care use explicit game-day units. Pausing stops both. Camera animation does not determine authoritative time.

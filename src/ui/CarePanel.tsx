@@ -35,9 +35,8 @@ export function CarePanel({ world, tank, tick, readOnly, onRun }: Props) {
   function review(fix: CareFix) {
     if (fix.kind === 'settings') { setDraft(fix.settings); setOpen(true); }
     else if (fix.kind === 'water-change') { setWaterPercent(fix.percent); setOpen(true); }
-    else if (fix.kind === 'command') onRun(fix.command, fix.command.type === 'feed'
-      ? 'A portion of food joined the water. Fish eat what they need over the next hours; leftovers decay and add ammonia.'
-      : 'A new lab tank is ready. Move some fish into it to ease crowding.');
+    // Only free, immediate commands are offered as fixes: feeding a portion.
+    else if (fix.kind === 'command') onRun(fix.command, 'A portion of food joined the water. Fish eat what they need over the next hours; leftovers decay and add ammonia.');
   }
   function apply() {
     const message = `Care settings applied${cost ? ` for ${credits(cost)}` : ''}: ${RATION_LABELS[settings.ration].toLowerCase()} rations, ${FILTER_TIERS[settings.filterTier].label.toLowerCase()} filter, ${AERATION_TIERS[settings.aerationTier].label.toLowerCase()} aeration, thermostat ${settings.targetC} °C.`;

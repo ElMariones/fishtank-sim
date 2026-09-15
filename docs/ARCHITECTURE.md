@@ -452,3 +452,11 @@ World v7 appends `shop` after the market and ledger. `src/core/shop.ts` generate
 ## Habitat expansion (FS-503)
 
 World v8 adds decoration arrays per tank; helpers and game prices live in `core/tankManagement.ts`, boundary schemas in `core/tankSchema.ts`. Commands purchase a 20-place tank, expand up to 60 places, or replace one reviewed layout; all expenses use the equipment ledger. Expansion conserves ammonia mass and food while adding 10,000 L. V7 migration retains shop stock and all previously verified fields. Motion protocol 3 carries footprints to the worker and restarts; Canvas derives the same circles. Rotation is visual, and circular collision radii are unchanged by it. See [evidence](research/FS-503-HABITAT-EXPANSION.md).
+
+## Onboarding and no-money recovery (FS-504)
+
+World v9 appends `relief` (claims and cooldown days).
+- **Rules:** `core/recovery.ts` owns them. `missingSexes` and `reliefStatus` gate the `claim-relief` command, `advanceRelief` counts the wait down at each game-day boundary after the shop delivers, `reliefDestination` picks a default tank, and `recoveryOverview` summarizes sale value through the shared `planSales`.
+- **Care advice:** `careWarnings` appends a free hint when no fix is affordable, and no longer offers the legacy `add-tank` command.
+- **Guide:** `core/onboarding.ts` validates device-local guide progress and derives observed steps from the world and preferences. `OnboardingGuide`, `RecoveryOptions` (inside `MarketPanel`) and the inspector's family summary in `App.tsx` only read those results and issue ordinary commands.
+- **Unchanged:** worker protocol, genomes and replay commands other than the new one. See [evidence](research/FS-504-ONBOARDING-AND-RECOVERY.md).

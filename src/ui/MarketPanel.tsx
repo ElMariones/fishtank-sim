@@ -1,11 +1,14 @@
-import { BUYERS, FOUNDER_RESALE_CAP, LEDGER_LABELS, LEDGER_REASONS, ledgerBalance } from '../core/economy';
+import { BUYERS, FOUNDER_RESALE_CAP, LEDGER_LABELS, LEDGER_REASONS, ledgerBalance, type TraitCache } from '../core/economy';
 import type { World } from '../core/types';
 import { STOCK_PRICE } from '../core/world';
+import { RecoveryOptions } from './RecoveryOptions';
 
 const signed = (amount: number) => `${amount < 0 ? '−' : amount > 0 ? '+' : ''}◈ ${Math.abs(amount).toLocaleString('en')}`;
 
-/** FS-501 NPC market: what each buyer still wants, and the ledger that explains the balance. */
-export function MarketPanel({ world, onClose }: { world: World; onClose: () => void }) {
+type Props = { world: World; readOnly: boolean; traitCache: TraitCache; onClaimRelief: (tankId: string) => void; onClose: () => void };
+
+/** FS-501 NPC market: what each buyer still wants, the ledger that explains the balance, and FS-504 recovery options. */
+export function MarketPanel({ world, readOnly, traitCache, onClaimRelief, onClose }: Props) {
   const { market, ledger } = world, reconciled = ledgerBalance(ledger) === world.credits;
   return <section className="market-panel" aria-labelledby="market-title">
     <div className="market-heading">
@@ -22,6 +25,7 @@ export function MarketPanel({ world, onClose }: { world: World; onClose: () => v
         <small>{wanted >= 1 ? `Will take ${wanted} more of ${buyer.capacity}` : 'Satisfied for now'} · {buyer.recovery} more each game day</small>
       </li>;
     })}</ul>
+    <RecoveryOptions world={world} readOnly={readOnly} traitCache={traitCache} onClaim={onClaimRelief} />
     <h3>Ledger</h3>
     <div className="fixture-table-wrap"><table className="ledger-table">
       <caption className="visually-hidden">Credit totals by reason</caption>

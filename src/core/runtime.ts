@@ -119,7 +119,8 @@ export function decodeRuntime(raw: string): Runtime {
   const comparable = (candidate: World) => {
     if (sourceVersion < 7) return JSON.stringify(recordsOnly(candidate));
     const named = staleNames ? withoutNamesWorld(candidate) : candidate;
-    return JSON.stringify(legacyWorld ? withoutDecorations(named) : named);
+    // Decorations are recorded from world v8; the koi rescue (world v9) starts at its default in every older snapshot.
+    return JSON.stringify(sourceVersion < 8 ? withoutDecorations(named) : named);
   };
   if (comparable(decodeSave(JSON.stringify(replayed.world))) !== comparable(world)) throw mismatch;
   const simulation = parsed.simulation ?? { version: 1 as const, tankTicks: Object.fromEntries(world.tanks.map(tank => [tank.id, parsed.tick])) };

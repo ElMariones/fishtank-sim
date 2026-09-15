@@ -34,7 +34,7 @@ export function BreedingPlanner({ fish, tanks, goal, onGoal, motherId, fatherId,
       </select></label>
       <button className="quiet" aria-label={`Remove goal ${index + 1}`} onClick={() => setTraits(traits.filter((_, i) => i !== index))}>Remove</button>
     </div>)}
-    <div className="planner-tools"><button disabled={traits.length >= 4} onClick={() => setTraits([...traits, { descriptor: GOAL_DESCRIPTORS.find(d => !traits.some(t => t.descriptor === d.key))!.key, direction: 'higher' }])}>＋ Add goal</button>
+    <div className="planner-tools"><button id="planner-add-goal" disabled={traits.length >= 4} onClick={() => setTraits([...traits, { descriptor: GOAL_DESCRIPTORS.find(d => !traits.some(t => t.descriptor === d.key))!.key, direction: 'higher' }])}>＋ Add goal</button>
       {goal ? <button className="quiet" onClick={() => onGoal(null)}>Clear goals</button> : <span>Start with a shape, a Genome 2 appearance, or a behavior trait.</span>}</div>
     <div className="planner-scope"><label>Find parents in<select aria-label="Find parents in" value={scope} onChange={e => setScope(e.target.value)}><option value="all">All tanks</option>{tanks.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label>
       <label>Search candidates<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Name or fish ID" /></label></div>
@@ -42,7 +42,7 @@ export function BreedingPlanner({ fish, tanks, goal, onGoal, motherId, fatherId,
     <div className="planner-parents">{(['F', 'M'] as const).map(sex => {
       const selectedId = sex === 'F' ? motherId : fatherId, choose = sex === 'F' ? onMother : onFather;
       const selected = fish.find(f => f.id === selectedId), available = candidates.filter(f => f.sex === sex), leader = available[0];
-      return <div className="planner-parent" key={sex}><label>{sex === 'F' ? '♀ Mother' : '♂ Father'}<select value={selectedId} onChange={e => choose(e.target.value)}>
+      return <div className="planner-parent" key={sex}><label>{sex === 'F' ? '♀ Mother' : '♂ Father'}<select id={sex === 'F' ? 'planner-mother' : 'planner-father'} value={selectedId} onChange={e => choose(e.target.value)}>
         <option value="">Select {sex === 'F' ? 'female' : 'male'}</option>
         {selected && !available.some(f => f.id === selectedId) ? <option value={selectedId}>{selected.name} · outside candidate filter</option> : null}
         {available.map(f => <option key={f.id} value={f.id}>{f.name} · {home(f)}{goal ? ` · ${match(f)} match` : ''}</option>)}

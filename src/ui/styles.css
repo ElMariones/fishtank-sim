@@ -271,3 +271,39 @@ footer a{display:inline-flex;align-items:center;min-height:24px}
 .habitat-panel fieldset { min-width: 0; border: 1px solid #486153; border-radius: 8px; }
 .habitat-panel input[type=range] { width: 100%; min-height: 44px; }
 .habitat-panel button, .habitat-panel select { min-height: 44px; max-width: 100%; }
+
+/* FS-504: first-session guide, no-money recovery and family at a glance. */
+.guide-panel { margin: 0 0 16px; padding: 14px 16px; border: 1px solid #4f7d68; border-radius: 9px; background: #15302b; }
+.guide-heading { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 10px 16px; }
+.guide-heading > div:first-child { flex: 1 1 260px; min-width: 0; }
+.guide-heading h2 { margin-top: 6px; font-size: 1rem; font-weight: 600; letter-spacing: -.02em; }
+.guide-heading p { margin-top: 6px; font-size: .78rem; color: #b8ccbf; line-height: 1.6; }
+.guide-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.guide-actions button { font-size: .74rem; }
+.guide-panel progress { display: block; width: 100%; height: 6px; margin-top: 10px; accent-color: #9fd89b; }
+.guide-steps { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
+.guide-steps li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid #2f4541; border-radius: 8px; background: #122326; }
+.guide-steps li.next { border-color: #9fd89b; }
+.guide-steps strong { display: block; font-size: .8rem; font-weight: 600; }
+.guide-steps small { display: block; margin-top: 3px; font-size: .7rem; color: #a9bfb4; line-height: 1.5; }
+.guide-steps button { font-size: .72rem; }
+.guide-mark { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; border: 1px solid #4f7d68; font-size: .72rem; color: #cae8d5; }
+.guide-steps li.done .guide-mark { background: #2b4a3d; border-color: #9fd89b; color: #dff5dc; }
+.recovery-alert { margin: 0 0 16px; padding: 14px 16px; border: 1px solid #b69a52; border-radius: 9px; background: #332f20; color: #f0e5bd; }
+.recovery-alert h2 { font-size: .95rem; font-weight: 600; }
+.recovery-alert p { margin: 6px 0 10px; font-size: .78rem; line-height: 1.6; color: #e3d8b0; }
+.recovery-options { margin-top: 16px; padding-top: 4px; border-top: 1px solid #253b37; }
+.recovery-options h3:focus { outline: none; }
+.recovery-options h3:focus-visible { outline: 2px solid var(--green); outline-offset: 4px; }
+.recovery-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; }
+.recovery-list li { display: grid; align-content: start; gap: 4px; padding: 10px 12px; border: 1px solid #2f4541; border-radius: 8px; background: #152a2c; font-size: .74rem; color: #b8ccbf; line-height: 1.5; }
+.recovery-list strong { color: #dce7e2; font-size: .8rem; font-weight: 600; }
+.recovery-list .recovery-status { color: #f0d88f; }
+.recovery-claim { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 12px; padding: 10px 12px; border: 1px solid #9fd89b; border-radius: 8px; background: #17352d; }
+.recovery-claim .inline-select select { max-width: 100%; }
+.recovery-claim small { flex-basis: 100%; font-size: .7rem; color: #f0d88f; }
+.family-glance { display: grid; gap: 2px; margin-top: 8px; font-size: .72rem; color: #9fb8ad; line-height: 1.7; }
+.link-button { display: inline; min-height: 0; padding: 0 2px; border: 0; border-radius: 3px; background: none; color: #9fd89b; font-size: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.link-button:hover { background: #203733; color: #c9f0c5; }
+@media (pointer: coarse) { .link-button { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; } .guide-actions button, .guide-steps button { min-height: 44px; } }
+@media (max-width: 650px) { .guide-panel, .recovery-alert { padding: 12px; } .guide-steps li { grid-template-columns: 28px minmax(0, 1fr); } .guide-steps li button { grid-column: 2; justify-self: start; } }

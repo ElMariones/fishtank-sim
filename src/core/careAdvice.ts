@@ -4,6 +4,7 @@ import {
 } from './care';
 import { environmentLimits, GROWTH_REFERENCE_C, temperatureComfort } from './development';
 import { advanceWorld, stocking, tankEnvironment, tankLoad, type StockingLevel } from './habitat';
+import { TANK_PRICE } from './tankManagement';
 import type { Tank, World } from './types';
 import { temperatureFactor, TICKS_PER_GAME_DAY, WATER_THRESHOLDS, waterStatus, type AmmoniaLevel, type OxygenLevel } from './water';
 import { MAX_TANKS, type Command } from './world';
@@ -99,8 +100,9 @@ export function careWarnings(world: World, tankId: string): CareWarning[] {
       detail: `${status.temperatureC.toFixed(1)} °C is outside the comfortable ${COMFORT_RANGE[0]}–${COMFORT_RANGE[1]} °C. ${affected}`, affected: status.residents, fixes });
   }
   if (status.stocking === 'heavy' || status.stocking === 'overstocked') {
-    const fixes: CareFix[] = [{ kind: 'hint', label: 'Move or sell some fish' }];
-    if (world.tanks.length < MAX_TANKS) fixes.push({ kind: 'command', label: 'Add a lab tank to move fish into', command: { type: 'add-tank' }, cost: 0 });
+    // Tanks are paid since FS-503, so a new aquarium is a reviewed purchase in Habitat & expansion, never a one-click fix.
+    const fixes: CareFix[] = [{ kind: 'hint', label: 'Move, sell or rehome some fish; moving and rehoming are free' }];
+    if (world.tanks.length < MAX_TANKS) fixes.push({ kind: 'hint', label: `Or buy an aquarium in Habitat & expansion (◈ ${TANK_PRICE}) to move fish into` });
     warnings.push({ code: 'crowding', severity: status.stocking === 'overstocked' ? 'critical' : 'warning', title: status.stocking === 'overstocked' ? 'Overstocked' : 'Crowded',
       detail: `${status.densityKgM3.toFixed(1)} kg of fish per m³; growth slows above 8. ${affected}`, affected: status.residents, fixes });
   }
@@ -114,6 +116,13 @@ export function careWarnings(world: World, tankId: string): CareWarning[] {
   if (status.leftovers) {
     warnings.push({ code: 'leftovers', severity: 'warning', title: 'Uneaten food',
       detail: `About ${Math.round(tank.water.foodG).toLocaleString('en')} g of food is decaying, which uses oxygen and adds ammonia.`, affected: 0, fixes: [...lessFood, waterFix(10)] });
+  }
+  // No-money recovery (FS-504): when every priced fix is out of reach, name one that costs nothing.
+  for (const warning of warnings) {
+    if (warning.fixes.some(fix => fix.kind === 'hint' || fix.kind === 'command' || fix.cost <= world.credits)) continue;
+    warning.fixes.push({ kind: 'hint', label: warning.code === 'leftovers'
+      ? 'Without credits: set a lighter feeder ration for a while, which is free'
+      : 'Without credits: move or rehome some fish to lower the load, which is free' });
   }
   return warnings.sort((a, b) => Number(b.severity === 'critical') - Number(a.severity === 'critical'));
 }

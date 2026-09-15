@@ -23,6 +23,7 @@ All planned values below are game hypotheses. They are not real aquarium-care re
 | Extra aquarium (FS-503) | 400 credits | 20 places, 10,000 L, Standard equipment; two starter tanks included |
 | Aquarium expansion (FS-503) | 300 credits | Up to 20 extra places and 10,000 L, maximum 60 places |
 | Decoration (FS-503) | 25 credits per new piece | Up to 12 pieces/tank; movement, rotation, resizing/removal free, no refunds |
+| Koi rescue (FS-504) | One unrelated adult of each sex with no living fish, at no cost | Only while credits are below ◈ 250 per missing sex; the next rescue is 10 game days later. Rescued fish are founders, so they resell for at most ◈ 150 |
 | Motion tick | 50 ms | Visual motion only |
 | Motion speed | 1× / 2× / 4× | Does not age fish |
 | Visual pellets | Sink, can be eaten once, dissolve after 20 motion seconds | Transient worker display; the domain Feed command adds real food (FS-305) |
@@ -244,3 +245,16 @@ Experiment ID, code/model version, seed set, population size, retained cohort po
 ### FS-503 price rationale and remaining economy gate
 
 A 400-credit aquarium is one third of the initial reserve; two expansions make a 60-place purchased tank cost 1,000 total. A new piece costs 25, so appearance experiments remain cheap without paying players to remove pieces. Two starter tanks, free food and free rehoming preserve the existing recovery routes. These are provisional source/sink hypotheses, not playtest-validated rates. FS-505 must rerun strategies with paid tank commands; historical E-05 above deliberately remains a free-tank research baseline. See [FS-503 evidence](research/FS-503-HABITAT-EXPANSION.md).
+
+### FS-504 no-money recovery
+
+E-05 never stranded a strategy, but nothing guaranteed it: a player who sold or rehomed every male with less than ◈ 250 had no way to another generation. Free breeding, food, moves, rehoming and lower care settings cover every other state, so the koi rescue targets exactly that one. Game rules in `src/core/recovery.ts`; measurements in `tests/recovery.test.ts`.
+
+| Measure | Result |
+|---|---|
+| Farming the rescue for 60 game days: sell each rescued male, spend the proceeds on stock rehomed at once to stay eligible | 6 claims and ◈ 356 of sales, about ◈ 6 a game day. E-05's output farmers earned about ◈ 9–11 a game day, and selective breeders about ◈ 53 |
+| Worst-case bound | ◈ 150 per missing sex every 10 game days |
+| Recovery from hard starts, using free actions only | No fish left: rescue at once. Rescue still waiting: 10 game days. Only eggs: 28 game days until parents are adults, with no rescue. No males but ◈ 1,000: buys a founder at once |
+| Seeded 500-step walk | 219 steps lacked a sex; 24 recovery checks all reached an accepted pairing within 22 game days |
+
+The 10-day wait and the ◈ 250 threshold are provisional. FS-505 playtests decide whether the rescue is too slow, too generous or rarely needed. See [FS-504 evidence](research/FS-504-ONBOARDING-AND-RECOVERY.md).

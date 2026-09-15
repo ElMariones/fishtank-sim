@@ -204,3 +204,23 @@ The collection toolbar opens **NPC shop**. Fixed specimen cards show sex, catego
 ## Implemented habitat management (FS-503)
 
 The sidebar's Aquariums & expansion link opens Habitat & expansion below the live tank. Purchase and expansion show cost, resulting capacity/volume and balance before confirmation. The decoration editor keeps a separate draft with a footprint map, piece selection and labeled position/size/rotation sliders. Applying shows total new-piece cost; Cancel discards the draft. Invalid placement and insufficient funds prevent Apply. Removal has no refund. Starter tanks remain included; eight tanks and 60 places per tank remain the hard limits. [Evidence](research/FS-503-HABITAT-EXPANSION.md).
+
+## Implemented first-session guide, recovery and family at a glance (FS-504)
+
+**First-session guide.** A panel above the aquarium names the next of seven steps: meet your fish, name a fish, feed the tank, start a courtship, hatch and keep a candidate, trace a family, choose a breeding goal. It shows how many are done, with **Show me**, **All steps** (each step marked Done, Next or Not yet, in text as well as a mark) and **Hide guide**. **Guide · N/7** in the save bar shows or hides it.
+- **Show me** moves focus to the control for that step. It never performs the step: the player still selects, renames, feeds, pairs, stars, follows a parent and sets a goal.
+- **Completion:** a step completes from the player's own action or from what already exists, and stays complete.
+- **Default:** a world that already has bred fish starts with the guide hidden.
+- **Ending:** "Guide complete" sets no obligation to return.
+
+**No-money recovery.**
+- **Aquarium alert:** when no living female or no living male is left, an alert explains that a new generation needs both. If credits already cover founder stock it offers **Open NPC shop**; otherwise **Review recovery options**.
+- **If credits run low**, in **Buyers and ledger**, lists:
+  - living females and males;
+  - what hatched fish that are not courting would sell for today;
+  - free rehoming and free care changes;
+  - the koi rescue rule with its current status.
+- **Rescue claim:** when the rescue is available, a destination select with free places and **Accept a rescued male · no cost** (or female, or pair) claim it. The notice names the rescued fish and when the rescue can help again.
+- **Elsewhere:** the NPC shop links here when no listing is affordable. A care warning whose priced fixes are all unaffordable names a free fix.
+
+**Family at a glance.** Under the name and subtitle, every fish shows **Parents A × B** as links (or founder stock), full siblings, offspring and **Open family tree**. A parent link opens the Family tab at that parent, with **Back** to the fish. A missing parent record reads "(record missing)" instead of a link. See [FS-504 evidence](research/FS-504-ONBOARDING-AND-RECOVERY.md).

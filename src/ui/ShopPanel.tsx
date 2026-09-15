@@ -11,13 +11,15 @@ import { FishPortrait } from './FishPortrait';
 type Props = {
   world: World; tank: Tank; day: number; readOnly: boolean; traitCache: TraitCache;
   onBuy: (listing: Listing, tankId: string) => void; onClose: () => void;
+  /** Opens the FS-504 recovery options when credits cannot cover any listing. */
+  onRecovery: () => void;
 };
 type Sort = 'price' | 'size' | 'leaving';
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
 /** FS-502 NPC shop: fixed listings that change only on delivery days, with filters and capacity-aware purchase. */
-export function ShopPanel({ world, tank, day, readOnly, traitCache, onBuy, onClose }: Props) {
+export function ShopPanel({ world, tank, day, readOnly, traitCache, onBuy, onClose, onRecovery }: Props) {
   const [sex, setSex] = useState<'all' | 'F' | 'M'>('all');
   const [category, setCategory] = useState<'all' | ListingCategory>('all');
   const [sort, setSort] = useState<Sort>('price');
@@ -68,6 +70,8 @@ export function ShopPanel({ world, tank, day, readOnly, traitCache, onBuy, onClo
       </select></label>
     </div>
     <p className="help-copy" role="status">{world.shop.listings.length} of {SHOP_SIZE} places listed · next delivery in {plural(nextDelivery, 'game day')} · you have ◈ {world.credits.toLocaleString('en')}.</p>
+    {world.shop.listings.length && world.shop.listings.every(listing => listing.price > world.credits)
+      ? <p className="help-copy">No listing is affordable today. <button className="link-button" onClick={onRecovery}>See what still costs nothing</button></p> : null}
     {rows.length ? <ul className="shop-listings">{rows.map(({ listing, fish, size }) => {
       const resale = bestOffer(world, fish, traitCache)?.amount ?? 0;
       const reason = blocked(listing), left = listing.expiresDay - day;

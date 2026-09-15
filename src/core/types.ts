@@ -102,14 +102,16 @@ export type Listing = {
 export type ShopState = { model: 1; nextListing: number; refreshedDay: number; listings: Listing[] };
 /** How new fish are named: 1 numbered ("Fry 12"), 2 generated from name parts (ADR-055), 3 parts true to the fish's traits (ADR-056). */
 export type NamingModel = 1 | 2 | 3;
+/** No-money recovery (FS-504): koi rescues claimed so far and whole game days until the rescue can help again. */
+export type ReliefState = { model: 1; claims: number; cooldownDays: number };
 /**
  * World v2 added per-tank water (FS-301), v3 fish life state (FS-302), v4 tank care (FS-305), v5 breeding state and
- * clutches (FS-401/402), v6 NPC demand, a credit ledger and rehomed fish (FS-501), v7 persistent shop stock (FS-502).
- * World v8 adds persisted decoration transforms (FS-503). Older saves migrate with defaults.
+ * clutches (FS-401/402), v6 NPC demand, a credit ledger and rehomed fish (FS-501), v7 persistent shop stock (FS-502),
+ * v8 persisted decoration transforms (FS-503). World v9 adds the koi rescue (FS-504). Older saves migrate with defaults.
  */
 export type World = {
-  version: 8; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
-  market: MarketState; ledger: Ledger; shop: ShopState; naming: NamingModel;
+  version: 9; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
+  market: MarketState; ledger: Ledger; shop: ShopState; naming: NamingModel; relief: ReliefState;
 };
 /**
  * Development v2 inherited marking anchor, derived from one phased two-locus haplotype block.

@@ -8,6 +8,7 @@ import {
 } from './care';
 import { defaultMarket, openingLedger, planSales, recordEntry, saleDetail } from './economy';
 import { initialShop } from './shop';
+import { defaultRelief, RELIEF_COOLDOWN_DAYS, reliefStatus } from './recovery';
 import { express, founderGenome, inherit } from './genetics';
 import { adultLife, eggLife, isEgg } from './development';
 import { tankLoad } from './habitat';
@@ -29,9 +30,10 @@ export const MAX_RECORDS = 10_000;
 export const STOCK_PRICE = 250;
 /**
  * World v6: tanks carry water (FS-301) and care (FS-305); fish carry life (FS-302) and breeding state; clutches
- * (FS-401/402); NPC demand and the credit ledger (FS-501). World v7 adds persistent shop stock (FS-502); v8 adds placed decorations (FS-503).
+ * (FS-401/402); NPC demand and the credit ledger (FS-501). World v7 adds persistent shop stock (FS-502); v8 adds placed
+ * decorations (FS-503); v9 adds the koi rescue for no-money recovery (FS-504).
  */
-export const WORLD_VERSION = 8;
+export const WORLD_VERSION = 9;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -52,10 +54,10 @@ function newTank(id: string, name: string, planted: boolean): Tank {
 
 /** New worlds use the current genome. Research fixtures pass genome version 1 to reproduce the frozen FS-101 founders. */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = GENOME_VERSION): World {
-  const world: World = { version: 8, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
+  const world: World = { version: 9, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
-  ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed), naming: NAMING_MODEL };
+  ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed), naming: NAMING_MODEL, relief: defaultRelief() };
   ['Haru', 'Sumi', 'Kohaku', 'Yuki', 'Akira', 'Momo'].forEach((name, i) => {
     world.fish.push(founder(world, name, i % 2 === 0 ? 'F' : 'M', timestamp, genomeVersion)); world.nextId++;
   });
@@ -86,7 +88,8 @@ export type Command =
   | { type: 'change-water'; tankId: string; percent: WaterChangePercent }
   | { type: 'pair'; motherId: string; fatherId: string; nurseryId: string; size: ClutchSize; timestamp: string; genomeVersion: GenomeVersion }
   | { type: 'cancel-clutch'; clutchId: string }
-  | { type: 'move-batch'; fishIds: string[]; tankId: string };
+  | { type: 'move-batch'; fishIds: string[]; tankId: string }
+  | { type: 'claim-relief'; tankId: string; timestamp: string; genomeVersion: GenomeVersion };
 
 const fishIdSchema = z.string().regex(/^FSH-\d{6}$/);
 const tankIdSchema = z.string().max(50);
@@ -123,6 +126,7 @@ export const commandSchema = z.discriminatedUnion('type', [
   }).strict(),
   z.object({ type: z.literal('cancel-clutch'), clutchId: z.string().regex(/^CL-\d{6}$/) }).strict(),
   z.object({ type: z.literal('move-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING), tankId: tankIdSchema }).strict(),
+  z.object({ type: z.literal('claim-relief'), tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: z.union([z.literal(1), z.literal(2)]) }).strict(),
 ]);
 
 /** Validate before mutation; rejected commands leave the original world untouched. */
@@ -362,6 +366,25 @@ export function applyCommand(world: World, command: Command): World {
       for (const fish of batch) if (courtingClutchOf(next, fish.id)) throw new Error(`${fish.name} is courting. Cancel the courtship before rehoming.`);
       for (const fish of batch) fish.status = 'rehomed';
       next.ledger = recordEntry(next.ledger, 'rehome', 0, batch.length, `${names(batch)} rehomed`);
+      break;
+    }
+    case 'claim-relief': {
+      // No-money recovery (FS-504): the koi rescue gives one unrelated adult of each missing sex at no cost, then waits.
+      const status = reliefStatus(next);
+      if (!status.eligible) throw new Error(status.reason);
+      room(status.sexes.length);
+      space(command.tankId, status.sexes.length);
+      const taken = takenNames(next), rescued: Fish[] = [];
+      for (const sex of status.sexes) {
+        const birthSeed = hash(`${next.seed}:relief:${next.nextId}`), genome = founderGenome(birthSeed, command.genomeVersion);
+        const fish: Fish = {
+          id: id(next.nextId), name: newFishName(`${next.seed}:fish:${next.nextId}`, { sex, genome }, taken), sex, genome, birthSeed, generation: 0, parents: null,
+          bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', mutations: [], life: adultLife(genome), breeding: idleBreeding(),
+        };
+        rescued.push(fish); next.fish.push(fish); next.nextId++;
+      }
+      next.relief = { model: 1, claims: next.relief.claims + 1, cooldownDays: RELIEF_COOLDOWN_DAYS };
+      next.ledger = recordEntry(next.ledger, 'stock', 0, rescued.length, `Koi rescue: ${names(rescued)} at no cost`);
       break;
     }
   }
