@@ -79,4 +79,4 @@ In-app Chromium on the isolated `http://localhost:5183` (the FS-505/601/602 QA s
 - **Scope:** counts are local to one save and to recorded births. They are not frequencies of any wider population, and the lab reports no allele frequency from them.
 - **Migration:** in older worlds, ambiguous transmissions (both parental homologs with the same allele) stay untraced, and so do their descendants' copies.
 - **Mutation IDs:** origin IDs name record IDs, so an imported save keeps its own IDs; there are no global mutation IDs.
-- **Notebook:** it lists 30 origins and has no search yet; FS-604 uses origins for bloodline registration.
+- **Notebook:** it lists 30 origins and has no search yet. FS-604 bloodline standards reuse origins as signatures.

@@ -1,6 +1,6 @@
 # FS-604 — Named bloodline registry
 
-**Date:** 17 September 2026. **Status:** see BACKLOG (marked DONE only after a verified push).
+**Date:** 17 September 2026. **Status:** DONE, pushed `d9f17c0`.
 **Models:** world save v12 · bloodline model 1 · origin model 1 · genome v3. Births, genomes and existing commands are unchanged.
 
 ## Starting state
