@@ -36,6 +36,7 @@ src/
     careAdvice.ts   Care status, warnings with priced fixes, and projections that preview a change on a copy of the tank
     absence.ts      Day observer and per-tank absence summary: hatching, stages, growth, condition, limiting causes, warnings
     careScenario.ts Seeded healthy and stressed care scenarios with a keeper that applies warning fixes
+    unusualLineScenario.ts FS-605 koi-to-unusual-line demonstration through normal breeding, and structural mutation pacing
     lifecycleScenario.ts Seeded two-generation normal-breeding demonstration with batch rehoming, checked by journal replay
     economy.ts      Economy model v1: NPC buyers and demand, explained offers, ordered sale plans, demand recovery and the credit ledger
     economyExperiment.ts Seeded E-05 strategies (observation, resale, selective, collector, maximum output, lab-cross farming)
@@ -89,6 +90,7 @@ tests/
   resemblanceStudy.test.ts Trial set, display modes, computational observer and result validation
   resemblancePool.test.ts Five-observer FS-111 pool, per-trial agreement and record validation
   appearance.test.ts Genome v2 stream isolation, dominance, founder rarity, mixed-version saves and ornament bounds
+  unusualLine.test.ts Paired-fan line with valid ancestry and replay, any-structure comparison and pacing odds
   bloodlines.test.ts Ancestry fixtures, registration and rename rules, lookalike and descendant separation, calibration, structure and origin standards, persistence and replay
   origins.test.ts  Trace neutrality, transmission rule, lineage descent invariants, notebook counts, validation and world v10 migration
   structure.test.ts Anatomy v2 identity against a frozen copy, structure fixtures, sweep, juvenile stages and reachability by breeding
@@ -487,4 +489,8 @@ Anatomy v3 turns `phenotype.structure` into geometry. The first tail lobe stays 
 ### FS-604 bloodline registry
 
 World v12 appends `bloodlines` and `nextBloodlineId`. The `register-bloodline` and `rename-bloodline` commands validate in `bloodlines.ts`, and registration stores a standard captured from the foundation that never changes. `ancestryContributions` (pedigree) and `standardSimilarity` (adult genetic phenotype) are computed on demand and shown side by side, never combined. `Bloodlines.tsx` provides the batch registration review and the Family tab section. See [FS-604 evidence](research/FS-604-BLOODLINE-REGISTRY.md).
+
+### FS-605 unusual line
+
+`unusualLineScenario.ts` drives a seeded runtime with live commands only: normal courtship, rehoming, bloodline registration and the clock. It finds a structural mutation by its recorded origin, outcrosses, intercrosses and fixes a line, then replays the journal. `mutationPacing` measures discovery without a world. Research → **Unusual line** shows both. See [FS-605 evidence](research/FS-605-UNUSUAL-LINE.md).
 

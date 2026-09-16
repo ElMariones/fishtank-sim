@@ -259,6 +259,17 @@ E-05 never stranded a strategy, but nothing guaranteed it: a player who sold or 
 
 The 10-day wait and the ◈ 250 threshold are provisional. FS-505 playtests decide whether the rescue is too slow, too generous or rarely needed. See [FS-504 evidence](research/FS-504-ONBOARDING-AND-RECOVERY.md).
 
+### FS-605 structural discovery pacing
+
+| Measure | Result |
+|---|---|
+| Births to the first new structural mutation (200 lineages) | Median 95, 10th–90th percentile 11–351 |
+| Founder carriers per founder | Tail topology 0.80%, dorsal form 5.9%, barbel count 6.9% |
+| Paired-fan line, five seeds, normal breeding at about 7 eggs a game day | Mutation after 6–302 game days; line fixed on days 93–391 (1.6–6.5 hours of play at 1×) |
+| Inbreeding along the shortest route | Pedigree F 25% for the intercross, 37.5% for the line |
+
+**Recommended follow-up, not applied:** decide with playtests (FS-705) whether paired fans should also come as documented shop carriers or through a declared sandbox multiplier; more nurseries speed discovery at a credit cost. Never add hidden pity rerolls. See [FS-605 evidence](research/FS-605-UNUSUAL-LINE.md).
+
 ### FS-505 paid economy
 
 E-05 with prices: six keepers for 90 game days through live commands only, with a daily ledger check and a no-softlock route every 15 game days. Game rules in `src/core/paidEconomy.ts`; measurements in `tests/paidEconomy.test.ts`.

@@ -336,4 +336,6 @@ footer a{display:inline-flex;align-items:center;min-height:24px}
 .bloodline-rows small, .bloodline-registry small { display: block; margin-top: 3px; font-size: .64rem; color: #7f9a8c; overflow-wrap: anywhere; }
 .bloodline-registry .rename-form { grid-column: 1 / -1; }
 @media (max-width: 650px) { .bloodline-rows li, .bloodline-registry li { grid-template-columns: 1fr; } .bloodline-rows li > span:last-child, .bloodline-registry li > span:last-child { text-align: left; } }
-
+/* FS-605 unusual-line portrait strip. */
+.unusual-strip { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 650px) { .unusual-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

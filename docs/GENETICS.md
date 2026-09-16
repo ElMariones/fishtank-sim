@@ -118,6 +118,8 @@ Mutation events currently store locus index, received copy, prior allele, and ne
 | Major developmental | Compatible multi-structure template | Later, lower event rate | Long-term population experiments |
 | Meta-mutability | Region-specific rate modifier with clamps | Deferred | Economy and mutation discovery pacing stable |
 
+**Measured (FS-605):** at 0.001 per copy on three structural loci, the first new structural mutation from standard parents took a median of 95 births (10th–90th percentile 11–351), each locus supplying about a third. With six founders, a dorsal-form or barbel-count carrier is likely in the starting stock (5.9% and 6.9% per founder), while a tail-topology carrier is rare (0.8%). A seeded keeper using normal breeding fixed a paired-fan line in 93–391 game days across five seeds, and discovery took most of that time. See [FS-605 unusual line](research/FS-605-UNUSUAL-LINE.md).
+
 Rates are not additive rarity promises. A 1e-4 structural event rate produces a probability of about 63.2% of at least one event across 10,000 tracked births. At 200 births the chance is only about 2%. Therefore a “very rare” structural system can be effectively absent for ordinary players. Tune against playtime and tracked births; use an optional research sandbox multiplier, never an invisible pity reroll that changes previously committed offspring.
 
 ## 6. Lab locus catalog and expression coverage

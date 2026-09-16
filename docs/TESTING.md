@@ -447,6 +447,14 @@ Two simultaneous buyers, duplicate command retries, rollback on debit/transfer f
 
 For a test report record task ID, source/model version, command or user journey, fixture/seed, environment, expected outcome, actual outcome, limitations, and relevant artifacts. Tests should verify domain promises or meaningful failure conditions, not mirror implementation line for line.
 
+## FS-605 unusual line and pacing
+
+17 September 2026, Windows 11, Node 22.18.0, npm 10.9.3. `npm run check`: 218 tests in 37 files, then the strict TypeScript and production build, pass.
+- `tests/unusualLine.test.ts`: the seed 605 paired-fan line via normal breeding (mutation on day 302, line on day 391, 24 of 24 expressing with two origin copies by descent, 0 instant crosses, replayed journal, registered bloodline with 100% ancestry); an any-structure target finishing sooner; founder odds equal to the registry and seeded birth pacing in range.
+- Browser on isolated port 5183: Research → Unusual line ran in 5.5 s with matching tables, a founder-to-line portrait strip showing standard and paired-fan tails, a 390 px layout and no console errors.
+
+See [FS-605 evidence](research/FS-605-UNUSUAL-LINE.md).
+
 ## FS-604 bloodline registry
 
 17 September 2026, Windows 11, Node 22.18.0, npm 10.9.3. `npm run check`: 215 tests in 36 files, then the strict TypeScript and production build, pass.
