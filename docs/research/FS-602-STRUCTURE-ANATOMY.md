@@ -1,6 +1,6 @@
 # FS-602 — Tail topology, dorsal and barbel variants
 
-**Date:** 17 September 2026. **Status:** see BACKLOG (marked DONE only after a verified push).
+**Date:** 17 September 2026. **Status:** DONE, pushed `0e95249`.
 **Models:** anatomy v3 · renderer v7 · structure model 1 · genome v3 · world save v10. No save, command or genome change.
 
 ## Starting state
@@ -17,7 +17,7 @@ FS-602 asks for validated tail topology and barbel/dorsal variants, with reachab
 - **Tail lobes:** one lobe builder reproduces the anatomy v2 tail, with lobe balance and ray-pair count as parameters. A paired fan is two lobes at 62% spread, turned up and down about the shared caudal root by 0.18–0.48 rad as topology spread rises. A crown-four is four lobes at 92% length and 42% spread, at ±0.12–0.27 and ±0.42–0.77 rad. `caudal` is the first lobe and `extraLobes` holds the rest. Upper lobes scale by lobe balance and lower lobes by its complement. Ray roots stay inside the peduncle while each ray turns with its lobe.
 - **Dorsal fin:** a reduced fin is 35% as tall and ends at 0.10 BL instead of 0.30. An absent fin is `null`.
 - **Barbels:** 0, 2, 4 or 6. The anatomy v2 pair comes first, and further pairs are rooted a little behind it along the jaw, shorter and lower.
-- **Fin rays:** density sets the ray pairs per half: three at baseline (seven rays), two to four on a standard tail, one to three on each paired or crown lobe.
+- **Fin rays:** density sets the ray pairs per half: three at baseline (seven rays), two to four on a standard tail, two or three on each paired or crown lobe.
 - **Standard structure:** it takes exactly the anatomy v2 code path. Genome v1/v2 fish and genome v3 fish with baseline Structure alleles build geometry identical to anatomy v2. `tailBox` returns the anatomy v2 fin box for them, and picking uses the anatomy v2 test.
 
 **Validation.** `validateAnatomy` now:

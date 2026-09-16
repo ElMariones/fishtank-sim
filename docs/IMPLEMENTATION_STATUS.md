@@ -1,8 +1,20 @@
 # Implementation status
 
-**Updated:** 17 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`). FS-405's incremental kinship cache with stated founder assumptions is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. M5 has started: FS-501's economy model v1 is DONE (`006b500`). FS-502 persistent shop (`3945d86`) and FS-503 habitat expansion (`f78d007`) are DONE. FS-504 onboarding and no-money recovery is DONE (`6335851`). FS-505's paid-economy playtest is DONE (`f5b1888`), completing M5's task list. M6 has started: FS-601's locus registry and genome v3 are DONE (`fb6b593`).
+**Updated:** 17 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`). FS-405's incremental kinship cache with stated founder assumptions is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. M5 has started: FS-501's economy model v1 is DONE (`006b500`). FS-502 persistent shop (`3945d86`) and FS-503 habitat expansion (`f78d007`) are DONE. FS-504 onboarding and no-money recovery is DONE (`6335851`). FS-505's paid-economy playtest is DONE (`f5b1888`), completing M5's task list. M6 has started: FS-601's locus registry and genome v3 are DONE (`fb6b593`), and FS-602's structure anatomy is DONE (`0e95249`).
 
-## Current continuation — FS-601 DONE, pushed `fb6b593`
+## Current continuation — FS-602 DONE, pushed `0e95249`
+
+17 September 2026: FS-602 started from `e2c43cd` (FS-601 marked DONE), equal to `origin/main`.
+
+- FS-602 adds:
+  - **Anatomy v3:** paired fan and crown-four tails as turned anatomy v2 lobes, with lobe balance and ray density; reduced or absent dorsal fins; 0, 2, 4 or 6 barbels. Validation checks each lobe in its own frame.
+  - **Renderer v7:** every lobe is drawn as one caudal fin, with shared tail ornament and per-lobe picking.
+  - **Standard structure unchanged:** 3,519 anatomies deep-equal a frozen anatomy v2 copy.
+  - **Fixtures:** twelve reachable fixtures in Visual fixtures → Structure variants, plus a structure sweep with 0 invalid and 0 clipped.
+- `npm run check`: 204 tests in 34 files and the build pass. The browser drew all fixtures, and the dorsal and barbel fixtures were made legible after screenshots. See [FS-602 evidence](research/FS-602-STRUCTURE-ANATOMY.md).
+- Next: FS-603, mutation-origin propagation and save-local carrier counts with declared scope.
+
+## Previous continuation — FS-601 DONE, pushed `fb6b593`
 
 17 September 2026: FS-601 started from `27794af` (FS-505 marked DONE), equal to `origin/main`.
 
@@ -13,7 +25,7 @@
   - **Inspector:** a Structure block with hidden-copy chips, chromosome 11 in the genome view, and odds for every locus.
 - Structure is expressed and inspectable but not drawn yet; FS-602 renders it.
 - `npm test`: 199 tests in 33 files pass; the production build passes. On isolated port 5183 the FS-505 world v9 migrated with genome v2 fish intact, and an instant cross laid genome v3 eggs. See [FS-601 evidence](research/FS-601-REGISTRY-AND-GENOME-V3.md).
-- Next: FS-602, validated tail topology and barbel/dorsal variants with reachable fixtures and no invalid geometry.
+- Followed by FS-602 (above).
 
 ## Previous continuation — FS-505 DONE, pushed `f5b1888`
 
@@ -178,7 +190,7 @@ Historical next task was FS-503, now delivered above. M5 remains open. `.claude/
 | Area | Current limitation | Next task(s) |
 |---|---|---|
 | Visual quality | Canvas reference art; five observers scored 54/60 on one fixed 12-trial set, with markings the weak channel; portraits are still images and swim motion is a stylized 2D side view; renderer v6 frame timing unmeasured | FS-701 |
-| Anatomy limits | An eye that cannot fit a shallow head is drawn smaller (adjustment listed); no protruding eyes or extra structures | FS-601–602 |
+| Anatomy limits | An eye that cannot fit a shallow head is drawn smaller (adjustment listed); no protruding eyes; extra structures are limited to tail lobes, dorsal forms and barbel pairs (FS-602) | FS-701 |
 | Pattern inheritance | Placement inherited from haplotype blocks (73% sibling separation, computed); common haplotypes are shared by chance; ellipse shapes; symmetry is a spread proxy, not bilateral matching; all five observers misread one markings trial. FS-113 motif positions come from the birth seed, while kind, colors, density and contrast are inherited, and people have not judged them | FS-601 |
 | Selection balance | Keeping 4 + 4 parents saturates v1 traits within 4–7 generations and drives pedigree F to about 0.8, with only the expected-F figure as a warning | FS-403 FS-605 |
 | Research data | Five anonymous records pooled in-repo by hand; no cue notes, observer context or remote collection | FS-705 |
@@ -194,7 +206,7 @@ Historical next task was FS-503, now delivered above. M5 remains open. `.claude/
 | Onboarding | Seven-step first-session guide with device-local progress and focus pointers (FS-504); English only, no tutorial world or time compression, and comprehension not yet measured with players; FS-505 keepers see no income before game day 30 | FS-705 |
 | Batch management | Reviewed batch moves, sales and rehoming; selection clears when the tank, archive view or a filter changes; the move review checks places, not crowding; sale reviews sell the highest offers first with a greedy plan, not a maximum search | FS-705 |
 | Rarity | Only founder-stock rarity labels for appearance (FS-113); no measured reference population or global service | FS-603 FS-805 |
-| Topology | Genome v3 Structure (FS-601) expresses paired and crown tails, dorsal and barbel variants, but none is drawn yet; FS-113 scale types are drawn textures, not scale geometry | FS-602 |
+| Topology | Paired fan and crown-four tails, reduced or absent dorsal fins and 0–6 barbels are drawn (FS-602) as rigid turned lobes with the shared tail wave; no pectoral topology, eye protrusion or scale geometry; founders almost never express structure, so it arrives through carriers or structural mutation | FS-605 FS-701 |
 | Family | Six generations back and forward as generation lists with text edges; no drawn pedigree chart or lineage registration; breadcrumbs, depth and the kinship cache are session-only; F assumes founders unrelated rather than measuring them | FS-603 FS-604 |
 | History | Birth and pedigree permanent; recent command events persist but compact every 64 commands; no permanent lifetime event history or old portraits | FS-404 |
 | Appearance versions | The genome version gates expression (v1 classic appearance, v1/v2 standard structure, FS-601); fish store no per-record development, anatomy or renderer version, so renderer changes still apply to every fish | FS-701 |
@@ -309,4 +321,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**Continue M6 with FS-602: draw genome v3 tail topology and dorsal and barbel variants with validated anatomy.** Fixtures must be reachable through registry alleles, with no detached or clipped geometry. FS-601 is DONE, pushed `fb6b593`. Keep v1/v2 fish on the standard structure and their anatomy bit-identical, keep registry streams separate per chromosome, and keep migrations writing keys in schema order.
+**Continue M6 with FS-603: mutation-origin propagation and save-local carrier counts with declared scope.** FS-602 is DONE, pushed `0e95249`. Keep standard-structure anatomy identical to the frozen anatomy v2 copy, keep registry streams per chromosome, and keep migrations writing keys in schema order.

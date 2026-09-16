@@ -84,6 +84,12 @@ World v9 adds `relief`. `claim-relief` is the only way to receive free fish. It 
 - **Guide:** progress (`GUIDE_KEY`) is device-local like collection preferences. Steps complete from player actions recorded in `App.tsx` (select, rename, feed, following a parent) or from `observedGuideSteps`, and **Show me** must never issue commands.
 - **Family at a glance:** it counts full siblings and offspring in one pass; keep it bounded if records grow. See [FS-504 evidence](research/FS-504-ONBOARDING-AND-RECOVERY.md).
 
+### FS-602 contract
+
+- **Standard path:** a standard structure must build exactly anatomy v2. `tests/legacy/anatomyV2.ts` is a frozen copy; never edit it to make a test pass.
+- **Lobes:** tail geometry is `caudal` plus `extraLobes`. Iterate `tailLobes(a)` and use `tailBox(a)` rather than reading only `caudal`, and handle `dorsal === null`.
+- **Validation:** new structures need fixtures in `STRUCTURE_VISUAL_FIXTURES` built from registry-supported alleles, plus a pass through `structureSweep`. See [FS-602 evidence](research/FS-602-STRUCTURE-ANATOMY.md).
+
 ### FS-601 contract
 
 - **Registry:** `src/core/registry.ts` is the one place for founder weights, mutation targets and rates, baselines and allele labels. A new chromosome appends to the registry, gets its own random streams and names a baseline for older genomes.
@@ -109,7 +115,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> M3, M4 and M5 are DONE. M6 has started: FS-601's locus registry and genome v3 Structure chromosome are DONE (`fb6b593`); see the FS-601 report. Next is FS-602: draw the paired fan and crown-four tails and the dorsal and barbel variants in `anatomy.ts` with validators and reachable fixtures, keeping v1/v2 fish bit-identical. M5's task list is DONE: FS-501 economy model (`006b500`), FS-502 persistent shop (`3945d86`), FS-503 paid expansion and decorations (`f78d007`), FS-504 first-session guide and koi rescue (`6335851`), and FS-505 paid-economy playtest with best-first batch sales (`f5b1888`); see the FS-505 report. Keep sale commands carrying a price model, the ledger reconciled, a free or affordable fix on every care warning, and migrations writing keys in schema order.
+> M3, M4 and M5 are DONE. M6 has started: FS-601's locus registry and genome v3 Structure chromosome (`fb6b593`) and FS-602's structure anatomy (`0e95249`) are DONE; see their reports. Next is FS-603: give each de novo mutation an origin that descendants inherit, and count save-local carriers with a declared scope. M5's task list is DONE: FS-501 economy model (`006b500`), FS-502 persistent shop (`3945d86`), FS-503 paid expansion and decorations (`f78d007`), FS-504 first-session guide and koi rescue (`6335851`), and FS-505 paid-economy playtest with best-first batch sales (`f5b1888`); see the FS-505 report. Keep sale commands carrying a price model, the ledger reconciled, a free or affordable fix on every care warning, and migrations writing keys in schema order.
 
 ## 7. Subsequent task briefs
 
