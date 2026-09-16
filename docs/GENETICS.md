@@ -309,6 +309,8 @@ Anatomy validators must ensure positive body dimensions, eye attachment, continu
 
 **Implemented in anatomy v2 (FS-102):** `src/core/anatomy.ts` samples the v1 body outline and anchors eye, gill, mouth, barbels, dorsal, pectoral and caudal structures to local body sections (steps 2–3 above, without a spline centreline yet). The validator checks finite values, positive thickness, an x-monotonic outline, the eye inside the head, fin/gill/mouth/barbel roots inside the body, rays on the trailing edge and bounds containing every drawn curve. An eye that cannot fit is moved back up to 0.04 BL and then drawn smaller; the adjustment is recorded, and the phenotype's eye value is unchanged. Lobe-count and mesh winding checks wait for topology templates (FS-602). Evidence: [FS-102 anatomy anchors](research/FS-102-ANATOMY-ANCHORS.md).
 
+**Implemented in anatomy v3 (FS-602):** paired fan and crown-four tails are two or four copies of the anatomy v2 lobe, turned about the caudal root, with lobe balance and ray density as bounded modifiers. Reduced dorsal fins are 35% as tall and shorter, absent ones are removed, and barbels come as 0, 2, 4 or 6 roots inside the jaw. The validator bounds lobe and barbel counts and checks each lobe in its own frame. The standard structure builds exactly the anatomy v2 geometry, compared against a frozen copy. Twelve fixtures use only supported alleles, and carrier crosses express each variant in about a quarter of births. Evidence: [FS-602 structure anatomy](research/FS-602-STRUCTURE-ANATOMY.md).
+
 ## 11. Rarity with honest scope
 
 ### Allele rarity

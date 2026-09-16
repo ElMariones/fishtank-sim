@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { sharedExtent, type Extent } from '../core/anatomy';
 import { describeAppearance } from '../core/appearance';
+import { describeStructure } from '../core/structure';
 import { stageRevealSeries } from '../core/juvenile';
 import { patternResemblanceReport, type ResemblanceSummary } from '../core/patternResemblance';
 import {
-  anatomySweep, appearanceFounderSurvey, fixturePatternComparison, LEGACY_ANATOMY_DEFECTS, VISUAL_DESCRIPTORS, VISUAL_FIXTURE_REPORT,
+  anatomySweep, appearanceFounderSurvey, fixturePatternComparison, LEGACY_ANATOMY_DEFECTS, structureSweep, VISUAL_DESCRIPTORS, VISUAL_FIXTURE_REPORT,
   type VisualDescriptorKey, type VisualFixtureSubject,
 } from '../core/visualFixtures';
 import { EggPortrait, PhenotypePortrait } from './FishPortrait';
@@ -30,6 +31,16 @@ function AppearanceCard({ fixture }: { fixture: VisualFixtureSubject }) {
     <PhenotypePortrait phenotype={fixture.phenotype} seed={fixture.birthSeed} label={`${fixture.label}, genome v2 appearance fixture`} />
     <h3>{fixture.label}</h3>
     <ul className="appearance-list">{rows.map(row => <li key={row.trait}><span>{row.trait}</span><strong>{row.value}</strong>{row.rarity ? <em>{row.rarity}</em> : null}</li>)}</ul>
+  </article>;
+}
+/** FS-602: a genome v3 structure fixture with its expressed tail, dorsal fin and barbels and any hidden copies. */
+function StructureCard({ fixture, shared }: { fixture: VisualFixtureSubject; shared?: Extent }) {
+  const rows = describeStructure(fixture.genome);
+  return <article className="fixture-card appearance-card">
+    <div className="fixture-card-heading"><span>{fixture.id}</span><code>{fixture.genomeFingerprint}</code></div>
+    <PhenotypePortrait phenotype={fixture.phenotype} seed={fixture.birthSeed} label={`${fixture.label}, genome v3 structure fixture`} shared={shared} />
+    <h3>{fixture.label}</h3>
+    <ul className="appearance-list">{rows.map(row => <li key={row.trait}><span>{row.trait}</span><strong>{row.value}</strong>{row.carrier ? <em>hidden copy</em> : null}</li>)}</ul>
   </article>;
 }
 type Framing = 'fit' | 'shared';
@@ -67,11 +78,13 @@ export function VisualFixtureLab({ onClose }: { onClose: () => void }) {
   const patternStudy = useMemo(() => patternResemblanceReport(24, 10), []);
   const fixturePatterns = useMemo(() => fixturePatternComparison(), []);
   const survey = useMemo(() => appearanceFounderSurvey(), []);
+  const structureReport = useMemo(() => structureSweep(60), []);
   const reveal = useMemo(() => stageRevealSeries(REVEAL_FIXTURE.phenotype, REVEAL_FIXTURE.genome, REVEAL_DAYS), []);
   const shared = (subjects: readonly VisualFixtureSubject[]) => framing === 'shared' ? sharedExtent(subjects.map(subject => subject.phenotype)) : undefined;
   const founderScale = shared(VISUAL_FIXTURE_REPORT.founders);
   const extremeScale = shared(VISUAL_FIXTURE_REPORT.extremes);
   const stressScale = shared(VISUAL_FIXTURE_REPORT.anatomyStress);
+  const structureScale = shared(VISUAL_FIXTURE_REPORT.structure);
   const r = VISUAL_FIXTURE_REPORT;
   return <main className="fixture-lab">
     <div className="fixture-hero">
@@ -81,7 +94,7 @@ export function VisualFixtureLab({ onClose }: { onClose: () => void }) {
           <button aria-pressed={framing === 'fit'} onClick={() => setFraming('fit')}>Fit each fish</button>
           <button aria-pressed={framing === 'shared'} onClick={() => setFraming('shared')}>Shared scale</button>
         </div>
-        <button className="quiet" onClick={() => downloadReport({ anatomySweep: sweep, patternResemblance: patternStudy, fixturePatterns, appearanceSurvey: survey })}>Download JSON report</button><button onClick={onClose}>Return to aquarium</button>
+        <button className="quiet" onClick={() => downloadReport({ anatomySweep: sweep, patternResemblance: patternStudy, fixturePatterns, appearanceSurvey: survey, structureSweep: structureReport })}>Download JSON report</button><button onClick={onClose}>Return to aquarium</button>
       </div>
     </div>
     <div className="fixture-summary" aria-label="Fixture summary">
@@ -106,6 +119,12 @@ export function VisualFixtureLab({ onClose }: { onClose: () => void }) {
         </tbody>
       </table></div>
       <p className="fixture-note">Offspring of genome v1 fish inherit the classic alleles. New features then enter a lineage through unrelated stock or a new mutation (0.3% per transmitted copy); carriers of one body or fin motif copy show it faintly.</p>
+    </section>
+
+    <section className="fixture-section" aria-labelledby="structure-fixtures-title">
+      <div className="fixture-section-heading"><div><div className="eyebrow">FS-602 · GENOME V3 STRUCTURE · ANATOMY V{r.anatomyVersion}</div><h2 id="structure-fixtures-title">Structure variants</h2></div><p>Each card adds supported Structure alleles to founder Kohaku’s genome. Paired and crown tails are extra lobes rooted in the peduncle; genome v1 and v2 fish keep the standard tail, dorsal fin and two barbels.</p></div>
+      <div className="fixture-grid founders">{r.structure.map(fixture => <StructureCard key={fixture.id} fixture={fixture} shared={structureScale} />)}</div>
+      <p className="fixture-note">Structure sweep: {structureReport.checked.toLocaleString()} tail, dorsal and barbel forms on fixtures, founders and all-A0/A5 bodies at extreme shape modifiers · {structureReport.invalid.length} invalid · {structureReport.portraitClipped} clipped portraits.</p>
     </section>
 
     <section className="fixture-section" aria-labelledby="reveal-fixtures-title">

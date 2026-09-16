@@ -1,4 +1,4 @@
-import { section, type Anatomy, type Vec } from './anatomy';
+import { section, tailBox, type Anatomy, type Vec } from './anatomy';
 import { REACH_VISIBLE, SHIMMER_VISIBLE } from './appearance';
 import { markingPosition } from './pattern';
 import { clamp, hash, random } from './random';
@@ -36,10 +36,12 @@ function bodySurface(a: Anatomy): Surface {
   return { name: 'body', place: (s, t) => markingPosition(a, { u: s, v: t * 2.4 - 1.2 }), span: 0.5 - a.snoutX, count: 1, size: 1, bands: 's' };
 }
 function caudalSurface(a: Anatomy): Surface {
-  const x0 = 0.5, x1 = a.caudal.upperTip.x, y0 = a.caudal.upperOuter.y, y1 = a.caudal.lowerOuter.y;
+  // Every tail lobe shares one pattern box; for a standard tail it is the anatomy v2 fin box (FS-602).
+  const { x0, x1, y0, y1 } = tailBox(a);
   return { name: 'caudal', place: (s, t) => ({ x: x0 + s * (x1 - x0), y: y0 + t * (y1 - y0) }), span: Math.max(x1 - x0, 0.05), count: 0.35, size: 0.8, bands: 's' };
 }
-function dorsalSurface(a: Anatomy): Surface {
+function dorsalSurface(a: Anatomy): Surface | null {
+  if (!a.dorsal) return null;
   const x0 = a.dorsal.start.x, x1 = a.dorsal.end.x, top = a.dorsal.control.y, base = section(a, a.dorsal.control.x).top;
   return { name: 'dorsal', place: (s, t) => ({ x: x0 + s * (x1 - x0), y: top + t * (base - top) }), span: x1 - x0, count: 0.25, size: 0.75, bands: 't' };
 }
@@ -183,7 +185,8 @@ export function buildOrnament(p: Phenotype, seed: number, anatomy: Anatomy): Orn
   return {
     body: [...a.motifs.flatMap(motif => motifLayers(motif.kind, p, a.contrast * motif.strength, seed, bodySurface(anatomy), 'motif')), ...scaleLayers(p, anatomy)],
     caudal: fin(caudalSurface(anatomy)),
-    dorsal: fin(dorsalSurface(anatomy)),
+    // A fish with no dorsal fin has no dorsal pattern (FS-602).
+    dorsal: anatomy.dorsal ? fin(dorsalSurface(anatomy)!) : [],
     sparkles: sparkles(p, anatomy, seed),
     fins: { edge: effect('edge'), tips: effect('tips'), flame: effect('flame') },
   };

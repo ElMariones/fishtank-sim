@@ -447,6 +447,14 @@ Two simultaneous buyers, duplicate command retries, rollback on debit/transfer f
 
 For a test report record task ID, source/model version, command or user journey, fixture/seed, environment, expected outcome, actual outcome, limitations, and relevant artifacts. Tests should verify domain promises or meaningful failure conditions, not mirror implementation line for line.
 
+## FS-602 structure anatomy
+
+17 September 2026, Windows 11, Node 22.18.0, npm 10.9.3. `npm run check`: 204 tests in 34 files, then the strict TypeScript and production build, pass.
+- `tests/structure.test.ts`: 3,519 standard-structure anatomies (fixtures, genome v2 founders, v1 extremes and baseline genome v3 at three maturities) deep-equal a frozen anatomy v2 copy, and appearance ornament is unchanged. Twelve structure fixtures validate, frame without clipping and pick every lobe. The structure sweep finds 0 invalid and 0 clipped; fixtures validate through juvenile stages; carrier crosses express paired tails and absent dorsal fins in 20–30% of births.
+- Browser on isolated port 5183: Visual fixtures → Structure variants drew all 12 cards with a sweep of 2,256 forms, 0 invalid and 0 clipped. The dorsal and barbel fixtures were made legible after screenshots; 96 motion draws painted with no console errors.
+
+See [FS-602 evidence](research/FS-602-STRUCTURE-ANATOMY.md).
+
 ## FS-601 locus registry and genome v3
 
 17 September 2026, Windows 11, Node 22.18.0, npm 10.9.3. `npm test`: 199 tests in 33 files pass; `npm run build` passes.

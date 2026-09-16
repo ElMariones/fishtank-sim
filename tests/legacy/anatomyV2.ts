@@ -1,15 +1,13 @@
-import { MODEL_VERSIONS } from './catalog';
-import { clamp } from './random';
-import type { Phenotype, Structure } from './types';
+/** Frozen copy of src/core/anatomy.ts anatomy v2 at fb6b593 (FS-601), kept as the FS-602 reference: standard structure must build exactly this geometry. Do not edit. */
+import { MODEL_VERSIONS } from '../../src/core/catalog';
+import { clamp } from '../../src/core/random';
+import type { Phenotype } from '../../src/core/types';
 
 /**
  * Anatomy v2: pure phenotype → body-space geometry shared by the tank, portraits and future mesh renderers.
  * Units are body lengths (BL). Origin is mid-body, +x points to the tail, +y is ventral (canvas down).
  * Renderers multiply by size × phenotype.length. No Canvas, DOM, randomness or inheritance decisions belong here.
  * The v1 body Béziers are kept so silhouettes do not drift; v2 moves every anchor onto that measured outline.
- * Anatomy v3 (FS-602) adds genome v3 structure: paired and crown tails as extra lobes rotated about the caudal root,
- * reduced or absent dorsal fins, zero to six barbels, lobe balance and ray density. The standard structure builds exactly
- * the anatomy v2 geometry, so genome v1 and v2 fish never change.
  */
 export const ANATOMY_VERSION = MODEL_VERSIONS.anatomy;
 /** Largest caudal displacement the swimming animation may add to the tail tips, notch and outer controls (BL). */
@@ -32,8 +30,6 @@ export type Caudal = {
   lowerTip: Vec; lowerOuter: Vec; lowerInner: Vec;
   /** Ray ends lie on the trailing edge. Tail wave applies to outer controls, tips, notch and ray ends. */
   rays: Curve[];
-  /** Rotation of a paired or crown lobe about `root`, in radians (negative turns upward); absent on a standard tail. */
-  angle?: number;
 };
 export type Anatomy = {
   version: typeof ANATOMY_VERSION;
@@ -45,12 +41,10 @@ export type Anatomy = {
   gill: Curve;
   mouth: { tip: Vec; corner: Vec };
   barbels: Curve[];
-  /** Fin curves start and end at roots inside the body; the control shapes the free edge. Null when the dorsal fin is absent. */
-  dorsal: Curve | null;
+  /** Fin curves start and end at roots inside the body; the control shapes the free edge. */
+  dorsal: Curve;
   pectoral: Curve;
-  /** The first tail lobe; paired and crown tails add `extraLobes` sharing its root. */
   caudal: Caudal;
-  extraLobes: Caudal[];
   /** Conservative: includes fin controls, the eye and the full tail wave. */
   bounds: Bounds;
   /** Developmental constraints applied to keep anatomy attached, in plain language. */
@@ -126,67 +120,7 @@ function largestFittingEye(top: readonly Vec[], bottom: readonly Vec[], x: numbe
   return low;
 }
 
-const rotate = (v: Vec, pivot: Vec, angle: number): Vec => {
-  const cos = Math.cos(angle), sin = Math.sin(angle), dx = v.x - pivot.x, dy = v.y - pivot.y;
-  return { x: pivot.x + dx * cos - dy * sin, y: pivot.y + dx * sin + dy * cos };
-};
-
-/** Every lobe of the tail, first lobe first. */
-export const tailLobes = (a: Pick<Anatomy, 'caudal' | 'extraLobes'>): Caudal[] => [a.caudal, ...a.extraLobes];
-
-/** Box around every tail lobe's outer controls and tips, without the wave; for a standard tail it is the anatomy v2 fin box. */
-export function tailBox(a: Pick<Anatomy, 'caudal' | 'extraLobes'>): { x0: number; x1: number; y0: number; y1: number } {
-  if (!a.extraLobes.length && a.caudal.upperOuter.x === a.caudal.lowerOuter.x && a.caudal.upperOuter.y === -a.caudal.lowerOuter.y)
-    return { x0: 0.5, x1: a.caudal.upperTip.x, y0: a.caudal.upperOuter.y, y1: a.caudal.lowerOuter.y };
-  const points = tailLobes(a).flatMap(lobe => [lobe.upperOuter, lobe.upperTip, lobe.lowerTip, lobe.lowerOuter]);
-  return { x0: 0.5, x1: Math.max(...points.map(v => v.x)), y0: Math.min(...points.map(v => v.y)), y1: Math.max(...points.map(v => v.y)) };
-}
-
-/**
- * One caudal lobe with the anatomy v2 shape. `upper` and `lower` scale the two halves' length and spread (lobe balance);
- * `pairs` rays run to each half. With both scales 1 and three ray pairs it is exactly the anatomy v2 tail.
- */
-function caudalLobe(rootY: number, rayY: number, d: number, tail: number, spread: number, fork: number, upper: number, lower: number, pairs: number): Caudal {
-  const upperX = 0.5 + tail * upper, lowerX = 0.5 + tail * lower, notchX = 0.5 + tail * Math.min(upper, lower) * (1 - fork);
-  const rayRoot = { x: 0.46, y: rayY };
-  return {
-    root: { x: 0.42, y: rootY },
-    upperInner: { x: 0.65, y: rootY - 0.4 * d }, upperOuter: { x: upperX, y: -spread * upper }, upperTip: { x: upperX, y: -0.6 * spread * upper },
-    notch: { x: notchX, y: 0 },
-    lowerTip: { x: lowerX, y: 0.6 * spread * lower }, lowerOuter: { x: lowerX, y: spread * lower }, lowerInner: { x: 0.65, y: rootY + 0.4 * d },
-    rays: Array.from({ length: 2 * pairs + 1 }, (_, k) => k - pairs).map(i => {
-      const end = { x: lerp(notchX, i < 0 ? upperX : lowerX, Math.abs(i) / pairs), y: (i / pairs) * 0.6 * spread * (i < 0 ? upper : lower) };
-      return { start: rayRoot, control: { x: (rayRoot.x + end.x) / 2, y: lerp(rayRoot.y, end.y, 0.35) }, end };
-    }),
-  };
-}
-
-/** A lobe turned about its root. Ray roots stay inside the peduncle; the rest of each ray turns with the lobe. */
-function turnLobe(lobe: Caudal, angle: number): Caudal {
-  const turn = (v: Vec) => rotate(v, lobe.root, angle);
-  return {
-    root: lobe.root, upperInner: turn(lobe.upperInner), upperOuter: turn(lobe.upperOuter), upperTip: turn(lobe.upperTip), notch: turn(lobe.notch),
-    lowerTip: turn(lobe.lowerTip), lowerOuter: turn(lobe.lowerOuter), lowerInner: turn(lobe.lowerInner),
-    rays: lobe.rays.map(ray => ({ start: ray.start, control: turn(ray.control), end: turn(ray.end) })), angle,
-  };
-}
-
-/** Structure v1 tail lobes: standard, a paired fan (two lobes) or a crown (four lobes), rooted at the same peduncle point. */
-function tailFor(p: Phenotype, s: Structure, rootY: number, rayY: number, d: number): Caudal[] {
-  const upper = s.lobeBalance, lower = 2 - s.lobeBalance, pairs = Math.max(1, Math.round(3 * s.rays));
-  if (s.tail === 'standard') return [caudalLobe(rootY, rayY, d, p.tail, p.spread, p.fork, upper, lower, pairs)];
-  const lobePairs = Math.max(1, Math.round(2 * s.rays));
-  if (s.tail === 'paired') {
-    const angle = 0.18 + 0.3 * s.spread, lobe = (scale: number) => caudalLobe(rootY, rayY, d, p.tail, p.spread * 0.62, p.fork, scale, scale, lobePairs);
-    return [turnLobe(lobe(upper), -angle), turnLobe(lobe(lower), angle)];
-  }
-  const inner = 0.12 + 0.15 * s.spread, outer = 0.42 + 0.35 * s.spread;
-  const lobe = (scale: number) => caudalLobe(rootY, rayY, d, p.tail * 0.92, p.spread * 0.42, p.fork, scale, scale, lobePairs);
-  return [turnLobe(lobe(upper), -outer), turnLobe(lobe(upper), -inner), turnLobe(lobe(lower), inner), turnLobe(lobe(lower), outer)];
-}
-
 export function buildAnatomy(p: Phenotype): Anatomy {
-  const structure = p.structure;
   const d = p.depth, snoutX = -(0.5 + p.snout), tip = { x: snoutX, y: 0 };
   const shoulder = { x: 0.15, y: -0.36 * d };
   const belly = { x: -0.42, y: 0.24 * d };
@@ -228,40 +162,41 @@ export function buildAnatomy(p: Phenotype): Anatomy {
 
   const mouthX = snoutX + p.mouth, ms = at(mouthX);
   const mouth = { tip, corner: { x: mouthX, y: ms.center + 0.45 * ms.half } };
-  // Barbel pairs: the anatomy v2 pair first, then further pairs rooted a little behind it along the jaw (FS-602).
-  const BARBEL_PAIRS = [
-    { root: Math.min(0.012, p.mouth * 0.6), depth: 0.3, control: { x: -0.02, y: 0.2 }, reach: 1, drop: 0.25, back: 0 },
-    { root: Math.min(0.03, p.mouth * 0.9 + 0.006), depth: 0.35, control: { x: -0.005, y: 0.24 }, reach: 0.7, drop: 0.3, back: 0.01 },
-    { root: Math.min(0.05, p.mouth * 1.2 + 0.012), depth: 0.4, control: { x: 0.01, y: 0.28 }, reach: 0.45, drop: 0.34, back: 0.02 },
-  ];
-  const barbels = BARBEL_PAIRS.slice(0, structure.barbels / 2).flatMap(pair => {
-    const x = snoutX + pair.root, bs = at(x), start = { x, y: bs.center + pair.depth * bs.half };
-    return [-1, 1].map(sign => ({
-      start, control: { x: snoutX + pair.control.x, y: sign * pair.control.y * d }, end: { x: snoutX - p.barbel * pair.reach + pair.back, y: sign * pair.drop * d },
-    }));
-  });
+  const barbelX = snoutX + Math.min(0.012, p.mouth * 0.6), bs = at(barbelX);
+  const barbelRoot = { x: barbelX, y: bs.center + 0.3 * bs.half };
+  const barbels = [-1, 1].map(sign => ({
+    start: barbelRoot, control: { x: snoutX - 0.02, y: sign * 0.2 * d }, end: { x: snoutX - p.barbel, y: sign * 0.25 * d },
+  }));
 
-  const df = at(-0.18), dc = at(-0.08), db = at(structure.dorsal === 'reduced' ? 0.1 : 0.3);
-  const dorsal = structure.dorsal === 'absent' ? null : {
-    start: { x: -0.18, y: df.top + 0.3 * df.half },
-    control: { x: -0.08, y: dc.top - p.dorsal * (structure.dorsal === 'reduced' ? 0.35 : 1) },
-    end: { x: structure.dorsal === 'reduced' ? 0.1 : 0.3, y: db.top + 0.3 * db.half },
-  };
+  const df = at(-0.18), dc = at(-0.08), db = at(0.3);
+  const dorsal = { start: { x: -0.18, y: df.top + 0.3 * df.half }, control: { x: -0.08, y: dc.top - p.dorsal }, end: { x: 0.3, y: db.top + 0.3 * db.half } };
   const pf = at(-0.2), pc = at(-0.05), pb = at(0.1);
   const pectoral = { start: { x: -0.2, y: pf.center + 0.3 * pf.half }, control: { x: -0.05, y: pc.bottom + 0.16 * d + p.pectoral }, end: { x: 0.1, y: pb.center + 0.8 * pb.half } };
 
-  const lobes = tailFor(p, structure, at(0.42).center, at(0.46).center, d), [caudal, ...extraLobes] = lobes;
+  const rootSection = at(0.42), raySection = at(0.46);
+  const tailX = 0.5 + p.tail, notchX = 0.5 + p.tail * (1 - p.fork);
+  const rayRoot = { x: 0.46, y: raySection.center };
+  const caudal: Caudal = {
+    root: { x: 0.42, y: rootSection.center },
+    upperInner: { x: 0.65, y: rootSection.center - 0.4 * d }, upperOuter: { x: tailX, y: -p.spread }, upperTip: { x: tailX, y: -0.6 * p.spread },
+    notch: { x: notchX, y: 0 },
+    lowerTip: { x: tailX, y: 0.6 * p.spread }, lowerOuter: { x: tailX, y: p.spread }, lowerInner: { x: 0.65, y: rootSection.center + 0.4 * d },
+    rays: [-3, -2, -1, 0, 1, 2, 3].map(i => {
+      const end = { x: lerp(notchX, tailX, Math.abs(i) / 3), y: (i / 3) * 0.6 * p.spread };
+      return { start: rayRoot, control: { x: (rayRoot.x + end.x) / 2, y: lerp(rayRoot.y, end.y, 0.35) }, end };
+    }),
+  };
 
-  const still = [...top, ...bottom, ...(dorsal ? [dorsal.control] : []), pectoral.control, ...lobes.flatMap(lobe => [lobe.root, lobe.upperInner, lobe.lowerInner]),
-    ...barbels.flatMap(b => [b.control, b.end]), { x: eyeX - radius, y: eye.center.y - radius }, { x: eyeX + radius, y: eye.center.y + radius }];
-  const waving = lobes.flatMap(lobe => [lobe.upperOuter, lobe.upperTip, lobe.notch, lobe.lowerTip, lobe.lowerOuter]);
+  const still = [...top, ...bottom, dorsal.control, pectoral.control, caudal.root, caudal.upperInner, caudal.lowerInner, ...barbels.flatMap(b => [b.control, b.end]),
+    { x: eyeX - radius, y: eye.center.y - radius }, { x: eyeX + radius, y: eye.center.y + radius }];
+  const waving = [caudal.upperOuter, caudal.upperTip, caudal.notch, caudal.lowerTip, caudal.lowerOuter];
   const bounds = {
     minX: Math.min(...still.map(v => v.x), ...waving.map(v => v.x)) - BOUNDS_MARGIN,
     maxX: Math.max(...still.map(v => v.x), ...waving.map(v => v.x)) + BOUNDS_MARGIN,
     minY: Math.min(...still.map(v => v.y), ...waving.map(v => v.y - TAIL_WAVE)) - BOUNDS_MARGIN,
     maxY: Math.max(...still.map(v => v.y), ...waving.map(v => v.y + TAIL_WAVE)) + BOUNDS_MARGIN,
   };
-  return { version: ANATOMY_VERSION, snoutX, top, bottom, eye, gill, mouth, barbels, dorsal, pectoral, caudal, extraLobes, bounds, adjustments };
+  return { version: ANATOMY_VERSION, snoutX, top, bottom, eye, gill, mouth, barbels, dorsal, pectoral, caudal, bounds, adjustments };
 }
 
 const cache = new WeakMap<Phenotype, Anatomy>();
@@ -275,12 +210,13 @@ export function anatomyFor(p: Phenotype): Anatomy {
 /** Dense samples of every drawn curve, with the tail at both wave extremes. Used for tight extents and clipping checks. */
 export function silhouettePoints(a: Anatomy): Vec[] {
   const points: Vec[] = [...a.top, ...a.bottom];
-  for (const c of tailLobes(a)) for (const wave of [-TAIL_WAVE, TAIL_WAVE]) {
+  const c = a.caudal;
+  for (const wave of [-TAIL_WAVE, TAIL_WAVE]) {
     const shift = (v: Vec) => ({ x: v.x, y: v.y + wave });
     points.push(...cubicPoints(c.root, c.upperInner, shift(c.upperOuter), shift(c.upperTip), 16), shift(c.notch),
       ...cubicPoints(shift(c.lowerTip), shift(c.lowerOuter), c.lowerInner, c.root, 16));
   }
-  for (const curve of [...(a.dorsal ? [a.dorsal] : []), a.pectoral, ...a.barbels]) points.push(...quadPoints(curve.start, curve.control, curve.end, 16));
+  for (const curve of [a.dorsal, a.pectoral, ...a.barbels]) points.push(...quadPoints(curve.start, curve.control, curve.end, 16));
   for (let i = 0; i < 16; i++) {
     const angle = (i / 16) * Math.PI * 2;
     points.push({ x: a.eye.center.x + Math.cos(angle) * a.eye.radius, y: a.eye.center.y + Math.sin(angle) * a.eye.radius });
@@ -291,10 +227,9 @@ export function silhouettePoints(a: Anatomy): Vec[] {
 /** Returns human-readable attachment problems; an empty list means the anatomy is renderable and connected. */
 export function validateAnatomy(a: Anatomy): string[] {
   const problems = new Set<string>();
-  const lobes = tailLobes(a);
-  const points = [...a.top, ...a.bottom, a.eye.center, a.gill.start, a.gill.control, a.gill.end, a.mouth.corner, ...(a.dorsal ? [a.dorsal.start, a.dorsal.control, a.dorsal.end] : []),
+  const points = [...a.top, ...a.bottom, a.eye.center, a.gill.start, a.gill.control, a.gill.end, a.mouth.corner, a.dorsal.start, a.dorsal.control, a.dorsal.end,
     a.pectoral.start, a.pectoral.control, a.pectoral.end, ...a.barbels.flatMap(b => [b.start, b.control, b.end]),
-    ...lobes.flatMap(lobe => Object.values(lobe).filter((v): v is Vec => typeof v === 'object' && !Array.isArray(v))), ...lobes.flatMap(lobe => lobe.rays.flatMap(r => [r.start, r.control, r.end]))];
+    ...Object.values(a.caudal).filter((v): v is Vec => !Array.isArray(v)), ...a.caudal.rays.flatMap(r => [r.start, r.control, r.end])];
   if (!points.every(v => Number.isFinite(v.x) && Number.isFinite(v.y)) || ![a.eye.radius, a.eye.pupilRadius, ...Object.values(a.bounds)].every(Number.isFinite)) {
     return ['Non-finite geometry.'];
   }
@@ -310,25 +245,15 @@ export function validateAnatomy(a: Anatomy): string[] {
     const angle = (i / 64) * Math.PI * 2;
     if (!insideBody(a, { x: a.eye.center.x + Math.cos(angle) * a.eye.radius, y: a.eye.center.y + Math.sin(angle) * a.eye.radius })) { problems.add('Eye extends outside the head.'); break; }
   }
-  const roots: [string, Vec][] = [['Pectoral fin front root', a.pectoral.start], ['Pectoral fin rear root', a.pectoral.end], ['Gill line start', a.gill.start],
-    ['Gill line end', a.gill.end], ['Mouth corner', a.mouth.corner],
-    ...(a.dorsal ? [['Dorsal fin front root', a.dorsal.start], ['Dorsal fin rear root', a.dorsal.end]] as [string, Vec][] : []),
-    ...lobes.flatMap(lobe => [['Caudal fin root', lobe.root], ['Caudal ray root', lobe.rays[0].start]] as [string, Vec][]),
-    ...a.barbels.map(barbel => ['Barbel root', barbel.start] as [string, Vec])];
+  const roots: [string, Vec][] = [['Dorsal fin front root', a.dorsal.start], ['Dorsal fin rear root', a.dorsal.end], ['Pectoral fin front root', a.pectoral.start],
+    ['Pectoral fin rear root', a.pectoral.end], ['Caudal fin root', a.caudal.root], ['Caudal ray root', a.caudal.rays[0].start], ['Gill line start', a.gill.start],
+    ['Gill line end', a.gill.end], ['Mouth corner', a.mouth.corner], ['Barbel root', a.barbels[0].start]];
   for (const [name, root] of roots) if (!insideBody(a, root)) problems.add(`${name} is outside the body.`);
-  if (![0, 2, 4, 6].includes(a.barbels.length)) problems.add('Barbels must come in pairs of up to three.');
-  if (![1, 2, 4].includes(lobes.length)) problems.add('Tail lobe count is unsupported.');
-  for (const lobe of lobes) {
-    // Checked in the lobe's own frame, turned back about its root.
-    const local = (v: Vec) => rotate(v, lobe.root, -(lobe.angle ?? 0));
-    const upperTip = local(lobe.upperTip), lowerTip = local(lobe.lowerTip), notch = local(lobe.notch), far = Math.max(upperTip.x, lowerTip.x);
-    if (!(Math.min(upperTip.x, lowerTip.x) >= 0.5 && notch.x >= 0.5 && notch.x <= Math.min(upperTip.x, lowerTip.x) + 1e-9)) problems.add('Caudal fin does not extend behind the peduncle.');
-    if (!(upperTip.y < notch.y + 1e-9 && lowerTip.y > notch.y - 1e-9)) problems.add('Caudal lobe is folded.');
-    for (const ray of lobe.rays) {
-      const end = local(ray.end), control = local(ray.control), start = local(ray.start);
-      if (end.x < notch.x - 1e-9 || end.x > far + 1e-9) problems.add('Caudal ray ends off the trailing edge.');
-      if (control.x < start.x - 1e-9 || control.x > end.x + 1e-9) problems.add('Caudal ray bends outside its fin.');
-    }
+  const c = a.caudal;
+  if (!(c.upperTip.x >= 0.5 && c.notch.x >= 0.5 && c.notch.x <= c.upperTip.x + 1e-12)) problems.add('Caudal fin does not extend behind the peduncle.');
+  for (const ray of c.rays) {
+    if (ray.end.x < c.notch.x - 1e-12 || ray.end.x > c.upperTip.x + 1e-12) problems.add('Caudal ray ends off the trailing edge.');
+    if (ray.control.x < ray.start.x || ray.control.x > ray.end.x) problems.add('Caudal ray bends outside its fin.');
   }
   const b = a.bounds;
   if (!(b.maxX > b.minX && b.maxY > b.minY)) problems.add('Bounds are empty.');
@@ -342,23 +267,10 @@ export function containsPoint(a: Anatomy, x: number, y: number, tolerance = 0): 
     const s = section(a, clamp(x, a.snoutX, 0.5));
     if (y >= s.top - tolerance && y <= s.bottom + tolerance) return true;
   }
-  if (!a.extraLobes.length && a.caudal.angle === undefined) {
-    const box = tailBox(a), tailX = box.x1;
-    if (x > 0.5 && x <= tailX + tolerance) {
-      const reach = clamp((x - a.caudal.root.x) / Math.max(tailX - a.caudal.root.x, 1e-6));
-      return Math.abs(y - a.caudal.root.y) <= Math.max(-box.y0, box.y1) * reach + TAIL_WAVE + tolerance;
-    }
-    return false;
-  }
-  // Paired and crown lobes: the same widening cone, checked in each lobe's own frame (FS-602).
-  for (const lobe of tailLobes(a)) {
-    const turn = (v: Vec) => rotate(v, lobe.root, -(lobe.angle ?? 0)), point = turn({ x, y });
-    const upperTip = turn(lobe.upperTip), lowerTip = turn(lobe.lowerTip), tipX = Math.max(upperTip.x, lowerTip.x);
-    const half = Math.max(Math.abs(turn(lobe.upperOuter).y - lobe.root.y), Math.abs(turn(lobe.lowerOuter).y - lobe.root.y));
-    if (point.x > lobe.root.x && point.x <= tipX + tolerance) {
-      const reach = clamp((point.x - lobe.root.x) / Math.max(tipX - lobe.root.x, 1e-6));
-      if (Math.abs(point.y - lobe.root.y) <= half * reach + TAIL_WAVE + tolerance) return true;
-    }
+  const tailX = a.caudal.upperTip.x;
+  if (x > 0.5 && x <= tailX + tolerance) {
+    const reach = clamp((x - a.caudal.root.x) / Math.max(tailX - a.caudal.root.x, 1e-6));
+    return Math.abs(y - a.caudal.root.y) <= Math.abs(a.caudal.upperOuter.y) * reach + TAIL_WAVE + tolerance;
   }
   return false;
 }

@@ -1,6 +1,8 @@
 import { anatomyFor, insideBody, portraitFrame, silhouettePoints, validateAnatomy } from './anatomy';
 import { APPEARANCE_BASELINE, appearanceFeatures, expressAppearance } from './appearance';
-import { APPEARANCE_LOCI, LOCI, MODEL_VERSIONS, MUTATION_RATE, type AppearanceLocus, type Locus } from './catalog';
+import { APPEARANCE_LOCI, LOCI, MODEL_VERSIONS, MUTATION_RATE, STRUCTURE_LOCI, type AppearanceLocus, type Locus, type StructureLocus } from './catalog';
+import { genomeProblem } from './registry';
+import { STRUCTURE_BASELINE, STRUCTURE_OFFSET } from './structure';
 import { measureDescriptors, VISUAL_DESCRIPTORS, type NormalizedVisualDescriptors, type VisualDescriptorKey } from './descriptors';
 import { express, fingerprint, founderGenome, inherit } from './genetics';
 import { markingMask, maskSimilarity, separation, type PatternModel } from './patternResemblance';
@@ -17,7 +19,7 @@ export const VISUAL_FIXTURE_WORLD_SEED = 481516;
 export type VisualFixtureSubject = {
   id: string;
   label: string;
-  kind: 'founder' | 'child' | 'extreme' | 'anatomy' | 'appearance';
+  kind: 'founder' | 'child' | 'extreme' | 'anatomy' | 'appearance' | 'structure';
   birthSeed: number;
   genome: Genome;
   genomeFingerprint: string;
@@ -167,6 +169,80 @@ export const APPEARANCE_VISUAL_FIXTURES = APPEARANCE_CASES.map(([id, label, birt
   subject(id, label, 'appearance', appearanceGenome(FOUNDER_VISUAL_FIXTURES[2].genome, overrides), birthSeed),
 );
 
+type StructureOverrides = Partial<Record<StructureLocus, readonly [number, number]>>;
+
+/**
+ * FS-602 structure variants: founder Kohaku's genome v1 loci, the classic appearance baseline and chosen genome v3
+ * Structure alleles. Every allele is supported by the registry and reachable by structural mutation from the baseline.
+ */
+const STRUCTURE_CASES: readonly [string, string, number, StructureOverrides, Overrides?][] = [
+  ['structure-paired', 'Paired fan tail', 501001, { tail_topology: [1, 1] }],
+  ['structure-paired-wide', 'Wide paired fan · dense rays · heavy upper lobes', 501002, { tail_topology: [1, 1], topology_spread: [5, 5], lobe_balance: [5, 4], fin_ray_density: [5, 5] }],
+  ['structure-crown', 'Crown-four tail', 501003, { tail_topology: [2, 2] }],
+  ['structure-crown-tight', 'Tight crown · sparse rays · heavy lower lobes', 501004, { tail_topology: [2, 2], topology_spread: [0, 0], lobe_balance: [0, 1], fin_ray_density: [0, 0] }],
+  ['structure-carrier', 'Hidden paired-fan and dorsal copies (looks standard)', 501005, { tail_topology: [0, 1], dorsal_form: [0, 2] }],
+  ['structure-lopsided', 'Standard tail · long upper lobe', 501006, { lobe_balance: [5, 5] }],
+  ['structure-reduced-dorsal', 'Reduced dorsal fin on a tall-finned body', 501007, { dorsal_form: [1, 1] }, { dorsal_height: [5, 5], fin_gain: [4, 4] }],
+  ['structure-no-dorsal', 'No dorsal fin · paired fan on a tall-finned body', 501008, { dorsal_form: [2, 2], tail_topology: [1, 1] }, { dorsal_height: [5, 5], fin_gain: [4, 4] }],
+  ['structure-no-barbels', 'No barbels on a long-barbel body', 501009, { barbel_count: [1, 1] }, { barbel_length: [5, 5], mouth_size: [5, 5] }],
+  ['structure-four-barbels', 'Four long barbels', 501010, { barbel_count: [2, 2] }, { barbel_length: [5, 5], mouth_size: [5, 5] }],
+  ['structure-six-barbels', 'Six long barbels', 501011, { barbel_count: [3, 3] }, { barbel_length: [5, 5], mouth_size: [5, 5] }],
+  ['structure-crown-extreme', 'Crown on a long fan-tailed body · no dorsal · six barbels', 501012, { tail_topology: [2, 2], topology_spread: [5, 5], dorsal_form: [2, 2], barbel_count: [3, 3], fin_ray_density: [5, 5] }, { tail_length: [5, 5], tail_spread: [5, 5], fin_gain: [5, 5], tail_fork: [5, 5] }],
+];
+
+export function structureGenome(base: Genome, overrides: StructureOverrides, v1: Overrides = {}): Genome {
+  const genome: Genome = {
+    version: 3,
+    maternal: [...base.maternal.slice(0, LOCI.length), ...APPEARANCE_BASELINE, ...STRUCTURE_BASELINE],
+    paternal: [...base.paternal.slice(0, LOCI.length), ...APPEARANCE_BASELINE, ...STRUCTURE_BASELINE],
+  };
+  for (const [locus, alleles] of [...Object.entries(v1).map(([l, a]) => [LOCI.indexOf(l as Locus), a] as const), ...Object.entries(overrides).map(([l, a]) => [STRUCTURE_OFFSET + STRUCTURE_LOCI.indexOf(l as StructureLocus), a] as const)]) {
+    genome.maternal[locus] = alleles![0];
+    genome.paternal[locus] = alleles![1];
+  }
+  const problem = genomeProblem(genome);
+  if (problem) throw new Error(problem);
+  return genome;
+}
+
+export const STRUCTURE_VISUAL_FIXTURES = STRUCTURE_CASES.map(([id, label, birthSeed, overrides, v1]) =>
+  subject(id, label, 'structure', structureGenome(FOUNDER_VISUAL_FIXTURES[2].genome, overrides, v1), birthSeed),
+);
+
+export type StructureSweepReport = { checked: number; invalid: { id: string; problems: string[] }[]; portraitClipped: number };
+
+/** Every tail, dorsal and barbel form on fixtures, seeded founders and all-A0/A5 bodies, at extreme shape modifiers. */
+export function structureSweep(randomSamples = 120): StructureSweepReport {
+  const binary = (seed: number): Genome => {
+    const rng = random(seed), draw = () => LOCI.map(() => (rng() < 0.5 ? 0 : 5));
+    return { version: 1, maternal: draw(), paternal: draw() };
+  };
+  const bodies: [string, Genome][] = [
+    ...[...FOUNDER_VISUAL_FIXTURES, ...EXTREME_VISUAL_FIXTURES, ...ANATOMY_STRESS_FIXTURES].map(f => [f.id, f.genome] as [string, Genome]),
+    ...Array.from({ length: randomSamples }, (_, i) => [`founder-${i}`, founderGenome(hash(`fs-602:founder:${i}`), 1)] as [string, Genome]),
+    ...Array.from({ length: randomSamples }, (_, i) => [`binary-${i}`, binary(hash(`fs-602:binary:${i}`))] as [string, Genome]),
+  ];
+  const forms: [string, StructureOverrides][] = [];
+  for (const tail of [0, 1, 2]) for (const dorsal of [0, 1, 2]) for (const barbels of [0, 1, 2, 3]) for (const extreme of [0, 5])
+    forms.push([`t${tail}d${dorsal}b${barbels}x${extreme}`, { tail_topology: [tail, tail], dorsal_form: [dorsal, dorsal], barbel_count: [barbels, barbels], topology_spread: [extreme, extreme], lobe_balance: [extreme, 5 - extreme], fin_ray_density: [extreme, extreme] }]);
+  const invalid: StructureSweepReport['invalid'] = [];
+  let checked = 0, portraitClipped = 0;
+  for (const [bodyId, body] of bodies) {
+    // Every body gets every tail, dorsal and barbel form; the full combination grid runs on the fixtures only.
+    const chosen = bodyId.startsWith('founder-') || bodyId.startsWith('binary-') ? forms.filter((_, i) => i % 9 === (Number(bodyId.split('-')[1]) % 9)) : forms;
+    for (const [formId, overrides] of chosen) {
+      const p = express(structureGenome(body, overrides)), a = anatomyFor(p), problems = validateAnatomy(a), points = silhouettePoints(a);
+      checked++;
+      if (problems.length) invalid.push({ id: `${bodyId}:${formId}`, problems });
+      if (([[260, 140], [600, 330]] as const).some(([w, h]) => {
+        const frame = portraitFrame(p, w, h);
+        return points.some(v => { const x = frame.originX + v.x * frame.pixelsPerBodyLength, y = frame.originY + v.y * frame.pixelsPerBodyLength; return x < -1e-6 || x > w + 1e-6 || y < -1e-6 || y > h + 1e-6; });
+      })) portraitClipped++;
+    }
+  }
+  return { checked, invalid, portraitClipped };
+}
+
 const APPEARANCE_FEATURES = ['body color', 'accent color', 'eye color', 'shimmer', 'scales', 'body pattern', 'fin pattern'];
 const STRIKING_FEATURES: readonly [string, (a: Appearance) => boolean][] = [
   ['Rosettes', a => a.motifs.some(m => m.kind === 'rosettes')],
@@ -298,11 +374,13 @@ export const VISUAL_FIXTURE_REPORT = {
   extremes: EXTREME_VISUAL_FIXTURES,
   anatomyStress: ANATOMY_STRESS_FIXTURES,
   appearance: APPEARANCE_VISUAL_FIXTURES,
+  structure: STRUCTURE_VISUAL_FIXTURES,
   knownFindings: [
     'Genome v2 appends Color and Ornament chromosomes. Genome v1 fixtures and saved fish read as the classic baseline, so these frozen fixtures render exactly as before.',
     'Morphology and pigment parameter ranges are inherited and measurable in normalized descriptor space.',
     'Anatomy v2 anchors eyes, fin roots, rays, gill and mouth to the measured outline. An eye that cannot fit a shallow head is limited, and the limit is listed.',
     'Development v2 derives marking anchors from phased pigment and pattern haplotype blocks; the birth seed only jitters them. Siblings share placement in proportion to the chromosome copies they share.',
     'The six v1 extremes and six anatomy stress cases are valid allele states, not new tail or body topology.',
+    'Genome v3 structure fixtures (FS-602) use supported Structure alleles: paired and crown tails are extra lobes on the anatomy v2 tail, and a standard structure builds exactly the anatomy v2 geometry.',
   ],
 } as const;

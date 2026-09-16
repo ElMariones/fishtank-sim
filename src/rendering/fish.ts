@@ -1,4 +1,4 @@
-import { anatomyFor, TAIL_WAVE, type Anatomy, type Vec } from '../core/anatomy';
+import { anatomyFor, tailBox, tailLobes, TAIL_WAVE, type Anatomy, type Vec } from '../core/anatomy';
 import { SHIMMER_VISIBLE } from '../core/appearance';
 import { buildOrnament, isEmptyOrnament, type OrnamentLayer, type OrnamentShape, type Tone } from '../core/ornament';
 import { markingPosition, placeMarkings, type PlacedMarking } from '../core/pattern';
@@ -117,9 +117,11 @@ function paint(ctx: CanvasRenderingContext2D, layers: readonly PreparedLayer[]) 
 export type SwimMotion = { tailPhase: number; finPhase: number; effort: number };
 
 /**
- * Renderer v6: anatomy v2, classic markings and development v4 ornament, with optional swimming motion (FS-306). Portraits
+ * Renderer v7: anatomy v3, classic markings and development v4 ornament, with optional swimming motion (FS-306). Portraits
  * pass no motion and draw exactly as renderer v5. Motion only narrows the tail spread and folds the pectoral fin toward
- * the body, so anatomy bounds still contain every drawn point. No inheritance, mutation, or identity decisions belong here.
+ * the body, so anatomy bounds still contain every drawn point. Paired and crown tails draw every lobe as one fin, and an
+ * absent dorsal fin is skipped (FS-602); a standard structure draws exactly as renderer v6. No inheritance, mutation, or
+ * identity decisions belong here.
  */
 export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: number, size: number, time = 0, motion?: SwimMotion) {
   const a = anatomyFor(p);
@@ -130,7 +132,7 @@ export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: numb
   // Seen from the side, a sweeping tail looks narrower mid-stroke.
   const sweep = motion ? 1 - 0.14 * (1 - Math.cos(2 * motion.tailPhase)) / 2 : 1;
   const tip = (v: Vec): Vec => (sweep === 1 ? v : { x: v.x, y: v.y * sweep });
-  const dorsal = motion ? { ...a.dorsal, control: { x: a.dorsal.control.x + Math.sin(motion.finPhase * 0.5) * 0.012, y: a.dorsal.control.y } } : a.dorsal;
+  const dorsal = motion && a.dorsal ? { ...a.dorsal, control: { x: a.dorsal.control.x + Math.sin(motion.finPhase * 0.5) * 0.012, y: a.dorsal.control.y } } : a.dorsal;
   const pectoral = motion
     ? { ...a.pectoral, control: { x: a.pectoral.control.x + Math.cos(motion.finPhase) * 0.02, y: a.pectoral.control.y - (1 - Math.sin(motion.finPhase)) * 0.35 * p.pectoral } }
     : a.pectoral;
@@ -141,41 +143,44 @@ export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: numb
   ctx.lineWidth = 0.7;
   ctx.strokeStyle = '#d7e5dd60';
   ctx.fillStyle = p.finPigment > 0.55 ? orange : '#c5ded8aa';
-  // Caudal fin rooted inside the peduncle; rays are clipped to the fin.
-  const c = a.caudal;
+  // Caudal fin rooted inside the peduncle; rays are clipped to the fin. Every lobe of a paired or crown tail joins one path.
+  const c = a.caudal, lobes = tailLobes(a), tailEnd = tailBox(a).x1;
   const caudal = new Path2D();
-  caudal.moveTo(...at(c.root));
-  caudal.bezierCurveTo(...at(c.upperInner), ...at(tip(c.upperOuter), wave), ...at(tip(c.upperTip), wave));
-  caudal.lineTo(...at(c.notch, wave));
-  caudal.lineTo(...at(tip(c.lowerTip), wave));
-  caudal.bezierCurveTo(...at(tip(c.lowerOuter), wave), ...at(c.lowerInner), ...at(c.root));
+  for (const lobe of lobes) {
+    caudal.moveTo(...at(lobe.root));
+    caudal.bezierCurveTo(...at(lobe.upperInner), ...at(tip(lobe.upperOuter), wave), ...at(tip(lobe.upperTip), wave));
+    caudal.lineTo(...at(lobe.notch, wave));
+    caudal.lineTo(...at(tip(lobe.lowerTip), wave));
+    caudal.bezierCurveTo(...at(tip(lobe.lowerOuter), wave), ...at(lobe.lowerInner), ...at(lobe.root));
+  }
   ctx.fill(caudal); ctx.stroke(caudal);
   ctx.save(); ctx.clip(caudal);
   if (ornament) {
     ctx.save();
     ctx.save(); ctx.scale(l, l);
     // Tail texture leans with the tail beat; the live outline clips it.
-    const lean = wave / Math.max(c.upperTip.x - c.root.x, 1e-6);
+    const lean = wave / Math.max(tailEnd - c.root.x, 1e-6);
     ctx.transform(1, lean, 0, 1, 0, -lean * c.root.x);
     paint(ctx, ornament.caudal);
     ctx.restore();
     const { edge, tips, flame } = ornament.fins;
     if (tips) {
-      const gradient = ctx.createLinearGradient(c.root.x * l, 0, c.upperTip.x * l, 0);
+      const gradient = ctx.createLinearGradient(c.root.x * l, 0, tailEnd * l, 0);
       gradient.addColorStop(0.45, '#18252600'); gradient.addColorStop(1, '#182526f2');
       ctx.globalAlpha = tips; ctx.fillStyle = gradient; ctx.fill(caudal);
     }
     if (flame) {
       ctx.globalAlpha = flame; ctx.strokeStyle = orange; ctx.lineWidth = Math.max(1, l * 0.02); ctx.lineCap = 'round';
-      for (const ray of c.rays) { ctx.beginPath(); ctx.moveTo(...at(ray.start)); ctx.quadraticCurveTo(...at(ray.control, wave * 0.5), ...at(tip(ray.end), wave)); ctx.stroke(); }
+      for (const ray of lobes.flatMap(lobe => lobe.rays)) { ctx.beginPath(); ctx.moveTo(...at(ray.start)); ctx.quadraticCurveTo(...at(ray.control, wave * 0.5), ...at(tip(ray.end), wave)); ctx.stroke(); }
     }
     if (edge) { ctx.globalAlpha = edge; ctx.strokeStyle = orange; ctx.lineWidth = Math.max(1.5, l * 0.07); ctx.stroke(caudal); }
     ctx.restore();
   }
-  for (const ray of c.rays) { ctx.beginPath(); ctx.moveTo(...at(ray.start)); ctx.quadraticCurveTo(...at(ray.control, wave * 0.5), ...at(tip(ray.end), wave)); ctx.stroke(); }
+  for (const ray of lobes.flatMap(lobe => lobe.rays)) { ctx.beginPath(); ctx.moveTo(...at(ray.start)); ctx.quadraticCurveTo(...at(ray.control, wave * 0.5), ...at(tip(ray.end), wave)); ctx.stroke(); }
   ctx.restore();
   // Dorsal and pectoral fins sit behind the body with roots inside the outline.
   for (const [fin, isDorsal] of [[dorsal, true], [pectoral, false]] as const) {
+    if (!fin) continue;
     const path = new Path2D();
     path.moveTo(...at(fin.start)); path.quadraticCurveTo(...at(fin.control), ...at(fin.end)); path.closePath();
     ctx.fill(path); ctx.stroke(path);

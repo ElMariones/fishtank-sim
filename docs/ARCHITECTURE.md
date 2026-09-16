@@ -15,7 +15,7 @@ src/
     types.ts        Genome, fish, tank, world and phenotype contracts
     random.ts       Seeded PRNG, deterministic hash, clamping
     genetics.ts     Registry-driven founder generation, meiosis and mutation; expression
-    anatomy.ts      Anatomy v2: phenotype → body-space outline, anchors, bounds, validation, framing
+    anatomy.ts      Anatomy v3: phenotype → body-space outline, anchors, tail lobes, dorsal and barbel variants, bounds, validation, framing
     pattern.ts      Development v2 marking anchors from phased haplotype blocks; seeded placement in body coordinates
     patternResemblance.ts Standard-body marking masks, overlap/separation metrics and seeded family study
     appearance.ts   Genome v2 Color/Ornament expression, founder weights and founder-stock rarity descriptions
@@ -56,7 +56,7 @@ src/
     motionClient.ts Lifecycle, cleanup, one automatic restart and manual recovery
     time.ts         Shared tick segments, event boundaries and protected offline window
   rendering/
-    fish.ts         Canvas renderer v6: anatomy v2, markings, color palettes, cached ornament paths, swim motion and eggs
+    fish.ts         Canvas renderer v7: anatomy v3 (all tail lobes, optional dorsal), markings, color palettes, cached ornament paths, swim motion and eggs
     stage.ts        Stage phenotype cache per adult phenotype and quantized maturity
     tankLayout.ts   Shared tank pose transform and fish-shaped picking
   ui/
@@ -87,6 +87,7 @@ tests/
   resemblanceStudy.test.ts Trial set, display modes, computational observer and result validation
   resemblancePool.test.ts Five-observer FS-111 pool, per-trial agreement and record validation
   appearance.test.ts Genome v2 stream isolation, dominance, founder rarity, mixed-version saves and ornament bounds
+  structure.test.ts Anatomy v2 identity against a frozen copy, structure fixtures, sweep, juvenile stages and reachability by breeding
   registry.test.ts Registry definitions and reachability, bit-identical legacy births, genome v3 streams and structural mutation, expression, validation and world v9 migration
   paidEconomy.test.ts FS-505 keepers: live commands, reconciled sources and sinks, loop milestones, no-softlock routes and spend-down recovery
   water.test.ts    Zero/overload/recovery conservation fixtures, split-interval equality, habitat load, replay and world v1 migration
@@ -470,3 +471,8 @@ World v9 appends `relief` (claims and cooldown days).
 ### FS-601 locus registry and genome v3
 
 `registry.ts` defines every locus once: index, chromosome, the genome version that introduced it, expression kind, supported alleles with labels, founder weights and weighted mutation targets, the baseline older genomes read, and the mutation rate. `genetics.ts` draws founders and mutations from it. Adjacent steps reproduce the old random-number use exactly, so genome v1/v2 births are unchanged. Genome v3 appends chromosome 11 (Structure) from its own streams, and `structure.ts` expresses it; v1/v2 genomes always read the standard structure. `save.ts` validates genome length and supported alleles through the registry. World v10 lets shop model 2 deliver genome v3; v9 worlds keep model 1 until the runtime rebases them, so their journals replay. See [FS-601 evidence](research/FS-601-REGISTRY-AND-GENOME-V3.md).
+
+### FS-602 structure anatomy
+
+Anatomy v3 turns `phenotype.structure` into geometry. The first tail lobe stays in `caudal`, and paired and crown lobes go in `extraLobes`, turned about the shared root. The dorsal fin may be `null`, and barbels come in 0–3 pairs. Validation checks each lobe in its own frame. The standard structure takes the anatomy v2 path; `tests/structure.test.ts` compares it with a frozen copy (`tests/legacy/anatomyV2.ts`). Renderer v7 draws all lobes as one caudal path, and ornament and picking use `tailBox` and per-lobe checks. See [FS-602 evidence](research/FS-602-STRUCTURE-ANATOMY.md).
+
