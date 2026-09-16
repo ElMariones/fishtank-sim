@@ -64,7 +64,7 @@ In-app Chromium on the isolated `http://localhost:5183`.
 4. **Swim path:** in the page, `drawFish` with motion drew every structure fixture adult and at 30% body maturity at four tail phases. All 96 draws completed and painted.
 5. **Console:** no errors.
 
-The pane's phone screenshots timed out repeatedly, so layout was not re-measured; the section uses the existing fixture grid.
+Phone-width layout was not re-measured; the section reuses the existing fixture grid.
 
 ## Remaining limits
 

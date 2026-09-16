@@ -1,5 +1,6 @@
 import { APPEARANCE_LOCI, CROSSOVER_RATE, GENOME_VERSION, LOCI, MUTATION_RATE, type GenomeVersion, type Locus } from './catalog';
 import { expressAppearance } from './appearance';
+import type { InheritanceTrace } from './origins';
 import { LOCUS_REGISTRY, type LocusDefinition } from './registry';
 import { expressStructure } from './structure';
 import { markingAnchors } from './pattern';
@@ -40,8 +41,9 @@ const LOCUS_BLOCKS = [LOCUS_REGISTRY.slice(0, LOCI.length), LOCUS_REGISTRY.slice
  * the requested version, and each appended chromosome block draws from its own stream. A parent whose genome predates a
  * block transmits that block's baseline alleles, so its offspring look standard there unless a new mutation appears.
  * `mutationRate` sets the small-effect rate; registry loci with their own class (structural) keep their rate unless it is 0.
+ * A `trace` receives the homolog each parent transmitted at every locus (FS-603) without changing any random draw.
  */
-export function inherit(mother: Genome, father: Genome, seed: number, mutationRate = MUTATION_RATE, version: GenomeVersion = GENOME_VERSION): { genome: Genome; mutations: Mutation[] } {
+export function inherit(mother: Genome, father: Genome, seed: number, mutationRate = MUTATION_RATE, version: GenomeVersion = GENOME_VERSION, trace?: InheritanceTrace): { genome: Genome; mutations: Mutation[] } {
   if (mutationRate < 0 || mutationRate > 1 || !Number.isFinite(mutationRate)) throw new Error('Invalid mutation rate.');
   if (version < Math.max(mother.version, father.version)) throw new Error(`Genome v${Math.max(mother.version, father.version)} parents cannot produce a genome v${version} child.`);
   const mutations: Mutation[] = [];
@@ -50,6 +52,7 @@ export function inherit(mother: Genome, father: Genome, seed: number, mutationRa
     return loci.map((entry, i) => {
       if (i % 6 === 0) side = rng() < 0.5 ? 0 : 1;
       else if (rng() < CROSSOVER_RATE) side = side ? 0 : 1;
+      trace?.[copy].push(side);
       const from = parent.version < entry.sinceGenome ? entry.baseline! : (side === 0 ? parent.maternal : parent.paternal)[entry.index];
       const rate = entry.mutationRate === MUTATION_RATE || mutationRate === 0 ? mutationRate : entry.mutationRate;
       if (rng() >= rate) return from;

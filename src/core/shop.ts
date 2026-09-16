@@ -86,6 +86,6 @@ export function refreshShop(world: World, day: number): World {
 export function previewFish(listing: Listing): Fish {
   return {
     id: listing.id, name: listing.name, sex: listing.sex, genome: listing.genome, birthSeed: listing.birthSeed, generation: 0, parents: null,
-    bornAt: '2026-01-01T00:00:00.000Z', tankId: '', status: 'living', mutations: [], life: adultLife(listing.genome), breeding: idleBreeding(),
+    bornAt: '2026-01-01T00:00:00.000Z', tankId: '', status: 'living', mutations: [], life: adultLife(listing.genome), breeding: idleBreeding(), origins: [],
   };
 }

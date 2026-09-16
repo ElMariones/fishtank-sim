@@ -315,3 +315,15 @@ footer a{display:inline-flex;align-items:center;min-height:24px}
 .link-button:hover { background: #203733; color: #c9f0c5; }
 @media (pointer: coarse) { .link-button { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; } .guide-actions button, .guide-steps button { min-height: 44px; } }
 @media (max-width: 650px) { .guide-panel, .recovery-alert { padding: 12px; } .guide-steps li { grid-template-columns: 28px minmax(0, 1fr); } .guide-steps li button { grid-column: 2; justify-self: start; } }
+/* FS-603 mutation origins and notebook in the Genome tab. */
+.mutation-origins { margin-top: 26px; border-top: 1px solid #32443a; padding-top: 18px; }
+.mutation-origins h3 { font-size: .7rem; color: #b9d5bd; font-weight: 500; }
+.mutation-origins ul, .mutation-notebook ol { list-style: none; margin: 0; padding: 0; }
+.mutation-origins li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; padding: 8px 0; border-bottom: 1px solid #273932; font-size: .72rem; color: #9aafa1; }
+.mutation-origins li > span:last-child { text-align: right; }
+.mutation-origins li small { display: block; margin-top: 3px; font-size: .64rem; color: #7f9a8c; overflow-wrap: anywhere; }
+.mutation-notebook { margin-top: 14px; font-size: .72rem; color: #a9c0b5; }
+.mutation-notebook summary { cursor: pointer; min-height: 36px; display: flex; align-items: center; }
+.link-button { min-height: 0; padding: 0; border: 0; background: none; color: #bfe0c1; text-decoration: underline; font-size: inherit; }
+@media (pointer: coarse) { .link-button { min-height: 44px; } }
+

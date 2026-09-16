@@ -4,6 +4,8 @@ import type { AppearanceLocus } from './catalog';
 /** Genome v1 holds 48 loci per copy; genome v2 appends the 12 Color and Ornament loci (60); genome v3 the 6 Structure loci (66). */
 export type Genome = { version: 1 | 2 | 3; maternal: number[]; paternal: number[] };
 export type Mutation = { locus: number; copy: 'maternal' | 'paternal'; from: number; to: number };
+/** A carried allele descended from a recorded mutation (FS-603): `id` names the fish, locus and copy where it arose. */
+export type AlleleOrigin = { locus: number; copy: 'maternal' | 'paternal'; id: string };
 /** Life model v1 state (FS-302). Age, size and condition accumulate on game-day boundaries; genetics only set the potential. */
 export type LifeState = {
   model: 1;
@@ -20,6 +22,8 @@ export type Fish = {
   id: string; name: string; sex: 'F' | 'M'; genome: Genome; birthSeed: number;
   generation: number; parents: [string, string] | null; bornAt: string;
   tankId: string; status: 'living' | 'sold' | 'rehomed'; mutations: Mutation[]; life: LifeState; breeding: BreedingState;
+  /** Mutation origins this fish carries, by locus and copy (world v11). */
+  origins: AlleleOrigin[];
 };
 /** Why a pairing is refused or a courtship is paused (FS-401). */
 export type BlockerCode = 'role' | 'unavailable' | 'immature' | 'condition' | 'cooldown' | 'busy' | 'apart' | 'water' | 'nursery-missing' | 'nursery-full' | 'nursery-busy' | 'limit';
@@ -108,10 +112,11 @@ export type ReliefState = { model: 1; claims: number; cooldownDays: number };
  * World v2 added per-tank water (FS-301), v3 fish life state (FS-302), v4 tank care (FS-305), v5 breeding state and
  * clutches (FS-401/402), v6 NPC demand, a credit ledger and rehomed fish (FS-501), v7 persistent shop stock (FS-502),
  * v8 persisted decoration transforms (FS-503). World v9 adds the koi rescue (FS-504). World v10 (FS-601) accepts genome v3
- * records and shop model 2, which delivers genome v3 stock. Older saves migrate with defaults.
+ * records and shop model 2, which delivers genome v3 stock. World v11 (FS-603) adds mutation origins to every fish.
+ * Older saves migrate with defaults.
  */
 export type World = {
-  version: 10; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
+  version: 11; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
   market: MarketState; ledger: Ledger; shop: ShopState; naming: NamingModel; relief: ReliefState;
 };
 /**

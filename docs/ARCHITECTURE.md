@@ -11,6 +11,7 @@ src/
   core/
     catalog.ts      Stable locus ordering (48 v1, 60 v2, 66 v3), lab constants and appearance model versions
     registry.ts     Locus registry v1: per-locus founder weights, mutation targets and rates, baselines, labels and genome validation
+    origins.ts      Mutation origins: meiosis trace, inheritance by descent, rebuilt origins for older saves, save-local notebook counts and validation
     structure.ts    Structure v1 (genome v3 chromosome 11): tail topology, dorsal and barbel variants, shape modifiers, carrier rows
     types.ts        Genome, fish, tank, world and phenotype contracts
     random.ts       Seeded PRNG, deterministic hash, clamping
@@ -87,6 +88,7 @@ tests/
   resemblanceStudy.test.ts Trial set, display modes, computational observer and result validation
   resemblancePool.test.ts Five-observer FS-111 pool, per-trial agreement and record validation
   appearance.test.ts Genome v2 stream isolation, dominance, founder rarity, mixed-version saves and ornament bounds
+  origins.test.ts  Trace neutrality, transmission rule, lineage descent invariants, notebook counts, validation and world v10 migration
   structure.test.ts Anatomy v2 identity against a frozen copy, structure fixtures, sweep, juvenile stages and reachability by breeding
   registry.test.ts Registry definitions and reachability, bit-identical legacy births, genome v3 streams and structural mutation, expression, validation and world v9 migration
   paidEconomy.test.ts FS-505 keepers: live commands, reconciled sources and sinks, loop milestones, no-softlock routes and spend-down recovery
@@ -475,4 +477,8 @@ World v9 appends `relief` (claims and cooldown days).
 ### FS-602 structure anatomy
 
 Anatomy v3 turns `phenotype.structure` into geometry. The first tail lobe stays in `caudal`, and paired and crown lobes go in `extraLobes`, turned about the shared root. The dorsal fin may be `null`, and barbels come in 0–3 pairs. Validation checks each lobe in its own frame. The standard structure takes the anatomy v2 path; `tests/structure.test.ts` compares it with a frozen copy (`tests/legacy/anatomyV2.ts`). Renderer v7 draws all lobes as one caudal path, and ornament and picking use `tailBox` and per-lobe checks. See [FS-602 evidence](research/FS-602-STRUCTURE-ANATOMY.md).
+
+### FS-603 mutation origins
+
+`inherit` accepts an optional trace of the transmitted homolog at every locus without changing its draws. `world.ts` and `breeding.ts` pass it to `childOrigins`, and world v11 stores `origins` on every fish. `save.ts` rebuilds origins for older worlds where the transmitted copy is certain, and validates every origin against recorded mutations and alleles. The runtime compares pre-v11 snapshots without origins and rebases. `mutationNotebook` derives save-local carrier counts on demand for the Genome tab. See [FS-603 evidence](research/FS-603-MUTATION-ORIGINS.md).
 

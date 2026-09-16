@@ -16,6 +16,7 @@ import { addFood, defaultWater, temperatureFactor } from './water';
 import { z } from 'zod';
 import { NAMING_MODEL, newFishName, takenNames } from './names';
 import { hash } from './random';
+import { childOrigins, emptyTrace } from './origins';
 import type { Fish, Ration, Tank, World } from './types';
 
 export const COHORT_SIZE = 20;
@@ -32,9 +33,9 @@ export const STOCK_PRICE = 250;
  * World v6: tanks carry water (FS-301) and care (FS-305); fish carry life (FS-302) and breeding state; clutches
  * (FS-401/402); NPC demand and the credit ledger (FS-501). World v7 adds persistent shop stock (FS-502); v8 adds placed
  * decorations (FS-503); v9 adds the koi rescue for no-money recovery (FS-504); v10 accepts genome v3 records and
- * genome v3 shop stock (FS-601).
+ * genome v3 shop stock (FS-601); v11 adds mutation origins to every fish (FS-603).
  */
-export const WORLD_VERSION = 10;
+export const WORLD_VERSION = 11;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -45,7 +46,7 @@ const count = (n: number) => n.toLocaleString('en');
 function founder(world: World, name: string, sex: Fish['sex'], timestamp: string, version: GenomeVersion = GENOME_VERSION): Fish {
   const birthSeed = hash(`${world.seed}:founder:${world.nextId}`), genome = founderGenome(birthSeed, version);
   return { id: id(world.nextId), name, sex, genome, birthSeed,
-    generation: 0, parents: null, bornAt: iso(timestamp), tankId: world.tanks[0].id, status: 'living', mutations: [], life: adultLife(genome), breeding: idleBreeding() };
+    generation: 0, parents: null, bornAt: iso(timestamp), tankId: world.tanks[0].id, status: 'living', mutations: [], life: adultLife(genome), breeding: idleBreeding(), origins: [] };
 }
 
 function newTank(id: string, name: string, planted: boolean): Tank {
@@ -55,7 +56,7 @@ function newTank(id: string, name: string, planted: boolean): Tank {
 
 /** New worlds use the current genome. Research fixtures pass genome version 1 to reproduce the frozen FS-101 founders. */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = GENOME_VERSION): World {
-  const world: World = { version: 10, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
+  const world: World = { version: 11, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
   ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed), naming: NAMING_MODEL, relief: defaultRelief() };
@@ -208,12 +209,13 @@ export function applyCommand(world: World, command: Command): World {
       const taken = takenNames(next);
       for (let i = 0; i < COHORT_SIZE; i++) {
         const birthSeed = hash(`${world.seed}:birth:${next.nextId}:${mother.id}:${father.id}`);
-        const result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, version);
+        const trace = emptyTrace(), result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, version, trace);
         const sex: Fish['sex'] = hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M';
         const name = newFishName(`${next.seed}:fish:${next.nextId}`, { sex, genome: result.genome }, taken);
         next.fish.push({ id: id(next.nextId), name, sex,
           ...result, birthSeed, generation: Math.max(mother.generation, father.generation) + 1,
-          parents: [mother.id, father.id], bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', life: eggLife(), breeding: idleBreeding() });
+          parents: [mother.id, father.id], bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', life: eggLife(), breeding: idleBreeding(),
+          origins: childOrigins(id(next.nextId), mother, father, trace, result.mutations) });
         next.nextId++;
       }
       break;
@@ -254,7 +256,7 @@ export function applyCommand(world: World, command: Command): World {
       afford(listing.price, `${listing.name} (${listing.id})`);
       next.fish.push({
         id: id(next.nextId), name: listing.name, sex: listing.sex, genome: listing.genome, birthSeed: listing.birthSeed, generation: 0, parents: null,
-        bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', mutations: [], life: adultLife(listing.genome), breeding: idleBreeding(),
+        bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', mutations: [], life: adultLife(listing.genome), breeding: idleBreeding(), origins: [],
       });
       next.nextId++;
       next.shop = { ...next.shop, listings: next.shop.listings.filter(entry => entry.id !== listing.id) };
@@ -382,7 +384,7 @@ export function applyCommand(world: World, command: Command): World {
         const birthSeed = hash(`${next.seed}:relief:${next.nextId}`), genome = founderGenome(birthSeed, command.genomeVersion);
         const fish: Fish = {
           id: id(next.nextId), name: newFishName(`${next.seed}:fish:${next.nextId}`, { sex, genome }, taken), sex, genome, birthSeed, generation: 0, parents: null,
-          bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', mutations: [], life: adultLife(genome), breeding: idleBreeding(),
+          bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', mutations: [], life: adultLife(genome), breeding: idleBreeding(), origins: [],
         };
         rescued.push(fish); next.fish.push(fish); next.nextId++;
       }

@@ -447,6 +447,14 @@ Two simultaneous buyers, duplicate command retries, rollback on debit/transfer f
 
 For a test report record task ID, source/model version, command or user journey, fixture/seed, environment, expected outcome, actual outcome, limitations, and relevant artifacts. Tests should verify domain promises or meaningful failure conditions, not mirror implementation line for line.
 
+## FS-603 mutation origins
+
+17 September 2026, Windows 11, Node 22.18.0, npm 10.9.3. `npm run check`: 209 tests in 35 files, then the strict TypeScript and production build, pass.
+- `tests/origins.test.ts`: tracing leaves 200 crosses identical; the transmission rule; a twelve-generation lineage (486 records, 189 origins, 613 inherited copies) where every origin matches its allele and descends from its first carrier, with notebook counts equal to brute force; five validation refusals; world v10 migration rebuilding 393 of 542 origin copies with no invented descent, and runtime rebase.
+- Browser on isolated port 5183: the QA save migrated to world v11. A cross of two mutated parents passed their origins by transmitted copy, and the Genome tab showed ◆ markers, the carried origin with a working first-carrier link and a 25-origin notebook with its scope statement. A "fishs" plural was fixed.
+
+See [FS-603 evidence](research/FS-603-MUTATION-ORIGINS.md).
+
 ## FS-602 structure anatomy
 
 17 September 2026, Windows 11, Node 22.18.0, npm 10.9.3. `npm run check`: 204 tests in 34 files, then the strict TypeScript and production build, pass.

@@ -9,6 +9,8 @@ import { CarePanel } from './CarePanel';
 import { CHROMOSOMES, GENOME_VERSION, label } from '../core/catalog';
 import { alleleLabel, LOCUS_REGISTRY } from '../core/registry';
 import { describeStructure } from '../core/structure';
+import { mutationNotebook } from '../core/origins';
+import { MutationOrigins } from './MutationOrigins';
 import {
   birthGroupsOf, cohortsOf, decodePreferences, batchSaleCandidates, goalMatch, PREFERENCES_KEY, sortCollection, toggleFavorite, type BreedingGoal, type CollectionSort,
 } from '../core/collection';
@@ -203,6 +205,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const offers = useMemo(() => fish ? offersFor(world, fish, traitCache) : [], [world, fish, traitCache]);
   // The family index is built only while the Family tab is open (FS-404).
   const genealogy = useMemo(() => tab === 'Family' ? genealogyIndex(world.fish) : null, [tab, world.fish]);
+  const notebook = useMemo(() => tab === 'Genome' ? mutationNotebook(world) : null, [tab, world.fish]);
   // Family at a glance under every fish's name (FS-504): one pass for full siblings and offspring.
   const kin = useMemo(() => {
     let siblings = 0, offspring = 0;
@@ -630,10 +633,10 @@ export function App({ initial }: { initial: LoadedSession }) {
             </div> : <p className="archive-note">{fish.status === 'rehomed' ? 'This fish was rehomed outside your aquarium.' : 'This fish was sold to an NPC buyer.'} Its genome and family links are preserved.</p>}
           </> : null}
           {tab === 'Genome' ? <div className="genome-view"><div className="genome-fingerprint"><span>Genome checksum</span><code>{fingerprint(fish.genome)}</code></div><p className="help-copy">Two phased copies per locus. A0–A5 are allele IDs. Most blend; A5/A5 at the metallic switch expresses strong metallic color. Chromosomes 09–10 (genome v2) hold color and ornament, with named categorical alleles and additive intensity levels. Classic dominates body, accent and eye colors; variants need two nonclassic copies. One motif copy shows faintly, and different motifs mix. Smooth scales dominate variants. Chromosome 11 (genome v3) holds structure: a paired fan or crown tail, a reduced or missing dorsal fin and other barbel counts each need two variant copies, and additive levels shape them. Hidden copies can still pass to offspring.</p>{CHROMOSOMES.map((chromosome, chromosomeIndex) => <div className="chromosome" key={chromosome}><h3>{String(chromosomeIndex + 1).padStart(2, '0')} / {chromosome}{chromosomeIndex * 6 >= fish.genome.maternal.length ? ` · not carried by genome v${fish.genome.version}` : ''}</h3>{LOCUS_REGISTRY.slice(chromosomeIndex * 6, chromosomeIndex * 6 + 6).map(entry => {
-            const i = entry.index, locus = entry.id, mutation = fish.mutations.some(m => m.locus === i);
+            const i = entry.index, locus = entry.id, mutation = fish.mutations.some(m => m.locus === i), inherited = !mutation && fish.origins.some(o => o.locus === i);
             const carried = i < fish.genome.maternal.length, baseline = `Not carried by genome v${fish.genome.version}; reads as ${alleleLabel(locus, entry.baseline ?? 0)}`;
-            return <div className={`locus ${i >= 48 ? 'appearance-locus' : ''} ${mutation ? 'mutated' : ''} ${carried ? '' : 'absent'}`} key={locus}><span>{label(locus)}{mutation ? ' *' : ''}</span>{carried ? <><code title="Copy inherited from mother">A{fish.genome.maternal[i]}{i >= 48 ? <small>{alleleLabel(locus, fish.genome.maternal[i])}</small> : null}</code><code title="Copy inherited from father">A{fish.genome.paternal[i]}{i >= 48 ? <small>{alleleLabel(locus, fish.genome.paternal[i])}</small> : null}</code></> : <><code title={baseline}>—</code><code title={baseline}>—</code></>}</div>;
-          })}</div>)}<p className="help-copy">* A new mutation in this fish. No global rarity is measured in this offline lab.</p><div className="marking-blocks"><h3>Inherited marking blocks</h3><p className="help-copy">Each pair of neighbouring Pigments or Pattern loci on one chromosome copy places one marking. Siblings that inherit the same copy share it; a crossover or mutation inside the pair moves it.</p><ol>{p.markings.map((anchor, index) => {
+            return <div className={`locus ${i >= 48 ? 'appearance-locus' : ''} ${mutation ? 'mutated' : ''} ${carried ? '' : 'absent'}`} key={locus}><span>{label(locus)}{mutation ? ' *' : inherited ? ' ◆' : ''}</span>{carried ? <><code title="Copy inherited from mother">A{fish.genome.maternal[i]}{i >= 48 ? <small>{alleleLabel(locus, fish.genome.maternal[i])}</small> : null}</code><code title="Copy inherited from father">A{fish.genome.paternal[i]}{i >= 48 ? <small>{alleleLabel(locus, fish.genome.paternal[i])}</small> : null}</code></> : <><code title={baseline}>—</code><code title={baseline}>—</code></>}</div>;
+          })}</div>)}<p className="help-copy">* A new mutation in this fish. ◆ A copy inherited from a recorded mutation. No global rarity is measured in this offline lab.</p>{notebook ? <MutationOrigins fish={fish} notebook={notebook} onSelect={id => select(id, true)} /> : null}<div className="marking-blocks"><h3>Inherited marking blocks</h3><p className="help-copy">Each pair of neighbouring Pigments or Pattern loci on one chromosome copy places one marking. Siblings that inherit the same copy share it; a crossover or mutation inside the pair moves it.</p><ol>{p.markings.map((anchor, index) => {
             const visible = (anchor.layer === 'dark' ? p.black : p.red) * (1 - p.translucency) >= MARKING_VISIBLE_ALPHA, drawn = index < p.frequency;
             return <li key={anchor.key} className={drawn && visible ? '' : 'muted'}><span className={`marking-swatch ${anchor.layer}`} aria-hidden="true" /><span>{MARKING_BLOCKS[anchor.block].label}<small>A{anchor.alleles[0]}·A{anchor.alleles[1]} · {anchor.origin === 'both' ? 'on both copies (bolder)' : anchor.origin === 'maternal' ? 'copy from mother' : 'copy from father'}</small></span><span>{anchor.layer === 'dark' ? 'Dark' : 'Warm'}{!drawn ? ' · not drawn' : !visible ? ' · too faint' : ''}</span></li>;
           })}</ol></div></div> : null}

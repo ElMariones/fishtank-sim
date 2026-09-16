@@ -120,7 +120,9 @@ export function decodeRuntime(raw: string): Runtime {
     if (sourceVersion < 7) return JSON.stringify(recordsOnly(candidate));
     const named = staleNames ? withoutNamesWorld(candidate) : candidate;
     // Decorations are recorded from world v8; the koi rescue (world v9) starts at its default in every older snapshot.
-    return JSON.stringify(sourceVersion < 8 ? withoutDecorations(named) : named);
+    // Mutation origins are recorded from world v11 (FS-603); older snapshots rebuild them, so they are compared without.
+    const decorated = sourceVersion < 8 ? withoutDecorations(named) : named;
+    return JSON.stringify(sourceVersion < 11 ? withoutOrigins(decorated) : decorated);
   };
   if (comparable(decodeSave(JSON.stringify(replayed.world))) !== comparable(world)) throw mismatch;
   const simulation = parsed.simulation ?? { version: 1 as const, tankTicks: Object.fromEntries(world.tanks.map(tank => [tank.id, parsed.tick])) };
@@ -159,6 +161,10 @@ function withoutNamesWorld(world: World) {
     shop: { ...world.shop, listings: world.shop.listings.map(listing => ({ ...listing, name: null })) },
     ledger: { ...world.ledger, entries: world.ledger.entries.map(entry => ({ ...entry, detail: null })) },
   };
+}
+
+function withoutOrigins<T extends { fish: readonly object[] }>(world: T) {
+  return { ...world, fish: world.fish.map(member => ({ ...member, origins: null })) };
 }
 
 function withoutDecorations(world: ReturnType<typeof withoutNamesWorld> | World) {

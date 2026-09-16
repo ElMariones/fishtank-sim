@@ -5,6 +5,7 @@ import { BLOCKER_CODES, CLUTCH_SIZES, CLUTCH_STAGES, idleBreeding, reservedPlace
 import { defaultCare, RATION_KEYS, THERMOSTAT_RANGE } from './care';
 import { ALL_LOCI, APPEARANCE_LOCI, GENOME_LOCI, LOCI } from './catalog';
 import { genomeProblem } from './registry';
+import { MAX_ORIGINS_PER_FISH, ORIGIN_ID_PATTERN, originProblem, reconstructOrigins } from './origins';
 import { adultLife } from './development';
 import { BUYER_BY_ID, defaultMarket, LEDGER_LIMIT, LEDGER_REASONS, ledgerBalance, openingLedger } from './economy';
 import { metabolicPotential } from './genetics';
@@ -90,6 +91,8 @@ const tanksWithWater = z.array(z.object({ ...tank, water })).min(1).max(MAX_TANK
 const tanksWithCare = z.array(z.object({ ...tank, water, care })).min(1).max(MAX_TANKS);
 /** The koi rescue, world v9 (FS-504). */
 const relief = z.object({ model: z.literal(1), claims: z.number().int().min(0).max(1_000_000), cooldownDays: z.number().int().min(0).max(RELIEF_COOLDOWN_DAYS) }).strict();
+/** Mutation origins carried by a fish, world v11 (FS-603). */
+const origins = z.array(z.object({ locus: z.number().int().min(0).max(GENOME_LOCI.length - 1), copy: z.enum(['maternal', 'paternal']), id: z.string().regex(ORIGIN_ID_PATTERN) }).strict()).max(MAX_ORIGINS_PER_FISH);
 const worldV8 = {
   version: z.literal(8), ...header, nextClutchId: z.number().int().positive(),
   tanks: z.array(z.object({ ...tank, water, care, decorations: savedDecorationsSchema })).min(1).max(MAX_TANKS),
@@ -97,6 +100,8 @@ const worldV8 = {
   market, ledger, shop, naming: z.union([z.literal(1), z.literal(2), z.literal(3)]),
 };
 const schema = z.discriminatedUnion('version', [
+  // World v11 appends `origins` to every fish record (FS-603).
+  z.object({ ...worldV8, version: z.literal(11), fish: z.array(z.object({ ...fishRecord, status: z.enum(['living', 'sold', 'rehomed']), life, breeding, origins })).max(MAX_RECORDS), relief }),
   // World v10 has the v9 shape; it may hold genome v3 records and shop model 2 (FS-601).
   z.object({ ...worldV8, version: z.literal(10), relief }),
   // World v9 keeps the v8 key order and appends `relief`, so migrated worlds serialize like decoded current ones.
@@ -133,6 +138,7 @@ const schema = z.discriminatedUnion('version', [
  * Worlds v1–v6 predate generated names (ADR-055): they use the current naming model, since the runtime validates their
  * journals by records without names.
  * Worlds v1–v8 predate the koi rescue (FS-504): they start with no claims and nothing to wait for.
+ * Worlds v1–v10 predate mutation origins (FS-603): origins are rebuilt from genomes where the transmitted copy is certain.
  * Worlds v1–v9 predate genome v3 (FS-601): v7–v9 shops keep model 1 until the runtime rebases them; v6 and older open
  * with a current shop.
  */
@@ -140,25 +146,31 @@ export function decodeSave(raw: string): World {
   if (raw.length > 12_000_000) throw new Error('Save is too large for this lab.');
   const parsed = schema.parse(JSON.parse(raw));
   let world: World;
-  if (parsed.version === 10) world = parsed;
+  type Unoriginated = Omit<World, 'fish' | 'version'> & { version: 11; fish: Omit<Fish, 'origins'>[] };
+  let legacy: Unoriginated | null = null;
+  if (parsed.version === 11) world = parsed;
+  else if (parsed.version === 10) legacy = { ...parsed, version: 11 };
   // A world v9 kept shop model 1 and genome v2 stock; the runtime moves it to model 2 when it rebases (FS-601).
-  else if (parsed.version === 9) world = { ...parsed, version: 10 };
+  else if (parsed.version === 9) legacy = { ...parsed, version: 11 };
   // Keys follow the v9 schema order: every migration appends `relief` last, after the fields its version lacked.
-  else if (parsed.version === 8) world = { ...parsed, version: 10, relief: defaultRelief() };
-  else if (parsed.version === 7) world = { ...parsed, version: 10, relief: defaultRelief() };
+  else if (parsed.version === 8) legacy = { ...parsed, version: 11, relief: defaultRelief() };
+  else if (parsed.version === 7) legacy = { ...parsed, version: 11, relief: defaultRelief() };
   // v6 appended market and ledger to the v5 order, and v7 appends the shop and naming.
-  else if (parsed.version === 6) world = { ...parsed, version: 10, shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() };
-  else if (parsed.version === 5) world = { ...parsed, version: 10, market: defaultMarket(), ledger: openingLedger(parsed.credits), shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() };
+  else if (parsed.version === 6) legacy = { ...parsed, version: 11, shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() };
+  else if (parsed.version === 5) legacy = { ...parsed, version: 11, market: defaultMarket(), ledger: openingLedger(parsed.credits), shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() };
   else {
     const watered: Omit<Tank, 'care'>[] = parsed.version === 1 ? parsed.tanks.map(entry => ({ ...entry, water: defaultWater() })) : parsed.tanks;
     const cared: Tank[] = parsed.version === 4 ? parsed.tanks : watered.map(entry => ({ ...entry, care: defaultCare(entry.water) }));
-    const lived: Omit<Fish, 'breeding'>[] = parsed.version === 3 || parsed.version === 4 ? parsed.fish : parsed.fish.map(member => ({ ...member, life: adultLife(member.genome) }));
+    const lived: Omit<Fish, 'breeding' | 'origins'>[] = parsed.version === 3 || parsed.version === 4 ? parsed.fish : parsed.fish.map(member => ({ ...member, life: adultLife(member.genome) }));
     // Keys follow the v5 schema order: replay validation compares serialized worlds, so a migrated world must
     // serialize exactly like a decoded current one or every older save would fail to load.
-    world = { version: 10, seed: parsed.seed, nextId: parsed.nextId, credits: parsed.credits, nextClutchId: 1, tanks: cared,
+    legacy = { version: 11, seed: parsed.seed, nextId: parsed.nextId, credits: parsed.credits, nextClutchId: 1, tanks: cared,
       fish: lived.map(member => ({ ...member, breeding: idleBreeding() })), clutches: [], market: defaultMarket(), ledger: openingLedger(parsed.credits),
       shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() };
   }
+  // Worlds v1–v10 predate mutation origins (FS-603): they are rebuilt from genomes where the transmitted copy is certain.
+  if (legacy) world = { ...legacy, fish: reconstructOrigins(legacy.fish).fish };
+  world = world!;
   world.tanks = world.tanks.map(tank => ({ ...tank, decorations: decorationsOf(tank) }));
   for (const tank of world.tanks) {
     validateLayout(decorationsOf(tank));
@@ -170,6 +182,8 @@ export function decodeSave(raw: string): World {
   for (const member of world.fish) {
     if (!tanks.has(member.tankId) || Number(member.id.slice(4)) >= world.nextId) throw new Error('Invalid record reference.');
     if (member.mutations.some(mutation => mutation.locus >= member.genome.maternal.length)) throw new Error('Mutation record is outside the genome.');
+    const originIssue = originProblem(member, ids);
+    if (originIssue) throw new Error(originIssue);
     if (member.life.lengthCm > metabolicPotential(member.genome).adultLengthCm) throw new Error('A fish is longer than its genetic potential.');
     if (member.parents) {
       const [m, p] = member.parents.map(parent => ids.get(parent));

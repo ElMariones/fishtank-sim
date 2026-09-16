@@ -2,6 +2,7 @@ import { MUTATION_RATE } from './catalog';
 import { ADULT_FROM, eggLife, isEgg, lifeStage } from './development';
 import { inherit, metabolicPotential } from './genetics';
 import { newFishName, takenNames } from './names';
+import { childOrigins, emptyTrace } from './origins';
 import { clamp, hash } from './random';
 import type { BlockerCode, BreedingState, Clutch, ClutchStage, Fish, World } from './types';
 import { waterStatus } from './water';
@@ -185,11 +186,11 @@ export function advanceClutches(world: World): World {
     let nextId = next.nextId;
     for (let k = 0; k < clutch.size; k++, nextId++) {
       const birthSeed = hash(`${next.seed}:spawn:${clutch.id}:${nextId}`);
-      const result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, clutch.genomeVersion), sex: Fish['sex'] = hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M';
+      const trace = emptyTrace(), result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, clutch.genomeVersion, trace), sex: Fish['sex'] = hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M';
       eggs.push({
         id: fishId(nextId), name: newFishName(`${next.seed}:fish:${nextId}`, { sex, genome: result.genome }, taken), sex, ...result, birthSeed,
         generation: Math.max(mother.generation, father.generation) + 1, parents: [mother.id, father.id], bornAt, tankId: nursery.id,
-        status: 'living', life: eggLife(), breeding: idleBreeding(),
+        status: 'living', life: eggLife(), breeding: idleBreeding(), origins: childOrigins(fishId(nextId), mother, father, trace, result.mutations),
       });
     }
     const rested = next.fish.map(member => member.id === mother.id || member.id === father.id ? { ...member, breeding: { model: 1 as const, cooldownDays: COOLDOWN_DAYS[member.sex] } } : member);

@@ -105,6 +105,8 @@ Each mutation moves to an adjacent allele ID. At A0 it moves to A1; at A5 it mov
 
 Mutation events currently store locus index, received copy, prior allele, and new allele. Production needs mutation-event UUID, first carrier ID, mutation class, version, and inherited origin tracing. A descendant inherits the mutation provenance even when it does not have a new de novo event.
 
+**Implemented (FS-603, world v11):** each recorded mutation is an origin `<fish ID>/<locus><m|p>`. `inherit` traces the transmitted homolog, and a child carries a parental origin only when that homolog was transmitted; a new mutation at the same position starts a new origin. Carrier counts (living, living with two copies by descent, and all records) are local to one save. Older saves rebuild origins where the transmitted copy is certain. See [FS-603 mutation origins](research/FS-603-MUTATION-ORIGINS.md).
+
 ### Planned mutation classes
 
 | Class | Scope | Proposed initial rate basis | Implementation gate |
