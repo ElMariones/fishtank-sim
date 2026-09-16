@@ -1,8 +1,20 @@
 # Implementation status
 
-**Updated:** 17 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`). FS-405's incremental kinship cache with stated founder assumptions is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. M5 has started: FS-501's economy model v1 is DONE (`006b500`). FS-502 persistent shop (`3945d86`) and FS-503 habitat expansion (`f78d007`) are DONE. FS-504 onboarding and no-money recovery is DONE (`6335851`). FS-505's paid-economy playtest is DONE (`f5b1888`), completing M5's task list. M6 has started: FS-601's locus registry and genome v3 are DONE (`fb6b593`), FS-602's structure anatomy is DONE (`0e95249`), FS-603's mutation origins are DONE (`1d0d85c`), and FS-604's bloodline registry is DONE (`d9f17c0`).
+**Updated:** 17 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`). FS-405's incremental kinship cache with stated founder assumptions is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. M5 has started: FS-501's economy model v1 is DONE (`006b500`). FS-502 persistent shop (`3945d86`) and FS-503 habitat expansion (`f78d007`) are DONE. FS-504 onboarding and no-money recovery is DONE (`6335851`). FS-505's paid-economy playtest is DONE (`f5b1888`), completing M5's task list. M6 has started: FS-601's locus registry and genome v3 are DONE (`fb6b593`), FS-602's structure anatomy is DONE (`0e95249`), FS-603's mutation origins are DONE (`1d0d85c`), FS-604's bloodline registry is DONE (`d9f17c0`), and FS-605's unusual-line demonstration is DONE (`bb10985`), completing M6's task list.
 
-## Current continuation — FS-604 DONE, pushed `d9f17c0`
+## Current continuation — FS-605 DONE, pushed `bb10985`
+
+17 September 2026: FS-605 started from `b93338d` (FS-604 marked DONE), equal to `origin/main`.
+
+- FS-605 adds:
+  - **Research → Unusual line:** a seeded runtime breeds six standard koi through normal courtship until a new tail-topology mutation appears, then outcrosses, intercrosses carriers, registers a bloodline and breeds an all-paired-fan clutch, with the journal replayed.
+  - **`mutationPacing`:** founder-carrier odds and seeded births to a first structural mutation.
+- Seed 605: mutation on game day 302, "Paired fan line" established on day 391, 24 of 24 offspring expressing with two origin copies by descent, 0 instant crosses. Across five seeds a line was fixed on days 93–391. Median 95 births to any first structural mutation. No rates were retuned; see the pacing review.
+- `npm run check`: 218 tests in 37 files and the build pass. The browser ran the demonstration in 5.5 s with a founder-to-line portrait strip. See [FS-605 evidence](research/FS-605-UNUSUAL-LINE.md).
+- M6's task list (FS-601–605) is delivered. Its gate, "koi-to-unusual-line demonstration with valid ancestry", is shown by that seeded demonstration and its fixtures, not by an external playtest.
+- Next: M7 FS-701, the Canvas versus PixiJS spike and renderer cache/LOD decision with recorded device timings.
+
+## Previous continuation — FS-604 DONE, pushed `d9f17c0`
 
 17 September 2026: FS-604 started from `6f3ec8d` (FS-603 marked DONE), equal to `origin/main`.
 
@@ -11,7 +23,7 @@
   - **Two separate measures:** ancestry contribution from recorded parents, and standard similarity from the adult genetic phenotype. The shape scale is calibrated on seeded pairs.
   - **Interface:** batch registration review; Family tab rows and the registry with rename.
 - `npm run check`: 215 tests in 36 files and the build pass. In the browser a two-fish line showed a descendant at 100% ancestry and 72% similarity beside an unrelated fish at 0% ancestry and 78% similarity. See [FS-604 evidence](research/FS-604-BLOODLINE-REGISTRY.md).
-- Next: FS-605, the multi-generation unusual-line demonstration and a review of mutation discovery pacing.
+- Followed by FS-605 (above).
 
 ## Previous continuation — FS-603 DONE, pushed `1d0d85c`
 
@@ -343,4 +355,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**Finish M6 with FS-605: a multi-generation unusual-line demonstration from koi to a registered structural line with valid ancestry, and a review of mutation discovery pacing and tradeoffs.** FS-604 is DONE, pushed `d9f17c0`. Keep ancestry and similarity separate, origins identical by descent, and standard-structure anatomy identical to anatomy v2.
+**M5 and M6 task lists are delivered; next is M7 with FS-701: a Canvas versus PixiJS spike and the chosen renderer cache/LOD, with device, frame timings and memory recorded.** FS-605 is DONE, pushed `bb10985`. Open balance risks for FS-705 are the missing recurring sink after build-out (FS-505) and the slow discovery of tail topology (FS-605). Keep standard-structure anatomy identical to the frozen anatomy v2 copy, origins identical by descent, ancestry and similarity separate, and migrations writing keys in schema order.

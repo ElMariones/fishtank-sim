@@ -1,6 +1,6 @@
 # FS-605 — Koi to an unusual line, and mutation discovery pacing
 
-**Date:** 17 September 2026. **Status:** see BACKLOG (marked DONE only after a verified push). Completes M6's task list.
+**Date:** 17 September 2026. **Status:** DONE, pushed `bb10985`. Completes M6's task list.
 **Models:** world save v12 · genome v3 · structure model 1 · anatomy v3 · origin model 1 · bloodline model 1. No save or command change.
 
 ## Starting state
@@ -64,7 +64,7 @@ With six founders, a dorsal or barbel carrier is likely in the starting tank, bu
 
 ### Tradeoffs and findings
 
-- **Two routes, very different paces.** Dorsal and barbel variants can come from founder stock or appear within days. A paired fan almost always needs a new mutation, which took 6 to 302 game days here at about 7 eggs a game day from two nurseries. Once found, fixing a line took a steady 87–106 game days: grow the carrier, outcross, intercross, then one more clutch.
+- **Two routes, very different paces.** Dorsal and barbel variants can come from founder stock or appear within days. A paired fan almost always needs a new mutation, which took 6 to 302 game days here at about 7 eggs a game day from two nurseries during discovery. Once found, fixing a line took a steady 87–106 game days: grow the carrier, outcross, intercross, then one more clutch.
 - **Real time.** At one game day per real minute, the five tail lines took 1.6–6.5 hours of play, and discovery dominated. That fits a long-term goal. A player who spends less of that time breeding may never see a tail mutation; that is the §5 risk.
 - **Inbreeding cost.** The shortest route intercrosses siblings, reaching pedigree F 25%, then 37.5% in the line generation. Using unrelated carriers would take another generation.
 - **Visibility.** Carriers look standard, but the inspector shows hidden copies and mutation origins. The pacing therefore depends on a player reading the Genome tab, not on luck alone.

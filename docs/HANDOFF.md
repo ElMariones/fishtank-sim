@@ -84,6 +84,11 @@ World v9 adds `relief`. `claim-relief` is the only way to receive free fish. It 
 - **Guide:** progress (`GUIDE_KEY`) is device-local like collection preferences. Steps complete from player actions recorded in `App.tsx` (select, rename, feed, following a parent) or from `observedGuideSteps`, and **Show me** must never issue commands.
 - **Family at a glance:** it counts full siblings and offspring in one pass; keep it bounded if records grow. See [FS-504 evidence](research/FS-504-ONBOARDING-AND-RECOVERY.md).
 
+### FS-605 contract
+
+- **Gate evidence:** `src/core/unusualLineScenario.ts` is M6's gate evidence. It must keep issuing no `breed` command and keep replaying its journal. Re-run `tests/unusualLine.test.ts` whenever mutation rates, founder weights, breeding or growth constants change, and update the pacing tables.
+- **No hidden rerolls:** faster discovery must come from visible, declared levers (shop carriers, nurseries, a sandbox multiplier). See [FS-605 evidence](research/FS-605-UNUSUAL-LINE.md).
+
 ### FS-604 contract
 
 - **Separate measures:** never merge `ancestryContributions` and `standardSimilarity` into one membership score, and label them separately wherever they appear.
@@ -127,7 +132,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> M3, M4 and M5 are DONE. M6 has started: FS-601's locus registry and genome v3 Structure chromosome (`fb6b593`) FS-602's structure anatomy (`0e95249`) FS-603's mutation origins (`1d0d85c`) and FS-604's bloodline registry (`d9f17c0`) are DONE; see their reports. Next is FS-605: a seeded multi-generation demonstration from ordinary koi to a registered unusual structural line with valid ancestry, with mutation discovery pacing reviewed. M5's task list is DONE: FS-501 economy model (`006b500`), FS-502 persistent shop (`3945d86`), FS-503 paid expansion and decorations (`f78d007`), FS-504 first-session guide and koi rescue (`6335851`), and FS-505 paid-economy playtest with best-first batch sales (`f5b1888`); see the FS-505 report. Keep sale commands carrying a price model, the ledger reconciled, a free or affordable fix on every care warning, and migrations writing keys in schema order.
+> M3–M6 are DONE. M6: FS-601's locus registry and genome v3 Structure chromosome (`fb6b593`) FS-602's structure anatomy (`0e95249`) FS-603's mutation origins (`1d0d85c`) FS-604's bloodline registry (`d9f17c0`) and FS-605's koi-to-unusual-line demonstration with pacing review (`bb10985`) are DONE; see their reports. Next is M7 FS-701: a Canvas versus PixiJS spike and the chosen renderer cache/LOD, with device, frame timings and memory recorded. Carry the open balance risks (no recurring sink after build-out, slow tail-topology discovery) to FS-705. M5's task list is DONE: FS-501 economy model (`006b500`), FS-502 persistent shop (`3945d86`), FS-503 paid expansion and decorations (`f78d007`), FS-504 first-session guide and koi rescue (`6335851`), and FS-505 paid-economy playtest with best-first batch sales (`f5b1888`); see the FS-505 report. Keep sale commands carrying a price model, the ledger reconciled, a free or affordable fix on every care warning, and migrations writing keys in schema order.
 
 ## 7. Subsequent task briefs
 
