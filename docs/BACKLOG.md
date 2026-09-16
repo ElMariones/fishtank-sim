@@ -133,7 +133,7 @@ M1, M2 and FS-301–304 are pushed, with the independent FS-403 prediction (`5db
 
 | ID | Status | Deliverable |
 |---|---|---|
-| FS-116 | OPEN | Lagoon UI overhaul: navigation rail with live aquarium cards and tools, a slim top bar with animated stat pills, the live tank first with a glass status overlay, caustics and bubbles, Collection/Breeding/Care/Habitat workspace tabs, slide-over drawers for the shop, buyers and saves, toasts, a sticky inspector, hover and press motion, and a responsive icon rail and phone layout; every existing flow and guide pointer kept |
+| FS-116 | DONE | Lagoon UI overhaul: navigation rail with live aquarium cards and tools, a slim top bar with animated stat pills, the live tank first with a glass status overlay, caustics and bubbles, Collection/Breeding/Care/Habitat workspace tabs, slide-over drawers for the shop, buyers and saves, toasts, a sticky inspector, hover and press motion, and a responsive icon rail and phone layout; every existing flow and guide pointer kept. DONE, pushed `f3f6bcd`; [evidence](TESTING.md#fs-116-ui-overhaul) |
 
 ## Current user-requested additions — DONE, pushed `e7aefc1`
 
