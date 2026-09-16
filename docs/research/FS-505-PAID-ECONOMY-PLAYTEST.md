@@ -1,6 +1,6 @@
 # FS-505 — Complete-loop playtest and paid-economy sources and sinks
 
-**Date:** 17 September 2026. **Status:** DONE once pushed (see BACKLOG). Completes M5's task list.
+**Date:** 17 September 2026. **Status:** DONE, pushed `f5b1888`. Completes M5's task list.
 **Models:** world save v9 · economy model v1 · price model 1 · relief model 1 · genome v2. No save, command or genome contract changed.
 
 ## Starting state

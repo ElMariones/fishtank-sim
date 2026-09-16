@@ -84,6 +84,13 @@ World v9 adds `relief`. `claim-relief` is the only way to receive free fish. It 
 - **Guide:** progress (`GUIDE_KEY`) is device-local like collection preferences. Steps complete from player actions recorded in `App.tsx` (select, rename, feed, following a parent) or from `observedGuideSteps`, and **Show me** must never issue commands.
 - **Family at a glance:** it counts full siblings and offspring in one pass; keep it bounded if records grow. See [FS-504 evidence](research/FS-504-ONBOARDING-AND-RECOVERY.md).
 
+### FS-505 contract
+
+- **Playtest harness:** `src/core/paidEconomy.ts` must keep sending only live-interface commands; it throws on `add-tank`, `decorate`, `buy` or `breed`. Its spending split is checked against the ledger, so a new credit-changing command needs a ledger reason and a place in `SourcesAndSinks`.
+- **Recovery route:** `routeToPairing` in `src/core/playtest.ts` is the shared no-softlock probe for `tests/recovery.test.ts` and the playtest. Change it in one place.
+- **Batch sales:** the interface reviews `planBestSales` and sends its order to `sell-batch`. The command still sells in the order sent, so journals replay unchanged. Keep the review and the command on the same plan.
+- **Open balance risks:** there is no recurring sink after the eight-tank build-out, and premium equipment does not repay itself in healthy tanks. Adding a recurring cost means revisiting the rescue and rerunning both tests. See [FS-505 evidence](research/FS-505-PAID-ECONOMY-PLAYTEST.md).
+
 ## 5. Verification and task completion
 
 Run npm test and npm run build after core/code changes. Browser verification should exercise the affected journey, not just inspect a screenshot. Read TESTING.md before broadening tests.
@@ -94,7 +101,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> M3 is DONE (FS-305 `d425639`, FS-306 `325ceb4`, FS-307 `a5d5ddc`). FS-401/402 normal breeding is DONE, pushed `9aabfdb`. FS-404's bounded six-generation family graph is DONE, pushed `b7c3e37`. FS-405's incremental kinship cache is DONE, pushed `850f501`. FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE, pushed `44d7d98`, completing M4's task list. M5 has started: FS-501's economy model v1 is DONE, pushed `006b500` (see the FS-501 report). FS-502 persistent shop is DONE, pushed `3945d86`; see its research report. FS-503 paid expansion and placed decorations are DONE, pushed `f78d007`. FS-504's first-session guide, koi rescue and family at a glance are DONE, pushed `6335851`; see the FS-504 report. Continue with FS-505: playtest the complete loop and report paid-economy sources and sinks, including rescues. Keep sale commands carrying a price model, the ledger reconciled, a free or affordable fix on every care warning, and migrations writing keys in schema order.
+> M3 and M4 are DONE. M5's task list is DONE: FS-501 economy model (`006b500`), FS-502 persistent shop (`3945d86`), FS-503 paid expansion and decorations (`f78d007`), FS-504 first-session guide and koi rescue (`6335851`), and FS-505 paid-economy playtest with best-first batch sales (`f5b1888`); see the FS-505 report. Start M6 with FS-601: a data-driven locus registry and the genome v3 migration, where existing genome v1/v2 fish keep their original expression version and replay unchanged. Keep sale commands carrying a price model, the ledger reconciled, a free or affordable fix on every care warning, and migrations writing keys in schema order.
 
 ## 7. Subsequent task briefs
 
