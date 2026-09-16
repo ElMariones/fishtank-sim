@@ -13,11 +13,11 @@ const credits = (n: number) => `◈ ${n.toLocaleString('en')}`;
 const temperatures = Array.from({ length: THERMOSTAT_RANGE[1] - THERMOSTAT_RANGE[0] + 1 }, (_, i) => THERMOSTAT_RANGE[0] + i);
 const FED_LABELS = { fed: 'Fed', underfed: 'Underfed', starving: 'Starving' } as const;
 
-type Props = { world: World; tank: Tank; tick: number; readOnly: boolean; onRun: (command: Command, message: string) => boolean };
+type Props = { world: World; tank: Tank; tick: number; readOnly: boolean; defaultOpen?: boolean; onRun: (command: Command, message: string) => boolean };
 
 /** FS-305 care: status chips, warnings that name fixes, and controls whose cost and projected effect show before applying. */
-export function CarePanel({ world, tank, tick, readOnly, onRun }: Props) {
-  const [open, setOpen] = useState(false);
+export function CarePanel({ world, tank, tick, readOnly, defaultOpen = false, onRun }: Props) {
+  const [open, setOpen] = useState(defaultOpen);
   const [draft, setDraft] = useState<CareSettings | null>(null);
   const [waterPercent, setWaterPercent] = useState<WaterChangePercent | null>(null);
   useEffect(() => { setDraft(null); setWaterPercent(null); }, [tank.id]);

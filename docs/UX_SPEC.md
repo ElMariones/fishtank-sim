@@ -126,6 +126,16 @@ Tank selector shows name, role, stocking warning and unresolved urgent issues. O
 
 ## 8. Buy and sell
 
+**Lab implementation (FS-116, UI overhaul).** Screenshots of the previous layout showed a single column about 6,200 px tall. The live tank started 780 px down, below the absence summary, guide and care chips. The breeding planner took 1,750 px, and the collection started around 3,200 px. Two header rows mixed credits, views, export, save state, guide and saves. Tools opened inline and pushed content away, and feedback appeared in a status line far from the action. The overhaul regroups the same controls:
+- **Navigation rail (left):** brand; Aquarium, Research and Visual fixtures; one card per aquarium with a capacity bar, egg count and water tone (good, needs care, urgent); **Aquariums & expansion**; tools for buyers and ledger (with animated credits), NPC shop, the guide (progress ring), saves and export; a save indicator. Below 1,180 px it becomes an icon rail, and below 900 px a horizontal strip.
+- **Top bar:** tank or view title with aquarium number and game day, plus stat pills for credits (opens buyers), living fish, courtships with incubating clutches, and records. Numbers count toward new values and flash green or red.
+- **Workspace:** notices (absence, guide, recovery) in a compact strip, then the live tank. A glass overlay shows live or paused state, oxygen, ammonia, stocking, feeding, temperature and a care-warning button that opens the Care tab. Pause, speed and **Feed** sit on the glass, with ambient caustics and rising bubbles.
+- **Workspace tabs:** Collection, Breeding, Care and Habitat, with badges for fish, courtships, warnings and severity, a sliding indicator and arrow-key movement. One panel is open at a time, and guide pointers switch to the tab that holds their control.
+- **Drawers:** the NPC shop, buyers and ledger, and saves open as right-hand sheets with a backdrop. Escape closes them and focus returns.
+- **Toasts:** every notice appears as a dismissible toast in a polite live region.
+- **Inspector:** a sticky right sheet with a floating hero portrait, pill tabs and striped facts.
+- **Palette and motion:** deep-lagoon navy, bioluminescent aqua, koi coral, gold credits and violet genetics. Cards lift and glow on hover, buttons press, panels rise in, and the brand mark turns. Everything decorative stops under `prefers-reduced-motion`.
+
 NPC shop is clearly labeled in solo play. A marketplace listing shows the actual reproducible specimen, stage, health, known genetics, provenance, price and receiving tank.
 
 Before selling, show fish name, price, destination type and irreversibility within the game; indicate that lineage history remains. Batch sale/rehome reviews count and selected names. After sale, focus can remain on the archived record.

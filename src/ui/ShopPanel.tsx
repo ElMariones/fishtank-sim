@@ -51,7 +51,7 @@ export function ShopPanel({ world, tank, day, readOnly, traitCache, onBuy, onClo
   return <section className="shop-panel" aria-labelledby="shop-title">
     <div className="market-heading">
       <div><div className="eyebrow">NPC SHOP</div><h2 id="shop-title">Unrelated stock</h2></div>
-      <button className="quiet" onClick={onClose}>Close</button>
+      <button className="quiet panel-close" onClick={onClose}>Close</button>
     </div>
     <p className="help-copy">Choose unrelated founders, visible variants or documented carriers of a hidden variant. Stock stays the same when you reopen or reload.</p>
     <p className="help-copy">Empty places refill every {SHOP_REFRESH_DAYS} game days. Listings leave after {SHOP_LISTING_DAYS} game days. Buying to resell always loses credits.</p>

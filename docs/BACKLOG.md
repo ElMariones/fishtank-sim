@@ -129,6 +129,12 @@ M8 total: 40–60 days. Provider costs and moderation operations require separat
 
 M1, M2 and FS-301–304 are pushed, with the independent FS-403 prediction (`5dbfb73`). M3 is DONE: FS-305 care controls (`d425639`), FS-306 juvenile reveal (`325ceb4`) and FS-307 care demonstration and absence summary (`a5d5ddc`). M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's six-generation family graph is DONE (`b7c3e37`). FS-405's kinship cache is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. Its gate is demonstrated by the seeded Research demonstration and a QA-world lineage bred twice in normal mode, not by an external playtest. M5 has started: FS-501's economy model v1 is DONE (`006b500`). FS-502 is DONE, pushed `3945d86`. FS-503 is DONE, pushed `f78d007`. FS-504 is DONE, pushed `6335851`. FS-505's paid-economy playtest is DONE, pushed `f5b1888`, completing M5's task list; its gate is shown by seeded keepers and one implementer browser session, not an external playtest. M6 has started: FS-601's locus registry and genome v3 Structure chromosome are DONE, pushed `fb6b593`. FS-602's tail topology, dorsal and barbel anatomy is DONE, pushed `0e95249`. FS-603's mutation origins and save-local carrier counts are DONE, pushed `1d0d85c`. FS-604's bloodline registry is DONE, pushed `d9f17c0`. FS-605's koi-to-unusual-line demonstration and pacing review is DONE, pushed `bb10985`, completing M6's task list. Its gate is shown by a seeded normal-breeding demonstration with a replayed journal, not an external playtest. M7 FS-701 is next.
 
+## UI overhaul (user request, after M6)
+
+| ID | Status | Deliverable |
+|---|---|---|
+| FS-116 | OPEN | Lagoon UI overhaul: navigation rail with live aquarium cards and tools, a slim top bar with animated stat pills, the live tank first with a glass status overlay, caustics and bubbles, Collection/Breeding/Care/Habitat workspace tabs, slide-over drawers for the shop, buyers and saves, toasts, a sticky inspector, hover and press motion, and a responsive icon rail and phone layout; every existing flow and guide pointer kept |
+
 ## Current user-requested additions — DONE, pushed `e7aefc1`
 
 - FS-114 — DONE: compound breeding goals, candidate search across/all tanks, adult previews, copy odds, capacity feedback, and favorite/egg-safe bulk sales. Evidence: [FS-303 and breeding report](research/FS-303-BEHAVIOR-AND-BREEDING.md).

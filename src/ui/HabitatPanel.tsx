@@ -4,8 +4,8 @@ import { reservedPlaces } from '../core/breeding';
 import type { Tank, World } from '../core/types';
 import { MAX_TANKS, type Command } from '../core/world';
 
-type Props = { world: World; tank: Tank; readOnly?: boolean; onRun: (command: Command, message: string) => boolean };
-export function HabitatPanel({ world, tank, readOnly, onRun }: Props) {
+type Props = { world: World; tank: Tank; readOnly?: boolean; expanded?: boolean; onRun: (command: Command, message: string) => boolean };
+export function HabitatPanel({ world, tank, readOnly, expanded, onRun }: Props) {
   const [draft, setDraft] = useState<Decoration[]>(() => structuredClone(decorationsOf(tank)));
   const [selected, setSelected] = useState(draft[0]?.id ?? '');
   const [review, setReview] = useState<'purchase' | 'upgrade' | null>(null);
@@ -21,7 +21,7 @@ export function HabitatPanel({ world, tank, readOnly, onRun }: Props) {
     const id = `DC-${n}`;
     setDraft([...draft, { id, kind, x: 0.5, y: 0.5, scale: 1, rotation: 0 }]); setSelected(id);
   };
-  return <details className="habitat-panel" id="habitat-controls">
+  return <details className="habitat-panel" id="habitat-controls" open={expanded}>
     <summary>Habitat & expansion <span>{tank.capacity} places · {tank.water.volumeL.toLocaleString()} L · {current.length} decorations</span></summary>
     <p>Two starter aquariums are included. New aquariums cost ◈ {TANK_PRICE} for 20 places and 10,000 L. Each expansion adds up to 20 places and 10,000 L for ◈ {TANK_UPGRADE_PRICE}, up to 60 places. Equipment is managed in Care controls.</p>
     <p>{reservedPlaces(world, tank.id)} places reserved for courtship. Plants offer shelter; rocks redirect swimming. Decoration changes do not change water quality or growth.</p>
@@ -45,7 +45,7 @@ export function HabitatPanel({ world, tank, readOnly, onRun }: Props) {
     <svg className="habitat-map" viewBox="0 0 1000 600" role="img" aria-label="Decoration layout preview: plants are green circles; solid rocks are grey circles">
       <rect width="1000" height="600" fill="#102f35" />
       {shown.map(d => <g key={d.id}>
-        <ellipse cx={d.x * 1000} cy={d.y * 600} rx={decorationRadius(d) * 1000} ry={decorationRadius(d) * 600} fill={d.kind === 'cover' ? '#426853' : '#72847b'} stroke={d.id === selected ? '#f4dfa4' : '#a5c6b5'} strokeWidth="3" />
+        <ellipse cx={d.x * 1000} cy={d.y * 600} rx={decorationRadius(d) * 1000} ry={decorationRadius(d) * 600} fill={d.kind === 'cover' ? '#3b686f' : '#68898e'} stroke={d.id === selected ? '#f4dfa4' : '#abcccf'} strokeWidth="3" />
         <line x1={d.x * 1000} y1={d.y * 600} x2={(d.x + Math.cos(d.rotation * Math.PI / 180) * decorationRadius(d) * 0.8) * 1000} y2={(d.y + Math.sin(d.rotation * Math.PI / 180) * decorationRadius(d) * 0.8) * 600} stroke="#f4dfa4" strokeWidth="3" />
         <text x={d.x * 1000} y={d.y * 600 + 5} textAnchor="middle" fill="white" fontSize="20">{d.id}</text>
       </g>)}

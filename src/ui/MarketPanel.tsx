@@ -13,7 +13,7 @@ export function MarketPanel({ world, readOnly, traitCache, onClaimRelief, onClos
   return <section className="market-panel" aria-labelledby="market-title">
     <div className="market-heading">
       <div><div className="eyebrow">FS-501 · NPC MARKET</div><h2 id="market-title">Buyers and ledger</h2></div>
-      <button className="quiet" onClick={onClose}>Close</button>
+      <button className="quiet panel-close" onClick={onClose}>Close</button>
     </div>
     <p className="help-copy">Each buyer takes a limited number of fish and wants a few more every game day, and offers fall as its demand is used up. Fish bred here earn a capped bonus; founders and bought stock never resell above ◈ {FOUNDER_RESALE_CAP}, below the ◈ {STOCK_PRICE} stock price. Rehoming is always possible and pays nothing.</p>
     <ul className="buyer-list">{BUYERS.map(buyer => {

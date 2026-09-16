@@ -11,6 +11,10 @@ import { alleleLabel, LOCUS_REGISTRY } from '../core/registry';
 import { describeStructure } from '../core/structure';
 import { mutationNotebook } from '../core/origins';
 import { MutationOrigins } from './MutationOrigins';
+import { NavRail, TankHud, type TankSummary } from './Shell';
+import { AnimatedNumber, Drawer, StatPill, Toast, WorkspaceTabs } from './ShellParts';
+import { Icon } from './Icon';
+import { careStatus, careWarnings } from '../core/careAdvice';
 import { BloodlineRegistration, BloodlineSection } from './Bloodlines';
 import { MAX_FOUNDATION } from '../core/bloodlines';
 import {
@@ -42,6 +46,7 @@ import { FamilyView } from './FamilyView';
 import { FishPortrait, type PortraitView } from './FishPortrait';
 import { TankCanvas } from './TankCanvas';
 import './styles.css';
+import './theme.css';
 
 const ResearchLab = lazy(() => import('./ResearchLab').then(module => ({ default: module.ResearchLab })));
 const VisualFixtureLab = lazy(() => import('./VisualFixtureLab').then(module => ({ default: module.VisualFixtureLab })));
@@ -53,7 +58,6 @@ const date = (timestamp: string) => new Date(timestamp).toLocaleDateString(undef
 const descriptorLabel = new Map(GOAL_DESCRIPTORS.map(descriptor => [descriptor.key, descriptor.label]));
 type SexFilter = 'all' | Fish['sex'];
 type View = 'aquarium' | 'fixtures' | 'research';
-const VIEWS: [View, string][] = [['aquarium', 'Aquarium'], ['fixtures', 'Visual fixtures'], ['research', 'Research']];
 
 function readPreferences(world: World) {
   let raw: string | null = null;
@@ -110,6 +114,8 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [cohortKey, setCohortKey] = useState('all');
   const [saleId, setSaleId] = useState<string | null>(null);
   const [view, setView] = useState<View>('aquarium');
+  /** One workspace panel is open at a time under the live tank (UI overhaul). */
+  const [workspace, setWorkspace] = useState<'collection' | 'breeding' | 'care' | 'habitat'>('collection');
   const [batchIds, setBatchIds] = useState<string[]>([]);
   const [batchReview, setBatchReview] = useState<'sale' | 'move' | 'rehome' | 'bloodline' | null>(null);
   const [birthKey, setBirthKey] = useState('all');
@@ -320,7 +326,11 @@ export function App({ initial }: { initial: LoadedSession }) {
     }, 80);
   }
 
-  function openRecovery() { setShowMarket(true); focusSoon('recovery-title'); }
+  function openDrawer(which: 'market' | 'shop' | 'saves' | null) {
+    setShowMarket(which === 'market'); setShowShop(which === 'shop'); setShowSaves(which === 'saves');
+  }
+
+  function openRecovery() { openDrawer('market'); focusSoon('recovery-title'); }
 
   /** The koi rescue (FS-504): rescued fish join the chosen tank, and the inspector shows the first of them. */
   function claimRelief(tankId: string) {
@@ -335,8 +345,8 @@ export function App({ initial }: { initial: LoadedSession }) {
   /** "Show me" in the first-session guide points at the control for a step; it never performs the step itself (FS-504). */
   function showGuideStep(step: GuideStepId) {
     const newest = (match: (f: Fish) => boolean) => { for (let i = world.fish.length - 1; i >= 0; i--) if (match(world.fish[i])) return world.fish[i]; return undefined; };
-    const openBreeding = () => { setBreedingOpen(true); setBreedingMode('normal'); focusSoon('planner-mother'); };
-    if (step === 'select') { setNotice('Click a swimming fish in the aquarium, or choose a card under Your collection.'); focusSoon('collection'); }
+    const openBreeding = () => { setWorkspace('breeding'); setBreedingOpen(true); setBreedingMode('normal'); focusSoon('planner-mother'); };
+    if (step === 'select') { setWorkspace('collection'); setNotice('Click a swimming fish in the aquarium, or choose a card under Your collection.'); focusSoon('collection'); }
     else if (step === 'rename') {
       const target = fish?.status === 'living' ? fish : newest(f => f.status === 'living');
       if (target) { focusFish(target.id); setTab('Overview'); focusSoon('rename-name'); }
@@ -344,18 +354,21 @@ export function App({ initial }: { initial: LoadedSession }) {
     else if (step === 'court') openBreeding();
     else if (step === 'hatch') {
       const clutch = [...world.clutches].reverse().find(entry => entry.firstFishId);
-      if (clutch) { showClutch(clutch); setNotice('That clutch is now shown in the collection. Once its eggs hatch, star ☆ one you want to keep.'); focusSoon('collection'); }
+      if (clutch) { showClutch(clutch); setWorkspace('collection'); setNotice('That clutch is now shown in the collection. Once its eggs hatch, star ☆ one you want to keep.'); focusSoon('collection'); }
       else { setNotice('No eggs yet: start a courtship first. Eggs hatch three game days after they are laid.'); openBreeding(); }
     } else if (step === 'family') {
       const target = fish?.parents ? fish : newest(f => f.parents !== null);
       if (target) { focusFish(target.id, true); setTab('Family'); setNotice(`${target.name}’s family is open in the inspector. Choose its mother or father to follow them.`); }
       else { setNotice('Only fish bred here have parents to follow. Start a courtship first.'); openBreeding(); }
-    } else { setBreedingOpen(true); focusSoon('planner-add-goal'); }
+    } else { setWorkspace('breeding'); setBreedingOpen(true); focusSoon('planner-add-goal'); }
   }
 
   function returnToCollection() {
-    const card = document.getElementById(`card-${selectedId}`);
-    (card ?? document.getElementById('collection'))?.focus();
+    setWorkspace('collection');
+    window.setTimeout(() => {
+      const card = document.getElementById(`card-${selectedId}`);
+      (card ?? document.getElementById('collection'))?.focus();
+    }, 60);
   }
 
   function breed() {
@@ -381,6 +394,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   }
 
   function showClutch(clutch: Clutch) {
+    setWorkspace('collection');
     setTankId(clutch.nurseryId); setShowArchived(false); setQuery(''); setFavoritesOnly(false); setSexFilter('all');
     setCohortKey(`${clutch.motherId}×${clutch.fatherId}`);
     setBirthKey(world.fish.find(f => f.id === clutch.firstFishId)?.bornAt ?? 'all');
@@ -443,32 +457,45 @@ export function App({ initial }: { initial: LoadedSession }) {
 
   const goalLabel = goal ? goal.secondary?.length ? 'Combined goal' : descriptorLabel.get(goal.descriptor)! : '';
 
-  return <div className="app-shell">
-    {view === 'aquarium' ? <><a className="skip-link" href="#collection">Skip to collection</a><a className="skip-link" href="#inspector">Skip to inspector</a></> : null}
-    <header className="topbar">
-      <a className="brand" href="#"><img src="/favicon.svg" alt="" /><span>fishtank<span className="brand-light"> sim</span></span></a>
-      <div className="project-label">GENETICS LAB <span>0.1</span></div>
-      <div className="top-actions"><button className="credits" aria-expanded={showMarket} aria-controls="market-title" aria-label={`${world.credits.toLocaleString()} lab credits: buyers and ledger`} title="Buyers and ledger" onClick={() => setShowMarket(value => !value)}>◈ {world.credits.toLocaleString()} <small>lab credits · buyers and ledger</small></button>
-        <nav className="view-switch" aria-label="Lab views">{VIEWS.map(([value, text]) => <button key={value} className="quiet" aria-current={view === value ? 'page' : undefined} onClick={() => setView(value)}>{text}</button>)}</nav>
-        <button className="quiet" onClick={() => downloadText(JSON.stringify(runtime), 'fishtank-save-v2.json')}>Export save</button></div>
-    </header>
-      <div className="save-navigation"><div className="save-state">{saveError === 'Saving…' ? 'Saving…' : saveError ? 'Session not saved' : 'Saved on this device'}</div>
-        {view === 'aquarium' ? <button aria-pressed={!guide.hidden} onClick={() => setGuide(current => ({ ...current, hidden: !current.hidden }))}>Guide · {guideProgress.filter(step => step.done).length}/{guideProgress.length}</button> : null}
-        <button aria-expanded={showSaves} onClick={() => setShowSaves(value => !value)}>Saves</button></div>
-      {showSaves ? <SavePanel runtime={runtime} session={initial.session} blocked={blocked} readOnly={initial.readOnly} onBusy={value => { saveBusy.current = value; }} onSaved={() => { setBlocked(false); setSaveError(''); }} /> : null}
-      {showMarket ? <MarketPanel world={world} readOnly={initial.readOnly} traitCache={traitCache} onClaimRelief={claimRelief} onClose={() => setShowMarket(false)} /> : null}
-    {view === 'fixtures' ? <Suspense fallback={<p role="status">Loading visual fixtures…</p>}><VisualFixtureLab onClose={() => setView('aquarium')} /></Suspense> : view === 'research' ? <Suspense fallback={<p role="status">Loading research…</p>}><ResearchLab onClose={() => setView('aquarium')} /></Suspense> : <div className="workspace">
-      <aside className="tank-sidebar">
-        <div className="eyebrow">YOUR AQUARIUMS</div>
-        <nav aria-label="Aquariums">{world.tanks.map((t, i) => <button key={t.id} className={`tank-link ${t.id === tank.id ? 'active' : ''}`} aria-current={t.id === tank.id ? 'true' : undefined} onClick={() => { setTankId(t.id); setShowArchived(false); setQuery(''); }}>
-          <span className="tank-number">0{i + 1}</span><span>{t.name}<small>{living.filter(f => f.tankId === t.id).length} / {t.capacity} fish</small></span>
-        </button>)}</nav>
-        <a className="add-tank quiet" href="#habitat-controls" onClick={() => { const panel = document.getElementById('habitat-controls'); if (panel instanceof HTMLDetailsElement) panel.open = true; }}>Aquariums & expansion</a>
-        <div className="sidebar-note"><span className="eyebrow">A LINEAGE STARTS HERE</span><p>Small differences.<br />Extraordinary descendants.</p><span>60 loci · 10 chromosomes<br />One fish at a time.</span></div>
+  const gameDay = Math.floor(liveTick / TICKS_PER_GAME_DAY);
+  const tankSummaries: TankSummary[] = useMemo(() => world.tanks.map(t => {
+    const status = careStatus(world, t.id);
+    const alert = status.oxygen === 'critical' || status.ammonia === 'high' || status.stocking === 'overstocked' || (status.hatched > 0 && status.fedLevel === 'starving');
+    const warn = status.oxygen === 'low' || status.ammonia === 'elevated' || status.stocking === 'heavy' || (status.hatched > 0 && status.fedLevel === 'underfed');
+    const here = living.filter(f => f.tankId === t.id);
+    return { id: t.id, name: t.name, capacity: t.capacity, living: here.length, eggs: here.filter(f => isEgg(f.life)).length, tone: alert ? 'alert' as const : warn ? 'warn' as const : 'good' as const };
+  }), [world, living]);
+  const activeStatus = useMemo(() => careStatus(world, tank.id), [world, tank.id]), activeWarnings = useMemo(() => careWarnings(world, tank.id), [world, tank.id]);
+  const warningCount = { critical: activeWarnings.filter(w => w.severity === 'critical').length, total: activeWarnings.length };
+  const courting = world.clutches.filter(c => c.stage === 'courting').length, incubating = world.clutches.filter(c => c.stage === 'incubating').length;
+  const saveState = saveError === 'Saving…' ? 'Saving…' : saveError ? 'Session not saved' : 'Saved on this device';
+  const viewTitle = view === 'aquarium' ? tank.name : view === 'research' ? 'Research studies' : 'Visual fixtures';
 
-      </aside>
+  return <div className={`app-shell view-${view}`}>
+    {view === 'aquarium' ? <><a className="skip-link" href="#collection" onClick={() => setWorkspace('collection')}>Skip to collection</a><a className="skip-link" href="#inspector">Skip to inspector</a></> : null}
+    <NavRail view={view} onView={next => { setView(next); openDrawer(null); }} tanks={tankSummaries} activeTankId={tank.id}
+      onTank={id => { setTankId(id); setShowArchived(false); setQuery(''); }} onHabitat={() => { setView('aquarium'); setWorkspace('habitat'); focusSoon('workspace-panel'); }}
+      credits={world.credits} saveState={saveState} guide={{ done: guideProgress.filter(step => step.done).length, total: guideProgress.length, hidden: guide.hidden }}
+      onMarket={() => openDrawer(showMarket ? null : 'market')} onShop={() => openDrawer(showShop ? null : 'shop')} onSaves={() => openDrawer(showSaves ? null : 'saves')}
+      onGuide={() => setGuide(current => ({ ...current, hidden: !current.hidden }))} onExport={() => downloadText(JSON.stringify(runtime), 'fishtank-save-v2.json')}
+      open={{ market: showMarket, shop: showShop, saves: showSaves }} />
+    <div className="shell-main">
+    <header className="topbar">
+      <div className="topbar-title"><span className="eyebrow">{view === 'aquarium' ? `AQUARIUM ${String(world.tanks.indexOf(tank) + 1).padStart(2, '0')} · GAME DAY ${gameDay}` : 'GENETICS LAB'}</span><strong>{viewTitle}</strong></div>
+      <div className="top-stats">
+        <StatPill icon="coins" tone="gold" label="lab credits" value={<AnimatedNumber value={world.credits} format={n => `◈ ${n.toLocaleString('en')}`} />} onClick={() => openDrawer(showMarket ? null : 'market')} title="Buyers and ledger" />
+        <StatPill icon="fish" tone="aqua" label="living fish" value={<AnimatedNumber value={living.length} />} />
+        <StatPill icon="egg" tone="coral" label={`courting · ${incubating} incubating`} value={courting} />
+        <StatPill icon="dna" tone="violet" label="records" value={<AnimatedNumber value={world.fish.length} />} />
+      </div>
+    </header>
+    <Drawer open={showSaves} label="Saves" onClose={() => openDrawer(null)}><SavePanel runtime={runtime} session={initial.session} blocked={blocked} readOnly={initial.readOnly} onBusy={value => { saveBusy.current = value; }} onSaved={() => { setBlocked(false); setSaveError(''); }} /></Drawer>
+    <Drawer open={showMarket} label="Buyers and ledger" onClose={() => openDrawer(null)}><MarketPanel world={world} readOnly={initial.readOnly} traitCache={traitCache} onClaimRelief={claimRelief} onClose={() => openDrawer(null)} /></Drawer>
+    <Drawer open={showShop && view === 'aquarium'} label="NPC shop" wide onClose={() => openDrawer(null)}><ShopPanel world={world} tank={tank} day={gameDay} readOnly={initial.readOnly} traitCache={traitCache} onBuy={buyListing} onClose={() => openDrawer(null)} onRecovery={openRecovery} /></Drawer>
+    {view === 'fixtures' ? <Suspense fallback={<p className="loading-card" role="status">Loading visual fixtures…</p>}><VisualFixtureLab onClose={() => setView('aquarium')} /></Suspense> : view === 'research' ? <Suspense fallback={<p className="loading-card" role="status">Loading research…</p>}><ResearchLab onClose={() => setView('aquarium')} /></Suspense> : <div className="workspace">
       <main>
         {saveError && saveError !== 'Saving…' ? <p className="warning" role="alert">{saveError}</p> : null}
+        {absence || !guide.hidden || relief.sexes.length ? <div className="notice-strip">
         {absence ? <AbsencePanel summary={absence} notice={initial.resumeNotice} onDismiss={() => setAbsence(null)}
           onOpenTank={id => { setTankId(id); setShowArchived(false); setQuery(''); }} /> : null}
         {guide.hidden ? null : <OnboardingGuide steps={guideProgress} onShow={showGuideStep} onHide={() => setGuide(current => ({ ...current, hidden: true }))} />}
@@ -477,25 +504,35 @@ export function App({ initial }: { initial: LoadedSession }) {
           <p>A new generation needs a female and a male. {relief.reason}</p>
           <div className="guide-actions">{world.credits < RELIEF_THRESHOLD * relief.sexes.length
             ? <button className="primary" onClick={openRecovery}>Review recovery options</button>
-            : <button className="primary" onClick={() => { setShowShop(true); focusSoon('shop-title'); }}>Open NPC shop</button>}</div>
+            : <button className="primary" onClick={() => { openDrawer('shop'); focusSoon('shop-title'); }}>Open NPC shop</button>}</div>
         </section> : null}
-        <div className="tank-heading"><div><div className="eyebrow">AQUARIUM / {String(world.tanks.indexOf(tank) + 1).padStart(2, '0')}</div><h1>{tank.name}</h1></div><span className="count-tag">{residents.length} inhabitants</span></div>
-        {tank.care ? <CarePanel world={world} tank={tank} tick={liveTick} readOnly={initial.readOnly} onRun={(command, message) => run(command, message) !== null} /> : null}
+        </div> : null}
+        <div className="tank-heading"><div><h1>{tank.name}</h1></div>
+          <div className="tank-heading-meta"><span className="count-tag"><Icon name="fish" size={14} />{residents.length} / {tank.capacity}</span><span className="count-tag">{tank.planted ? <><Icon name="leaf" size={14} />Planted</> : <><Icon name="wave" size={14} />Open water</>}</span></div></div>
         <section className="aquarium" aria-label="Live aquarium">
+          <div className="aquarium-caustics" aria-hidden="true" /><div className="aquarium-bubbles" aria-hidden="true">{Array.from({ length: 9 }, (_, i) => <span key={i} />)}</div>
           <TankCanvas fish={swimmers} eggs={residents.length - swimmers.length} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={speed} feedSignal={feedSignal} onBehavior={setBehavior} />
-          <div className="tank-overlay"><span>{paused ? 'PAUSED' : 'LIVE AQUARIUM'}</span><span>{tank.planted ? 'Planted habitat' : 'Open water'}{residents.length > swimmers.length ? ` · ${residents.length - swimmers.length} eggs incubating` : ''}</span></div>
+          <TankHud status={activeStatus} warnings={warningCount} paused={paused} onCare={() => { setWorkspace('care'); focusSoon('workspace-panel'); }} />
+          {residents.length > swimmers.length ? <span className="egg-badge"><Icon name="egg" size={14} />{residents.length - swimmers.length} eggs incubating</span> : null}
           {!residents.length ? <div className="empty-tank">A little room to evolve.<small>Move a fish here or introduce unrelated stock, which can carry new colors and patterns.</small></div> : null}
-          <div className="tank-controls"><div><button aria-label={paused ? 'Resume aquarium' : 'Pause aquarium'} onClick={() => setPaused(v => !v)}>{paused ? '▶' : 'Ⅱ'}</button><button onClick={() => setSpeed(v => v === 1 ? 2 : v === 2 ? 4 : 1)} aria-label={`Motion speed ${speed} times`}>{speed}×</button></div><span>Click a fish to inspect · click the water to startle</span><button className="feed-button" id="feed-button" onClick={() => {
+          <div className="tank-controls"><div><button aria-label={paused ? 'Resume aquarium' : 'Pause aquarium'} onClick={() => setPaused(v => !v)}><Icon name={paused ? 'play' : 'pause'} size={16} /></button><button onClick={() => setSpeed(v => v === 1 ? 2 : v === 2 ? 4 : 1)} aria-label={`Motion speed ${speed} times`}>{speed}×</button></div><span>Click a fish to inspect · click the water to startle</span><button className="feed-button" id="feed-button" onClick={() => {
             if (run({ type: 'feed', tankId: tank.id }, 'A portion of food joined the water, a quarter of a game day of what these fish need. They eat it over the next hours and leftovers decay. The sinking pellets show hungry, bold fish reaching food first.')) { setFeedSignal(v => v + 1); markGuide('feed'); }
-          }}>＋ Feed</button></div>
+          }}><Icon name="plus" size={16} />Feed</button></div>
         </section>
-        <HabitatPanel key={tank.id} world={world} tank={tank} readOnly={initial.readOnly} onRun={(command, message) => run(command, message) !== null} />
-        <section className={`breeding-panel ${breedingOpen ? 'is-open' : 'is-collapsed'}`} aria-labelledby="breeding-title">
+        <WorkspaceTabs label="Aquarium workspace" active={workspace} onChange={setWorkspace} tabs={[
+          { id: 'collection', label: 'Collection', icon: 'grid', badge: residents.length },
+          { id: 'breeding', label: 'Breeding', icon: 'heart', badge: courting + incubating || undefined, tone: 'info' },
+          { id: 'care', label: 'Care', icon: 'drop', badge: warningCount.total || undefined, tone: warningCount.critical ? 'alert' : 'warn' },
+          { id: 'habitat', label: 'Habitat', icon: 'leaf' },
+        ]} />
+        <div className="workspace-panel" id="workspace-panel" tabIndex={-1} key={workspace}>
+        {workspace === 'care' && tank.care ? <div role="tabpanel" id="panel-care" aria-labelledby="tab-care"><CarePanel world={world} tank={tank} tick={liveTick} readOnly={initial.readOnly} defaultOpen onRun={(command, message) => run(command, message) !== null} /></div> : null}
+        {workspace === 'habitat' ? <div role="tabpanel" id="panel-habitat" aria-labelledby="tab-habitat"><HabitatPanel key={tank.id} world={world} tank={tank} readOnly={initial.readOnly} expanded onRun={(command, message) => run(command, message) !== null} /></div> : null}
+        {workspace === 'breeding' ? <section role="tabpanel" id="panel-breeding" aria-labelledby="tab-breeding" className="breeding-panel is-open">
           <div className="breed-intro">
             <div><div className="eyebrow">THE NEXT GENERATION</div><h2 id="breeding-title">What will they inherit?</h2><p>{breedingOpen ? breedingMode === 'normal' ? 'Pair two adults that share a tank; courtship reserves places in a nursery.' : 'Instant lab cross: twenty eggs at once, without courtship.' : goal ? `Goal active · ${goalLabel}` : 'Breeding planner is tucked away.'}</p></div>
-            <button className="breeding-toggle" aria-expanded={breedingOpen} aria-controls="breeding-options" onClick={() => setBreedingOpen(value => !value)}>{breedingOpen ? 'Hide options' : 'Open breeding options'}<span aria-hidden="true">{breedingOpen ? '⌃' : '⌄'}</span></button>
           </div>
-          {breedingOpen ? <div id="breeding-options" className="breeding-options">
+          {breedingOpen || workspace === 'breeding' ? <div id="breeding-options" className="breeding-options">
             <div className="framing-toggle breeding-mode" role="group" aria-label="Breeding mode">
               <button aria-pressed={breedingMode === 'normal'} onClick={() => setBreedingMode('normal')}>Normal breeding</button>
               <button aria-pressed={breedingMode === 'lab'} onClick={() => setBreedingMode('lab')}>Instant lab cross</button>
@@ -512,12 +549,10 @@ export function App({ initial }: { initial: LoadedSession }) {
               <p className="lab-note">Research shortcut: an instant cross skips maturity, condition, rest days, courtship and shared-habitat checks, and lays twenty eggs in this tank at once. Eggs still hatch after {INCUBATION_DAYS} game days and grow under this tank’s care. Goal values are normalized adult genetic potential.</p>
             </>}
           </div> : null}
-        </section>
-        <div className="status-line" role="status" aria-live="polite">{notice}</div>
-        <section className="collection" id="collection" tabIndex={-1} aria-labelledby="collection-title">
+        </section> : null}
+        {workspace === 'collection' ? <section role="tabpanel" id="panel-collection" aria-labelledby="tab-collection" className="collection"><div id="collection" tabIndex={-1} aria-labelledby="collection-title">
           <div className="collection-heading"><h2 id="collection-title">{showArchived ? 'Archived fish' : 'Your collection'} <span>{collection.length}</span></h2><button className="quiet" onClick={() => { setShowArchived(v => !v); setQuery(''); }}>{showArchived ? 'Show residents' : 'View archive'}</button></div>
-          <div className="collection-toolbar"><input aria-label="Search fish" placeholder="Search by name or ID…" value={query} onChange={e => setQuery(e.target.value)} /><button aria-expanded={showShop} aria-controls="shop-title" onClick={() => setShowShop(value => !value)}>NPC shop <span>{world.shop.listings.length} listed</span></button></div>
-          {showShop ? <ShopPanel world={world} tank={tank} day={Math.floor(liveTick / TICKS_PER_GAME_DAY)} readOnly={initial.readOnly} traitCache={traitCache} onBuy={buyListing} onClose={() => setShowShop(false)} onRecovery={openRecovery} /> : null}
+          <div className="collection-toolbar"><input aria-label="Search fish" placeholder="Search by name or ID…" value={query} onChange={e => setQuery(e.target.value)} /><button aria-expanded={showShop} onClick={() => openDrawer(showShop ? null : 'shop')}><Icon name="shop" size={16} />NPC shop <span>{world.shop.listings.length} listed</span></button></div>
           <div className="collection-filters">
             <div className="sex-filter" role="group" aria-label="Show fish by sex">
               {(['all', 'F', 'M'] as const).map(value => <button key={value} aria-pressed={sexFilter === value} onClick={() => setSexFilter(value)}>
@@ -597,7 +632,8 @@ export function App({ initial }: { initial: LoadedSession }) {
             </article>;
           })}</div>
           {!collection.length ? <p className="empty-copy">{favoritesOnly && !inCohort.some(f => favoriteIds.has(f.id)) ? 'No favorites here yet. Use ☆ on a card to keep a candidate.' : 'No fish here match this view.'}</p> : null}
-        </section>
+        </div></section> : null}
+        </div>
       </main>
       <aside className="inspector" id="inspector" tabIndex={-1} aria-label="Fish inspector">
         {fish && p ? <>
@@ -652,5 +688,7 @@ export function App({ initial }: { initial: LoadedSession }) {
       </aside>
     </div>}
     <footer>Fishtank Sim <span>Research prototype · synthetic genetics · local saves · bounded NPC buyers and aquarium expansion</span><a href="https://github.com/ElMariones/fishtank-sim" target="_blank" rel="noreferrer">Project repository ↗</a></footer>
+    </div>
+    <Toast message={notice} />
   </div>;
 }

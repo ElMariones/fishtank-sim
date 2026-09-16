@@ -447,6 +447,17 @@ Two simultaneous buyers, duplicate command retries, rollback on debit/transfer f
 
 For a test report record task ID, source/model version, command or user journey, fixture/seed, environment, expected outcome, actual outcome, limitations, and relevant artifacts. Tests should verify domain promises or meaningful failure conditions, not mirror implementation line for line.
 
+## FS-116 UI overhaul
+
+17 September 2026, Windows 11, Node 22.18.0, npm 10.9.3. `npm test`: 218 tests in 37 files pass; `npm run build` passes (CSS 83.95 kB, 18.32 kB gzip; main chunk 587.80 kB, 188.41 kB gzip). No core code changed.
+- **Before:** in-app Chromium on isolated port 5183 measured the aquarium view at 6,201 px tall. The tank started 781 px down, the breeding planner took 1,754 px, and the collection started 3,173 px down.
+- **After, 1,280 px:** the tank starts about 500 px down with notices shown. The page is 3,786 px tall with Collection open, and panels no longer stack. All four workspace tabs render their panels. The rail's habitat shortcut opens the Habitat tab and focuses it. The shop (800 px sheet), buyers and ledger, and saves drawers open from the rail and close with Escape. Visual fixtures (96 cards) and Research render inside the shell.
+- **1,024 px:** the rail collapses to 76 px icons and the page is 1,014 px wide in a 1,024 px viewport.
+- **375 px:** the page is 375 px wide with no horizontal overflow; the rail becomes a horizontal strip.
+- **Performance:** care status for all tanks plus warnings for the active tank took about 0.1 ms per render on the 86-record QA save, memoized per world.
+- **Console:** no errors.
+- **Screenshot limits:** screenshots at emulated sizes sometimes came back blank or offset while scrolled, so scrolled states were verified from DOM geometry. Reduced motion and keyboard arrow movement between tabs were not exercised in the pane.
+
 ## FS-605 unusual line and pacing
 
 17 September 2026, Windows 11, Node 22.18.0, npm 10.9.3. `npm run check`: 218 tests in 37 files, then the strict TypeScript and production build, pass.

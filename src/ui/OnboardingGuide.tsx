@@ -7,7 +7,7 @@ type Props = { steps: GuideStep[]; onShow: (id: GuideStepId) => void; onHide: ()
 export function OnboardingGuide({ steps, onShow, onHide }: Props) {
   const [expanded, setExpanded] = useState(false);
   const done = steps.filter(step => step.done).length, next = steps.find(step => !step.done);
-  return <section className="guide-panel" aria-labelledby="guide-title">
+  return <section className={`guide-panel ${next ? '' : 'complete'}`} aria-labelledby="guide-title">
     <div className="guide-heading">
       <div>
         <div className="eyebrow">FIRST SESSION GUIDE · {done} OF {steps.length} DONE</div>

@@ -63,6 +63,10 @@ src/
     stage.ts        Stage phenotype cache per adult phenotype and quantized maturity
     tankLayout.ts   Shared tank pose transform and fish-shaped picking
   ui/
+    Shell.tsx       Navigation rail with aquarium cards and tools, and the glass tank status overlay (FS-116)
+    ShellParts.tsx  Animated numbers, stat pills, drawers, toasts, workspace tabs and capacity bars (FS-116)
+    Icon.tsx        Inline stroke icon set
+    theme.css       Lagoon theme: tokens, shell layout, glass surfaces, motion and responsive rail (FS-116)
     App.tsx         Lab controls, command runtime, inspector, paginated collection, clutch filter and batch move/sale reviews
     Startup.tsx     Validated async loading before interactive controls
     SavePanel.tsx   Export, import review, retry and backup recovery
