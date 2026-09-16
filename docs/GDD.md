@@ -72,7 +72,7 @@ These are scope boundaries for the first releases, not permanent prohibitions.
 
 **Lineage, several sessions:** establish a target, cross founders, discover carriers, select offspring, outcross when useful, and compare generations.
 
-**Long term:** register a bloodline, satisfy collector requests, fill a mutation notebook, breed a fish adapted to an unusual habitat, or trace a spectacular descendant back through dozens of generations.
+**Long term:** register a bloodline (FS-604: named lines with ancestry and standard similarity shown separately), satisfy collector requests, fill a mutation notebook (FS-603: save-local origins and carrier counts), breed a fish adapted to an unusual habitat, or trace a spectacular descendant back through dozens of generations.
 
 ### Proposed first-session sequence
 

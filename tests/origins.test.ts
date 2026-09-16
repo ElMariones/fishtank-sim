@@ -7,7 +7,7 @@ import { advanceRuntime, commandEnvelope, createRuntime, decodeRuntime, executeC
 import { decodeSave } from '../src/core/save';
 import type { Fish, World } from '../src/core/types';
 import { TICKS_PER_GAME_DAY } from '../src/core/water';
-import { applyCommand, createWorld, type Command } from '../src/core/world';
+import { applyCommand, createWorld, WORLD_VERSION, type Command } from '../src/core/world';
 
 const NOW = '2026-09-17T12:00:00.000Z';
 
@@ -150,7 +150,7 @@ describe('FS-603 mutation origins', () => {
     const stored = JSON.parse(JSON.stringify(runtime));
     for (const slot of [stored.world, stored.checkpoint.world]) { slot.version = 10; for (const fish of slot.fish) delete fish.origins; }
     const decoded = decodeRuntime(JSON.stringify(stored));
-    expect(decoded.world.version).toBe(11);
+    expect(decoded.world.version).toBe(WORLD_VERSION);
     expect(decoded.world.fish.map(f => f.genome)).toEqual(runtime.world.fish.map(f => f.genome));
     expect(decoded.events).toHaveLength(0);
     expect(decodeRuntime(JSON.stringify(decoded))).toEqual(decoded);

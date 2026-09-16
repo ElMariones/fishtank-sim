@@ -11,6 +11,7 @@ src/
   core/
     catalog.ts      Stable locus ordering (48 v1, 60 v2, 66 v3), lab constants and appearance model versions
     registry.ts     Locus registry v1: per-locus founder weights, mutation targets and rates, baselines, labels and genome validation
+    bloodlines.ts   Named bloodlines: registration rules, captured standards, ancestry contribution, standard similarity and summaries
     origins.ts      Mutation origins: meiosis trace, inheritance by descent, rebuilt origins for older saves, save-local notebook counts and validation
     structure.ts    Structure v1 (genome v3 chromosome 11): tail topology, dorsal and barbel variants, shape modifiers, carrier rows
     types.ts        Genome, fish, tank, world and phenotype contracts
@@ -88,6 +89,7 @@ tests/
   resemblanceStudy.test.ts Trial set, display modes, computational observer and result validation
   resemblancePool.test.ts Five-observer FS-111 pool, per-trial agreement and record validation
   appearance.test.ts Genome v2 stream isolation, dominance, founder rarity, mixed-version saves and ornament bounds
+  bloodlines.test.ts Ancestry fixtures, registration and rename rules, lookalike and descendant separation, calibration, structure and origin standards, persistence and replay
   origins.test.ts  Trace neutrality, transmission rule, lineage descent invariants, notebook counts, validation and world v10 migration
   structure.test.ts Anatomy v2 identity against a frozen copy, structure fixtures, sweep, juvenile stages and reachability by breeding
   registry.test.ts Registry definitions and reachability, bit-identical legacy births, genome v3 streams and structural mutation, expression, validation and world v9 migration
@@ -481,4 +483,8 @@ Anatomy v3 turns `phenotype.structure` into geometry. The first tail lobe stays 
 ### FS-603 mutation origins
 
 `inherit` accepts an optional trace of the transmitted homolog at every locus without changing its draws. `world.ts` and `breeding.ts` pass it to `childOrigins`, and world v11 stores `origins` on every fish. `save.ts` rebuilds origins for older worlds where the transmitted copy is certain, and validates every origin against recorded mutations and alleles. The runtime compares pre-v11 snapshots without origins and rebases. `mutationNotebook` derives save-local carrier counts on demand for the Genome tab. See [FS-603 evidence](research/FS-603-MUTATION-ORIGINS.md).
+
+### FS-604 bloodline registry
+
+World v12 appends `bloodlines` and `nextBloodlineId`. The `register-bloodline` and `rename-bloodline` commands validate in `bloodlines.ts`, and registration stores a standard captured from the foundation that never changes. `ancestryContributions` (pedigree) and `standardSimilarity` (adult genetic phenotype) are computed on demand and shown side by side, never combined. `Bloodlines.tsx` provides the batch registration review and the Family tab section. See [FS-604 evidence](research/FS-604-BLOODLINE-REGISTRY.md).
 

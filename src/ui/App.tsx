@@ -11,6 +11,8 @@ import { alleleLabel, LOCUS_REGISTRY } from '../core/registry';
 import { describeStructure } from '../core/structure';
 import { mutationNotebook } from '../core/origins';
 import { MutationOrigins } from './MutationOrigins';
+import { BloodlineRegistration, BloodlineSection } from './Bloodlines';
+import { MAX_FOUNDATION } from '../core/bloodlines';
 import {
   birthGroupsOf, cohortsOf, decodePreferences, batchSaleCandidates, goalMatch, PREFERENCES_KEY, sortCollection, toggleFavorite, type BreedingGoal, type CollectionSort,
 } from '../core/collection';
@@ -109,7 +111,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [saleId, setSaleId] = useState<string | null>(null);
   const [view, setView] = useState<View>('aquarium');
   const [batchIds, setBatchIds] = useState<string[]>([]);
-  const [batchReview, setBatchReview] = useState<'sale' | 'move' | 'rehome' | null>(null);
+  const [batchReview, setBatchReview] = useState<'sale' | 'move' | 'rehome' | 'bloodline' | null>(null);
   const [birthKey, setBirthKey] = useState('all');
   const [moveTarget, setMoveTarget] = useState('');
   const [movedTo, setMovedTo] = useState<string | null>(null);
@@ -549,9 +551,11 @@ export function App({ initial }: { initial: LoadedSession }) {
               {batch.length && moveDestinations.length ? <button aria-expanded={batchReview === 'move'} aria-controls="batch-review" onClick={openMoveReview}>Review move of {batch.length}</button> : null}
               {rehomeBatch.length ? <button aria-expanded={batchReview === 'rehome'} aria-controls="batch-review" onClick={() => setBatchReview('rehome')}>Review rehoming of {rehomeBatch.length}</button> : null}
               {salePlan.sales.length ? <button className="batch-sell" aria-expanded={batchReview === 'sale'} aria-controls="batch-review" onClick={() => setBatchReview('sale')}>Review sale of {salePlan.sales.length}</button> : null}
+              {batch.length && batch.length <= MAX_FOUNDATION && batch.every(f => f.life.lengthCm > 0) ? <button aria-expanded={batchReview === 'bloodline'} aria-controls="batch-review" onClick={() => setBatchReview('bloodline')}>Register bloodline from {batch.length}</button> : null}
             </div>
           </div> : null}
           {movedTo && !batch.length ? <p className="batch-done" role="status">Moved to {tankName(movedTo)}. <button className="quiet" onClick={() => { setTankId(movedTo); setShowArchived(false); setQuery(''); }}>Open {tankName(movedTo)}</button></p> : null}
+          {batchReview === 'bloodline' && batch.length ? <BloodlineRegistration world={world} foundation={batch} onRun={run} onDone={() => { setBatchIds([]); setBatchReview(null); }} onCancel={() => setBatchReview(null)} /> : null}
           {batchReview === 'sale' && salePlan.sales.length ? <div className="batch-review" id="batch-review" role="region" aria-labelledby="batch-review-title">
             <h3 id="batch-review-title">Sell {salePlan.sales.length} fish to NPC buyers for ◈ {batchTotal.toLocaleString()}?</h3>
             <p>Fish with the highest offers sell first, each to its best offer, and every sale uses up some of that buyer’s demand. Genomes and family links stay in the archive; sold fish cannot breed, move or be sold again.{batch.length > saleBatch.length ? ` ${batch.length - saleBatch.length} selected ${batch.length - saleBatch.length === 1 ? 'fish is a favorite or an egg and stays' : 'fish are favorites or eggs and stay'}.` : ''}{salePlan.unsold.length ? ` ${salePlan.unsold.length} selected ${salePlan.unsold.length === 1 ? 'fish has no buyer today and stays' : 'fish have no buyer today and stay'}.` : ''}</p>
@@ -643,6 +647,7 @@ export function App({ initial }: { initial: LoadedSession }) {
           {tab === 'Family' && genealogy ? <FamilyView key={fish.id} world={world} index={genealogy} fish={fish} depth={familyDepth} trail={familyTrail} pedigreeF={percent(currentF)} founders={fishFounders}
             onDepth={setFamilyDepth} onNavigate={navigateFamily} onBack={() => select(familyTrail[familyTrail.length - 1], true, familyTrail.slice(0, -1))}
             onReturn={() => select(familyTrail[0], true)} /> : null}
+          {tab === 'Family' ? <BloodlineSection world={world} fish={fish} onRun={run} onSelect={id => select(id, true)} /> : null}
         </> : <p className="empty-copy">Select a fish from the aquarium or collection.</p>}
       </aside>
     </div>}

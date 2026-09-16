@@ -447,6 +447,14 @@ Two simultaneous buyers, duplicate command retries, rollback on debit/transfer f
 
 For a test report record task ID, source/model version, command or user journey, fixture/seed, environment, expected outcome, actual outcome, limitations, and relevant artifacts. Tests should verify domain promises or meaningful failure conditions, not mirror implementation line for line.
 
+## FS-604 bloodline registry
+
+17 September 2026, Windows 11, Node 22.18.0, npm 10.9.3. `npm run check`: 215 tests in 36 files, then the strict TypeScript and production build, pass.
+- `tests/bloodlines.test.ts`: exact ancestry fractions, including backcrosses and unrecorded parents; registration and rename rules with atomic refusals; an unrelated lookalike at 0 ancestry and 100% similarity, and descendants at 1/2 and 1/4 ancestry with varying similarity; calibration (children 58.5% vs unrelated 41.4% shape similarity over 150 families); structure and signature-origin standards; persistence, migration and replay tampering.
+- Browser on isolated port 5183: a two-fish registration from the batch bar, the Family tab showing ancestry and similarity separately for a descendant and an unrelated fish, rename persisting across reload, a 390 px layout and no console errors. The shape scale was recalibrated after the browser showed an unrelated fish scoring above a descendant.
+
+See [FS-604 evidence](research/FS-604-BLOODLINE-REGISTRY.md).
+
 ## FS-603 mutation origins
 
 17 September 2026, Windows 11, Node 22.18.0, npm 10.9.3. `npm run check`: 209 tests in 35 files, then the strict TypeScript and production build, pass.

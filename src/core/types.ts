@@ -1,5 +1,6 @@
 import type { Decoration } from './tankManagement';
 import type { AppearanceLocus } from './catalog';
+import type { VisualDescriptorKey } from './descriptors';
 
 /** Genome v1 holds 48 loci per copy; genome v2 appends the 12 Color and Ornament loci (60); genome v3 the 6 Structure loci (66). */
 export type Genome = { version: 1 | 2 | 3; maternal: number[]; paternal: number[] };
@@ -106,18 +107,30 @@ export type Listing = {
 export type ShopState = { model: 1 | 2; nextListing: number; refreshedDay: number; listings: Listing[] };
 /** How new fish are named: 1 numbered ("Fry 12"), 2 generated from name parts (ADR-055), 3 parts true to the fish's traits (ADR-056). */
 export type NamingModel = 1 | 2 | 3;
+/** A bloodline's standard (FS-604), taken from its foundation fish when it was registered and never changed after. */
+export type BloodlineStandard = {
+  /** Mean normalized visible descriptors of the foundation, 0–1. */
+  descriptors: Record<VisualDescriptorKey, number>;
+  tail: TailTopology; dorsal: DorsalForm; barbels: BarbelCount;
+  /** Mutation origins every foundation fish carried. */
+  signatureOrigins: string[];
+};
+export type Bloodline = { id: string; name: string; registeredAt: string; foundationIds: string[]; standard: BloodlineStandard };
 /** No-money recovery (FS-504): koi rescues claimed so far and whole game days until the rescue can help again. */
 export type ReliefState = { model: 1; claims: number; cooldownDays: number };
 /**
  * World v2 added per-tank water (FS-301), v3 fish life state (FS-302), v4 tank care (FS-305), v5 breeding state and
  * clutches (FS-401/402), v6 NPC demand, a credit ledger and rehomed fish (FS-501), v7 persistent shop stock (FS-502),
  * v8 persisted decoration transforms (FS-503). World v9 adds the koi rescue (FS-504). World v10 (FS-601) accepts genome v3
- * records and shop model 2, which delivers genome v3 stock. World v11 (FS-603) adds mutation origins to every fish.
+ * records and shop model 2, which delivers genome v3 stock. World v11 (FS-603) adds mutation origins to every fish;
+ * world v12 (FS-604) adds the bloodline registry.
  * Older saves migrate with defaults.
  */
 export type World = {
-  version: 11; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
+  version: 12; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
   market: MarketState; ledger: Ledger; shop: ShopState; naming: NamingModel; relief: ReliefState;
+  /** Registered bloodlines and the next registry number (world v12). */
+  bloodlines: Bloodline[]; nextBloodlineId: number;
 };
 /**
  * Development v2 inherited marking anchor, derived from one phased two-locus haplotype block.

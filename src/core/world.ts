@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { NAMING_MODEL, newFishName, takenNames } from './names';
 import { hash } from './random';
 import { childOrigins, emptyTrace } from './origins';
+import { bloodlineId, captureStandard, MAX_FOUNDATION, registrationProblem } from './bloodlines';
 import type { Fish, Ration, Tank, World } from './types';
 
 export const COHORT_SIZE = 20;
@@ -33,9 +34,10 @@ export const STOCK_PRICE = 250;
  * World v6: tanks carry water (FS-301) and care (FS-305); fish carry life (FS-302) and breeding state; clutches
  * (FS-401/402); NPC demand and the credit ledger (FS-501). World v7 adds persistent shop stock (FS-502); v8 adds placed
  * decorations (FS-503); v9 adds the koi rescue for no-money recovery (FS-504); v10 accepts genome v3 records and
- * genome v3 shop stock (FS-601); v11 adds mutation origins to every fish (FS-603).
+ * genome v3 shop stock (FS-601); v11 adds mutation origins to every fish (FS-603); v12 adds named
+ * bloodlines (FS-604).
  */
-export const WORLD_VERSION = 11;
+export const WORLD_VERSION = 12;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -56,10 +58,10 @@ function newTank(id: string, name: string, planted: boolean): Tank {
 
 /** New worlds use the current genome. Research fixtures pass genome version 1 to reproduce the frozen FS-101 founders. */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = GENOME_VERSION): World {
-  const world: World = { version: 11, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
+  const world: World = { version: 12, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
-  ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed), naming: NAMING_MODEL, relief: defaultRelief() };
+  ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed), naming: NAMING_MODEL, relief: defaultRelief(), bloodlines: [], nextBloodlineId: 1 };
   ['Haru', 'Sumi', 'Kohaku', 'Yuki', 'Akira', 'Momo'].forEach((name, i) => {
     world.fish.push(founder(world, name, i % 2 === 0 ? 'F' : 'M', timestamp, genomeVersion)); world.nextId++;
   });
@@ -91,7 +93,9 @@ export type Command =
   | { type: 'pair'; motherId: string; fatherId: string; nurseryId: string; size: ClutchSize; timestamp: string; genomeVersion: GenomeVersion }
   | { type: 'cancel-clutch'; clutchId: string }
   | { type: 'move-batch'; fishIds: string[]; tankId: string }
-  | { type: 'claim-relief'; tankId: string; timestamp: string; genomeVersion: GenomeVersion };
+  | { type: 'claim-relief'; tankId: string; timestamp: string; genomeVersion: GenomeVersion }
+  | { type: 'register-bloodline'; name: string; foundationIds: string[]; timestamp: string }
+  | { type: 'rename-bloodline'; bloodlineId: string; name: string };
 
 const fishIdSchema = z.string().regex(/^FSH-\d{6}$/);
 const tankIdSchema = z.string().max(50);
@@ -129,6 +133,8 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('cancel-clutch'), clutchId: z.string().regex(/^CL-\d{6}$/) }).strict(),
   z.object({ type: z.literal('move-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING), tankId: tankIdSchema }).strict(),
   z.object({ type: z.literal('claim-relief'), tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]) }).strict(),
+  z.object({ type: z.literal('register-bloodline'), name: z.string().max(64), foundationIds: z.array(fishIdSchema).min(1).max(MAX_FOUNDATION), timestamp: z.string().datetime() }).strict(),
+  z.object({ type: z.literal('rename-bloodline'), bloodlineId: z.string().regex(/^BL-\d{6}$/), name: z.string().max(64) }).strict(),
 ]);
 
 /** Validate before mutation; rejected commands leave the original world untouched. */
@@ -390,6 +396,24 @@ export function applyCommand(world: World, command: Command): World {
       }
       next.relief = { model: 1, claims: next.relief.claims + 1, cooldownDays: RELIEF_COOLDOWN_DAYS };
       next.ledger = recordEntry(next.ledger, 'stock', 0, rescued.length, `Koi rescue: ${names(rescued)} at no cost`);
+      break;
+    }
+    case 'register-bloodline': {
+      // Named bloodlines (FS-604): the standard is taken from the foundation now and never changes afterwards.
+      const problem = registrationProblem(next, command.name, command.foundationIds);
+      if (problem) throw new Error(problem);
+      const foundation = command.foundationIds.map(fishId => next.fish.find(f => f.id === fishId)!);
+      next.bloodlines.push({ id: bloodlineId(next.nextBloodlineId), name: command.name.trim(), registeredAt: iso(command.timestamp), foundationIds: [...command.foundationIds], standard: captureStandard(foundation) });
+      next.nextBloodlineId++;
+      break;
+    }
+    case 'rename-bloodline': {
+      const line = next.bloodlines.find(entry => entry.id === command.bloodlineId);
+      if (!line) throw new Error('Bloodline not found.');
+      const name = command.name.trim();
+      if (!name || name.length > 32) throw new Error('Name the bloodline with 1 to 32 characters.');
+      if (next.bloodlines.some(entry => entry.id !== line.id && entry.name.toLocaleLowerCase('en') === name.toLocaleLowerCase('en'))) throw new Error(`A bloodline named ${name} is already registered.`);
+      line.name = name;
       break;
     }
   }

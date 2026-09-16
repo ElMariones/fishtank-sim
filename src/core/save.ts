@@ -6,6 +6,8 @@ import { defaultCare, RATION_KEYS, THERMOSTAT_RANGE } from './care';
 import { ALL_LOCI, APPEARANCE_LOCI, GENOME_LOCI, LOCI } from './catalog';
 import { genomeProblem } from './registry';
 import { MAX_ORIGINS_PER_FISH, ORIGIN_ID_PATTERN, originProblem, reconstructOrigins } from './origins';
+import { MAX_BLOODLINES, MAX_FOUNDATION, MAX_SIGNATURE_ORIGINS } from './bloodlines';
+import { VISUAL_DESCRIPTORS } from './descriptors';
 import { adultLife } from './development';
 import { BUYER_BY_ID, defaultMarket, LEDGER_LIMIT, LEDGER_REASONS, ledgerBalance, openingLedger } from './economy';
 import { metabolicPotential } from './genetics';
@@ -93,6 +95,17 @@ const tanksWithCare = z.array(z.object({ ...tank, water, care })).min(1).max(MAX
 const relief = z.object({ model: z.literal(1), claims: z.number().int().min(0).max(1_000_000), cooldownDays: z.number().int().min(0).max(RELIEF_COOLDOWN_DAYS) }).strict();
 /** Mutation origins carried by a fish, world v11 (FS-603). */
 const origins = z.array(z.object({ locus: z.number().int().min(0).max(GENOME_LOCI.length - 1), copy: z.enum(['maternal', 'paternal']), id: z.string().regex(ORIGIN_ID_PATTERN) }).strict()).max(MAX_ORIGINS_PER_FISH);
+/** Registered bloodlines, world v12 (FS-604). */
+const unit = z.number().min(0).max(1);
+const bloodline = z.object({
+  id: z.string().regex(/^BL-\d{6}$/), name: z.string().trim().min(1).max(32), registeredAt: z.string().datetime(),
+  foundationIds: z.array(fishIdSchema).min(1).max(MAX_FOUNDATION),
+  standard: z.object({
+    descriptors: z.object(Object.fromEntries(VISUAL_DESCRIPTORS.map(({ key }) => [key, unit])) as Record<typeof VISUAL_DESCRIPTORS[number]['key'], typeof unit>).strict(),
+    tail: z.enum(['standard', 'paired', 'crown']), dorsal: z.enum(['normal', 'reduced', 'absent']), barbels: z.union([z.literal(0), z.literal(2), z.literal(4), z.literal(6)]),
+    signatureOrigins: z.array(z.string().regex(ORIGIN_ID_PATTERN)).max(MAX_SIGNATURE_ORIGINS),
+  }).strict(),
+}).strict();
 const worldV8 = {
   version: z.literal(8), ...header, nextClutchId: z.number().int().positive(),
   tanks: z.array(z.object({ ...tank, water, care, decorations: savedDecorationsSchema })).min(1).max(MAX_TANKS),
@@ -100,6 +113,9 @@ const worldV8 = {
   market, ledger, shop, naming: z.union([z.literal(1), z.literal(2), z.literal(3)]),
 };
 const schema = z.discriminatedUnion('version', [
+  // World v12 appends the bloodline registry after `relief` (FS-604).
+  z.object({ ...worldV8, version: z.literal(12), fish: z.array(z.object({ ...fishRecord, status: z.enum(['living', 'sold', 'rehomed']), life, breeding, origins })).max(MAX_RECORDS), relief,
+    bloodlines: z.array(bloodline).max(MAX_BLOODLINES), nextBloodlineId: z.number().int().positive() }),
   // World v11 appends `origins` to every fish record (FS-603).
   z.object({ ...worldV8, version: z.literal(11), fish: z.array(z.object({ ...fishRecord, status: z.enum(['living', 'sold', 'rehomed']), life, breeding, origins })).max(MAX_RECORDS), relief }),
   // World v10 has the v9 shape; it may hold genome v3 records and shop model 2 (FS-601).
@@ -146,30 +162,32 @@ export function decodeSave(raw: string): World {
   if (raw.length > 12_000_000) throw new Error('Save is too large for this lab.');
   const parsed = schema.parse(JSON.parse(raw));
   let world: World;
-  type Unoriginated = Omit<World, 'fish' | 'version'> & { version: 11; fish: Omit<Fish, 'origins'>[] };
+  type Unoriginated = Omit<World, 'fish' | 'version' | 'bloodlines' | 'nextBloodlineId'> & { version: 12; fish: Omit<Fish, 'origins'>[] };
   let legacy: Unoriginated | null = null;
-  if (parsed.version === 11) world = parsed;
-  else if (parsed.version === 10) legacy = { ...parsed, version: 11 };
+  if (parsed.version === 12) world = parsed;
+  // Worlds v1–v11 predate bloodlines (FS-604): the registry starts empty, appended after `relief`.
+  else if (parsed.version === 11) world = { ...parsed, version: 12, bloodlines: [], nextBloodlineId: 1 };
+  else if (parsed.version === 10) legacy = { ...parsed, version: 12 };
   // A world v9 kept shop model 1 and genome v2 stock; the runtime moves it to model 2 when it rebases (FS-601).
-  else if (parsed.version === 9) legacy = { ...parsed, version: 11 };
+  else if (parsed.version === 9) legacy = { ...parsed, version: 12 };
   // Keys follow the v9 schema order: every migration appends `relief` last, after the fields its version lacked.
-  else if (parsed.version === 8) legacy = { ...parsed, version: 11, relief: defaultRelief() };
-  else if (parsed.version === 7) legacy = { ...parsed, version: 11, relief: defaultRelief() };
+  else if (parsed.version === 8) legacy = { ...parsed, version: 12, relief: defaultRelief() };
+  else if (parsed.version === 7) legacy = { ...parsed, version: 12, relief: defaultRelief() };
   // v6 appended market and ledger to the v5 order, and v7 appends the shop and naming.
-  else if (parsed.version === 6) legacy = { ...parsed, version: 11, shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() };
-  else if (parsed.version === 5) legacy = { ...parsed, version: 11, market: defaultMarket(), ledger: openingLedger(parsed.credits), shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() };
+  else if (parsed.version === 6) legacy = { ...parsed, version: 12, shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() };
+  else if (parsed.version === 5) legacy = { ...parsed, version: 12, market: defaultMarket(), ledger: openingLedger(parsed.credits), shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() };
   else {
     const watered: Omit<Tank, 'care'>[] = parsed.version === 1 ? parsed.tanks.map(entry => ({ ...entry, water: defaultWater() })) : parsed.tanks;
     const cared: Tank[] = parsed.version === 4 ? parsed.tanks : watered.map(entry => ({ ...entry, care: defaultCare(entry.water) }));
     const lived: Omit<Fish, 'breeding' | 'origins'>[] = parsed.version === 3 || parsed.version === 4 ? parsed.fish : parsed.fish.map(member => ({ ...member, life: adultLife(member.genome) }));
     // Keys follow the v5 schema order: replay validation compares serialized worlds, so a migrated world must
     // serialize exactly like a decoded current one or every older save would fail to load.
-    legacy = { version: 11, seed: parsed.seed, nextId: parsed.nextId, credits: parsed.credits, nextClutchId: 1, tanks: cared,
+    legacy = { version: 12, seed: parsed.seed, nextId: parsed.nextId, credits: parsed.credits, nextClutchId: 1, tanks: cared,
       fish: lived.map(member => ({ ...member, breeding: idleBreeding() })), clutches: [], market: defaultMarket(), ledger: openingLedger(parsed.credits),
       shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() };
   }
   // Worlds v1–v10 predate mutation origins (FS-603): they are rebuilt from genomes where the transmitted copy is certain.
-  if (legacy) world = { ...legacy, fish: reconstructOrigins(legacy.fish).fish };
+  if (legacy) world = { ...legacy, fish: reconstructOrigins(legacy.fish).fish, bloodlines: [], nextBloodlineId: 1 };
   world = world!;
   world.tanks = world.tanks.map(tank => ({ ...tank, decorations: decorationsOf(tank) }));
   for (const tank of world.tanks) {
@@ -219,6 +237,13 @@ export function decodeSave(raw: string): World {
   if (world.relief.cooldownDays > 0 && world.relief.claims === 0) throw new Error('The koi rescue is waiting without any claim.');
   world.ledger.entries.forEach((entry, i) => {
     if (entry.seq >= world.ledger.next || (i > 0 && entry.seq <= world.ledger.entries[i - 1].seq)) throw new Error('Ledger entries are out of order.');
+  });
+  const lineNames = new Set<string>();
+  world.bloodlines.forEach((line, i) => {
+    const sequence = Number(line.id.slice(3)), name = line.name.toLocaleLowerCase('en');
+    if (sequence >= world.nextBloodlineId || (i > 0 && sequence <= Number(world.bloodlines[i - 1].id.slice(3))) || lineNames.has(name)
+      || new Set(line.foundationIds).size !== line.foundationIds.length || line.foundationIds.some(id => !ids.has(id))) throw new Error('Invalid bloodline record.');
+    lineNames.add(name);
   });
   const listingIds = new Set<string>();
   for (const entry of world.shop.listings) {
