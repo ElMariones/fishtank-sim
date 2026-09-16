@@ -112,11 +112,11 @@ describe('FS-501 ledger and rehoming', () => {
       const alive = world.fish.filter(f => f.status === 'living'), hatched = alive.filter(f => f.life.lengthCm > 0 && f.parents), tank = pick(world.tanks)!.id, roll = rng();
       const some = (count: number) => [...new Set(Array.from({ length: count }, () => pick(hatched)?.id ?? ''))];
       let command: Command | null = null;
-      if (roll < 0.1) command = alive.length > 60 ? { type: 'change-water', tankId: tank, percent: 10 } : { type: 'breed', motherId: pick(alive.filter(f => f.sex === 'F'))?.id ?? '', fatherId: pick(alive.filter(f => f.sex === 'M'))?.id ?? '', tankId: tank, timestamp: NOW, genomeVersion: 2 };
+      if (roll < 0.1) command = alive.length > 60 ? { type: 'change-water', tankId: tank, percent: 10 } : { type: 'breed', motherId: pick(alive.filter(f => f.sex === 'F'))?.id ?? '', fatherId: pick(alive.filter(f => f.sex === 'M'))?.id ?? '', tankId: tank, timestamp: NOW, genomeVersion: 3 };
       else if (roll < 0.22) command = { type: 'sell', fishId: pick(hatched)?.id ?? '', priceModel: 1 };
       else if (roll < 0.3) command = { type: 'sell-batch', fishIds: some(1 + Math.floor(rng() * 4)), priceModel: 1 };
       else if (roll < 0.35) command = { type: 'sell', fishId: pick(hatched)?.id ?? '' };
-      else if (roll < 0.47) command = world.credits >= 800 ? { type: 'buy', tankId: tank, timestamp: NOW, genomeVersion: 2 } : { type: 'change-water', tankId: tank, percent: 10 };
+      else if (roll < 0.47) command = world.credits >= 800 ? { type: 'buy', tankId: tank, timestamp: NOW, genomeVersion: 3 } : { type: 'change-water', tankId: tank, percent: 10 };
       else if (roll < 0.57) command = { type: 'set-care', tankId: tank, ration: 'measured', filterTier: Math.floor(rng() * 4), aerationTier: Math.floor(rng() * 4), targetC: 22 };
       else if (roll < 0.7) command = { type: 'change-water', tankId: tank, percent: pick([10, 25, 50] as const)! };
       else if (roll < 0.76) command = { type: 'rehome-batch', fishIds: some(1 + Math.floor(rng() * 3)) };
@@ -143,7 +143,7 @@ describe('FS-501 ledger and rehoming', () => {
   });
 
   it('rehomes fish without credits while keeping their records', () => {
-    const cross: Command = { type: 'breed', motherId: fishId(1), fatherId: fishId(2), tankId: 'tank-2', timestamp: NOW, genomeVersion: 2 };
+    const cross: Command = { type: 'breed', motherId: fishId(1), fatherId: fishId(2), tankId: 'tank-2', timestamp: NOW, genomeVersion: 3 };
     const hatched = advanceWorld(applyCommand(createWorld(NOW), cross), 0, 4 * DAY), ids = [fishId(7), fishId(8), fishId(9)];
     const rehomed = applyCommand(hatched, { type: 'rehome-batch', fishIds: ids });
     expect(rehomed.fish.filter(f => ids.includes(f.id)).map(f => f.status)).toEqual(['rehomed', 'rehomed', 'rehomed']);
@@ -156,7 +156,7 @@ describe('FS-501 ledger and rehoming', () => {
     }
     expect(() => applyCommand(hatched, { type: 'rehome-batch', fishIds: [fishId(7), fishId(7)] })).toThrow('only be rehomed once');
     expect(() => applyCommand(applyCommand(createWorld(NOW), cross), { type: 'rehome-batch', fishIds: [fishId(7)] })).toThrow('Eggs cannot be rehomed');
-    const courting = applyCommand(createWorld(NOW), { type: 'pair', motherId: fishId(1), fatherId: fishId(2), nurseryId: 'tank-2', size: 8, timestamp: NOW, genomeVersion: 2 });
+    const courting = applyCommand(createWorld(NOW), { type: 'pair', motherId: fishId(1), fatherId: fishId(2), nurseryId: 'tank-2', size: 8, timestamp: NOW, genomeVersion: 3 });
     expect(() => applyCommand(courting, { type: 'rehome-batch', fishIds: [fishId(2)] })).toThrow('courting');
   });
 
@@ -176,7 +176,7 @@ describe('FS-501 ledger and rehoming', () => {
     // A world v5 runtime whose journal sold and bought before the economy existed still decodes, rebased at its snapshot.
     let runtime = createRuntime(world, 'fs501-legacy');
     runtime = executeCommand(runtime, commandEnvelope(runtime, { type: 'sell', fishId: fishId(3) }));
-    runtime = executeCommand(runtime, commandEnvelope(runtime, { type: 'buy', tankId: 'tank-2', timestamp: NOW, genomeVersion: 2 }));
+    runtime = executeCommand(runtime, commandEnvelope(runtime, { type: 'buy', tankId: 'tank-2', timestamp: NOW, genomeVersion: 3 }));
     runtime = advanceRuntime(runtime, runtime.tick + DAY);
     const stored = JSON.parse(JSON.stringify(runtime));
     stored.world = asV5(stored.world);
@@ -190,7 +190,7 @@ describe('FS-505 best-first batch sales', () => {
   it('prices the most valuable fish before cheaper sales use up demand, and the command pays the reviewed plan', () => {
     let world = createWorld(NOW);
     for (const [motherId, fatherId] of [['FSH-000001', 'FSH-000002'], ['FSH-000003', 'FSH-000004']])
-      world = applyCommand(world, { type: 'breed', motherId, fatherId, tankId: 'tank-2', timestamp: NOW, genomeVersion: 2 });
+      world = applyCommand(world, { type: 'breed', motherId, fatherId, tankId: 'tank-2', timestamp: NOW, genomeVersion: 3 });
     world = advanceWorld(world, 0, 35 * DAY);
     const newestFirst = world.fish.filter(f => f.parents).map(f => f.id).reverse();
     const inOrder = planSales(world, newestFirst), best = planBestSales(world, newestFirst);

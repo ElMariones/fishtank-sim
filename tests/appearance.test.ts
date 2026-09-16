@@ -45,7 +45,7 @@ describe('FS-113 genome v2 appearance', () => {
     expect(expressAppearance(v1)).toEqual(CLASSIC_APPEARANCE);
     expect(appearanceFeatures(CLASSIC_APPEARANCE)).toEqual([]);
     expect(describeAppearance(v1).every(row => row.rarity === null)).toBe(true);
-    const child = inherit(v1, founderGenome(8, 1), 99, 0);
+    const child = inherit(v1, founderGenome(8, 1), 99, 0, 2);
     expect(child.genome.version).toBe(2);
     expect(child.genome.maternal.slice(LOCI.length)).toEqual(APPEARANCE_BASELINE);
     expect(expressAppearance(child.genome)).toEqual(CLASSIC_APPEARANCE);
@@ -127,9 +127,12 @@ describe('FS-113 genome v2 appearance', () => {
     const current = executeCommand(runtime, commandEnvelope(runtime, { ...breed, tankId: 'tank-1', genomeVersion: 2 }));
     expect(current.world.fish.slice(-20).every(fish => fish.genome.version === 2)).toBe(true);
     expect(decodeRuntime(JSON.stringify(current))).toEqual(current);
-    const v2Parents = createWorld(NOW);
+    const v2Parents = createWorld(NOW, 481516, 2);
     expect(() => applyCommand(v2Parents, { ...breed, genomeVersion: 1 })).toThrow('genome v1 child');
     expect(applyCommand(v2Parents, breed).fish.slice(6).every(fish => fish.genome.version === 2)).toBe(true);
+    // Genome v3 parents (FS-601) breed genome v3 without a version and refuse a lossy genome v2 clutch.
+    expect(applyCommand(createWorld(NOW), breed).fish.slice(6).every(fish => fish.genome.version === 3)).toBe(true);
+    expect(() => applyCommand(createWorld(NOW), { ...breed, genomeVersion: 2 })).toThrow('genome v2 child');
   });
 
   it('renders both inherited calico dot colors rather than silently dropping the second', () => {

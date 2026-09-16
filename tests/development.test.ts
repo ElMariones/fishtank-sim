@@ -14,7 +14,7 @@ import { applyCommand, createWorld, type Command } from '../src/core/world';
 
 const NOW = '2026-09-13T12:00:00.000Z';
 const DAY = TICKS_PER_GAME_DAY;
-const breedStudio: Command = { type: 'breed', motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId: 'tank-2', timestamp: NOW, genomeVersion: 2 };
+const breedStudio: Command = { type: 'breed', motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId: 'tank-2', timestamp: NOW, genomeVersion: 3 };
 /** A founder genome with growth potential exactly 1, so timings reflect the base rate. */
 const genome = (() => {
   const base = founderGenome(302), index = LOCI.indexOf('growth_rate');

@@ -18,7 +18,7 @@ import { TICK_MS } from '../src/simulation/time';
 const NOW = '2026-09-14T12:00:00.000Z';
 const DAY = TICKS_PER_GAME_DAY;
 const fishId = (n: number) => `FSH-${String(n).padStart(6, '0')}`;
-const breedStudio: Command = { type: 'breed', motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId: 'tank-2', timestamp: NOW, genomeVersion: 2 };
+const breedStudio: Command = { type: 'breed', motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId: 'tank-2', timestamp: NOW, genomeVersion: 3 };
 
 /** The Koi Garden holding `count` founder-distribution adults with the given care, and an empty studio. */
 function stocked(count: number, care: Partial<TankCare> = {}, water: Partial<WaterState> = {}): World {

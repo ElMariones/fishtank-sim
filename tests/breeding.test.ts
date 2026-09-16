@@ -17,8 +17,8 @@ const DAY = TICKS_PER_GAME_DAY;
 const limits = { maxLiving: MAX_LIVING, maxRecords: MAX_RECORDS };
 type Pair = Extract<Command, { type: 'pair' }>;
 /** Haru (FSH-000001, female) and Sumi (FSH-000002, male) share The Koi Garden as healthy adults. */
-const pair = (overrides: Partial<Pair> = {}): Pair => ({ type: 'pair', motherId: 'FSH-000001', fatherId: 'FSH-000002', nurseryId: 'tank-2', size: 20, timestamp: NOW, genomeVersion: 2, ...overrides });
-const labCross = (tankId: string, motherId = 'FSH-000003', fatherId = 'FSH-000004'): Command => ({ type: 'breed', motherId, fatherId, tankId, timestamp: NOW, genomeVersion: 2 });
+const pair = (overrides: Partial<Pair> = {}): Pair => ({ type: 'pair', motherId: 'FSH-000001', fatherId: 'FSH-000002', nurseryId: 'tank-2', size: 20, timestamp: NOW, genomeVersion: 3, ...overrides });
+const labCross = (tankId: string, motherId = 'FSH-000003', fatherId = 'FSH-000004'): Command => ({ type: 'breed', motherId, fatherId, tankId, timestamp: NOW, genomeVersion: 3 });
 const requestOf = (command: Pair) => ({ motherId: command.motherId, fatherId: command.fatherId, nurseryId: command.nurseryId, size: command.size });
 
 /** Advance one game day at a time until the first clutch leaves courtship; returns the world and the boundary tick. */
@@ -109,7 +109,7 @@ describe('FS-402 reserved clutch scheduler and bounded nursery', () => {
     world = applyCommand(world, pair());
     expect(reservedPlaces(world, 'tank-2')).toBe(20);
     const before = JSON.stringify(world);
-    expect(() => applyCommand(world, { type: 'buy', tankId: 'tank-2', timestamp: NOW, genomeVersion: 2 })).toThrow('reserved');
+    expect(() => applyCommand(world, { type: 'buy', tankId: 'tank-2', timestamp: NOW, genomeVersion: 3 })).toThrow('reserved');
     expect(() => applyCommand(world, { type: 'move', fishId: 'FSH-000005', tankId: 'tank-2' })).toThrow('reserved');
     expect(() => applyCommand(world, labCross('tank-2', 'FSH-000005', 'FSH-000006'))).toThrow('reserved');
     expect(JSON.stringify(world)).toBe(before);
@@ -128,7 +128,7 @@ describe('FS-402 reserved clutch scheduler and bounded nursery', () => {
         const courting = w.clutches.filter(c => c.stage === 'courting'), roll = rng();
         let command: Command | null = null, advance = 1;
         if (roll < 0.25 && homes.length) { const [motherId, fatherId] = couple(); command = pair({ motherId, fatherId, nurseryId: pick(tanks), size: pick([8, 12, 16, 20, 24] as const) }); }
-        else if (roll < 0.35) command = { type: 'buy', tankId: pick(tanks), timestamp: NOW, genomeVersion: 2 };
+        else if (roll < 0.35) command = { type: 'buy', tankId: pick(tanks), timestamp: NOW, genomeVersion: 3 };
         else if (roll < 0.45 && living.length) command = { type: 'move', fishId: pick(living).id, tankId: pick(tanks) };
         else if (roll < 0.55 && homes.length) { const [motherId, fatherId] = couple(); command = labCross(pick(tanks), motherId, fatherId); }
         else if (roll < 0.6 && courting.length) command = { type: 'cancel-clutch', clutchId: pick(courting).id };

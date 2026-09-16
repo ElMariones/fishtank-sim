@@ -1,5 +1,6 @@
 import { pairingBlockers, reservedPlaces } from './breeding';
 import { careSettings } from './care';
+import { GENOME_VERSION } from './catalog';
 import { ADULT_FROM, isEgg } from './development';
 import { metabolicPotential } from './genetics';
 import { advanceWorld } from './habitat';
@@ -39,7 +40,7 @@ export function routeToPairing(start: World, startTick: number, maxDays = 150, t
     if (missing.length) {
       if (reliefStatus(world).eligible) {
         const tankId = reliefDestination(world, missing.length) ?? (makeRoom('tank-1', missing.length) ? 'tank-1' : null);
-        if (tankId) { run({ type: 'claim-relief', tankId, timestamp, genomeVersion: 2 }); continue; }
+        if (tankId) { run({ type: 'claim-relief', tankId, timestamp, genomeVersion: GENOME_VERSION }); continue; }
       } else if (world.credits >= RELIEF_THRESHOLD * missing.length) {
         const listing = world.shop.listings.find(entry => entry.sex === missing[0] && entry.price <= world.credits);
         const tankId = listing ? reliefDestination(world, 1) ?? (makeRoom('tank-1', 1) ? 'tank-1' : null) : null;
@@ -59,7 +60,7 @@ export function routeToPairing(start: World, startTick: number, maxDays = 150, t
         run({ type: 'set-care', tankId: home, ration: 'measured', filterTier: settings.filterTier, aerationTier: settings.aerationTier, targetC: 22 });
       const request = { motherId: mother.id, fatherId: father.id, nurseryId: home, size: 8 as const };
       if (!pairingBlockers(world, request, limits).length) {
-        run({ type: 'pair', ...request, timestamp, genomeVersion: 2 });
+        run({ type: 'pair', ...request, timestamp, genomeVersion: GENOME_VERSION });
         return { world, days: Math.ceil((tick - startTick) / DAY), commands };
       }
     }

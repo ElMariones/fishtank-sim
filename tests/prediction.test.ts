@@ -25,7 +25,7 @@ describe('FS-403 independent offspring prediction', () => {
 
   it('never changes parents, future birth records, world IDs, balances or replay inputs', () => {
     const world = createWorld('2026-09-14T00:00:00.000Z'), raw = JSON.stringify(world);
-    const command: Command = { type: 'breed', motherId: world.fish[0].id, fatherId: world.fish[1].id, tankId: 'tank-1', timestamp: '2026-09-14T00:01:00.000Z', genomeVersion: 2 };
+    const command: Command = { type: 'breed', motherId: world.fish[0].id, fatherId: world.fish[1].id, tankId: 'tank-1', timestamp: '2026-09-14T00:01:00.000Z', genomeVersion: 3 };
     const withoutPreview = applyCommand(world, command);
     for (const goals of [[], ['tail'], ['tail', 'base_color:1']]) predictOffspring(world.fish[0].genome, world.fish[1].genome, goals);
     expect(JSON.stringify(world)).toBe(raw);

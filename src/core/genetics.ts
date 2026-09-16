@@ -1,5 +1,7 @@
-import { APPEARANCE_LOCI, CROSSOVER_RATE, FOUNDER_WEIGHTS, GENOME_VERSION, LOCI, MUTATION_RATE, type GenomeVersion, type Locus } from './catalog';
-import { APPEARANCE_BASELINE, APPEARANCE_FOUNDER_WEIGHTS, expressAppearance } from './appearance';
+import { APPEARANCE_LOCI, CROSSOVER_RATE, GENOME_VERSION, LOCI, MUTATION_RATE, type GenomeVersion, type Locus } from './catalog';
+import { expressAppearance } from './appearance';
+import { LOCUS_REGISTRY, type LocusDefinition } from './registry';
+import { expressStructure } from './structure';
 import { markingAnchors } from './pattern';
 import { clamp, hash, random } from './random';
 import type { Genome, Mutation, Phenotype } from './types';
@@ -10,51 +12,65 @@ function weighted(rng: () => number, weights: readonly number[]): number {
   return weights.findIndex((weight, i) => { sum += weight; return draw < sum || i === weights.length - 1; });
 }
 
-/**
- * Genome v1 loci always consume the original stream, so a seed's first 48 loci never change. Genome v2 draws the
- * appended Color and Ornament chromosomes from a separate stream with locus-specific founder weights.
- */
-export function founderGenome(seed: number, version: GenomeVersion = GENOME_VERSION): Genome {
-  const rng = random(seed);
-  const maternal = LOCI.map(() => weighted(rng, FOUNDER_WEIGHTS));
-  const paternal = LOCI.map(() => weighted(rng, FOUNDER_WEIGHTS));
-  if (version === 1) return { version, maternal, paternal };
-  const stream = random(hash(`appearance-v2:founder:${seed}`));
-  const appended = () => APPEARANCE_LOCI.map(locus => weighted(stream, APPEARANCE_FOUNDER_WEIGHTS[locus]));
-  return { version, maternal: [...maternal, ...appended()], paternal: [...paternal, ...appended()] };
-}
+/** One founder copy per chromosome block, with registry founder weights. */
+const founderCopy = (rng: () => number, loci: readonly LocusDefinition[]) => loci.map(entry => weighted(rng, entry.alleles.map(allele => allele.founderWeight)));
 
 /**
- * Linked meiosis with per-copy mutation. The genome v1 loci of a child are identical for a seed whatever the requested
- * version. A genome v2 child draws chromosomes 9–10 from a separate stream; a genome v1 parent transmits the classic
- * baseline there, so its offspring look classic unless a new mutation appears.
+ * Genome v1 loci always consume the original stream, so a seed's first 48 loci never change. Genome v2 draws the
+ * appended Color and Ornament chromosomes, and genome v3 the Structure chromosome, from separate streams with
+ * locus-specific founder weights from the registry (FS-601).
+ */
+export function founderGenome(seed: number, version: GenomeVersion = GENOME_VERSION): Genome {
+  const rng = random(seed), [core, appearance, structure] = LOCUS_BLOCKS;
+  const maternal = founderCopy(rng, core), paternal = founderCopy(rng, core);
+  if (version === 1) return { version, maternal, paternal };
+  const stream = random(hash(`appearance-v2:founder:${seed}`));
+  maternal.push(...founderCopy(stream, appearance)); paternal.push(...founderCopy(stream, appearance));
+  if (version === 2) return { version, maternal, paternal };
+  const structural = random(hash(`structure-v3:founder:${seed}`));
+  maternal.push(...founderCopy(structural, structure)); paternal.push(...founderCopy(structural, structure));
+  return { version, maternal, paternal };
+}
+
+/** Registry blocks in genome order: v1 core loci, v2 appearance loci, v3 structure loci. */
+const LOCUS_BLOCKS = [LOCUS_REGISTRY.slice(0, LOCI.length), LOCUS_REGISTRY.slice(LOCI.length, LOCI.length + APPEARANCE_LOCI.length), LOCUS_REGISTRY.slice(LOCI.length + APPEARANCE_LOCI.length)] as const;
+
+/**
+ * Linked meiosis with per-copy mutation from the registry. The genome v1 loci of a child are identical for a seed whatever
+ * the requested version, and each appended chromosome block draws from its own stream. A parent whose genome predates a
+ * block transmits that block's baseline alleles, so its offspring look standard there unless a new mutation appears.
+ * `mutationRate` sets the small-effect rate; registry loci with their own class (structural) keep their rate unless it is 0.
  */
 export function inherit(mother: Genome, father: Genome, seed: number, mutationRate = MUTATION_RATE, version: GenomeVersion = GENOME_VERSION): { genome: Genome; mutations: Mutation[] } {
   if (mutationRate < 0 || mutationRate > 1 || !Number.isFinite(mutationRate)) throw new Error('Invalid mutation rate.');
-  if (version === 1 && (mother.version !== 1 || father.version !== 1)) throw new Error('Genome v2 parents cannot produce a genome v1 child.');
+  if (version < Math.max(mother.version, father.version)) throw new Error(`Genome v${Math.max(mother.version, father.version)} parents cannot produce a genome v${version} child.`);
   const mutations: Mutation[] = [];
-  const transmit = (rng: () => number, count: number, offset: number, allele: (homolog: 0 | 1, index: number) => number, copy: Mutation['copy']) => {
+  const transmit = (rng: () => number, loci: readonly LocusDefinition[], parent: Genome, copy: Mutation['copy']) => {
     let side: 0 | 1 = 0;
-    return Array.from({ length: count }, (_, i) => {
+    return loci.map((entry, i) => {
       if (i % 6 === 0) side = rng() < 0.5 ? 0 : 1;
       else if (rng() < CROSSOVER_RATE) side = side ? 0 : 1;
-      const from = allele(side, i);
-      if (rng() >= mutationRate) return from;
-      const to = from === 0 ? 1 : from === 5 ? 4 : from + (rng() < 0.5 ? -1 : 1);
-      mutations.push({ locus: offset + i, copy, from, to });
+      const from = parent.version < entry.sinceGenome ? entry.baseline! : (side === 0 ? parent.maternal : parent.paternal)[entry.index];
+      const rate = entry.mutationRate === MUTATION_RATE || mutationRate === 0 ? mutationRate : entry.mutationRate;
+      if (rng() >= rate) return from;
+      const targets = entry.alleles[from].mutationTargets;
+      const to = targets.length === 1 ? targets[0].allele : targets[weighted(rng, targets.map(target => target.weight))].allele;
+      mutations.push({ locus: entry.index, copy, from, to });
       return to;
     });
   };
-  const core = (parent: Genome) => (homolog: 0 | 1, i: number) => (homolog === 0 ? parent.maternal : parent.paternal)[i];
+  const [core, appearance, structure] = LOCUS_BLOCKS;
   const rng = random(seed);
-  const maternal = transmit(rng, LOCI.length, 0, core(mother), 'maternal');
-  const paternal = transmit(rng, LOCI.length, 0, core(father), 'paternal');
+  const maternal = transmit(rng, core, mother, 'maternal');
+  const paternal = transmit(rng, core, father, 'paternal');
   if (version === 1) return { genome: { version, maternal, paternal }, mutations };
-  const appended = (parent: Genome) => (homolog: 0 | 1, i: number) =>
-    parent.version === 1 ? APPEARANCE_BASELINE[i] : (homolog === 0 ? parent.maternal : parent.paternal)[LOCI.length + i];
   const stream = random(hash(`appearance-v2:birth:${seed}`));
-  maternal.push(...transmit(stream, APPEARANCE_LOCI.length, LOCI.length, appended(mother), 'maternal'));
-  paternal.push(...transmit(stream, APPEARANCE_LOCI.length, LOCI.length, appended(father), 'paternal'));
+  maternal.push(...transmit(stream, appearance, mother, 'maternal'));
+  paternal.push(...transmit(stream, appearance, father, 'paternal'));
+  if (version === 2) return { genome: { version, maternal, paternal }, mutations };
+  const structural = random(hash(`structure-v3:birth:${seed}`));
+  maternal.push(...transmit(structural, structure, mother, 'maternal'));
+  paternal.push(...transmit(structural, structure, father, 'paternal'));
   return { genome: { version, maternal, paternal }, mutations };
 }
 
@@ -95,6 +111,7 @@ export function express(genome: Genome): Phenotype {
     turning: 0.7 + g('turning') * 1.4, activity: g('activity'), social: g('sociability'), bold: g('boldness'), curious: g('curiosity'),
     markings: markingAnchors(genome),
     appearance: expressAppearance(genome),
+    structure: expressStructure(genome),
   };
 }
 

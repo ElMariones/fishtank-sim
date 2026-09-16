@@ -31,9 +31,10 @@ export const STOCK_PRICE = 250;
 /**
  * World v6: tanks carry water (FS-301) and care (FS-305); fish carry life (FS-302) and breeding state; clutches
  * (FS-401/402); NPC demand and the credit ledger (FS-501). World v7 adds persistent shop stock (FS-502); v8 adds placed
- * decorations (FS-503); v9 adds the koi rescue for no-money recovery (FS-504).
+ * decorations (FS-503); v9 adds the koi rescue for no-money recovery (FS-504); v10 accepts genome v3 records and
+ * genome v3 shop stock (FS-601).
  */
-export const WORLD_VERSION = 9;
+export const WORLD_VERSION = 10;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -54,7 +55,7 @@ function newTank(id: string, name: string, planted: boolean): Tank {
 
 /** New worlds use the current genome. Research fixtures pass genome version 1 to reproduce the frozen FS-101 founders. */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = GENOME_VERSION): World {
-  const world: World = { version: 9, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
+  const world: World = { version: 10, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
   ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed), naming: NAMING_MODEL, relief: defaultRelief() };
@@ -97,7 +98,7 @@ const tankIdSchema = z.string().max(50);
  * Commands recorded before FS-113 carry no genomeVersion. They must replay exactly as the genome v1 reducer produced
  * them, or stored snapshots would stop agreeing with their journals; the app sends the current version explicitly.
  */
-const genomeVersionSchema = z.union([z.literal(1), z.literal(2)]).optional();
+const genomeVersionSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]).optional();
 export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('rename'), fishId: fishIdSchema, name: z.string().trim().min(1).max(32) }).strict(),
   z.object({ type: z.literal('move'), fishId: fishIdSchema, tankId: tankIdSchema }).strict(),
@@ -122,11 +123,11 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('pair'), motherId: fishIdSchema, fatherId: fishIdSchema, nurseryId: tankIdSchema,
     size: z.union([z.literal(CLUTCH_SIZES[0]), z.literal(CLUTCH_SIZES[1]), z.literal(CLUTCH_SIZES[2]), z.literal(CLUTCH_SIZES[3]), z.literal(CLUTCH_SIZES[4])]),
-    timestamp: z.string().datetime(), genomeVersion: z.union([z.literal(1), z.literal(2)]),
+    timestamp: z.string().datetime(), genomeVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   }).strict(),
   z.object({ type: z.literal('cancel-clutch'), clutchId: z.string().regex(/^CL-\d{6}$/) }).strict(),
   z.object({ type: z.literal('move-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING), tankId: tankIdSchema }).strict(),
-  z.object({ type: z.literal('claim-relief'), tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: z.union([z.literal(1), z.literal(2)]) }).strict(),
+  z.object({ type: z.literal('claim-relief'), tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]) }).strict(),
 ]);
 
 /** Validate before mutation; rejected commands leave the original world untouched. */
@@ -202,7 +203,8 @@ export function applyCommand(world: World, command: Command): World {
       room(COHORT_SIZE);
       space(command.tankId, COHORT_SIZE);
       // A pre-FS-113 command could only name genome v1 parents, which then produced genome v1 children.
-      const version = command.genomeVersion ?? (mother.genome.version === 1 && father.genome.version === 1 ? 1 : 2);
+      // A command without a version keeps what its parents allow; genome v3 parents never existed before FS-601.
+      const version = command.genomeVersion ?? (mother.genome.version === 1 && father.genome.version === 1 ? 1 : Math.max(2, mother.genome.version, father.genome.version) as GenomeVersion);
       const taken = takenNames(next);
       for (let i = 0; i < COHORT_SIZE; i++) {
         const birthSeed = hash(`${world.seed}:birth:${next.nextId}:${mother.id}:${father.id}`);
@@ -333,7 +335,8 @@ export function applyCommand(world: World, command: Command): World {
         { maxLiving: MAX_LIVING, maxRecords: MAX_RECORDS });
       if (blockers.length) throw new Error(blockers.map(blocker => blocker.message).join(' '));
       const mother = getFish(command.motherId), father = getFish(command.fatherId);
-      if (command.genomeVersion === 1 && (mother.genome.version !== 1 || father.genome.version !== 1)) throw new Error('Genome v2 parents cannot produce a genome v1 clutch.');
+      if (command.genomeVersion < Math.max(mother.genome.version, father.genome.version))
+        throw new Error(`Genome v${Math.max(mother.genome.version, father.genome.version)} parents cannot produce a genome v${command.genomeVersion} clutch.`);
       next.clutches.push({
         id: clutchId(next.nextClutchId), motherId: mother.id, fatherId: father.id, tankId: mother.tankId, nurseryId: command.nurseryId,
         size: command.size, genomeVersion: command.genomeVersion, pairedAt: iso(command.timestamp), stage: 'courting', days: 0, progress: 0,

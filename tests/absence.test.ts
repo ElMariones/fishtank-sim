@@ -12,7 +12,7 @@ import { OFFLINE_CAP_MS } from '../src/simulation/time';
 
 const NOW = '2026-09-14T12:00:00.000Z';
 const DAY = TICKS_PER_GAME_DAY;
-const breedStudio: Command = { type: 'breed', motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId: 'tank-2', timestamp: NOW, genomeVersion: 2 };
+const breedStudio: Command = { type: 'breed', motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId: 'tank-2', timestamp: NOW, genomeVersion: 3 };
 const stressed = () => scenarioWorld(60, { ration: 'heavy', targetC: 29 }, { filterMgNPerDay: FILTER_TIERS[0].mgNPerDay, aerationPerDay: AERATION_TIERS[0].perDay });
 
 describe('FS-307 integrated care, absence and recovery', () => {

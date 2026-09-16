@@ -1,6 +1,6 @@
 # Genetics and development specification
 
-**Baseline:** lab genome v1 and v2 (FS-113), development v3, anatomy v2, renderer v4. **Scope:** synthetic game genetics. Gene names describe fictional controls, not identified koi genes. Source notes are preserved in [source/original-concept.txt](source/original-concept.txt).
+**Baseline:** lab genome v1, v2 (FS-113) and v3 (FS-601), registry model 1, development v5, anatomy v2, renderer v6. **Scope:** synthetic game genetics. Gene names describe fictional controls, not identified koi genes. Source notes are preserved in [source/original-concept.txt](source/original-concept.txt).
 
 ## 1. Representation and actual combinatorics
 
@@ -14,9 +14,9 @@ Numbers this large must stay out of the hot path and save schema. “Millions of
 
 ```ts
 type Genome = {
-  version: 1 | 2;
-  maternal: number[]; // 48 IDs (v1) or 60 IDs (v2); copy received from mother
-  paternal: number[]; // 48 IDs (v1) or 60 IDs (v2); copy received from father
+  version: 1 | 2 | 3;
+  maternal: number[]; // 48 IDs (v1), 60 (v2) or 66 (v3); copy received from mother
+  paternal: number[]; // 48 IDs (v1), 60 (v2) or 66 (v3); copy received from father
 };
 ```
 
@@ -44,7 +44,7 @@ The same distribution across all loci is a prototype simplification. It creates 
 
 For an independently sampled recessive A5/A5 switch, the founder probability is 0.02² = 0.0004 (0.04%). A small population cannot reliably estimate that rate. Recessive carrier probability in this initializer is 2 × 0.02 × 0.98 = 3.92%.
 
-### Registry contract for the next stage
+### Registry contract (implemented as registry model 1, FS-601)
 
 ```ts
 interface LocusDefinition {
@@ -63,6 +63,8 @@ interface LocusDefinition {
 ```
 
 Never change locus order, effect semantics, or allele meaning in place on an existing save version.
+
+**Implemented (FS-601):** `src/core/registry.ts` follows this contract with `sinceGenome` (the genome version that introduced the locus), `baseline` (the allele older genomes read), a per-locus `mutationRate` and `developmentVersion`. Mutation targets are listed per allele. The legacy adjacent step is two equal targets drawn with one random number, which reproduces genome v1/v2 births bit for bit. `genomeProblem` rejects a wrong length or an unsupported allele in saves.
 
 ## 4. Meiosis and linked inheritance
 
@@ -210,9 +212,22 @@ Genome v2 appends two six-locus chromosomes after the 48 v1 loci (indices 48–5
 
 The inspector labels a variant "uncommon" (at least 2% of founders express it), "rare" (0.3–2%) or "very rare" (below 0.3%) from the exact founder-weight probability of that expressed value. It describes founder stock, not a player's population.
 
-## 8. Planned genome v3: 24 additional loci
+## 8. Genome v3: chromosome 11 implemented, further loci planned
 
 Do not add these as unused rows to an existing genome version. Add a separate schema/version only once expression and tests exist. They were originally planned as genome v2; FS-113 used v2 for appearance, so these now follow as chromosomes 11–14.
+
+**Implemented (FS-601): genome v3 = genome v2 + chromosome 11, Structure (66 loci).** Only loci with expression and tests were added: four planned chromosome 11 loci, `fin_ray_density` moved up from chromosome 12, and the new `topology_spread`. Structure draws from its own streams (`structure-v3:founder:<seed>`, `structure-v3:birth:<seed>`). Genome v1/v2 parents pass on the baseline, and v1/v2 fish always express the standard structure.
+
+| Locus | Alleles | Expression | Founder weights | Mutation per copy |
+|---|---|---|---|---|
+| tail_topology | A0 standard, A1 paired fan, A2 crown-four | Recessive series (two variant copies; lower variant shown) | .996 .0035 .0005 | 0.001: A0→A1, A1→A0/A2, A2→A1 |
+| lobe_balance | levels 0–5 | Additive, upper/lower lobe ratio 0.8–1.3 (baseline A2/A2 = 1) | lab standard | 0.003 adjacent |
+| topology_spread | levels 0–5 | Additive 0–1, separation of paired or crown lobes | lab standard | 0.003 adjacent |
+| dorsal_form | A0 normal, A1 reduced, A2 absent | Recessive series | .97 .025 .005 | 0.001: A0→A1, A1→A0/A2, A2→A1 |
+| barbel_count | A0 two, A1 none, A2 four, A3 six | Two unless both copies agree; A2/A3 gives four | .965 .02 .013 .002 | 0.001: A0→A1/A2, A1→A0, A2→A0/A3, A3→A2 |
+| fin_ray_density | levels 0–5 | Additive ray multiplier 0.76–1.36 (baseline 1) | lab standard | 0.003 adjacent |
+
+About 0.8% of founders carry a topology variant, and practically none express it, so an unusual tail is bred from carriers or found through structural mutation. The planned rows below that FS-601 did not add (pectoral topology, vertebral extension and chromosomes 12–14) need their own expression and tests first. See [FS-601 evidence](research/FS-601-REGISTRY-AND-GENOME-V3.md).
 
 | Chr | New locus | Purpose and guardrail |
 |---|---|---|

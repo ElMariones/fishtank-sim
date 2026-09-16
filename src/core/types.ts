@@ -1,8 +1,8 @@
 import type { Decoration } from './tankManagement';
 import type { AppearanceLocus } from './catalog';
 
-/** Genome v1 holds 48 loci per copy; genome v2 appends the 12 Color and Ornament loci (60 per copy). */
-export type Genome = { version: 1 | 2; maternal: number[]; paternal: number[] };
+/** Genome v1 holds 48 loci per copy; genome v2 appends the 12 Color and Ornament loci (60); genome v3 the 6 Structure loci (66). */
+export type Genome = { version: 1 | 2 | 3; maternal: number[]; paternal: number[] };
 export type Mutation = { locus: number; copy: 'maternal' | 'paternal'; from: number; to: number };
 /** Life model v1 state (FS-302). Age, size and condition accumulate on game-day boundaries; genetics only set the potential. */
 export type LifeState = {
@@ -34,7 +34,7 @@ export type Clutch = {
   tankId: string;
   /** Tank that receives the eggs and holds the reservation until spawning. */
   nurseryId: string;
-  size: number; genomeVersion: 1 | 2;
+  size: number; genomeVersion: 1 | 2 | 3;
   /** Timestamp of the pairing command; eggs are dated from it at one game day per real minute. */
   pairedAt: string;
   stage: ClutchStage;
@@ -99,7 +99,7 @@ export type Listing = {
   /** For documented carriers: the appearance locus and the variant allele carried as one hidden copy. */
   carries: { locus: AppearanceLocus; allele: number } | null;
 };
-export type ShopState = { model: 1; nextListing: number; refreshedDay: number; listings: Listing[] };
+export type ShopState = { model: 1 | 2; nextListing: number; refreshedDay: number; listings: Listing[] };
 /** How new fish are named: 1 numbered ("Fry 12"), 2 generated from name parts (ADR-055), 3 parts true to the fish's traits (ADR-056). */
 export type NamingModel = 1 | 2 | 3;
 /** No-money recovery (FS-504): koi rescues claimed so far and whole game days until the rescue can help again. */
@@ -107,10 +107,11 @@ export type ReliefState = { model: 1; claims: number; cooldownDays: number };
 /**
  * World v2 added per-tank water (FS-301), v3 fish life state (FS-302), v4 tank care (FS-305), v5 breeding state and
  * clutches (FS-401/402), v6 NPC demand, a credit ledger and rehomed fish (FS-501), v7 persistent shop stock (FS-502),
- * v8 persisted decoration transforms (FS-503). World v9 adds the koi rescue (FS-504). Older saves migrate with defaults.
+ * v8 persisted decoration transforms (FS-503). World v9 adds the koi rescue (FS-504). World v10 (FS-601) accepts genome v3
+ * records and shop model 2, which delivers genome v3 stock. Older saves migrate with defaults.
  */
 export type World = {
-  version: 9; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
+  version: 10; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
   market: MarketState; ledger: Ledger; shop: ShopState; naming: NamingModel; relief: ReliefState;
 };
 /**
@@ -141,6 +142,14 @@ export type Appearance = {
   motifs: Motif<BodyMotif>[]; density: number; motifScale: number; contrast: number; reach: number;
   finMotifs: Motif<FinMotif>[];
 };
+export type TailTopology = 'standard' | 'paired' | 'crown';
+export type DorsalForm = 'normal' | 'reduced' | 'absent';
+export type BarbelCount = 0 | 2 | 4 | 6;
+/**
+ * Structure v1 from genome v3 chromosome 11 (FS-601). `lobeBalance` scales the upper lobes against the lower (0.8–1.3),
+ * `spread` separates paired or crown lobes (0–1), and `rays` multiplies drawn fin rays (0.76–1.36).
+ */
+export type Structure = { tail: TailTopology; lobeBalance: number; spread: number; dorsal: DorsalForm; barbels: BarbelCount; rays: number };
 export type Phenotype = {
   length: number; depth: number; taper: number; curve: number; head: number; snout: number;
   eye: number; eyePosition: number; iris: number; pupil: number; mouth: number; barbel: number;
@@ -151,4 +160,5 @@ export type Phenotype = {
   fertility: number; speed: number; turning: number; activity: number; social: number; bold: number; curious: number;
   markings: MarkingAnchor[];
   appearance: Appearance;
+  structure: Structure;
 };

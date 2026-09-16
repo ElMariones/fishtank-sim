@@ -17,7 +17,7 @@ const NOW = '2026-09-15T12:00:00.000Z';
 const DAY = TICKS_PER_GAME_DAY;
 const MALES = ['FSH-000002', 'FSH-000004', 'FSH-000006'];
 const limits = { maxLiving: MAX_LIVING, maxRecords: MAX_RECORDS };
-const claim = (tankId = 'tank-1'): Command => ({ type: 'claim-relief', tankId, timestamp: NOW, genomeVersion: 2 });
+const claim = (tankId = 'tank-1'): Command => ({ type: 'claim-relief', tankId, timestamp: NOW, genomeVersion: 3 });
 /** Credits and the ledger's opening balance both at `credits`, as after spending down to that balance. */
 const withCredits = (world: World, credits: number): World => ({ ...world, credits, ledger: openingLedger(credits) });
 const withoutMales = (credits: number) => withCredits(applyCommand(createWorld(NOW), { type: 'rehome-batch', fishIds: MALES }), credits);
@@ -38,14 +38,14 @@ describe('FS-504 koi rescue', () => {
     const lonely = withoutMales(100);
     expect([missingSexes(lonely), reliefStatus(lonely).eligible, reliefDestination(lonely, 1)]).toEqual([['M'], true, 'tank-1']);
     const rescued = applyCommand(lonely, claim()), male = rescued.fish.at(-1)!;
-    expect(male).toMatchObject({ id: 'FSH-000007', sex: 'M', generation: 0, parents: null, tankId: 'tank-1', status: 'living', mutations: [], genome: { version: 2 } });
+    expect(male).toMatchObject({ id: 'FSH-000007', sex: 'M', generation: 0, parents: null, tankId: 'tank-1', status: 'living', mutations: [], genome: { version: 3 } });
     expect([rescued.credits, rescued.nextId, rescued.relief]).toEqual([100, 8, { model: 1, claims: 1, cooldownDays: RELIEF_COOLDOWN_DAYS }]);
     expect(rescued.ledger.entries.at(-1)).toMatchObject({ reason: 'stock', amount: 0, fish: 1, detail: `Koi rescue: ${male.name} at no cost` });
     expect(ledgerBalance(rescued.ledger)).toBe(100);
     expect(decodeSave(JSON.stringify(rescued))).toEqual(rescued);
     const request = { motherId: 'FSH-000001', fatherId: male.id, nurseryId: 'tank-2', size: 20 as const };
     expect(pairingBlockers(rescued, request, limits)).toEqual([]);
-    expect(applyCommand(rescued, { type: 'pair', ...request, timestamp: NOW, genomeVersion: 2 }).clutches).toHaveLength(1);
+    expect(applyCommand(rescued, { type: 'pair', ...request, timestamp: NOW, genomeVersion: 3 }).clutches).toHaveLength(1);
 
     // With nobody left, a pair arrives together, named apart from every archived record.
     const empty = everyoneRehomed(0), pair = applyCommand(empty, claim('tank-2'));
@@ -67,7 +67,7 @@ describe('FS-504 koi rescue', () => {
     refused(cramped, claim('tank-1'), 'free places');
     expect(reliefDestination(cramped, 1)).toBe('tank-2');
     refused(lonely, claim('tank-9'), 'Tank not found');
-    refused(lonely, { ...claim(), genomeVersion: 3 } as unknown as Command, 'Invalid');
+    refused(lonely, { ...claim(), genomeVersion: 4 } as unknown as Command, 'Invalid');
   });
 
   it('counts the wait down at game-day boundaries and replays exactly', () => {
@@ -147,7 +147,7 @@ describe('FS-504 koi rescue', () => {
 describe('FS-504 no softlock', () => {
   it('recovers from the harshest starting points with only free actions and the credits already held', () => {
     const lone = applyCommand(applyCommand(withoutMales(40), claim()), { type: 'rehome-batch', fishIds: ['FSH-000007'] });
-    const cross = applyCommand(createWorld(NOW), { type: 'breed', motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId: 'tank-2', timestamp: NOW, genomeVersion: 2 });
+    const cross = applyCommand(createWorld(NOW), { type: 'breed', motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId: 'tank-2', timestamp: NOW, genomeVersion: 3 });
     const eggsOnly = withCredits(applyCommand(cross, { type: 'rehome-batch', fishIds: cross.fish.slice(0, 6).map(f => f.id) }), 0);
     const cases = { empty: everyoneRehomed(0), waiting: lone, eggsOnly, stock: withoutMales(1000) };
     const result = Object.fromEntries(Object.entries(cases).map(([key, world]) => {
@@ -177,8 +177,8 @@ describe('FS-504 no softlock', () => {
       const parent = (sex: Fish['sex']) => pick(hatched.filter(f => f.sex === sex))?.id ?? 'FSH-999999';
       const tankId = pick(world.tanks)!.id, roll = rng();
       let command: Command | null = null;
-      if (roll < 0.07) command = alive.length < 150 ? { type: 'breed', motherId: parent('F'), fatherId: parent('M'), tankId, timestamp: NOW, genomeVersion: 2 } : null;
-      else if (roll < 0.12) command = { type: 'pair', motherId: parent('F'), fatherId: parent('M'), nurseryId: tankId, size: 8, timestamp: NOW, genomeVersion: 2 };
+      if (roll < 0.07) command = alive.length < 150 ? { type: 'breed', motherId: parent('F'), fatherId: parent('M'), tankId, timestamp: NOW, genomeVersion: 3 } : null;
+      else if (roll < 0.12) command = { type: 'pair', motherId: parent('F'), fatherId: parent('M'), nurseryId: tankId, size: 8, timestamp: NOW, genomeVersion: 3 };
       else if (roll < 0.22) command = { type: 'sell-batch', fishIds: some(1 + Math.floor(rng() * 6)), priceModel: 1 };
       else if (roll < 0.3) command = { type: 'rehome-batch', fishIds: some(1 + Math.floor(rng() * 12)) };
       else if (roll < 0.34) { const sex = rng() < 0.5 ? 'F' : 'M'; command = { type: 'rehome-batch', fishIds: idle.filter(f => f.sex === sex).map(f => f.id) }; }
@@ -186,7 +186,7 @@ describe('FS-504 no softlock', () => {
       else if (roll < 0.47) command = rng() < 0.5 ? { type: 'purchase-tank' } : { type: 'upgrade-tank', tankId };
       else if (roll < 0.54) command = { type: 'set-care', tankId, ration: pick(['light', 'measured', 'generous'] as const)!, filterTier: Math.floor(rng() * 4), aerationTier: Math.floor(rng() * 4), targetC: 18 + Math.floor(rng() * 11) };
       else if (roll < 0.6) command = { type: 'change-water', tankId, percent: pick([10, 25, 50] as const)! };
-      else if (roll < 0.63) command = { type: 'claim-relief', tankId: reliefDestination(world, 2) ?? tankId, timestamp: NOW, genomeVersion: 2 };
+      else if (roll < 0.63) command = { type: 'claim-relief', tankId: reliefDestination(world, 2) ?? tankId, timestamp: NOW, genomeVersion: 3 };
       if (command) { try { world = applyCommand(world, command); } catch { continue; } }
       else { const days = 1 + Math.floor(rng() * 3); world = advanceWorld(world, tick, tick + days * DAY); tick += days * DAY; }
       expect(ledgerBalance(world.ledger)).toBe(world.credits);
@@ -226,7 +226,7 @@ describe('FS-504 recovery guidance', () => {
   it('summarizes what can still be sold, rehomed or rescued from the same rules the commands use', () => {
     const world = createWorld(NOW), overview = recoveryOverview(world), plan = planBestSales(world, world.fish.map(f => f.id));
     expect(overview).toMatchObject({ living: { F: 3, M: 3 }, releasable: 6, saleable: plan.sales.length, saleTotal: plan.total, relief: { eligible: false, sexes: [] } });
-    const courting = applyCommand(world, { type: 'pair', motherId: 'FSH-000001', fatherId: 'FSH-000002', nurseryId: 'tank-2', size: 8, timestamp: NOW, genomeVersion: 2 });
+    const courting = applyCommand(world, { type: 'pair', motherId: 'FSH-000001', fatherId: 'FSH-000002', nurseryId: 'tank-2', size: 8, timestamp: NOW, genomeVersion: 3 });
     expect(recoveryOverview(courting).releasable).toBe(4);
     expect(recoveryOverview(everyoneRehomed(0))).toMatchObject({ living: { F: 0, M: 0 }, releasable: 0, saleable: 0, saleTotal: 0, relief: { eligible: true, sexes: ['F', 'M'] } });
   });

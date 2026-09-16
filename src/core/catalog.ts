@@ -19,16 +19,28 @@ export const APPEARANCE_LOCI = [
   'body_motif', 'motif_density', 'motif_scale', 'motif_contrast', 'motif_reach', 'fin_motif',
 ] as const;
 export const ALL_LOCI = [...LOCI, ...APPEARANCE_LOCI] as const;
+/**
+ * Genome v3 (FS-601) appends chromosome 11 (Structure): supported tail topologies, dorsal and barbel variants and bounded
+ * shape modifiers. Genome v1 and v2 fish do not carry it and always express the standard structure.
+ */
+export const STRUCTURE_LOCI = ['tail_topology', 'lobe_balance', 'topology_spread', 'dorsal_form', 'barbel_count', 'fin_ray_density'] as const;
+/** Every locus of the current genome version, in stable order. */
+export const GENOME_LOCI = [...ALL_LOCI, ...STRUCTURE_LOCI] as const;
 
 export type Locus = typeof LOCI[number];
 export type AppearanceLocus = typeof APPEARANCE_LOCI[number];
-export const CHROMOSOMES = ['Body', 'Face', 'Fins', 'Pigments', 'Pattern', 'Life history', 'Behavior', 'Regulation', 'Color', 'Ornament'];
-export type GenomeVersion = 1 | 2;
-export const GENOME_VERSION: GenomeVersion = 2;
+export type StructureLocus = typeof STRUCTURE_LOCI[number];
+export type GenomeLocus = typeof GENOME_LOCI[number];
+export const CHROMOSOMES = ['Body', 'Face', 'Fins', 'Pigments', 'Pattern', 'Life history', 'Behavior', 'Regulation', 'Color', 'Ornament', 'Structure'];
+export type GenomeVersion = 1 | 2 | 3;
+export const GENOME_VERSIONS = [1, 2, 3] as const satisfies readonly GenomeVersion[];
+export const GENOME_VERSION: GenomeVersion = 3;
+/** Loci carried by each genome version. */
+export const LOCI_PER_GENOME: Record<GenomeVersion, number> = { 1: 48, 2: 60, 3: 66 };
 export const ALLELE_COUNT = 6;
 export const MUTATION_RATE = 0.003; // Per transmitted copy, NOT per offspring.
 export const CROSSOVER_RATE = 0.12; // Switch probability at each adjacent boundary.
 export const FOUNDER_WEIGHTS = [0.1, 0.22, 0.32, 0.24, 0.1, 0.02];
 /** Appearance pipeline versions. Lab records do not store per-fish model versions yet (see ADR-018). */
-export const MODEL_VERSIONS = { genome: 2, development: 4, anatomy: 2, renderer: 6 } as const;
+export const MODEL_VERSIONS = { genome: 3, development: 5, anatomy: 2, renderer: 6 } as const;
 export const label = (name: string) => name.replaceAll('_', ' ').replace(/^./, c => c.toUpperCase());

@@ -13,8 +13,8 @@ import { applyCommand, createWorld, type Command } from '../src/core/world';
 const NOW = '2026-09-15T12:00:00.000Z';
 const DAY = TICKS_PER_GAME_DAY;
 const NUMBERED = /^(Fry|Newcomer) \d+$/;
-const cross: Command = { type: 'breed', motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId: 'tank-2', timestamp: NOW, genomeVersion: 2 };
-const pair: Command = { type: 'pair', motherId: 'FSH-000003', fatherId: 'FSH-000004', nurseryId: 'tank-2', size: 20, timestamp: NOW, genomeVersion: 2 };
+const cross: Command = { type: 'breed', motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId: 'tank-2', timestamp: NOW, genomeVersion: 3 };
+const pair: Command = { type: 'pair', motherId: 'FSH-000003', fatherId: 'FSH-000004', nurseryId: 'tank-2', size: 20, timestamp: NOW, genomeVersion: 3 };
 const names = (world: World) => world.fish.map(member => member.name);
 const neutral = NAME_GROUPS[0];
 const everyWord = (group: typeof neutral) => [...group.prefixes, ...group.nouns, ...group.suffixes];
@@ -158,7 +158,7 @@ describe('ADR-056 truthful fish names', () => {
     expect(new Set(listed).size).toBe(listed.length);
 
     let next = applyCommand(world, cross);
-    next = applyCommand(next, { type: 'buy', tankId: 'tank-1', timestamp: NOW, genomeVersion: 2 });
+    next = applyCommand(next, { type: 'buy', tankId: 'tank-1', timestamp: NOW, genomeVersion: 3 });
     // Buying a listing empties a place, so the day-3 delivery names a new specimen.
     next = applyCommand(next, { type: 'buy-listing', listingId: world.shop.listings[0].id, tankId: 'tank-1', timestamp: NOW });
     next = applyCommand(next, pair);
@@ -177,7 +177,7 @@ describe('ADR-056 truthful fish names', () => {
 
   it('loads saves named under an older model without replaying their names, then names later fish truthfully', () => {
     let runtime = createRuntime(createWorld(NOW), 'adr056-names');
-    runtime = executeCommand(runtime, commandEnvelope(runtime, { type: 'buy', tankId: 'tank-1', timestamp: NOW, genomeVersion: 2 }, 5));
+    runtime = executeCommand(runtime, commandEnvelope(runtime, { type: 'buy', tankId: 'tank-1', timestamp: NOW, genomeVersion: 3 }, 5));
     runtime = executeCommand(runtime, commandEnvelope(runtime, cross, 10));
     // The same journal as an older build stored it: numbered names in the fish and in the ledger text.
     const stored = JSON.parse(JSON.stringify(runtime));

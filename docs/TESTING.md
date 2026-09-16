@@ -447,6 +447,14 @@ Two simultaneous buyers, duplicate command retries, rollback on debit/transfer f
 
 For a test report record task ID, source/model version, command or user journey, fixture/seed, environment, expected outcome, actual outcome, limitations, and relevant artifacts. Tests should verify domain promises or meaningful failure conditions, not mirror implementation line for line.
 
+## FS-601 locus registry and genome v3
+
+17 September 2026, Windows 11, Node 22.18.0, npm 10.9.3. `npm test`: 199 tests in 33 files pass; `npm run build` passes.
+- `tests/registry.test.ts`: registry definitions and reachability; 300 genome v1/v2 crosses bit-identical to a copy of the pre-registry inheritance; genome v3 stream isolation; structural mutation statistics; standard expression for v1/v2 and baseline v3; registry validation in saves; world v9 runtime migration with shop model rebase.
+- Browser on isolated port 5183: the FS-505 world v9 save loaded as world v10 with genome v2 fish and listings intact; the inspector showed the Structure block and a chromosome 11 genome view; an instant cross laid 20 genome v3 eggs with baseline Structure. The errors seen in the hot-reloaded tab did not recur in a fresh tab.
+
+See [FS-601 evidence](research/FS-601-REGISTRY-AND-GENOME-V3.md).
+
 ## FS-505 paid-economy playtest
 
 17 September 2026, Windows 11, Node 22.18.0, npm 10.9.3. `npm run check`: 191 tests in 32 files, then the strict TypeScript and production build, pass.

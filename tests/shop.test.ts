@@ -98,11 +98,11 @@ describe('FS-502 shop stock', () => {
     refused(world, buy('LS-999999'), 'no longer in the shop');
     refused({ ...world, credits: 10 }, buy(listing), `costs ◈ ${listing.price} and you have ◈ 10`);
     refused(world, buy(listing, 'tank-9'), 'Tank not found');
-    const cross = (tankId: string): Command => ({ type: 'breed', motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId, timestamp: NOW, genomeVersion: 2 });
+    const cross = (tankId: string): Command => ({ type: 'breed', motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId, timestamp: NOW, genomeVersion: 3 });
     const full = applyCommand(applyCommand(applyCommand(world, cross('tank-2')), cross('tank-2')), cross('tank-2'));
     refused(full, buy(listing), 'free places');
     const reserved = applyCommand(applyCommand(applyCommand(world, cross('tank-2')), cross('tank-2')),
-      { type: 'pair', motherId: 'FSH-000003', fatherId: 'FSH-000004', nurseryId: 'tank-2', size: 20, timestamp: NOW, genomeVersion: 2 });
+      { type: 'pair', motherId: 'FSH-000003', fatherId: 'FSH-000004', nurseryId: 'tank-2', size: 20, timestamp: NOW, genomeVersion: 3 });
     refused(reserved, buy(listing), 'reserved for a courting clutch');
   });
 
@@ -113,7 +113,7 @@ describe('FS-502 shop stock', () => {
     expect(Object.keys(migrated)).toEqual(Object.keys(decodeSave(JSON.stringify(world))));
 
     let runtime = createRuntime(createWorld(NOW), 'fs502-legacy');
-    runtime = executeCommand(runtime, commandEnvelope(runtime, { type: 'buy', tankId: 'tank-2', timestamp: NOW, genomeVersion: 2 }));
+    runtime = executeCommand(runtime, commandEnvelope(runtime, { type: 'buy', tankId: 'tank-2', timestamp: NOW, genomeVersion: 3 }));
     runtime = executeCommand(runtime, commandEnvelope(runtime, { type: 'sell', fishId: 'FSH-000003', priceModel: 1 }));
     runtime = advanceRuntime(runtime, runtime.tick + 40 * DAY);
     const stored = JSON.parse(JSON.stringify(runtime));

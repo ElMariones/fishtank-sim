@@ -16,7 +16,7 @@ const NOW = '2026-09-13T12:00:00.000Z';
 const DAY = TICKS_PER_GAME_DAY;
 const typical: WaterLoad = { oxygenMgPerDay: 900_000, ammoniaMgNPerDay: 13_000 };
 const overload: WaterLoad = { oxygenMgPerDay: 6_000_000, ammoniaMgNPerDay: 150_000 };
-const breedStudio: Command = { type: 'breed', motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId: 'tank-2', timestamp: NOW, genomeVersion: 2 };
+const breedStudio: Command = { type: 'breed', motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId: 'tank-2', timestamp: NOW, genomeVersion: 3 };
 
 /** Mass balance: the change in each stock equals the sum of recorded fluxes, within floating-point tolerance. */
 function expectConserved(before: WaterState, after: WaterState, ledger: WaterLedger) {

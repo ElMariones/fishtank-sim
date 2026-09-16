@@ -1,6 +1,6 @@
 import { appearanceAlleleLabel, appearanceFeatures, expressAppearance } from './appearance';
 import { idleBreeding } from './breeding';
-import { APPEARANCE_LOCI, GENOME_VERSION, LOCI, type AppearanceLocus } from './catalog';
+import { APPEARANCE_LOCI, LOCI, type AppearanceLocus, type GenomeVersion } from './catalog';
 import { adultLife } from './development';
 import { founderGenome } from './genetics';
 import { newFishName, takenNames } from './names';
@@ -13,7 +13,12 @@ import type { Fish, Listing, ListingCategory, ShopState, World } from './types';
  * SHOP_REFRESH_DAYS, to refill SHOP_SIZE places, and each leaves after SHOP_LISTING_DAYS unless bought. Everything
  * derives from the world seed and the listing number, so replay and every split of time agree.
  */
-export const SHOP_MODEL = 1;
+export const SHOP_MODEL = 2;
+/**
+ * Shop model 1 delivered genome v2 specimens; model 2 (FS-601) delivers genome v3. A world keeps the model its journal
+ * was recorded under until the runtime rebases it, so replayed deliveries always match the saved ones.
+ */
+export const LISTING_GENOME: Record<ShopState['model'], GenomeVersion> = { 1: 2, 2: 3 };
 export const SHOP_SIZE = 6;
 export const SHOP_REFRESH_DAYS = 3;
 export const SHOP_LISTING_DAYS = 9;
@@ -29,16 +34,16 @@ const VARIANT_ATTEMPTS = 200;
 export const listingId = (n: number) => `LS-${n.toString().padStart(6, '0')}`;
 
 /** `taken` holds names already in use; the listing's generated name is added to it. */
-export function makeListing(seed: number, n: number, day: number, taken = new Set<string>()): Listing {
+export function makeListing(seed: number, n: number, day: number, taken = new Set<string>(), version: GenomeVersion = LISTING_GENOME[SHOP_MODEL]): Listing {
   const key = `${seed}:shop:${n}`, roll = hash(`${key}:category`) % 100;
   let category: ListingCategory = roll < 50 ? 'founder' : roll < 83 ? 'variant' : 'carrier';
-  let birthSeed = hash(`${key}:0`), genome = founderGenome(birthSeed, GENOME_VERSION), note = 'Unrelated founder stock';
+  let birthSeed = hash(`${key}:0`), genome = founderGenome(birthSeed, version), note = 'Unrelated founder stock';
   let carries: Listing['carries'] = null;
   if (category === 'variant') {
     let features: string[] = [];
     for (let attempt = 0; attempt < VARIANT_ATTEMPTS && !features.length; attempt++) {
       birthSeed = hash(`${key}:${attempt}`);
-      genome = founderGenome(birthSeed, GENOME_VERSION);
+      genome = founderGenome(birthSeed, version);
       features = appearanceFeatures(expressAppearance(genome));
     }
     if (features.length) note = `Shows ${features.join(', ')}`;
@@ -59,9 +64,9 @@ export function makeListing(seed: number, n: number, day: number, taken = new Se
   };
 }
 
-export function initialShop(seed: number, day = 0): ShopState {
+export function initialShop(seed: number, day = 0, model: ShopState['model'] = SHOP_MODEL): ShopState {
   const taken = new Set<string>();
-  return { model: 1, nextListing: SHOP_SIZE + 1, refreshedDay: day, listings: Array.from({ length: SHOP_SIZE }, (_, i) => makeListing(seed, i + 1, day, taken)) };
+  return { model, nextListing: SHOP_SIZE + 1, refreshedDay: day, listings: Array.from({ length: SHOP_SIZE }, (_, i) => makeListing(seed, i + 1, day, taken, LISTING_GENOME[model])) };
 }
 
 /** One game-day boundary: expired listings leave, and on delivery days new listings refill the empty places. */
@@ -72,7 +77,7 @@ export function refreshShop(world: World, day: number): World {
   let nextListing = shop.nextListing;
   if (due && listings.length < SHOP_SIZE) {
     const taken = takenNames(world);
-    while (listings.length < SHOP_SIZE) listings.push(makeListing(world.seed, nextListing++, day, taken));
+    while (listings.length < SHOP_SIZE) listings.push(makeListing(world.seed, nextListing++, day, taken, LISTING_GENOME[shop.model]));
   }
   return { ...world, shop: { ...shop, nextListing, refreshedDay: due ? day : shop.refreshedDay, listings } };
 }

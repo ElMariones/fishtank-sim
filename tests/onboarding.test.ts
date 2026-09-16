@@ -9,7 +9,7 @@ import { applyCommand, createWorld, type Command } from '../src/core/world';
 
 const NOW = '2026-09-15T12:00:00.000Z';
 const DAY = TICKS_PER_GAME_DAY;
-const cross: Command = { type: 'breed', motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId: 'tank-2', timestamp: NOW, genomeVersion: 2 };
+const cross: Command = { type: 'breed', motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId: 'tank-2', timestamp: NOW, genomeVersion: 3 };
 
 describe('FS-504 first-session guide', () => {
   it('stores progress apart from the world save and falls back to a fresh guide', () => {
@@ -31,7 +31,7 @@ describe('FS-504 first-session guide', () => {
     expect(some.done).toEqual(['select', 'feed']);
     expect(completeGuideSteps(some, ['select'])).toBe(some);
     expect(guideSteps(some).map(step => [step.id, step.done])).toEqual(GUIDE_STEPS.map(id => [id, id === 'select' || id === 'feed']));
-    expect(hasLineage({ fish: [], clutches: [{ ...applyCommand(createWorld(NOW), { type: 'pair', motherId: 'FSH-000001', fatherId: 'FSH-000002', nurseryId: 'tank-2', size: 8, timestamp: NOW, genomeVersion: 2 }).clutches[0], stage: 'cancelled' }] })).toBe(true);
+    expect(hasLineage({ fish: [], clutches: [{ ...applyCommand(createWorld(NOW), { type: 'pair', motherId: 'FSH-000001', fatherId: 'FSH-000002', nurseryId: 'tank-2', size: 8, timestamp: NOW, genomeVersion: 3 }).clutches[0], stage: 'cancelled' }] })).toBe(true);
   });
 
   it('follows a first session played through ordinary commands, with the first eggs hatched within eight game days', () => {
@@ -44,7 +44,7 @@ describe('FS-504 first-session guide', () => {
     runtime = executeCommand(runtime, commandEnvelope(runtime, { type: 'rename', fishId: 'FSH-000001', name: 'Ember' }, 20));
     runtime = executeCommand(runtime, commandEnvelope(runtime, { type: 'feed', tankId: 'tank-1' }, 40));
     progress = completeGuideSteps(progress, ['select', 'rename', 'feed']);
-    runtime = executeCommand(runtime, commandEnvelope(runtime, { type: 'pair', motherId: 'FSH-000001', fatherId: 'FSH-000002', nurseryId: 'tank-2', size: 20, timestamp: NOW, genomeVersion: 2 }, 60));
+    runtime = executeCommand(runtime, commandEnvelope(runtime, { type: 'pair', motherId: 'FSH-000001', fatherId: 'FSH-000002', nurseryId: 'tank-2', size: 20, timestamp: NOW, genomeVersion: 3 }, 60));
     observe();
     expect(progress.done).toEqual(['select', 'rename', 'feed', 'court']);
 

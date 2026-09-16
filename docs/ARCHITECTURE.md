@@ -9,10 +9,12 @@ The repository is a small React + TypeScript + Vite application. It is deliberat
 ```text
 src/
   core/
-    catalog.ts      Stable 48-locus ordering, lab constants and appearance model versions
+    catalog.ts      Stable locus ordering (48 v1, 60 v2, 66 v3), lab constants and appearance model versions
+    registry.ts     Locus registry v1: per-locus founder weights, mutation targets and rates, baselines, labels and genome validation
+    structure.ts    Structure v1 (genome v3 chromosome 11): tail topology, dorsal and barbel variants, shape modifiers, carrier rows
     types.ts        Genome, fish, tank, world and phenotype contracts
     random.ts       Seeded PRNG, deterministic hash, clamping
-    genetics.ts     Founder generation, meiosis, mutation, expression
+    genetics.ts     Registry-driven founder generation, meiosis and mutation; expression
     anatomy.ts      Anatomy v2: phenotype → body-space outline, anchors, bounds, validation, framing
     pattern.ts      Development v2 marking anchors from phased haplotype blocks; seeded placement in body coordinates
     patternResemblance.ts Standard-body marking masks, overlap/separation metrics and seeded family study
@@ -35,6 +37,8 @@ src/
     lifecycleScenario.ts Seeded two-generation normal-breeding demonstration with batch rehoming, checked by journal replay
     economy.ts      Economy model v1: NPC buyers and demand, explained offers, ordered sale plans, demand recovery and the credit ledger
     economyExperiment.ts Seeded E-05 strategies (observation, resale, selective, collector, maximum output, lab-cross farming)
+    paidEconomy.ts  FS-505 paid-economy playtest: six keepers with live commands only, sources and sinks, milestones and route checks
+    playtest.ts     Shared no-softlock route to an accepted pairing
     breeding.ts     Breeding model v1: pairing and courtship blockers, reserved nursery places, day-boundary courtship, spawning and rest
     development.ts  Life model v1: egg/fry/juvenile/adult/elderly stages, logistic growth, lagged condition and environment curves
     juvenile.ts     Stage appearance v1: body and pigment maturity from life state, hatchling proportions and reveal fixtures
@@ -83,6 +87,8 @@ tests/
   resemblanceStudy.test.ts Trial set, display modes, computational observer and result validation
   resemblancePool.test.ts Five-observer FS-111 pool, per-trial agreement and record validation
   appearance.test.ts Genome v2 stream isolation, dominance, founder rarity, mixed-version saves and ornament bounds
+  registry.test.ts Registry definitions and reachability, bit-identical legacy births, genome v3 streams and structural mutation, expression, validation and world v9 migration
+  paidEconomy.test.ts FS-505 keepers: live commands, reconciled sources and sinks, loop milestones, no-softlock routes and spend-down recovery
   water.test.ts    Zero/overload/recovery conservation fixtures, split-interval equality, habitat load, replay and world v1 migration
   development.test.ts Hatching, healthy maturity range, declared-condition fixtures, condition history, egg rules and world v2 migration
   juvenile.test.ts Maturity, hatchling interpolation, stage anatomy and framing sweeps, ornament reveal, turning poses and reveal series
@@ -460,3 +466,7 @@ World v9 appends `relief` (claims and cooldown days).
 - **Care advice:** `careWarnings` appends a free hint when no fix is affordable, and no longer offers the legacy `add-tank` command.
 - **Guide:** `core/onboarding.ts` validates device-local guide progress and derives observed steps from the world and preferences. `OnboardingGuide`, `RecoveryOptions` (inside `MarketPanel`) and the inspector's family summary in `App.tsx` only read those results and issue ordinary commands.
 - **Unchanged:** worker protocol, genomes and replay commands other than the new one. See [evidence](research/FS-504-ONBOARDING-AND-RECOVERY.md).
+
+### FS-601 locus registry and genome v3
+
+`registry.ts` defines every locus once: index, chromosome, the genome version that introduced it, expression kind, supported alleles with labels, founder weights and weighted mutation targets, the baseline older genomes read, and the mutation rate. `genetics.ts` draws founders and mutations from it. Adjacent steps reproduce the old random-number use exactly, so genome v1/v2 births are unchanged. Genome v3 appends chromosome 11 (Structure) from its own streams, and `structure.ts` expresses it; v1/v2 genomes always read the standard structure. `save.ts` validates genome length and supported alleles through the registry. World v10 lets shop model 2 deliver genome v3; v9 worlds keep model 1 until the runtime rebases them, so their journals replay. See [FS-601 evidence](research/FS-601-REGISTRY-AND-GENOME-V3.md).

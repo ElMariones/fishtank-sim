@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { advanceWorld, type DayReport } from './habitat';
 import { NAMING_MODEL } from './names';
 import { decodeSave } from './save';
-import { initialShop } from './shop';
+import { initialShop, SHOP_MODEL } from './shop';
 import { TICKS_PER_GAME_DAY } from './water';
 import { applyCommand, commandSchema, WORLD_VERSION, type Command } from './world';
 import type { World } from './types';
@@ -132,6 +132,8 @@ export function decodeRuntime(raw: string): Runtime {
     if (sourceVersion < 7) world.shop = initialShop(world.seed, Math.floor(parsed.tick / TICKS_PER_GAME_DAY));
     // Existing fish and listings keep their names; only fish named after the rebase use the current model.
     world.naming = NAMING_MODEL;
+    // Listings already in the shop keep their genomes; deliveries after the rebase use genome v3 (FS-601).
+    world.shop = { ...world.shop, model: SHOP_MODEL };
     return { ...replayed, world, tick: parsed.tick, simulation, checkpoint: { world, tick: parsed.tick, revision: parsed.revision }, events: [] };
   }
   return { ...replayed, world, tick: parsed.tick, simulation };
@@ -168,6 +170,7 @@ export function importRuntime(raw: string, legacyWorldId: string): Runtime {
   if (raw.length > MAX_SAVE_CHARACTERS) throw new Error('Save exceeds the import size limit.');
   const parsed: unknown = JSON.parse(raw);
   if (parsed && typeof parsed === 'object' && 'schemaVersion' in parsed) return decodeRuntime(raw);
-  // A bare save has no journal to replay, so it moves to the current naming model at once.
-  return createRuntime({ ...decodeSave(raw), naming: NAMING_MODEL }, legacyWorldId);
+  // A bare save has no journal to replay, so it moves to the current naming and shop models at once.
+  const world = decodeSave(raw);
+  return createRuntime({ ...world, naming: NAMING_MODEL, shop: { ...world.shop, model: SHOP_MODEL } }, legacyWorldId);
 }

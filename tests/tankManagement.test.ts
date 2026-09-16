@@ -18,7 +18,7 @@ describe('FS-503 aquarium expansion and decoration placement', () => {
     let world = applyCommand(createWorld(NOW), { type: 'purchase-tank' });
     expect(world.tanks[2]).toMatchObject({ capacity: 20, water: { volumeL: 10000 }, decorations: [] });
     expect(world.credits).toBe(800);
-    world = applyCommand(world, { type: 'pair', motherId: 'FSH-000001', fatherId: 'FSH-000002', nurseryId: 'tank-3', size: 20, timestamp: NOW, genomeVersion: 2 });
+    world = applyCommand(world, { type: 'pair', motherId: 'FSH-000001', fatherId: 'FSH-000002', nurseryId: 'tank-3', size: 20, timestamp: NOW, genomeVersion: 3 });
     expect(() => applyCommand(world, { type: 'move', fishId: 'FSH-000003', tankId: 'tank-3' })).toThrow('reserved');
     world.tanks[2].water.ammoniaMgL = 2;
     world.tanks[2].water.foodG = 17;
