@@ -84,6 +84,12 @@ World v9 adds `relief`. `claim-relief` is the only way to receive free fish. It 
 - **Guide:** progress (`GUIDE_KEY`) is device-local like collection preferences. Steps complete from player actions recorded in `App.tsx` (select, rename, feed, following a parent) or from `observedGuideSteps`, and **Show me** must never issue commands.
 - **Family at a glance:** it counts full siblings and offspring in one pass; keep it bounded if records grow. See [FS-504 evidence](research/FS-504-ONBOARDING-AND-RECOVERY.md).
 
+### FS-603 contract
+
+- **Descent only:** origins pass only through the transmitted homolog. Every new birth path must call `inherit` with a trace and set `origins` with `childOrigins`; stock, shop and rescue fish start with `[]`.
+- **Validation:** `decodeSave` refuses origins that disagree with recorded mutations or alleles. A future command that edits genomes would have to rewrite origins too.
+- **Scope:** `mutationNotebook` counts are save-local. Never label them as population frequency or rarity. See [FS-603 evidence](research/FS-603-MUTATION-ORIGINS.md).
+
 ### FS-602 contract
 
 - **Standard path:** a standard structure must build exactly anatomy v2. `tests/legacy/anatomyV2.ts` is a frozen copy; never edit it to make a test pass.
@@ -115,7 +121,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> M3, M4 and M5 are DONE. M6 has started: FS-601's locus registry and genome v3 Structure chromosome (`fb6b593`) and FS-602's structure anatomy (`0e95249`) are DONE; see their reports. Next is FS-603: give each de novo mutation an origin that descendants inherit, and count save-local carriers with a declared scope. M5's task list is DONE: FS-501 economy model (`006b500`), FS-502 persistent shop (`3945d86`), FS-503 paid expansion and decorations (`f78d007`), FS-504 first-session guide and koi rescue (`6335851`), and FS-505 paid-economy playtest with best-first batch sales (`f5b1888`); see the FS-505 report. Keep sale commands carrying a price model, the ledger reconciled, a free or affordable fix on every care warning, and migrations writing keys in schema order.
+> M3, M4 and M5 are DONE. M6 has started: FS-601's locus registry and genome v3 Structure chromosome (`fb6b593`) FS-602's structure anatomy (`0e95249`) and FS-603's mutation origins (`1d0d85c`) are DONE; see their reports. Next is FS-604: a named bloodline registry that shows ancestry contribution and similarity to a standard separately. M5's task list is DONE: FS-501 economy model (`006b500`), FS-502 persistent shop (`3945d86`), FS-503 paid expansion and decorations (`f78d007`), FS-504 first-session guide and koi rescue (`6335851`), and FS-505 paid-economy playtest with best-first batch sales (`f5b1888`); see the FS-505 report. Keep sale commands carrying a price model, the ledger reconciled, a free or affordable fix on every care warning, and migrations writing keys in schema order.
 
 ## 7. Subsequent task briefs
 

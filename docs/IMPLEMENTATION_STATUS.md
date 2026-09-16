@@ -1,8 +1,19 @@
 # Implementation status
 
-**Updated:** 17 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`). FS-405's incremental kinship cache with stated founder assumptions is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. M5 has started: FS-501's economy model v1 is DONE (`006b500`). FS-502 persistent shop (`3945d86`) and FS-503 habitat expansion (`f78d007`) are DONE. FS-504 onboarding and no-money recovery is DONE (`6335851`). FS-505's paid-economy playtest is DONE (`f5b1888`), completing M5's task list. M6 has started: FS-601's locus registry and genome v3 are DONE (`fb6b593`), and FS-602's structure anatomy is DONE (`0e95249`).
+**Updated:** 17 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`). FS-405's incremental kinship cache with stated founder assumptions is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. M5 has started: FS-501's economy model v1 is DONE (`006b500`). FS-502 persistent shop (`3945d86`) and FS-503 habitat expansion (`f78d007`) are DONE. FS-504 onboarding and no-money recovery is DONE (`6335851`). FS-505's paid-economy playtest is DONE (`f5b1888`), completing M5's task list. M6 has started: FS-601's locus registry and genome v3 are DONE (`fb6b593`), FS-602's structure anatomy is DONE (`0e95249`), and FS-603's mutation origins are DONE (`1d0d85c`).
 
-## Current continuation — FS-602 DONE, pushed `0e95249`
+## Current continuation — FS-603 DONE, pushed `1d0d85c`
+
+17 September 2026: FS-603 started from `e649b38` (FS-602 marked DONE), equal to `origin/main`.
+
+- FS-603 adds:
+  - **Origins:** every recorded mutation is an origin; children inherit it only through the transmitted homolog, traced beside the existing meiosis draws.
+  - **World v11:** origins on every fish, validated against mutations and alleles; older worlds rebuild them where the transmitted copy is certain.
+  - **Mutation notebook:** save-local living, two-copy and record counts per origin with a scope statement, plus ◆ markers and carried origins in the Genome tab.
+- `npm run check`: 209 tests in 35 files and the build pass. In the browser the QA save migrated to v11, and a cross of two mutated parents showed traced origins, a first-carrier link and the notebook. See [FS-603 evidence](research/FS-603-MUTATION-ORIGINS.md).
+- Next: FS-604, a named bloodline registry with ancestry contribution and standard similarity shown separately.
+
+## Previous continuation — FS-602 DONE, pushed `0e95249`
 
 17 September 2026: FS-602 started from `e2c43cd` (FS-601 marked DONE), equal to `origin/main`.
 
@@ -12,7 +23,7 @@
   - **Standard structure unchanged:** 3,519 anatomies deep-equal a frozen anatomy v2 copy.
   - **Fixtures:** twelve reachable fixtures in Visual fixtures → Structure variants, plus a structure sweep with 0 invalid and 0 clipped.
 - `npm run check`: 204 tests in 34 files and the build pass. The browser drew all fixtures, and the dorsal and barbel fixtures were made legible after screenshots. See [FS-602 evidence](research/FS-602-STRUCTURE-ANATOMY.md).
-- Next: FS-603, mutation-origin propagation and save-local carrier counts with declared scope.
+- Followed by FS-603 (above).
 
 ## Previous continuation — FS-601 DONE, pushed `fb6b593`
 
@@ -205,7 +216,7 @@ Historical next task was FS-503, now delivered above. M5 remains open. `.claude/
 | Economy | Economy model v1: five NPC buyers with bounded, recovering demand and explained offers; founders resell below the stock price; a reconciled ledger; free rehoming. Persistent shop stock has fixed specimens, filters, expiry and ledger-backed purchases (FS-502). Two starter tanks are included; extra tanks, expansions and new decorations are paid. Breeding and food are free; no upkeep, collector orders or real market. The koi rescue (FS-504) gives one unrelated adult of each missing sex when credits cannot buy stock, at most once every 10 game days. FS-505 found no recurring sink after the build-out and no return on premium care in healthy tanks | FS-705 |
 | Onboarding | Seven-step first-session guide with device-local progress and focus pointers (FS-504); English only, no tutorial world or time compression, and comprehension not yet measured with players; FS-505 keepers see no income before game day 30 | FS-705 |
 | Batch management | Reviewed batch moves, sales and rehoming; selection clears when the tank, archive view or a filter changes; the move review checks places, not crowding; sale reviews sell the highest offers first with a greedy plan, not a maximum search | FS-705 |
-| Rarity | Only founder-stock rarity labels for appearance (FS-113); no measured reference population or global service | FS-603 FS-805 |
+| Rarity | Founder-stock rarity labels for appearance (FS-113); save-local mutation-origin carrier counts (FS-603), not population frequencies; no measured reference population or global service | FS-805 |
 | Topology | Paired fan and crown-four tails, reduced or absent dorsal fins and 0–6 barbels are drawn (FS-602) as rigid turned lobes with the shared tail wave; no pectoral topology, eye protrusion or scale geometry; founders almost never express structure, so it arrives through carriers or structural mutation | FS-605 FS-701 |
 | Family | Six generations back and forward as generation lists with text edges; no drawn pedigree chart or lineage registration; breadcrumbs, depth and the kinship cache are session-only; F assumes founders unrelated rather than measuring them | FS-603 FS-604 |
 | History | Birth and pedigree permanent; recent command events persist but compact every 64 commands; no permanent lifetime event history or old portraits | FS-404 |
@@ -321,4 +332,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**Continue M6 with FS-603: mutation-origin propagation and save-local carrier counts with declared scope.** FS-602 is DONE, pushed `0e95249`. Keep standard-structure anatomy identical to the frozen anatomy v2 copy, keep registry streams per chromosome, and keep migrations writing keys in schema order.
+**Continue M6 with FS-604: a named bloodline registry, showing ancestry contribution and standard similarity separately.** FS-603 is DONE, pushed `1d0d85c`. Keep origins identical by descent (never by allele state), keep counts save-local with their scope, and keep migrations writing keys in schema order.

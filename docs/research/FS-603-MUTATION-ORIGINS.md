@@ -1,6 +1,6 @@
 # FS-603 — Mutation-origin propagation and save-local carrier counts
 
-**Date:** 17 September 2026. **Status:** see BACKLOG (marked DONE only after a verified push).
+**Date:** 17 September 2026. **Status:** DONE, pushed `1d0d85c`.
 **Models:** world save v11 · origin model 1 · genome v3 · anatomy v3. Births, genomes and random streams are unchanged.
 
 ## Starting state
