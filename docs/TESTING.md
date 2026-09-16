@@ -447,6 +447,15 @@ Two simultaneous buyers, duplicate command retries, rollback on debit/transfer f
 
 For a test report record task ID, source/model version, command or user journey, fixture/seed, environment, expected outcome, actual outcome, limitations, and relevant artifacts. Tests should verify domain promises or meaningful failure conditions, not mirror implementation line for line.
 
+## FS-505 paid-economy playtest
+
+17 September 2026, Windows 11, Node 22.18.0, npm 10.9.3. `npm run check`: 191 tests in 32 files, then the strict TypeScript and production build, pass.
+- `tests/paidEconomy.test.ts`: six seeded keepers over 90 game days, using live commands only. Covers daily ledger reconciliation, spending split against the ledger, NPC demand bounds, loop milestones, no-softlock routes every 15 game days, spend-down recovery with the rescue, and sink measurements.
+- `tests/economy.test.ts`: best-first batch plan, ◈ 536 → ◈ 697 on 40 lab-cross adults, with prices that never rise and a command that pays the plan.
+- Browser, in-app Chromium, isolated port 5183 with a fresh world: first session to guide completion, a 32-game-day time jump, best-first batch sale (◈ 663, read back from IndexedDB), second-generation courtship, aquarium purchase, Research → Paid economy identical to Node, and 390 px layout. A sale confirmed during a source hot reload was not persisted; the clean-reload repeat saved.
+
+See [FS-505 evidence](research/FS-505-PAID-ECONOMY-PLAYTEST.md).
+
 ## FS-303 and requested breeding/appearance improvements
 
 13 September 2026. npm run check: 101 tests in 16 files, strict TypeScript and Vite production build passed. git diff --check passed. See [full evidence and limits](research/FS-303-BEHAVIOR-AND-BREEDING.md).

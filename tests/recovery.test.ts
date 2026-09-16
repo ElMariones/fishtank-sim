@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { pairingBlockers, reservedPlaces } from '../src/core/breeding';
-import { careSettings } from '../src/core/care';
+import { pairingBlockers } from '../src/core/breeding';
 import { careWarnings } from '../src/core/careAdvice';
-import { ADULT_FROM, isEgg } from '../src/core/development';
-import { bestOffer, FOUNDER_RESALE_CAP, ledgerBalance, openingLedger, planSales } from '../src/core/economy';
-import { metabolicPotential } from '../src/core/genetics';
+import { isEgg } from '../src/core/development';
+import { bestOffer, FOUNDER_RESALE_CAP, ledgerBalance, openingLedger, planBestSales } from '../src/core/economy';
 import { advanceWorld } from '../src/core/habitat';
 import { random } from '../src/core/random';
 import { missingSexes, recoveryOverview, RELIEF_COOLDOWN_DAYS, RELIEF_THRESHOLD, reliefDestination, reliefStatus } from '../src/core/recovery';
 import { advanceRuntime, commandEnvelope, createRuntime, decodeRuntime, executeCommand } from '../src/core/runtime';
+import { routeToPairing } from '../src/core/playtest';
 import { decodeSave } from '../src/core/save';
 import type { Fish, World } from '../src/core/types';
 import { TICKS_PER_GAME_DAY } from '../src/core/water';
@@ -32,63 +31,7 @@ function refused(world: World, command: Command, message: string) {
   expect(JSON.stringify(world)).toBe(before);
 }
 
-type Recovery = { world: World; days: number; commands: Command['type'][] };
-
-/**
- * Reaches an accepted normal pairing using only what a player without spare credits can do: cancel courtships, rehome
- * and move fish, choose free care settings, wait, and take the koi rescue or founder stock the credits already cover.
- */
-function recoverPair(start: World, startTick: number, maxDays = 150): Recovery {
-  let world = start, tick = startTick, home: string | null = null;
-  const commands: Command['type'][] = [];
-  const run = (command: Command) => { world = applyCommand(world, command); commands.push(command.type); };
-  const wait = () => { world = advanceWorld(world, tick, tick + DAY); tick += DAY; };
-  const living = () => world.fish.filter(f => f.status === 'living');
-  const free = (tankId: string) => world.tanks.find(t => t.id === tankId)!.capacity - living().filter(f => f.tankId === tankId).length - reservedPlaces(world, tankId);
-  const promise = (f: Fish) => (isEgg(f.life) ? 0 : 2) + (f.life.lengthCm >= ADULT_FROM * metabolicPotential(f.genome).adultLengthCm ? 2 : 0) + f.life.condition;
-  const best = (sex: Fish['sex']) => living().filter(f => f.sex === sex).sort((a, b) => promise(b) - promise(a))[0];
-  /** Rehoming is free: release hatched fish from a tank until it has `needed` places, keeping the most promising breeders. */
-  const makeRoom = (tankId: string, needed: number) => {
-    const keep = new Set([best('F')?.id, best('M')?.id]);
-    const spare = living().filter(f => f.tankId === tankId && !isEgg(f.life) && !keep.has(f.id)).map(f => f.id);
-    const count = Math.min(spare.length, needed - free(tankId));
-    if (count > 0) run({ type: 'rehome-batch', fishIds: spare.slice(0, count) });
-    return free(tankId) >= needed;
-  };
-  for (const clutch of world.clutches) if (clutch.stage === 'courting') run({ type: 'cancel-clutch', clutchId: clutch.id });
-  while (tick - startTick < maxDays * DAY) {
-    const missing = missingSexes(world);
-    if (missing.length) {
-      if (reliefStatus(world).eligible) {
-        const tankId = reliefDestination(world, missing.length) ?? (makeRoom('tank-1', missing.length) ? 'tank-1' : null);
-        if (tankId) { run({ type: 'claim-relief', tankId, timestamp: NOW, genomeVersion: 2 }); continue; }
-      } else if (world.credits >= RELIEF_THRESHOLD * missing.length) {
-        const listing = world.shop.listings.find(entry => entry.sex === missing[0] && entry.price <= world.credits);
-        const tankId = listing ? reliefDestination(world, 1) ?? (makeRoom('tank-1', 1) ? 'tank-1' : null) : null;
-        if (listing && tankId) { run({ type: 'buy-listing', listingId: listing.id, tankId, timestamp: NOW }); continue; }
-      }
-      wait();
-      continue;
-    }
-    const mother = best('F'), father = best('M');
-    if (!isEgg(mother.life) && !isEgg(father.life)) {
-      // The tank with the cleanest water becomes home: move the pair in, release everyone else there, measured rations at 22 °C.
-      home ??= [...world.tanks].sort((a, b) => a.water.ammoniaMgL - b.water.ammoniaMgL)[0].id;
-      for (const parent of [mother, father]) if (parent.tankId !== home && makeRoom(home, 1)) run({ type: 'move', fishId: parent.id, tankId: home });
-      makeRoom(home, world.tanks.find(t => t.id === home)!.capacity);
-      const settings = careSettings(world.tanks.find(t => t.id === home)!);
-      if (settings.ration !== 'measured' || settings.targetC !== 22)
-        run({ type: 'set-care', tankId: home, ration: 'measured', filterTier: settings.filterTier, aerationTier: settings.aerationTier, targetC: 22 });
-      const request = { motherId: mother.id, fatherId: father.id, nurseryId: home, size: 8 as const };
-      if (!pairingBlockers(world, request, limits).length) {
-        run({ type: 'pair', ...request, timestamp: NOW, genomeVersion: 2 });
-        return { world, days: Math.ceil((tick - startTick) / DAY), commands };
-      }
-    }
-    wait();
-  }
-  throw new Error(`No route back to a breeding pair within ${maxDays} game days.`);
-}
+const recoverPair = (world: World, tick: number) => routeToPairing(world, tick, 150, NOW);
 
 describe('FS-504 koi rescue', () => {
   it('gives one unrelated adult of each missing sex at no cost, ready to court', () => {
@@ -281,7 +224,7 @@ describe('FS-504 recovery guidance', () => {
   });
 
   it('summarizes what can still be sold, rehomed or rescued from the same rules the commands use', () => {
-    const world = createWorld(NOW), overview = recoveryOverview(world), plan = planSales(world, world.fish.map(f => f.id));
+    const world = createWorld(NOW), overview = recoveryOverview(world), plan = planBestSales(world, world.fish.map(f => f.id));
     expect(overview).toMatchObject({ living: { F: 3, M: 3 }, releasable: 6, saleable: plan.sales.length, saleTotal: plan.total, relief: { eligible: false, sexes: [] } });
     const courting = applyCommand(world, { type: 'pair', motherId: 'FSH-000001', fatherId: 'FSH-000002', nurseryId: 'tank-2', size: 8, timestamp: NOW, genomeVersion: 2 });
     expect(recoveryOverview(courting).releasable).toBe(4);

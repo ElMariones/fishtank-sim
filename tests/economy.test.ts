@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { adultLife } from '../src/core/development';
 import {
-  BUYERS, DAILY_DEMAND_CEILING, FOUNDER_RESALE_CAP, LEDGER_LIMIT, ledgerBalance, offersFor, planSales, type TraitCache,
+  BUYERS, DAILY_DEMAND_CEILING, FOUNDER_RESALE_CAP, LEDGER_LIMIT, ledgerBalance, offersFor, planBestSales, planSales, type TraitCache,
 } from '../src/core/economy';
 import { economyExperiment, EXPERIMENT_DAYS } from '../src/core/economyExperiment';
 import { founderGenome, metabolicPotential } from '../src/core/genetics';
@@ -183,6 +183,29 @@ describe('FS-501 ledger and rehoming', () => {
     stored.checkpoint.world = asV5(stored.checkpoint.world);
     const decoded = decodeRuntime(JSON.stringify(stored));
     expect([decoded.world.credits, decoded.events.length, decoded.world.ledger.opening]).toEqual([runtime.world.credits, 0, runtime.world.credits]);
+  });
+});
+
+describe('FS-505 best-first batch sales', () => {
+  it('prices the most valuable fish before cheaper sales use up demand, and the command pays the reviewed plan', () => {
+    let world = createWorld(NOW);
+    for (const [motherId, fatherId] of [['FSH-000001', 'FSH-000002'], ['FSH-000003', 'FSH-000004']])
+      world = applyCommand(world, { type: 'breed', motherId, fatherId, tankId: 'tank-2', timestamp: NOW, genomeVersion: 2 });
+    world = advanceWorld(world, 0, 35 * DAY);
+    const newestFirst = world.fish.filter(f => f.parents).map(f => f.id).reverse();
+    const inOrder = planSales(world, newestFirst), best = planBestSales(world, newestFirst);
+    expect(inOrder.total).toBe(536);
+    expect(best.total).toBe(697);
+    expect(new Set([...best.sales.map(sale => sale.fishId), ...best.unsold])).toEqual(new Set(newestFirst));
+    const prices = best.sales.map(sale => sale.offer.amount);
+    expect(prices).toEqual([...prices].sort((a, b) => b - a));
+    // Sending the planned order to the ordinary sequential plan reproduces every price.
+    expect(planSales(world, best.sales.map(sale => sale.fishId)).sales).toEqual(best.sales);
+    const sold = applyCommand(world, { type: 'sell-batch', fishIds: best.sales.map(sale => sale.fishId), priceModel: 1 });
+    expect(sold.credits - world.credits).toBe(best.total);
+    // Ties keep the given order, so equal offers are not reshuffled.
+    const founders = planBestSales(base, ['FSH-000002', 'FSH-000001']);
+    expect(founders.sales.map(sale => sale.fishId)).toEqual(founders.sales[0].offer.amount === founders.sales[1].offer.amount ? ['FSH-000002', 'FSH-000001'] : [...founders.sales].sort((a, b) => b.offer.amount - a.offer.amount).map(sale => sale.fishId));
   });
 });
 

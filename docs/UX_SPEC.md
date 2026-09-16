@@ -134,9 +134,9 @@ Before selling, show fish name, price, destination type and irreversibility with
 
 **Lab implementation (FS-406):**
 - **Clutch filter:** when the chosen parent pair has more than one clutch, a **Clutch** filter (listed by ID range and size) narrows the view to fish laid together. A lab cross and **Show clutch** open that clutch directly.
-- **Selection:** any living fish in view can be selected, and cards say when a selected favorite or egg is kept from sales. **Select all N** (with "in this clutch" when filtered) and **Select all saleable N** fill the selection.
+- **Selection:** any living fish in view can be selected, and cards say when a selected favorite or egg is kept from sales. **Select all N** (with "in this clutch" when filtered) and **Select all with a buyer N** (living fish with an NPC offer today, except favorites and eggs; FS-505) fill the selection.
 - **Move review:** **Review move of N** opens a review naming the source and destination, with a destination select showing free places. It states the destination's free places, reservations and places left, warns when a courting fish would leave its partner, and lists every selected fish with ID, generation and stage. **Confirm move of N** sends one `move-batch` command; afterwards **Open** navigates to the destination.
-- **Sale review:** lists only saleable fish and says how many selected favorites or eggs stay.
+- **Sale review:** lists only saleable fish and says how many selected favorites or eggs stay. Since FS-505 the highest offers sell first, and the list shows that order with falling prices (ADR-059).
 - **Research:** **Two generations** runs the seeded M4 demonstration and shows its clutches, timeline, instant-cross count, rehomed fish and replay result.
 
 **Lab implementation (FS-501):**

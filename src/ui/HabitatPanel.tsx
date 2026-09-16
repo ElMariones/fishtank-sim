@@ -31,6 +31,7 @@ export function HabitatPanel({ world, tank, readOnly, onRun }: Props) {
     </div>
     {world.credits < TANK_PRICE ? <p>Not enough credits for a new aquarium. Sell surplus fish to NPC buyers, or rehome hatched fish for free to release places. The credits button in the header lists everything that still costs nothing.</p> : null}
     {world.tanks.length >= MAX_TANKS ? <p>All eight aquarium slots are in use.</p> : null}
+    {tank.capacity >= 60 ? <p>{tank.name} already has the maximum 60 places. Open a smaller aquarium to expand it, or review a new aquarium.</p> : null}
     {review ? <div className="batch-review" role="region" aria-label="Aquarium purchase review">
       <p>{review === 'purchase' ? 'Buy a new empty aquarium with 20 places, 10,000 L, Standard filter and aeration?' : `Expand ${tank.name} from ${tank.capacity} to ${Math.min(60, tank.capacity + 20)} places and add 10,000 L of clean water? Existing fish and reservations stay in place.`}</p>
       <p>Cost: ◈ {review === 'purchase' ? TANK_PRICE : TANK_UPGRADE_PRICE}. Balance after: ◈ {world.credits - (review === 'purchase' ? TANK_PRICE : TANK_UPGRADE_PRICE)}.</p>

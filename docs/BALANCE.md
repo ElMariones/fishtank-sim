@@ -258,3 +258,17 @@ E-05 never stranded a strategy, but nothing guaranteed it: a player who sold or 
 | Seeded 500-step walk | 219 steps lacked a sex; 24 recovery checks all reached an accepted pairing within 22 game days |
 
 The 10-day wait and the ◈ 250 threshold are provisional. FS-505 playtests decide whether the rescue is too slow, too generous or rarely needed. See [FS-504 evidence](research/FS-504-ONBOARDING-AND-RECOVERY.md).
+
+### FS-505 paid economy
+
+E-05 with prices: six keepers for 90 game days through live commands only, with a daily ledger check and a no-softlock route every 15 game days. Game rules in `src/core/paidEconomy.ts`; measurements in `tests/paidEconomy.test.ts`.
+
+| Measure | Result |
+|---|---|
+| Sources over 90 game days | Sales ◈ 6,714–9,522 per keeper; the color and pond buyers earned the most |
+| Sinks | Aquariums and expansions ◈ 2,700–6,000 (one-off, bounded by the eight-tank build-out); shop stock ◈ 1,360 for the collector; premium equipment, water changes and decorations ◈ 3,714 |
+| Net | +◈ 1,858 to +◈ 4,822, except premium care at −◈ 469 |
+| Softlock | 36 of 36 route checks reached a pairing within 8 game days; the spend-down keeper at ◈ 0 with no males used one rescue, courted on day 1 and bought no stock |
+| Pacing | First income on game day 30–31 for keepers selling adults; second-generation courtship on day 32–36 |
+
+**Recommended follow-up, not applied:** add a recurring sink or collector orders once credits accumulate after the build-out. Premium care equipment does not repay itself at healthy stocking. Any recurring cost must revisit FS-504's rescue and rerun `tests/recovery.test.ts` and this playtest. Batch reviews now sell the highest offers first (ADR-059), which raised a 40-fish fixture from ◈ 536 to ◈ 697. See [FS-505 evidence](research/FS-505-PAID-ECONOMY-PLAYTEST.md).

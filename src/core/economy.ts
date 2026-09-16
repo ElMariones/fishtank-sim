@@ -123,6 +123,39 @@ export function planSales(world: Pick<World, 'market' | 'fish'>, fishIds: readon
   return { sales, unsold, total, demand };
 }
 
+/**
+ * FS-505: the batch the interface reviews. Each step sells the fish with the highest offer under the demand left, so
+ * valuable fish are not priced after cheaper sales have used up their buyer. Offers only fall as demand is used, so a
+ * stale queue entry is an upper bound and is re-priced before it is chosen. Realized prices never rise along the plan,
+ * ties keep the given order, and sending the planned order to `sell-batch` pays exactly this plan.
+ */
+export function planBestSales(world: Pick<World, 'market' | 'fish'>, fishIds: readonly string[], cache?: TraitCache): SalePlan {
+  type Entry = { id: string; index: number; fish: Fish | undefined; amount: number };
+  const byId = new Map(world.fish.map(member => [member.id, member])), demand = { ...world.market.demand };
+  const before = (a: Entry, b: Entry) => b.amount - a.amount || a.index - b.index;
+  const queue: Entry[] = fishIds.map((id, index) => {
+    const fish = byId.get(id);
+    return { id, index, fish, amount: fish ? offersFor(world, fish, cache, demand)[0]?.amount ?? 0 : 0 };
+  }).sort(before);
+  const sales: SalePlan['sales'] = [], unsold: Entry[] = [];
+  let total = 0;
+  while (queue.length) {
+    const head = queue.shift()!, offer = head.fish ? offersFor(world, head.fish, cache, demand)[0] : undefined;
+    if (!offer) { unsold.push(head); continue; }
+    if (offer.amount < head.amount) {
+      head.amount = offer.amount;
+      let at = queue.findIndex(entry => before(head, entry) < 0);
+      if (at < 0) at = queue.length;
+      queue.splice(at, 0, head);
+      continue;
+    }
+    sales.push({ fishId: head.id, offer });
+    demand[offer.buyer] -= 1;
+    total += offer.amount;
+  }
+  return { sales, unsold: unsold.sort((a, b) => a.index - b.index).map(entry => entry.id), total, demand };
+}
+
 export function saleDetail(plan: SalePlan): string {
   const counts = new Map<string, number>();
   for (const sale of plan.sales) counts.set(sale.offer.buyerName, (counts.get(sale.offer.buyerName) ?? 0) + 1);

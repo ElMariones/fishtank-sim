@@ -1,6 +1,6 @@
 import { reservedPlaces } from './breeding';
 import { isEgg } from './development';
-import { planSales, type TraitCache } from './economy';
+import { planBestSales, type TraitCache } from './economy';
 import { LISTING_PRICES } from './shop';
 import type { Fish, ReliefState, World } from './types';
 
@@ -86,6 +86,6 @@ export function recoveryOverview(world: World, cache?: TraitCache): RecoveryOver
     living[fish.sex]++;
     if (!isEgg(fish.life) && !courting.has(fish.id)) releasable.push(fish.id);
   }
-  const plan = planSales(world, releasable, cache);
+  const plan = planBestSales(world, releasable, cache);
   return { living, relief: reliefStatus(world), releasable: releasable.length, saleable: plan.sales.length, saleTotal: plan.total };
 }

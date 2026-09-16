@@ -12,7 +12,7 @@ import {
 } from '../core/collection';
 import { GOAL_DESCRIPTORS } from '../core/breedingGoals';
 import { breedingStatus, courtingClutchOf, reservedPlaces, type ClutchSize } from '../core/breeding';
-import { offersFor, planSales, PRICE_MODEL, saleDetail, type TraitCache } from '../core/economy';
+import { offersFor, planBestSales, PRICE_MODEL, saleDetail, type TraitCache } from '../core/economy';
 import { BreedingPlanner } from './BreedingPlanner';
 import { MarketPanel } from './MarketPanel';
 import { ShopPanel } from './ShopPanel';
@@ -236,11 +236,12 @@ export function App({ initial }: { initial: LoadedSession }) {
   // favorites and eggs are never sold in bulk.
   const selectable = collection.filter(f => f.status === 'living');
   const saleable = batchSaleCandidates(collection, favoriteIds);
+  const withBuyer = useMemo(() => saleable.filter(f => offersFor(world, f, traitCache).length), [world, saleable.map(f => f.id).join(','), traitCache]);
   const batch = selectable.filter(f => batchIds.includes(f.id));
   const saleBatch = batchSaleCandidates(batch, favoriteIds);
-  // The review shows exactly what the batch command pays: each fish to its best offer, in order, using up demand.
+  // The review shows exactly what the batch command pays: highest offers first, each fish to its best offer, using up demand.
   const saleIds = saleBatch.map(f => f.id).join(',');
-  const salePlan = useMemo(() => planSales(world, saleIds ? saleIds.split(',') : [], traitCache), [world, saleIds, traitCache]);
+  const salePlan = useMemo(() => planBestSales(world, saleIds ? saleIds.split(',') : [], traitCache), [world, saleIds, traitCache]);
   const batchTotal = salePlan.total;
   const rehomeBatch = batch.filter(f => !isEgg(f.life) && !courtingClutchOf(world, f.id));
   const freePlaces = (id: string) => {
@@ -538,7 +539,7 @@ export function App({ initial }: { initial: LoadedSession }) {
             <span className="batch-summary">{batch.length ? <><strong>{batch.length}</strong> selected{salePlan.sales.length ? ` · ${salePlan.sales.length} with offers for ◈ ${batchTotal.toLocaleString()}` : ' · no offers'}</> : 'Select fish to move, sell or rehome together. Favorites and eggs are never sold in bulk. Shift-click selects a range.'}</span>
             <div className="batch-actions">
               <button className="quiet" onClick={() => { setBatchIds(selectable.map(f => f.id)); setBatchReview(null); setMovedTo(null); }}>Select all {selectable.length}{birth ? ' in this clutch' : ''}</button>
-              <button className="quiet" onClick={() => { setBatchIds(saleable.map(f => f.id)); setBatchReview(null); setMovedTo(null); }}>Select all saleable {saleable.length}</button>
+              <button className="quiet" onClick={() => { setBatchIds(withBuyer.map(f => f.id)); setBatchReview(null); setMovedTo(null); }} disabled={!withBuyer.length}>Select all with a buyer {withBuyer.length}</button>
               {batch.length ? <button className="quiet" onClick={() => { setBatchIds([]); setBatchReview(null); }}>Clear</button> : null}
               {batch.length && moveDestinations.length ? <button aria-expanded={batchReview === 'move'} aria-controls="batch-review" onClick={openMoveReview}>Review move of {batch.length}</button> : null}
               {rehomeBatch.length ? <button aria-expanded={batchReview === 'rehome'} aria-controls="batch-review" onClick={() => setBatchReview('rehome')}>Review rehoming of {rehomeBatch.length}</button> : null}
@@ -548,7 +549,7 @@ export function App({ initial }: { initial: LoadedSession }) {
           {movedTo && !batch.length ? <p className="batch-done" role="status">Moved to {tankName(movedTo)}. <button className="quiet" onClick={() => { setTankId(movedTo); setShowArchived(false); setQuery(''); }}>Open {tankName(movedTo)}</button></p> : null}
           {batchReview === 'sale' && salePlan.sales.length ? <div className="batch-review" id="batch-review" role="region" aria-labelledby="batch-review-title">
             <h3 id="batch-review-title">Sell {salePlan.sales.length} fish to NPC buyers for ◈ {batchTotal.toLocaleString()}?</h3>
-            <p>Each fish goes to its best offer in this order, and every sale uses up some of that buyer’s demand. Genomes and family links stay in the archive; sold fish cannot breed, move or be sold again.{batch.length > saleBatch.length ? ` ${batch.length - saleBatch.length} selected ${batch.length - saleBatch.length === 1 ? 'fish is a favorite or an egg and stays' : 'fish are favorites or eggs and stay'}.` : ''}{salePlan.unsold.length ? ` ${salePlan.unsold.length} selected ${salePlan.unsold.length === 1 ? 'fish has no buyer today and stays' : 'fish have no buyer today and stay'}.` : ''}</p>
+            <p>Fish with the highest offers sell first, each to its best offer, and every sale uses up some of that buyer’s demand. Genomes and family links stay in the archive; sold fish cannot breed, move or be sold again.{batch.length > saleBatch.length ? ` ${batch.length - saleBatch.length} selected ${batch.length - saleBatch.length === 1 ? 'fish is a favorite or an egg and stays' : 'fish are favorites or eggs and stay'}.` : ''}{salePlan.unsold.length ? ` ${salePlan.unsold.length} selected ${salePlan.unsold.length === 1 ? 'fish has no buyer today and stays' : 'fish have no buyer today and stay'}.` : ''}</p>
             <ul>{salePlan.sales.map(sale => {
               const f = world.fish.find(member => member.id === sale.fishId)!;
               return <li key={f.id}><SexMark sex={f.sex} /><span>{f.name}<small>{f.id} · G{f.generation} · {sale.offer.buyerName}</small></span><span>◈ {sale.offer.amount}</span></li>;

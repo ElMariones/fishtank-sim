@@ -9,6 +9,7 @@ import { DEFAULT_SELECTION_CONFIG, selectionReport, type LineResult, type Select
 import { CareScenarios } from './CareScenarios';
 import { EconomyExperiment } from './EconomyExperiment';
 import { LifecycleDemonstration } from './LifecycleDemonstration';
+import { PaidEconomy } from './PaidEconomy';
 import { PhenotypePortrait } from './FishPortrait';
 
 const TRIAL_COUNT = 12;
@@ -33,10 +34,10 @@ function readResults(): StudyResults {
 }
 
 export function ResearchLab({ onClose }: { onClose: () => void }) {
-  const [tab, setTab] = useState<'study' | 'selection' | 'care' | 'lifecycle' | 'economy'>('study');
+  const [tab, setTab] = useState<'study' | 'selection' | 'care' | 'lifecycle' | 'economy' | 'paid'>('study');
   return <main className="fixture-lab research-lab">
     <div className="fixture-hero">
-      <div><div className="eyebrow">FS-105 · FS-307 · FS-406 · FS-501 · RESEMBLANCE, SELECTION, CARE, LIFECYCLE AND ECONOMY</div><h1>Research studies</h1><p>Seeded experiments for the M1 visible-inheritance gate, the M3 care demonstration, the M4 two-generation gate and the M5 economy experiment. They use their own fish and never read or change your aquarium save.</p></div>
+      <div><div className="eyebrow">FS-105 · FS-307 · FS-406 · FS-501 · FS-505 · RESEMBLANCE, SELECTION, CARE, LIFECYCLE AND ECONOMY</div><h1>Research studies</h1><p>Seeded experiments for the M1 visible-inheritance gate, the M3 care demonstration, the M4 two-generation gate and the M5 economy experiment and paid-economy playtest. They use their own fish and never read or change your aquarium save.</p></div>
       <div className="fixture-actions">
         <div className="framing-toggle" role="group" aria-label="Research study">
           <button aria-pressed={tab === 'study'} onClick={() => setTab('study')}>Resemblance study</button>
@@ -44,11 +45,12 @@ export function ResearchLab({ onClose }: { onClose: () => void }) {
           <button aria-pressed={tab === 'care'} onClick={() => setTab('care')}>Care scenarios</button>
           <button aria-pressed={tab === 'lifecycle'} onClick={() => setTab('lifecycle')}>Two generations</button>
           <button aria-pressed={tab === 'economy'} onClick={() => setTab('economy')}>Economy experiment</button>
+          <button aria-pressed={tab === 'paid'} onClick={() => setTab('paid')}>Paid economy</button>
         </div>
         <button onClick={onClose}>Return to aquarium</button>
       </div>
     </div>
-    {tab === 'study' ? <ResemblanceStudy /> : tab === 'selection' ? <SelectionExperiment /> : tab === 'care' ? <CareScenarios /> : tab === 'lifecycle' ? <LifecycleDemonstration /> : <EconomyExperiment />}
+    {tab === 'study' ? <ResemblanceStudy /> : tab === 'selection' ? <SelectionExperiment /> : tab === 'care' ? <CareScenarios /> : tab === 'lifecycle' ? <LifecycleDemonstration /> : tab === 'economy' ? <EconomyExperiment /> : <PaidEconomy />}
   </main>;
 }
 

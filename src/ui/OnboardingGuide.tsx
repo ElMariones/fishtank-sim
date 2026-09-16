@@ -12,7 +12,7 @@ export function OnboardingGuide({ steps, onShow, onHide }: Props) {
       <div>
         <div className="eyebrow">FIRST SESSION GUIDE · {done} OF {steps.length} DONE</div>
         <h2 id="guide-title">{next ? `Step ${steps.indexOf(next) + 1}: ${next.title}` : 'Guide complete'}</h2>
-        <p>{next ? next.detail : 'Continue your lineage at any pace. Fish never die in this lab, and sold or rehomed fish keep their family records.'}</p>
+        <p>{next ? next.detail : 'Continue your lineage at any pace. When offspring you do not keep grow up, select them in the collection to sell them to NPC buyers or rehome them for free; the credits button explains every buyer and your ledger. Fish never die in this lab, and sold or rehomed fish keep their family records.'}</p>
       </div>
       <div className="guide-actions">
         {next ? <button className="primary" onClick={() => onShow(next.id)}>Show me</button> : null}

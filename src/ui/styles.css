@@ -239,6 +239,14 @@ footer a{display:inline-flex;align-items:center;min-height:24px}
 .economy-line.collector { stroke: #d9b86c; } .swatch.collector { background: #d9b86c; }
 .economy-line.maxOutput { stroke: #7fb4e8; } .swatch.maxOutput { background: #7fb4e8; }
 .economy-line.labFarm { stroke: #c49be0; } .swatch.labFarm { background: #c49be0; }
+/* FS-505 paid-economy playtest keepers. */
+.research-lab .framing-toggle { flex-wrap: wrap; }
+.economy-line.paid-guided { stroke: #9fd89b; } .swatch.paid-guided { background: #9fd89b; }
+.economy-line.paid-selective { stroke: #d9b86c; } .swatch.paid-selective { background: #d9b86c; }
+.economy-line.paid-expander { stroke: #7fb4e8; } .swatch.paid-expander { background: #7fb4e8; }
+.economy-line.paid-shopCollector { stroke: #c49be0; } .swatch.paid-shopCollector { background: #c49be0; }
+.economy-line.paid-premiumCare { stroke: #e38b6d; } .swatch.paid-premiumCare { background: #e38b6d; }
+.economy-line.paid-spendDown { stroke: #8caaa2; stroke-dasharray: 5 3; } .swatch.paid-spendDown { background: #8caaa2; }
 @media (max-width: 680px) { .market-panel { margin: 0 12px 16px; padding: 14px; } .ledger-entries li { grid-template-columns: minmax(0, 1fr) auto; } .ledger-entries li span:nth-child(2) { grid-column: 1 / -1; grid-row: 2; } }
 @media (pointer: coarse) { .offer-details summary { min-height: 44px; display: flex; align-items: center; } }
 /* FS-502 NPC shop. */
