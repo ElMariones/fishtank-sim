@@ -84,6 +84,14 @@ World v9 adds `relief`. `claim-relief` is the only way to receive free fish. It 
 - **Guide:** progress (`GUIDE_KEY`) is device-local like collection preferences. Steps complete from player actions recorded in `App.tsx` (select, rename, feed, following a parent) or from `observedGuideSteps`, and **Show me** must never issue commands.
 - **Family at a glance:** it counts full siblings and offspring in one pass; keep it bounded if records grow. See [FS-504 evidence](research/FS-504-ONBOARDING-AND-RECOVERY.md).
 
+### FS-601 contract
+
+- **Registry:** `src/core/registry.ts` is the one place for founder weights, mutation targets and rates, baselines and allele labels. A new chromosome appends to the registry, gets its own random streams and names a baseline for older genomes.
+- **Frozen streams:** never route an existing chromosome through a different random-number sequence. `tests/registry.test.ts` compares genome v1/v2 births with a copy of the pre-registry code.
+- **Original expression:** `expressStructure` returns the standard structure below genome v3. Renderer work for FS-602 must leave standard-structure anatomy identical.
+- **Versions:** a clutch cannot downgrade its parents' genome version. The app sends `GENOME_VERSION` (3), and older journals keep their recorded versions.
+- **World v10 shop:** `shop.model` 1 delivers genome v2 and model 2 genome v3. Only a runtime rebase or a bare import moves a world to model 2. See [FS-601 evidence](research/FS-601-REGISTRY-AND-GENOME-V3.md).
+
 ### FS-505 contract
 
 - **Playtest harness:** `src/core/paidEconomy.ts` must keep sending only live-interface commands; it throws on `add-tank`, `decorate`, `buy` or `breed`. Its spending split is checked against the ledger, so a new credit-changing command needs a ledger reason and a place in `SourcesAndSinks`.
@@ -101,7 +109,7 @@ Update implementation status with changed behavior and limitations; update testi
 
 ## 6. Recommended next prompt
 
-> M3 and M4 are DONE. M5's task list is DONE: FS-501 economy model (`006b500`), FS-502 persistent shop (`3945d86`), FS-503 paid expansion and decorations (`f78d007`), FS-504 first-session guide and koi rescue (`6335851`), and FS-505 paid-economy playtest with best-first batch sales (`f5b1888`); see the FS-505 report. Start M6 with FS-601: a data-driven locus registry and the genome v3 migration, where existing genome v1/v2 fish keep their original expression version and replay unchanged. Keep sale commands carrying a price model, the ledger reconciled, a free or affordable fix on every care warning, and migrations writing keys in schema order.
+> M3, M4 and M5 are DONE. M6 has started: FS-601's locus registry and genome v3 Structure chromosome are DONE (`fb6b593`); see the FS-601 report. Next is FS-602: draw the paired fan and crown-four tails and the dorsal and barbel variants in `anatomy.ts` with validators and reachable fixtures, keeping v1/v2 fish bit-identical. M5's task list is DONE: FS-501 economy model (`006b500`), FS-502 persistent shop (`3945d86`), FS-503 paid expansion and decorations (`f78d007`), FS-504 first-session guide and koi rescue (`6335851`), and FS-505 paid-economy playtest with best-first batch sales (`f5b1888`); see the FS-505 report. Keep sale commands carrying a price model, the ledger reconciled, a free or affordable fix on every care warning, and migrations writing keys in schema order.
 
 ## 7. Subsequent task briefs
 

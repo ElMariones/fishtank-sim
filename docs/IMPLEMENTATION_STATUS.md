@@ -1,8 +1,21 @@
 # Implementation status
 
-**Updated:** 17 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`). FS-405's incremental kinship cache with stated founder assumptions is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. M5 has started: FS-501's economy model v1 is DONE (`006b500`). FS-502 persistent shop (`3945d86`) and FS-503 habitat expansion (`f78d007`) are DONE. FS-504 onboarding and no-money recovery is DONE (`6335851`). FS-505's paid-economy playtest is DONE (`f5b1888`), completing M5's task list.
+**Updated:** 17 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`). FS-405's incremental kinship cache with stated founder assumptions is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. M5 has started: FS-501's economy model v1 is DONE (`006b500`). FS-502 persistent shop (`3945d86`) and FS-503 habitat expansion (`f78d007`) are DONE. FS-504 onboarding and no-money recovery is DONE (`6335851`). FS-505's paid-economy playtest is DONE (`f5b1888`), completing M5's task list. M6 has started: FS-601's locus registry and genome v3 are DONE (`fb6b593`).
 
-## Current continuation — FS-505 DONE, pushed `f5b1888`
+## Current continuation — FS-601 DONE, pushed `fb6b593`
+
+17 September 2026: FS-601 started from `27794af` (FS-505 marked DONE), equal to `origin/main`.
+
+- FS-601 adds:
+  - **Locus registry** (`src/core/registry.ts`): founder weights, mutation targets and rates, baselines, labels and allele validation for all 66 loci. Genome v1/v2 births are bit-identical to the old code.
+  - **Genome v3:** chromosome 11, Structure (tail topology, lobe balance, topology spread, dorsal form, barbel count, fin ray density), drawn from separate streams with a 0.001 structural mutation class. v1/v2 fish keep the standard structure, and older parents pass on the baseline.
+  - **World v10:** shop model 2 delivers genome v3 stock after a runtime rebase; v9 journals replay under model 1.
+  - **Inspector:** a Structure block with hidden-copy chips, chromosome 11 in the genome view, and odds for every locus.
+- Structure is expressed and inspectable but not drawn yet; FS-602 renders it.
+- `npm test`: 199 tests in 33 files pass; the production build passes. On isolated port 5183 the FS-505 world v9 migrated with genome v2 fish intact, and an instant cross laid genome v3 eggs. See [FS-601 evidence](research/FS-601-REGISTRY-AND-GENOME-V3.md).
+- Next: FS-602, validated tail topology and barbel/dorsal variants with reachable fixtures and no invalid geometry.
+
+## Previous continuation — FS-505 DONE, pushed `f5b1888`
 
 17 September 2026: FS-505 started from `ce75263` (FS-504 marked DONE), equal to `origin/main`. `.claude/launch.json` stays untracked and gains an isolated `fishtank-fs505` entry (port 5183).
 
@@ -13,7 +26,7 @@
 - Results: no softlock (36 of 36 routes within 8 game days; spend-down to ◈ 0 recovered with one rescue), first income on game day 30–31, second generation by day 32–36. Room is a one-off sink, so credits accumulate after the build-out, and premium care does not repay itself in healthy tanks. Both are recorded as balance risks, not tuned.
 - `npm run check`: 191 tests in 32 files and the strict production build pass. On isolated port 5183 the browser covered the whole first session, a best-first sale read back from IndexedDB, a second-generation courtship, an aquarium purchase, the Research tab and 390 px layout. See [FS-505 evidence](research/FS-505-PAID-ECONOMY-PLAYTEST.md).
 - M5's task list (FS-501–505) is delivered. Its gate, "complete first-session loop and avoid economic softlock", is shown by seeded keepers and one implementer session, not by an external playtest (FS-705).
-- Next: M6 FS-601, the data-driven locus registry and genome v3 migration.
+- Followed by FS-601 (above).
 
 ## Previous continuation — FS-504 DONE, pushed `6335851`
 
@@ -181,10 +194,10 @@ Historical next task was FS-503, now delivered above. M5 remains open. `.claude/
 | Onboarding | Seven-step first-session guide with device-local progress and focus pointers (FS-504); English only, no tutorial world or time compression, and comprehension not yet measured with players; FS-505 keepers see no income before game day 30 | FS-705 |
 | Batch management | Reviewed batch moves, sales and rehoming; selection clears when the tank, archive view or a filter changes; the move review checks places, not crowding; sale reviews sell the highest offers first with a greedy plan, not a maximum search | FS-705 |
 | Rarity | Only founder-stock rarity labels for appearance (FS-113); no measured reference population or global service | FS-603 FS-805 |
-| Topology | No extra tail lobes/eyes/fins or genome v3 topology; FS-113 scale types are drawn textures, not scale geometry | FS-601–602 |
+| Topology | Genome v3 Structure (FS-601) expresses paired and crown tails, dorsal and barbel variants, but none is drawn yet; FS-113 scale types are drawn textures, not scale geometry | FS-602 |
 | Family | Six generations back and forward as generation lists with text edges; no drawn pedigree chart or lineage registration; breadcrumbs, depth and the kinship cache are session-only; F assumes founders unrelated rather than measuring them | FS-603 FS-604 |
 | History | Birth and pedigree permanent; recent command events persist but compact every 64 commands; no permanent lifetime event history or old portraits | FS-404 |
-| Appearance versions | Lab fish store no per-record development/anatomy/renderer version; all fish re-render under the current model (markings moved with development v2) | FS-404 FS-601 |
+| Appearance versions | The genome version gates expression (v1 classic appearance, v1/v2 standard structure, FS-601); fish store no per-record development, anatomy or renderer version, so renderer changes still apply to every fish | FS-701 |
 | Persistence | IndexedDB snapshots/replay, two backups and one Web Locks writer; browsers without Web Locks fall back to stale-write rejection; no cloud sync; preferences remain device-local | FS-703 M8 |
 | Save recovery | Export/retry and reviewed backup/import recovery work; physical power-loss durability and cross-browser recovery matrix remain untested | FS-703 |
 | Performance | Motion runs in a worker; a synthetic 200-fish/100-step run kept measured input delay under 2 ms, but Canvas rendering and large-save validation remain on the main thread. A 10,000-record commit costs about 1.3 s of serialization and validation, so idle clock checkpoints run every five minutes | FS-701–702 |
@@ -296,4 +309,4 @@ No production-scale benchmark, complete accessibility audit, external user study
 
 ## Next action
 
-**Start M6 with FS-601: a data-driven locus registry and the genome v3 migration, where old fish keep their original expression version.** FS-505 is DONE, pushed `f5b1888`; M5's task list is delivered. Keep genome v1 and v2 records unchanged and replaying, keep sale commands carrying a price model, migrations writing keys in schema order, the ledger reconciled, and a free or affordable fix on every care warning. Rerun `tests/recovery.test.ts` and `tests/paidEconomy.test.ts` if a recurring cost is ever added.
+**Continue M6 with FS-602: draw genome v3 tail topology and dorsal and barbel variants with validated anatomy.** Fixtures must be reachable through registry alleles, with no detached or clipped geometry. FS-601 is DONE, pushed `fb6b593`. Keep v1/v2 fish on the standard structure and their anatomy bit-identical, keep registry streams separate per chromosome, and keep migrations writing keys in schema order.

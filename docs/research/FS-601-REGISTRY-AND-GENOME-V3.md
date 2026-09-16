@@ -1,6 +1,6 @@
 # FS-601 — Locus registry and genome v3 migration
 
-**Date:** 17 September 2026. **Status:** see BACKLOG (marked DONE only after a verified push). Starts M6.
+**Date:** 17 September 2026. **Status:** DONE, pushed `fb6b593`. Starts M6.
 **Models:** world save v10 · genome v3 · registry model 1 · structure model 1 · shop model 2 · development v5. Anatomy and renderer are unchanged; FS-602 draws structure.
 
 ## Starting state
@@ -52,8 +52,8 @@ Windows 11, Node 22.18.0, npm 10.9.3. `npm test`: **199 tests in 33 files** pass
 | Reachability | Every supported Structure allele is reachable from its baseline by mutation steps; standard tails step only to a paired fan |
 | Legacy identity | 300 seeded crosses of genome v1/v2 parents at mutation rates 0, 0.003 and 0.3 equal the pre-registry implementation exactly, mutations included |
 | Genome v3 | For 200 seeds the first 60 founder loci equal genome v2. Genome v2 parents give a v3 child whose first 60 loci and mutations equal a v2 child, and with no mutation it carries the baseline. A v2 clutch from v3 parents is refused |
-| Structural mutation | 20,000 births from baseline parents: 34 tail mutations in 40,000 copies (expected 40), all A0→A1, and small-effect lobe mutations in the expected range; the genome records every mutation |
-| Expression | v1/v2 genomes express the standard structure object, and a v3 genome with baseline alleles expresses exactly the v2 phenotype. The recessive series, barbel rules and additive ranges are covered, and carriers are flagged. 10,000 founders: 40–130 tail carriers and at most 2 expressing (measured 76 and 0) |
+| Structural mutation | 20,000 births from baseline parents: 33 tail mutations in 40,000 copies (expected 40), all A0→A1, and 121 small-effect lobe mutations (expected 120); the genome records every mutation. Dorsal and barbel loci mutated 33 and 40 times |
+| Expression | v1/v2 genomes express the standard structure object, and a v3 genome with baseline alleles expresses exactly the v2 phenotype. The recessive series, barbel rules and additive ranges are covered, and carriers are flagged. 10,000 founders: 40–130 tail carriers and at most 2 expressing (measured 84 and 0). Measured separately: 7 founders express a dorsal variant and 10 a barbel variant |
 | Save validation | New worlds are genome v3 and round-trip. Unsupported alleles at tail_topology and barbel_count, a short genome, a mutation outside the genome and a listing genome above its shop model are refused |
 | Migration | A world v9 with genome v2 founders and a model 1 shop decodes as v10 with the same content. Its runtime, with a genome v2 courtship and a week of deliveries, replays and rebases to shop model 2 with fish, genomes and current listings unchanged. Twelve days later new listings are genome v3 and the save replays. Old parents breed genome v3 children with baseline Structure |
 
