@@ -128,6 +128,7 @@ World v9 adds `relief`. `claim-relief` is the only way to receive free fish. It 
 - **No style on creation:** `newTank` must not add `style`; older journals that buy tanks replay against snapshots without it. Absent style means `DEFAULT_STYLE`.
 - **Cosmetic only:** looks and piece art must not feed water, development, behavior or prices. Only the footprint kind, position and radius reach steering.
 - **Layout rules:** `layoutProblem` may only be relaxed without a version bump; tightening it would reject stored layouts. Themes are tested to stay valid.
+- **Editing freeze (ADR-067):** while the editor is open, keep the game clock frozen (`frozenTick` in `App.tsx`) and the canvas on its dirty-flag paint path. Any new per-frame visual must mark the canvas dirty when it changes, or it will not show while frozen. Keep the draft out of App state: drag updates must not re-render the app.
 - **Playtest harness:** `paidEconomy.ts` does not send `style-tank`; if it ever does, add the spend to its sources and sinks.
 
 ## 5. Verification and task completion

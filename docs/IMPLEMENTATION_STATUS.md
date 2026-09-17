@@ -11,6 +11,7 @@
 - **Themes:** 9 ready-made aquascapes (Zen koi garden, Nature aquarium, Iwagumi, Blackwater creek, Sunken ruins, Coral lagoon, Moonlit pond, Aurora grotto, Bare breeding tank) load into the draft with their cost shown.
 - **Editor:** Aquascape (tank controls or Habitat tab) turns the live aquarium into the design surface. Pieces are dragged directly on the glass or from the tray and settle into the substrate by themselves; a piece dropped where it would pinch swimming space slides to the nearest valid spot. A floating toolbar resizes, flips, reshapes, duplicates and removes. The dock previews every look and theme with the tank renderer. One Apply sends the layout and the look.
 - **Renderer:** backdrop, substrate, caustics, light rays, lighting grade, lantern glow, bubbles, waterline and glass are painted on the tank canvas; static layers are cached per size, look and layout.
+- **Performance follow-up:** the editor now freezes fish, plant sway and game time until Apply or Cancel; drags update a separate draft store once per frame and redraw only the dragged piece, cutting a drag step from 20–163 ms to 4–8 ms (ADR-067).
 - **Saves:** additive optional fields in world v12 (`item`, `variant` on decorations; `style` on tanks) and a new `style-tank` command. FS-503 layouts and journals replay unchanged. See [TESTING](TESTING.md#fs-117-aquascape-overhaul) and ADR-066.
 
 ## Previous continuation — FS-116 UI overhaul DONE, pushed `f3f6bcd` (user request)

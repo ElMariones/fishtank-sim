@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type KeyboardEvent, type PointerEvent, type SetStateAction } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import {
   BACKDROPS, DECOR_CATEGORIES, DECOR_ITEMS, DECOR_VARIANTS, LIGHTINGS, SCALE_RANGE, SUBSTRATES, THEMES, decorItem, itemOf, piecePrice, settle,
   styleCost, styleOf, type DecorCategory, type StyleFacet, type StyleOption, type TankStyle, type Theme,
@@ -14,8 +14,39 @@ import { Icon } from './Icon';
  * Aquascape editor (FS-117). The live aquarium becomes the canvas: pieces are dragged straight into place and settle on
  * the substrate, the dock adds pieces, looks and themes, and one review applies the whole draft.
  */
-export type AquascapeDraft = { decorations: Decoration[]; style: TankStyle; selected: string | null };
-export const draftFor = (tank: Tank): AquascapeDraft => ({ decorations: structuredClone(decorationsOf(tank)), style: styleOf(tank), selected: null });
+export type AquascapeDraft = { decorations: Decoration[]; style: TankStyle; selected: string | null; dragging: string | null };
+export const draftFor = (tank: Tank): AquascapeDraft => ({ decorations: structuredClone(decorationsOf(tank)), style: styleOf(tank), selected: null, dragging: null });
+
+/**
+ * The draft lives outside React state so a drag re-renders only the overlay and dock, never the whole app. The tank
+ * canvas reads `scene()` in its paint loop and repaints when notified.
+ */
+export type DraftStore = {
+  get: () => AquascapeDraft;
+  update: (change: (current: AquascapeDraft | null) => AquascapeDraft | null) => void;
+  subscribe: (listener: () => void) => () => void;
+  /** The draft as a renderer scene; the same object until the layout, look or dragged piece changes. */
+  scene: () => Scene;
+};
+export function createDraftStore(initial: AquascapeDraft): DraftStore {
+  let draft = initial, scene: Scene | null = null;
+  const listeners = new Set<() => void>();
+  return {
+    get: () => draft,
+    update: change => {
+      const next = change(draft);
+      if (!next || next === draft) return;
+      draft = next;
+      listeners.forEach(listener => listener());
+    },
+    subscribe: listener => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    scene: () => {
+      if (!scene || scene.decorations !== draft.decorations || scene.style !== draft.style || scene.live !== draft.dragging) scene = { decorations: draft.decorations, style: draft.style, live: draft.dragging };
+      return scene;
+    },
+  };
+}
+const useDraft = (store: DraftStore) => useSyncExternalStore(store.subscribe, store.get);
 
 const DRAG_TYPE = 'application/x-fishtank-decor';
 const isNew = (piece: Decoration, saved: readonly Decoration[]) => !saved.some(old => old.id === piece.id && old.item === piece.item);
@@ -25,11 +56,11 @@ const freshPiece = (pieces: Decoration[], saved: readonly Decoration[], itemId: 
 
 // ---- Overlay on the aquarium ----------------------------------------------------------------------------------------
 
-type OverlayProps = { draft: AquascapeDraft; saved: readonly Decoration[]; setDraft: Dispatch<SetStateAction<AquascapeDraft | null>> };
-export function AquascapeOverlay({ draft, saved, setDraft }: OverlayProps) {
+type OverlayProps = { store: DraftStore; saved: readonly Decoration[] };
+export function AquascapeOverlay({ store, saved }: OverlayProps) {
+  const draft = useDraft(store), setDraft = store.update, dragging = draft.dragging;
   const root = useRef<HTMLDivElement>(null), [size, setSize] = useState({ w: 0, h: 0 });
-  const drag = useRef<{ id: string; pointer: number; offset: number } | null>(null);
-  const [dragging, setDragging] = useState<string | null>(null);
+  const drag = useRef<{ id: string; pointer: number; offset: number; x: number | null; frame: number } | null>(null);
   useEffect(() => {
     const element = root.current;
     if (!element) return;
@@ -49,24 +80,31 @@ export function AquascapeOverlay({ draft, saved, setDraft }: OverlayProps) {
   const pointerDown = (event: PointerEvent, piece: Decoration) => {
     event.preventDefault(); event.stopPropagation();
     const rect = root.current!.getBoundingClientRect();
-    drag.current = { id: piece.id, pointer: event.pointerId, offset: (event.clientX - rect.left) / rect.width - piece.x };
+    drag.current = { id: piece.id, pointer: event.pointerId, offset: (event.clientX - rect.left) / rect.width - piece.x, x: null, frame: 0 };
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     (event.currentTarget as HTMLElement).focus({ preventScroll: true });
-    setDragging(piece.id);
-    update(pieces => pieces, piece.id);
+    setDraft(current => current && ({ ...current, selected: piece.id, dragging: piece.id }));
   };
+  const moveTo = (id: string, x: number) => update(pieces => pieces.map(piece => piece.id === id ? settle({ ...piece, x }) : piece));
+  // Pointer moves arrive faster than the screen refreshes; apply at most one move per frame.
   const pointerMove = (event: PointerEvent) => {
     const active = drag.current;
     if (!active || active.pointer !== event.pointerId) return;
-    const rect = root.current!.getBoundingClientRect(), x = (event.clientX - rect.left) / rect.width - active.offset;
-    update(pieces => pieces.map(piece => piece.id === active.id ? settle({ ...piece, x }) : piece));
+    const rect = root.current!.getBoundingClientRect();
+    active.x = (event.clientX - rect.left) / rect.width - active.offset;
+    if (!active.frame) active.frame = requestAnimationFrame(() => {
+      active.frame = 0;
+      if (active.x !== null && drag.current === active) moveTo(active.id, active.x);
+    });
   };
   // Ends on release, cancel or a lost capture, so a drag can never stay stuck.
   const pointerUp = (event: PointerEvent) => {
     const active = drag.current;
     if (!active || active.pointer !== event.pointerId) return;
-    drag.current = null; setDragging(null);
-    update(pieces => nearestValid(pieces, active.id));
+    drag.current = null;
+    if (active.frame) cancelAnimationFrame(active.frame);
+    if (active.x !== null) moveTo(active.id, active.x);
+    setDraft(current => current && ({ ...current, dragging: null, decorations: nearestValid(current.decorations, active.id) }));
   };
   const keyDown = (event: KeyboardEvent, piece: Decoration) => {
     const moves: Record<string, () => void> = {
@@ -128,18 +166,22 @@ export function AquascapeOverlay({ draft, saved, setDraft }: OverlayProps) {
 
 // ---- Previews -------------------------------------------------------------------------------------------------------
 
-function PieceThumb({ item, variant = 0 }: { item: string; variant?: number }) {
+const PieceThumb = memo(function PieceThumb({ item, variant = 0 }: { item: string; variant?: number }) {
   const canvas = useRef<HTMLCanvasElement>(null), entry = decorItem(item)!;
   useEffect(() => {
     if (canvas.current) paintThumbnail(canvas.current, { id: 'DC-0', kind: entry.kind, item, variant, x: 0.5, y: 0.5, scale: 1, rotation: 0 });
   }, [item, variant]);
   return <canvas ref={canvas} className="decor-thumb" aria-hidden="true" />;
-}
+});
 
-/** A small still of a whole scene, painted with the tank renderer. */
-function ScenePreview({ scene }: { scene: Scene }) {
+/** A small still of a whole scene, painted with the tank renderer on the next frame, so opening a tab never stalls a click. */
+const ScenePreview = memo(function ScenePreview({ scene }: { scene: Scene }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
+    const frame = requestAnimationFrame(paint);
+    return () => cancelAnimationFrame(frame);
+  }, [scene]);
+  function paint() {
     const element = canvas.current;
     if (!element) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2), W = element.clientWidth || 160, H = element.clientHeight || 90;
@@ -147,9 +189,9 @@ function ScenePreview({ scene }: { scene: Scene }) {
     const ctx = element.getContext('2d')!; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const renderer = new AquascapeRenderer();
     renderer.paintBack(ctx, W, H, scene, 4); renderer.paintPlants(ctx, W, H, scene, 4, 'back'); renderer.paintPlants(ctx, W, H, scene, 4, 'front'); renderer.paintFront(ctx, W, H, scene, 4);
-  }, [scene]);
+  }
   return <canvas ref={canvas} className="scene-thumb" aria-hidden="true" />;
-}
+});
 
 // ---- Dock -----------------------------------------------------------------------------------------------------------
 
@@ -158,9 +200,10 @@ const LOOK_TABS: { id: StyleFacet; label: string; options: readonly StyleOption[
   { id: 'substrate', label: 'Substrate', options: SUBSTRATES }, { id: 'backdrop', label: 'Backdrop', options: BACKDROPS }, { id: 'lighting', label: 'Lighting', options: LIGHTINGS },
 ];
 
-type DockProps = { world: World; tank: Tank; draft: AquascapeDraft; setDraft: Dispatch<SetStateAction<AquascapeDraft | null>>; readOnly?: boolean;
+type DockProps = { world: World; tank: Tank; store: DraftStore; readOnly?: boolean;
   onRun: (command: Command, message: string) => boolean; onClose: () => void };
-export function AquascapeDock({ world, tank, draft, setDraft, readOnly, onRun, onClose }: DockProps) {
+export function AquascapeDock({ world, tank, store, readOnly, onRun, onClose }: DockProps) {
+  const draft = useDraft(store), setDraft = store.update;
   const [tab, setTab] = useState<DockTab>('themes');
   const saved = decorationsOf(tank), savedStyle = styleOf(tank);
   const added = draft.decorations.filter(piece => isNew(piece, saved)), pieceCost = added.reduce((sum, piece) => sum + piecePrice(piece), 0);
@@ -184,9 +227,10 @@ export function AquascapeDock({ world, tank, draft, setDraft, readOnly, onRun, o
     onClose();
   };
   const themeScenes = useMemo(() => new Map(THEMES.map(theme => [theme.id, { decorations: themeLayout(theme), style: theme.style }])), []);
+  const themeCosts = useMemo(() => new Map(THEMES.map(theme => [theme.id, themeScenes.get(theme.id)!.decorations.reduce((sum, piece) => sum + piecePrice(piece), 0) + styleCost(savedStyle, theme.style)])), [themeScenes, savedStyle]);
   const lookScenes = useMemo(() => new Map(LOOK_TABS.flatMap(look => look.options.map(option => [`${look.id}:${option.id}`, { decorations: draft.decorations, style: { ...draft.style, [look.id]: option.id } }] as const))),
-    // Look previews show the current layout; rebuild them when the tab opens rather than on every drag.
-    [tab, draft.style]);
+    // Look previews show the current layout: rebuilt when the tab or look changes or a drag ends, never during a drag.
+    [tab, draft.style, draft.dragging === null ? draft.decorations : null]);
 
   return <section className="aquascape-dock" aria-label="Aquascape editor">
     <div className="dock-head">
@@ -201,7 +245,7 @@ export function AquascapeDock({ world, tank, draft, setDraft, readOnly, onRun, o
     </div>
     <div className="dock-tray" role="tabpanel">
       {tab === 'themes' ? THEMES.map(theme => {
-        const cost = themeLayout(theme).reduce((sum, piece) => sum + piecePrice(piece), 0) + styleCost(savedStyle, theme.style);
+        const cost = themeCosts.get(theme.id)!;
         return <button key={theme.id} type="button" className="dock-card theme-card" onClick={() => applyTheme(theme)}>
           <ScenePreview scene={themeScenes.get(theme.id)!} /><strong>{theme.name}</strong><small>{theme.blurb}</small><span className="price">◈ {cost}</span>
         </button>;

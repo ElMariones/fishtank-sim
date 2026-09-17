@@ -8,7 +8,13 @@ import { drawLotus, lanternWindow, PIECE_DRAWERS, pieceRng, type PieceContext } 
  * and glass. Everything static (backdrop, substrate, solid pieces) is painted once into a cached layer and redrawn only
  * when the size, look or layout changes; plants, light and water move every frame.
  */
-export type Scene = { decorations: readonly Decoration[]; style: TankStyle };
+export type Scene = {
+  decorations: readonly Decoration[]; style: TankStyle;
+  /** A piece being dragged: drawn live each frame and kept out of the cached layer, so a drag never repaints it. */
+  live?: string | null;
+};
+/** Plants sway slowly; their layers are redrawn at this rate and reused between frames. */
+const PLANT_FPS = 30;
 
 /** Waterline and substrate, as a share of tank height. Fish centres stay within 0.12–0.88 (behavior.ts). */
 export const WATERLINE = 0.045;
@@ -198,45 +204,68 @@ function caustics() {
 
 // ---- Renderer -------------------------------------------------------------------------------------------------------
 
+/** Paint into a reusable offscreen canvas at the target's pixel density. */
+function paintLayer(existing: HTMLCanvasElement | undefined, W: number, H: number, dpr: number, paint: (ctx: CanvasRenderingContext2D) => void) {
+  const canvas = existing ?? document.createElement('canvas'), width = Math.max(1, Math.round(W * dpr)), height = Math.max(1, Math.round(H * dpr));
+  if (canvas.width !== width || canvas.height !== height) { canvas.width = width; canvas.height = height; }
+  const ctx = canvas.getContext('2d')!;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, width, height); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  paint(ctx);
+  return canvas;
+}
+
 const isStatic = (piece: Decoration) => !PIECE_DRAWERS[itemOf(piece).id].animated;
 const depthOrder = (a: Decoration, b: Decoration) => (a.kind === b.kind ? 0 : a.kind === 'rock' ? -1 : 1) || pieceRadius(b) - pieceRadius(a) || a.x - b.x;
 
 export class AquascapeRenderer {
-  private layer: { canvas: HTMLCanvasElement; W: number; H: number; dpr: number; scene: Scene } | null = null;
+  /** Backdrop and substrate: rebuilt only when the size or look changes. */
+  private base: { canvas: HTMLCanvasElement; key: string } | null = null;
+  /** Solid pieces except a dragged one: rebuilt only when one of them changes. */
+  private solids: { canvas: HTMLCanvasElement; key: string } | null = null;
+  private plantLayers: Record<'back' | 'front', { canvas: HTMLCanvasElement; key: string; decorations: readonly Decoration[] } | null> = { back: null, front: null };
   private glass: { canvas: HTMLCanvasElement; key: string } | null = null;
   private patterns: CanvasPattern[] = [];
   private patternContext: CanvasRenderingContext2D | null = null;
 
   /** Backdrop, substrate, solid pieces and caustics: everything behind the fish except moving plants. */
   paintBack(ctx: CanvasRenderingContext2D, W: number, H: number, scene: Scene, time: number) {
-    const dpr = ctx.getTransform().a || 1;
-    const cached = this.layer;
-    if (!cached || cached.W !== W || cached.H !== H || cached.dpr !== dpr || cached.scene.decorations !== scene.decorations || cached.scene.style !== scene.style) {
-      const canvas = cached?.canvas ?? document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(W * dpr)); canvas.height = Math.max(1, Math.round(H * dpr));
-      const layer = canvas.getContext('2d')!; layer.setTransform(dpr, 0, 0, dpr, 0, 0);
-      paintBackdrop(layer, W, H, scene.style);
-      paintSubstrate(layer, W, H, scene.style);
-      for (const piece of [...scene.decorations].sort(depthOrder)) if (isStatic(piece)) drawPiece(layer, piece, pieceBox(piece, W, H), 0, 'all', H);
-      this.layer = { canvas, W, H, dpr, scene };
+    const dpr = ctx.getTransform().a || 1, size = `${W}x${H}@${dpr}`;
+    const baseKey = `${size}:${scene.style.substrate}:${scene.style.backdrop}`;
+    if (this.base?.key !== baseKey) this.base = { canvas: paintLayer(this.base?.canvas, W, H, dpr, layer => { paintBackdrop(layer, W, H, scene.style); paintSubstrate(layer, W, H, scene.style); }), key: baseKey };
+    ctx.drawImage(this.base.canvas, 0, 0, W, H);
+    const solids = scene.decorations.filter(piece => isStatic(piece) && piece.id !== scene.live).sort(depthOrder);
+    if (solids.length) {
+      const solidKey = `${size}:${JSON.stringify(solids)}`;
+      if (this.solids?.key !== solidKey) this.solids = { canvas: paintLayer(this.solids?.canvas, W, H, dpr, layer => { for (const piece of solids) drawPiece(layer, piece, pieceBox(piece, W, H), 0, 'all', H); }), key: solidKey };
+      ctx.drawImage(this.solids.canvas, 0, 0, W, H);
     }
-    ctx.drawImage(this.layer!.canvas, 0, 0, W, H);
+    const live = scene.live ? scene.decorations.find(piece => piece.id === scene.live && isStatic(piece)) : undefined;
+    if (live) drawPiece(ctx, live, pieceBox(live, W, H), 0, 'all', H);
     const grade = gradeFor(scene.style.lighting, time);
     if (this.patternContext !== ctx) { this.patterns = [ctx.createPattern(caustics(), 'repeat')!, ctx.createPattern(caustics(), 'repeat')!]; this.patternContext = ctx; }
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const floor = (SUBSTRATE_TOP - 0.012) * H;
     for (const [index, [scale, speed, alpha]] of ([[1.6, 7, 1], [2.3, -5, 0.7]] as const).entries()) {
       const pattern = this.patterns[index];
       pattern.setTransform(new DOMMatrix().translateSelf(time * speed, time * speed * 0.4).scaleSelf(scale, scale * 0.6));
       ctx.fillStyle = pattern;
-      ctx.globalAlpha = grade.caustics * alpha * 0.14; ctx.fillRect(0, 0, W, H);
-      ctx.save(); substratePath(ctx, W, H); ctx.clip(); ctx.globalAlpha = grade.caustics * alpha; ctx.fillRect(0, SUBSTRATE_TOP * H - 8, W, H); ctx.restore();
+      // Faint in open water, stronger on the substrate; a rectangle is far cheaper than clipping to the sand's outline.
+      ctx.globalAlpha = grade.caustics * alpha * 0.14; ctx.fillRect(0, 0, W, floor);
+      ctx.globalAlpha = grade.caustics * alpha; ctx.fillRect(0, floor, W, H - floor);
     }
     ctx.restore();
   }
 
   /** Moving plants: `back` before fish, `front` leaves after them, so fish can hide among the stems. */
   paintPlants(ctx: CanvasRenderingContext2D, W: number, H: number, scene: Scene, time: number, layer: 'back' | 'front') {
-    for (const piece of scene.decorations) if (!isStatic(piece)) drawPiece(ctx, piece, pieceBox(piece, W, H), time, layer, H);
+    const plants = scene.decorations.filter(piece => !isStatic(piece));
+    if (!plants.length) return;
+    const dpr = ctx.getTransform().a || 1, step = Math.floor(time * PLANT_FPS), key = `${W}x${H}@${dpr}:${step}`, cached = this.plantLayers[layer];
+    if (cached?.key !== key || cached.decorations !== scene.decorations) {
+      const frameTime = step / PLANT_FPS;
+      this.plantLayers[layer] = { canvas: paintLayer(cached?.canvas, W, H, dpr, target => { for (const piece of plants) drawPiece(target, piece, pieceBox(piece, W, H), frameTime, layer, H); }), key, decorations: scene.decorations };
+    }
+    ctx.drawImage(this.plantLayers[layer]!.canvas, 0, 0, W, H);
   }
 
   /** Bubbles, light rays, grading, glowing lanterns, the waterline and glass, over the fish. */

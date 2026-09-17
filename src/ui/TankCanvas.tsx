@@ -20,17 +20,21 @@ type Props = {
   /** Called when the selected fish's behavior state, reasons or leader change; null when it is not swimming here. */
   onBehavior?: (behavior: BehaviorSummary | null) => void;
   /** A draft aquascape to draw instead of the saved one (FS-117 editor). Fish keep steering by the saved layout. */
-  preview?: Scene | null;
-  /** While editing, clicks belong to the editor overlay. */
+  preview?: PreviewSource | null;
+  /** While editing, the aquarium is frozen (no motion, no sway) and clicks belong to the editor overlay. */
   editing?: boolean;
 };
+/** Anything that can hand the canvas a scene and say when it changed, such as the aquascape editor's draft store. */
+export type PreviewSource = { scene: () => Scene; subscribe: (listener: () => void) => () => void };
 type WorkerState = { status: 'starting' | 'ready' | 'recovering' | 'recovered' | 'failed'; message: string };
 type BehaviorFrame = { states: Uint8Array; reasons: Uint8Array; leaders: Int16Array };
 /** What the last painted frame showed for one fish, so a click picks exactly what was drawn. */
 type Painted = { actor: Actor; facing: number; growth: number };
 const workerFactory = () => new Worker(new URL('../simulation/motionWorker.ts', import.meta.url), { type: 'module', name: 'fishtank-motion' });
 // A hidden page paints nothing, so visual motion pauses there instead of spending worker time.
-const playbackSpeed = (props: Props): PlaybackSpeed => document.hidden || props.paused ? 0 : props.speed as PlaybackSpeed;
+const playbackSpeed = (props: Props): PlaybackSpeed => document.hidden || props.paused || props.editing ? 0 : props.speed as PlaybackSpeed;
+/** Canvas pixel density cap: above 1.5 the extra pixels cost far more fill time than they add detail to soft water. */
+const MAX_DPR = 1.5;
 /** Facing swings through side-on at this rate per second, so a turn reads as the fish swinging round (FS-306). */
 const TURN_PER_SECOND = 4;
 /** Swim phases wrap at 4π: the dorsal sway runs at half the fin rate. */
@@ -61,7 +65,10 @@ export function TankCanvas(props: Props) {
   const reported = useRef('');
   const lastFeedSignal = useRef(props.feedSignal);
   const [workerState, setWorkerState] = useState<WorkerState>({ status: 'starting', message: '' });
+  /** A still aquarium (paused or editing) repaints only when something it shows has changed. */
+  const dirty = useRef(true);
   latest.current = props;
+  dirty.current = true;
 
   /** Report the selected fish's current behavior when it differs from the last report. */
   const reportBehavior = () => {
@@ -79,6 +86,7 @@ export function TankCanvas(props: Props) {
     const receive = (message: FromMotionWorker) => {
       if (message.type === 'ready' || message.type === 'entities') workerIds.current = message.ids;
       if (message.type !== 'frame') return;
+      dirty.current = true;
       // Painting interpolates from the previous frame to this one over one 50 ms step.
       previous.current = new Map(actors.current.map(actor => [actor.id, actor]));
       frameClock.current = { receivedAt: performance.now(), fromTime: simulationTime.current };
@@ -125,7 +133,8 @@ export function TankCanvas(props: Props) {
     apply();
     document.addEventListener('visibilitychange', apply);
     return () => document.removeEventListener('visibilitychange', apply);
-  }, [props.paused, props.speed]);
+  }, [props.paused, props.speed, props.editing]);
+  useEffect(() => props.preview?.subscribe(() => { dirty.current = true; }), [props.preview]);
   useEffect(() => {
     if (props.feedSignal !== lastFeedSignal.current) client.current?.feed();
     lastFeedSignal.current = props.feedSignal;
@@ -140,18 +149,22 @@ export function TankCanvas(props: Props) {
     const renderer = new AquascapeRenderer();
     const resize = new ResizeObserver(entries => {
       width = entries[0].contentRect.width; height = entries[0].contentRect.height;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
       canvas.width = width * dpr; canvas.height = height * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      dirty.current = true;
     });
     resize.observe(canvas);
     const render = () => {
       const current = latest.current, now = performance.now(), dt = Math.min(0.1, (now - lastPaint) / 1000);
-      lastPaint = now;
       const playing = playbackSpeed(current);
       const blend = Math.min(1, Math.max(0, (now - frameClock.current.receivedAt) / TICK_MS));
+      // Frozen and settled: nothing moves, so skip the paint until a prop, frame, draft or size change marks it dirty.
+      if (!playing && blend >= 1 && !dirty.current) { lastPaint = now; frame = requestAnimationFrame(render); return; }
+      dirty.current = blend < 1;
+      lastPaint = now;
       const time = frameClock.current.fromTime + (simulationTime.current - frameClock.current.fromTime) * blend;
       ctx.clearRect(0, 0, width, height);
-      const scene = current.preview ?? savedScene(current.tank);
+      const scene = current.preview?.scene() ?? savedScene(current.tank);
       renderer.paintBack(ctx, width, height, scene, time);
       renderer.paintPlants(ctx, width, height, scene, time, 'back');
       if (current.eggs > 0) {

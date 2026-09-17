@@ -1,5 +1,5 @@
 import { HabitatPanel } from './HabitatPanel';
-import { AquascapeDock, AquascapeOverlay, draftFor, type AquascapeDraft } from './AquascapeEditor';
+import { AquascapeDock, AquascapeOverlay, createDraftStore, draftFor, type DraftStore } from './AquascapeEditor';
 import { decorationsOf } from '../core/tankManagement';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { describeAppearance } from '../core/appearance';
@@ -85,13 +85,16 @@ export function App({ initial }: { initial: LoadedSession }) {
   const runtimeRef = useRef(runtime);
   const saveBusy = useRef(false);
   const clockOrigin = useRef({ time: performance.now(), tick: runtime.tick });
+  /** While the aquascape editor is open, game time stands still at this tick (FS-117). */
+  const frozenTick = useRef<number | null>(null);
+  const clockTick = (now: number) => frozenTick.current ?? clockOrigin.current.tick + Math.floor((now - clockOrigin.current.time) / TICK_MS);
   // The display previews the shared clock up to now every five seconds without saving; commands advance the saved runtime.
   const [clockNow, setClockNow] = useState(() => performance.now());
   useEffect(() => {
-    const interval = window.setInterval(() => setClockNow(performance.now()), 5_000);
+    const interval = window.setInterval(() => { if (frozenTick.current === null) setClockNow(performance.now()); }, 5_000);
     return () => window.clearInterval(interval);
   }, []);
-  const liveTick = Math.max(runtime.tick, clockOrigin.current.tick + Math.floor((clockNow - clockOrigin.current.time) / TICK_MS));
+  const liveTick = Math.max(runtime.tick, clockTick(clockNow));
   const world = useMemo(() => advanceWorld(runtime.world, runtime.tick, liveTick), [runtime.world, runtime.tick, liveTick]);
   const [blocked, setBlocked] = useState(initial.blocked);
   const [showSaves, setShowSaves] = useState(false);
@@ -172,7 +175,8 @@ export function App({ initial }: { initial: LoadedSession }) {
   useEffect(() => {
     if (blocked || initial.readOnly) return;
     const interval = window.setInterval(() => {
-      const target = clockOrigin.current.tick + Math.floor((performance.now() - clockOrigin.current.time) / TICK_MS);
+      if (frozenTick.current !== null) return;
+      const target = clockTick(performance.now());
       setRuntime(current => {
         const advanced = advanceRuntime(current, Math.max(current.tick, target));
         runtimeRef.current = advanced;
@@ -194,11 +198,21 @@ export function App({ initial }: { initial: LoadedSession }) {
   const portraitView: PortraitView = preferences.portraits ?? 'current';
   const favoriteIds = new Set(favorites);
   const tank = world.tanks.find(t => t.id === tankId) ?? world.tanks[0];
-  const [aquascape, setAquascape] = useState<AquascapeDraft | null>(null);
+  // The draft lives in its own store, so dragging a piece never re-renders the app (FS-117).
+  const [aquascape, setAquascapeStore] = useState<DraftStore | null>(null);
+  /**
+   * Editing freezes the aquarium: fish motion and plant sway stop, and game time stands still until Apply or Cancel.
+   * On close the clock resumes from the frozen tick, so the minutes spent designing never pass in the lab.
+   */
+  const setAquascape = (store: DraftStore | null) => {
+    const now = performance.now();
+    if (store && frozenTick.current === null) frozenTick.current = clockTick(now);
+    if (!store && frozenTick.current !== null) { clockOrigin.current = { time: now, tick: frozenTick.current }; frozenTick.current = null; setClockNow(now); }
+    setAquascapeStore(store);
+  };
   // A draft belongs to one aquarium: switching tanks or views discards it.
   useEffect(() => { setAquascape(null); }, [tank.id]);
-  const aquascapePreview = useMemo(() => aquascape ? { decorations: aquascape.decorations, style: aquascape.style } : null, [aquascape?.decorations, aquascape?.style]);
-  const openAquascape = () => { setAquascape(draftFor(tank)); requestAnimationFrame(() => document.querySelector('.aquarium')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); };
+  const openAquascape = () => { setAquascape(createDraftStore(draftFor(tank))); requestAnimationFrame(() => document.querySelector('.aquarium')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); };
   const fish = world.fish.find(f => f.id === selectedId);
   const living = world.fish.filter(f => f.status === 'living');
   const residents = useMemo(() => world.fish.filter(f => f.tankId === tank.id && f.status === 'living'), [world.fish, tank.id]);
@@ -288,7 +302,7 @@ export function App({ initial }: { initial: LoadedSession }) {
     if (saveBusy.current) { setNotice('Wait for the save operation to finish.'); return null; }
     try {
       const current = runtimeRef.current;
-      const tick = Math.max(current.tick, clockOrigin.current.tick + Math.floor((performance.now() - clockOrigin.current.time) / TICK_MS));
+      const tick = Math.max(current.tick, clockTick(performance.now()));
       const updated = executeCommand(current, commandEnvelope(current, command, tick));
       runtimeRef.current = updated;
       setRuntime(updated);
@@ -518,8 +532,8 @@ export function App({ initial }: { initial: LoadedSession }) {
           <div className="tank-heading-meta"><span className="count-tag"><Icon name="fish" size={14} />{residents.length} / {tank.capacity}</span><span className="count-tag">{tank.planted ? <><Icon name="leaf" size={14} />Planted</> : <><Icon name="wave" size={14} />Open water</>}</span></div></div>
         <section className={`aquarium ${aquascape ? 'is-editing' : ''}`} aria-label="Live aquarium">
           
-          <TankCanvas fish={swimmers} eggs={residents.length - swimmers.length} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={speed} feedSignal={feedSignal} onBehavior={setBehavior} preview={aquascapePreview} editing={!!aquascape} />
-          {aquascape ? <><AquascapeOverlay draft={aquascape} saved={decorationsOf(tank)} setDraft={setAquascape} /><span className="editing-badge"><Icon name="brush" size={14} />Aquascaping · fish adapt once you apply</span></> : null}
+          <TankCanvas fish={swimmers} eggs={residents.length - swimmers.length} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={speed} feedSignal={feedSignal} onBehavior={setBehavior} preview={aquascape} editing={!!aquascape} />
+          {aquascape ? <><AquascapeOverlay store={aquascape} saved={decorationsOf(tank)} /><span className="editing-badge"><Icon name="pause" size={14} />Aquascaping · time and fish paused until you apply or cancel</span></> : null}
           <TankHud status={activeStatus} warnings={warningCount} paused={paused} onCare={() => { setWorkspace('care'); focusSoon('workspace-panel'); }} />
           {residents.length > swimmers.length ? <span className="egg-badge"><Icon name="egg" size={14} />{residents.length - swimmers.length} eggs incubating</span> : null}
           {!residents.length ? <div className="empty-tank">A little room to evolve.<small>Move a fish here or introduce unrelated stock, which can carry new colors and patterns.</small></div> : null}
@@ -527,7 +541,7 @@ export function App({ initial }: { initial: LoadedSession }) {
             if (run({ type: 'feed', tankId: tank.id }, 'A portion of food joined the water, a quarter of a game day of what these fish need. They eat it over the next hours and leftovers decay. The sinking pellets show hungry, bold fish reaching food first.')) { setFeedSignal(v => v + 1); markGuide('feed'); }
           }}><Icon name="plus" size={16} />Feed</button></div>
         </section>
-        {aquascape ? <AquascapeDock world={world} tank={tank} draft={aquascape} setDraft={setAquascape} readOnly={initial.readOnly} onRun={(command, message) => run(command, message) !== null} onClose={() => setAquascape(null)} /> : <><WorkspaceTabs label="Aquarium workspace" active={workspace} onChange={setWorkspace} tabs={[
+        {aquascape ? <AquascapeDock world={world} tank={tank} store={aquascape} readOnly={initial.readOnly} onRun={(command, message) => run(command, message) !== null} onClose={() => setAquascape(null)} /> : <><WorkspaceTabs label="Aquarium workspace" active={workspace} onChange={setWorkspace} tabs={[
           { id: 'collection', label: 'Collection', icon: 'grid', badge: residents.length },
           { id: 'breeding', label: 'Breeding', icon: 'heart', badge: courting + incubating || undefined, tone: 'info' },
           { id: 'care', label: 'Care', icon: 'drop', badge: warningCount.total || undefined, tone: warningCount.critical ? 'alert' : 'warn' },
