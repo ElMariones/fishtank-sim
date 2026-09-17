@@ -216,6 +216,12 @@ The collection toolbar opens **NPC shop**. Fixed specimen cards show sex, catego
 
 The sidebar's Aquariums & expansion link opens Habitat & expansion below the live tank. Purchase and expansion show cost, resulting capacity/volume and balance before confirmation. The decoration editor keeps a separate draft with a footprint map, piece selection and labeled position/size/rotation sliders. Applying shows total new-piece cost; Cancel discards the draft. Invalid placement and insufficient funds prevent Apply. Removal has no refund. Starter tanks remain included; eight tanks and 60 places per tank remain the hard limits. [Evidence](research/FS-503-HABITAT-EXPANSION.md).
 
+## Implemented aquascape editor (FS-117)
+
+The FS-503 slider editor is replaced. **Aquascape** in the tank controls, or **Open aquascape editor** in the Habitat tab, turns the live aquarium into the design surface: the HUD hides, a gold frame and badge mark edit mode, and fish keep swimming by the saved layout until Apply. Every piece has a grab area matching its drawing. Dragging moves it horizontally; it settles into the substrate (floating plants stay at the waterline), and releasing it where it would pinch swimming space slides it to the nearest valid spot. The selected piece shows a toolbar: smaller, larger, flip, new shape, duplicate and remove. Keyboard: arrows move and resize, F flips, R reshapes, Delete removes, Escape deselects.
+
+Below the tank a dock replaces the workspace tabs: Themes, Plants, Rocks, Wood, Ornaments, Substrate, Backdrop and Lighting. Piece cards show a rendered thumbnail, price and Cover/Solid tag and can be clicked (placed in the most open spot) or dragged onto the glass. Look and theme cards are rendered previews of the current draft or theme. The footer shows pieces used, new-piece cost, look cost and balance after; Apply is disabled for invalid layouts, missing funds or no change. Removed pieces are not refunded, and looks never change water or growth.
+
 ## Implemented first-session guide, recovery and family at a glance (FS-504)
 
 **First-session guide.** A panel above the aquarium names the next of seven steps: meet your fish, name a fish, feed the tank, start a courtship, hatch and keep a candidate, trace a family, choose a breeding goal. It shows how many are done, with **Show me**, **All steps** (each step marked Done, Next or Not yet, in text as well as a mark) and **Hide guide**. **Guide · N/7** in the save bar shows or hides it.

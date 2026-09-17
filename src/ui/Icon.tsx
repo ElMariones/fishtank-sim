@@ -23,6 +23,16 @@ const PATHS = {
   eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
   egg: 'M12 3c3.5 0 6 6 6 10a6 6 0 0 1-12 0c0-4 2.5-10 6-10z',
   wave: 'M2 10c3-3 5-3 8 0s5 3 8 0 3-3 4-2M2 16c3-3 5-3 8 0s5 3 8 0 3-3 4-2',
+  brush: 'M14 4l6 6-8 8H6v-6zM3 21c2 0 3-1 3-3',
+  flip: 'M12 3v18M8 7l-5 5 5 5zM16 7l5 5-5 5z',
+  shuffle: 'M3 7h4l10 10h4M3 17h4l3-3M14 10l3-3h4M18 4l3 3-3 3M18 14l3 3-3 3',
+  minus: 'M5 12h14',
+  trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6',
+  copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
+  sun: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+  mountain: 'M3 20l6-10 4 6 3-4 5 8z',
+  check: 'M5 12l5 5 9-10',
+  layers: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5',
 } as const;
 
 export type IconName = keyof typeof PATHS;

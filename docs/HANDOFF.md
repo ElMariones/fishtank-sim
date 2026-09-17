@@ -122,6 +122,14 @@ World v9 adds `relief`. `claim-relief` is the only way to receive free fish. It 
 - **Batch sales:** the interface reviews `planBestSales` and sends its order to `sell-batch`. The command still sells in the order sent, so journals replay unchanged. Keep the review and the command on the same plan.
 - **Open balance risks:** there is no recurring sink after the eight-tank build-out, and premium equipment does not repay itself in healthy tanks. Adding a recurring cost means revisiting the rescue and rerunning both tests. See [FS-505 evidence](research/FS-505-PAID-ECONOMY-PLAYTEST.md).
 
+### FS-117 contract
+
+- **Catalog:** decoration item IDs and look option IDs are stored in saves and journals. Append new ones; never rename or remove one. A piece without `item` is an FS-503 piece and must keep its original radius (0.09 cover, 0.055 rock) and ◈ 25 price.
+- **No style on creation:** `newTank` must not add `style`; older journals that buy tanks replay against snapshots without it. Absent style means `DEFAULT_STYLE`.
+- **Cosmetic only:** looks and piece art must not feed water, development, behavior or prices. Only the footprint kind, position and radius reach steering.
+- **Layout rules:** `layoutProblem` may only be relaxed without a version bump; tightening it would reject stored layouts. Themes are tested to stay valid.
+- **Playtest harness:** `paidEconomy.ts` does not send `style-tank`; if it ever does, add the spend to its sources and sinks.
+
 ## 5. Verification and task completion
 
 Run npm test and npm run build after core/code changes. Browser verification should exercise the affected journey, not just inspect a screenshot. Read TESTING.md before broadening tests.

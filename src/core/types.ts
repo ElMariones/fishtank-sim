@@ -1,4 +1,4 @@
-import type { Decoration } from './tankManagement';
+import type { Decoration, TankStyle } from './tankManagement';
 import type { AppearanceLocus } from './catalog';
 import type { VisualDescriptorKey } from './descriptors';
 
@@ -85,7 +85,7 @@ export type TankCare = {
   /** Share of the residents' need eaten over the last completed game day, 0–1. */
   fed: number;
 };
-export type Tank = { id: string; name: string; capacity: number; planted: boolean; water: WaterState; care: TankCare; decorations?: Decoration[] };
+export type Tank = { id: string; name: string; capacity: number; planted: boolean; water: WaterState; care: TankCare; decorations?: Decoration[]; style?: TankStyle };
 export type BuyerId = 'petShop' | 'longFin' | 'pondKeeper' | 'miniature' | 'colorCollector';
 /** Economy model v1 NPC demand (FS-501): how many more fish each buyer will take; it recovers at game-day boundaries. */
 export type MarketState = { model: 1; demand: Record<BuyerId, number> };

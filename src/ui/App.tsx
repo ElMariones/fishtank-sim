@@ -1,4 +1,6 @@
 import { HabitatPanel } from './HabitatPanel';
+import { AquascapeDock, AquascapeOverlay, draftFor, type AquascapeDraft } from './AquascapeEditor';
+import { decorationsOf } from '../core/tankManagement';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { describeAppearance } from '../core/appearance';
 import { daysToHatch, environmentLimits, INCUBATION_DAYS, isEgg, lifeStage, type LifeStage } from '../core/development';
@@ -192,6 +194,11 @@ export function App({ initial }: { initial: LoadedSession }) {
   const portraitView: PortraitView = preferences.portraits ?? 'current';
   const favoriteIds = new Set(favorites);
   const tank = world.tanks.find(t => t.id === tankId) ?? world.tanks[0];
+  const [aquascape, setAquascape] = useState<AquascapeDraft | null>(null);
+  // A draft belongs to one aquarium: switching tanks or views discards it.
+  useEffect(() => { setAquascape(null); }, [tank.id]);
+  const aquascapePreview = useMemo(() => aquascape ? { decorations: aquascape.decorations, style: aquascape.style } : null, [aquascape?.decorations, aquascape?.style]);
+  const openAquascape = () => { setAquascape(draftFor(tank)); requestAnimationFrame(() => document.querySelector('.aquarium')?.scrollIntoView({ behavior: 'smooth', block: 'start' })); };
   const fish = world.fish.find(f => f.id === selectedId);
   const living = world.fish.filter(f => f.status === 'living');
   const residents = useMemo(() => world.fish.filter(f => f.tankId === tank.id && f.status === 'living'), [world.fish, tank.id]);
@@ -509,17 +516,18 @@ export function App({ initial }: { initial: LoadedSession }) {
         </div> : null}
         <div className="tank-heading"><div><h1>{tank.name}</h1></div>
           <div className="tank-heading-meta"><span className="count-tag"><Icon name="fish" size={14} />{residents.length} / {tank.capacity}</span><span className="count-tag">{tank.planted ? <><Icon name="leaf" size={14} />Planted</> : <><Icon name="wave" size={14} />Open water</>}</span></div></div>
-        <section className="aquarium" aria-label="Live aquarium">
-          <div className="aquarium-caustics" aria-hidden="true" /><div className="aquarium-bubbles" aria-hidden="true">{Array.from({ length: 9 }, (_, i) => <span key={i} />)}</div>
-          <TankCanvas fish={swimmers} eggs={residents.length - swimmers.length} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={speed} feedSignal={feedSignal} onBehavior={setBehavior} />
+        <section className={`aquarium ${aquascape ? 'is-editing' : ''}`} aria-label="Live aquarium">
+          
+          <TankCanvas fish={swimmers} eggs={residents.length - swimmers.length} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={speed} feedSignal={feedSignal} onBehavior={setBehavior} preview={aquascapePreview} editing={!!aquascape} />
+          {aquascape ? <><AquascapeOverlay draft={aquascape} saved={decorationsOf(tank)} setDraft={setAquascape} /><span className="editing-badge"><Icon name="brush" size={14} />Aquascaping · fish adapt once you apply</span></> : null}
           <TankHud status={activeStatus} warnings={warningCount} paused={paused} onCare={() => { setWorkspace('care'); focusSoon('workspace-panel'); }} />
           {residents.length > swimmers.length ? <span className="egg-badge"><Icon name="egg" size={14} />{residents.length - swimmers.length} eggs incubating</span> : null}
           {!residents.length ? <div className="empty-tank">A little room to evolve.<small>Move a fish here or introduce unrelated stock, which can carry new colors and patterns.</small></div> : null}
-          <div className="tank-controls"><div><button aria-label={paused ? 'Resume aquarium' : 'Pause aquarium'} onClick={() => setPaused(v => !v)}><Icon name={paused ? 'play' : 'pause'} size={16} /></button><button onClick={() => setSpeed(v => v === 1 ? 2 : v === 2 ? 4 : 1)} aria-label={`Motion speed ${speed} times`}>{speed}×</button></div><span>Click a fish to inspect · click the water to startle</span><button className="feed-button" id="feed-button" onClick={() => {
+          <div className="tank-controls"><div><button aria-label={paused ? 'Resume aquarium' : 'Pause aquarium'} onClick={() => setPaused(v => !v)}><Icon name={paused ? 'play' : 'pause'} size={16} /></button><button onClick={() => setSpeed(v => v === 1 ? 2 : v === 2 ? 4 : 1)} aria-label={`Motion speed ${speed} times`}>{speed}×</button></div><span>Click a fish to inspect · click the water to startle</span><button className="aquascape-button" onClick={openAquascape} disabled={initial.readOnly}><Icon name="brush" size={16} />Aquascape</button><button className="feed-button" id="feed-button" onClick={() => {
             if (run({ type: 'feed', tankId: tank.id }, 'A portion of food joined the water, a quarter of a game day of what these fish need. They eat it over the next hours and leftovers decay. The sinking pellets show hungry, bold fish reaching food first.')) { setFeedSignal(v => v + 1); markGuide('feed'); }
           }}><Icon name="plus" size={16} />Feed</button></div>
         </section>
-        <WorkspaceTabs label="Aquarium workspace" active={workspace} onChange={setWorkspace} tabs={[
+        {aquascape ? <AquascapeDock world={world} tank={tank} draft={aquascape} setDraft={setAquascape} readOnly={initial.readOnly} onRun={(command, message) => run(command, message) !== null} onClose={() => setAquascape(null)} /> : <><WorkspaceTabs label="Aquarium workspace" active={workspace} onChange={setWorkspace} tabs={[
           { id: 'collection', label: 'Collection', icon: 'grid', badge: residents.length },
           { id: 'breeding', label: 'Breeding', icon: 'heart', badge: courting + incubating || undefined, tone: 'info' },
           { id: 'care', label: 'Care', icon: 'drop', badge: warningCount.total || undefined, tone: warningCount.critical ? 'alert' : 'warn' },
@@ -527,7 +535,7 @@ export function App({ initial }: { initial: LoadedSession }) {
         ]} />
         <div className="workspace-panel" id="workspace-panel" tabIndex={-1} key={workspace}>
         {workspace === 'care' && tank.care ? <div role="tabpanel" id="panel-care" aria-labelledby="tab-care"><CarePanel world={world} tank={tank} tick={liveTick} readOnly={initial.readOnly} defaultOpen onRun={(command, message) => run(command, message) !== null} /></div> : null}
-        {workspace === 'habitat' ? <div role="tabpanel" id="panel-habitat" aria-labelledby="tab-habitat"><HabitatPanel key={tank.id} world={world} tank={tank} readOnly={initial.readOnly} expanded onRun={(command, message) => run(command, message) !== null} /></div> : null}
+        {workspace === 'habitat' ? <div role="tabpanel" id="panel-habitat" aria-labelledby="tab-habitat"><HabitatPanel key={tank.id} world={world} tank={tank} readOnly={initial.readOnly} expanded onAquascape={openAquascape} onRun={(command, message) => run(command, message) !== null} /></div> : null}
         {workspace === 'breeding' ? <section role="tabpanel" id="panel-breeding" aria-labelledby="tab-breeding" className="breeding-panel is-open">
           <div className="breed-intro">
             <div><div className="eyebrow">THE NEXT GENERATION</div><h2 id="breeding-title">What will they inherit?</h2><p>{breedingOpen ? breedingMode === 'normal' ? 'Pair two adults that share a tank; courtship reserves places in a nursery.' : 'Instant lab cross: twenty eggs at once, without courtship.' : goal ? `Goal active · ${goalLabel}` : 'Breeding planner is tucked away.'}</p></div>
@@ -633,7 +641,7 @@ export function App({ initial }: { initial: LoadedSession }) {
           })}</div>
           {!collection.length ? <p className="empty-copy">{favoritesOnly && !inCohort.some(f => favoriteIds.has(f.id)) ? 'No favorites here yet. Use ☆ on a card to keep a candidate.' : 'No fish here match this view.'}</p> : null}
         </div></section> : null}
-        </div>
+        </div></>}
       </main>
       <aside className="inspector" id="inspector" tabIndex={-1} aria-label="Fish inspector">
         {fish && p ? <>

@@ -1,5 +1,6 @@
-import { savedDecorationsSchema } from './tankSchema';
-import { TANK_PRICE, TANK_UPGRADE_PRICE, DECORATION_PRICE, decorationsOf, validateLayout, legacyDecorations, type Decoration } from './tankManagement';
+import { savedDecorationsSchema, tankStyleSchema } from './tankSchema';
+import { piecePrice, styleCost, styleOf } from './aquascape';
+import { TANK_PRICE, TANK_UPGRADE_PRICE, decorationsOf, validateLayout, legacyDecorations, type Decoration, type TankStyle } from './tankManagement';
 import { GENOME_VERSION, MUTATION_RATE, type GenomeVersion } from './catalog';
 import { CLUTCH_SIZES, clutchId, courtingClutchOf, idleBreeding, pairingBlockers, reservedPlaces, type ClutchSize } from './breeding';
 import {
@@ -87,6 +88,7 @@ export type Command =
   | { type: 'upgrade-tank'; tankId: string }
   | { type: 'place-decorations'; tankId: string; decorations: Decoration[] }
   | { type: 'decorate'; tankId: string }
+  | { type: 'style-tank'; tankId: string; style: TankStyle }
   | { type: 'feed'; tankId: string }
   | { type: 'set-care'; tankId: string; ration: Ration; filterTier: number; aerationTier: number; targetC: number }
   | { type: 'change-water'; tankId: string; percent: WaterChangePercent }
@@ -118,6 +120,7 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('upgrade-tank'), tankId: tankIdSchema }).strict(),
   z.object({ type: z.literal('place-decorations'), tankId: tankIdSchema, decorations: savedDecorationsSchema }).strict(),
   z.object({ type: z.literal('decorate'), tankId: tankIdSchema }).strict(),
+  z.object({ type: z.literal('style-tank'), tankId: tankIdSchema, style: tankStyleSchema }).strict(),
   z.object({ type: z.literal('feed'), tankId: tankIdSchema }).strict(),
   z.object({
     type: z.literal('set-care'), tankId: tankIdSchema, ration: z.enum(RATION_KEYS),
@@ -294,12 +297,22 @@ export function applyCommand(world: World, command: Command): World {
     case 'place-decorations': {
       const tank = space(command.tankId, 0), previous = decorationsOf(tank);
       validateLayout(command.decorations);
-      const added = command.decorations.filter(item => !previous.some(old => old.id === item.id));
-      const cost = added.length * DECORATION_PRICE;
+      // A piece is new unless the same ID held the same catalog piece, so swapping what an ID shows is charged (FS-117).
+      const added = command.decorations.filter(item => !previous.some(old => old.id === item.id && old.item === item.item));
+      // FS-503 pieces without a catalog item keep their flat price, so older journals replay with the same charges.
+      const cost = added.reduce((sum, item) => sum + piecePrice(item), 0);
       afford(cost, 'Decorations');
       tank.decorations = command.decorations;
       tank.planted = command.decorations.some(item => item.kind === 'cover');
       if (cost) next.ledger = recordEntry(next.ledger, 'equipment', -cost, 0, `Decorations: ${tank.name}`);
+      break;
+    }
+    case 'style-tank': {
+      // FS-117: a cosmetic look. Each facet changed to a paid option is charged; water and behavior are unaffected.
+      const tank = space(command.tankId, 0), cost = styleCost(styleOf(tank), command.style);
+      afford(cost, 'The new look');
+      tank.style = { substrate: command.style.substrate, backdrop: command.style.backdrop, lighting: command.style.lighting };
+      if (cost) next.ledger = recordEntry(next.ledger, 'equipment', -cost, 0, `Aquascape look: ${tank.name}`);
       break;
     }
     // Historical free commands remain for replay and frozen research scenarios; live UI uses paid commands.

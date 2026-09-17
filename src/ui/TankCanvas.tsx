@@ -8,6 +8,9 @@ import { facingFor, fishPose, pickActor, visualGrowth } from '../rendering/tankL
 import { BEHAVIOR_STATES, type BehaviorSummary } from '../simulation/behavior';
 import { createActor, type Actor } from '../simulation/motion';
 import { habitatFootprints } from '../simulation/footprints';
+import { AquascapeRenderer, type Scene } from '../rendering/aquascape';
+import { styleOf } from '../core/aquascape';
+import { decorationsOf } from '../core/tankManagement';
 import { MotionWorkerClient } from '../simulation/motionClient';
 import { TRANSFORM_STRIDE, type FromMotionWorker, type PlaybackSpeed } from '../simulation/protocol';
 import { TICK_MS } from '../simulation/time';
@@ -16,6 +19,10 @@ type Props = {
   fish: Fish[]; eggs: number; tank: Tank; selectedId: string; onSelect: (id: string) => void; paused: boolean; speed: number; feedSignal: number;
   /** Called when the selected fish's behavior state, reasons or leader change; null when it is not swimming here. */
   onBehavior?: (behavior: BehaviorSummary | null) => void;
+  /** A draft aquascape to draw instead of the saved one (FS-117 editor). Fish keep steering by the saved layout. */
+  preview?: Scene | null;
+  /** While editing, clicks belong to the editor overlay. */
+  editing?: boolean;
 };
 type WorkerState = { status: 'starting' | 'ready' | 'recovering' | 'recovered' | 'failed'; message: string };
 type BehaviorFrame = { states: Uint8Array; reasons: Uint8Array; leaders: Int16Array };
@@ -28,6 +35,14 @@ const playbackSpeed = (props: Props): PlaybackSpeed => document.hidden || props.
 const TURN_PER_SECOND = 4;
 /** Swim phases wrap at 4π: the dorsal sway runs at half the fin rate. */
 const PHASE_WRAP = Math.PI * 4;
+
+const scenes = new WeakMap<Tank, Scene>();
+/** One scene object per saved tank record, so the renderer's static layer is rebuilt only when the tank changes. */
+function savedScene(tank: Tank): Scene {
+  let scene = scenes.get(tank);
+  if (!scene) { scene = { decorations: decorationsOf(tank), style: styleOf(tank) }; scenes.set(tank, scene); }
+  return scene;
+}
 
 export function TankCanvas(props: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -122,6 +137,7 @@ export function TankCanvas(props: Props) {
     const canvas = canvasRef.current, ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
     let width = 800, height = 500, frame = 0, lastPaint = performance.now();
+    const renderer = new AquascapeRenderer();
     const resize = new ResizeObserver(entries => {
       width = entries[0].contentRect.width; height = entries[0].contentRect.height;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -135,34 +151,9 @@ export function TankCanvas(props: Props) {
       const blend = Math.min(1, Math.max(0, (now - frameClock.current.receivedAt) / TICK_MS));
       const time = frameClock.current.fromTime + (simulationTime.current - frameClock.current.fromTime) * blend;
       ctx.clearRect(0, 0, width, height);
-      const water = ctx.createLinearGradient(0, 0, 0, height);
-      water.addColorStop(0, '#193f44'); water.addColorStop(0.4, '#102f35'); water.addColorStop(1, '#091f27');
-      ctx.fillStyle = water; ctx.fillRect(0, 0, width, height);
-      for (let i = 0; i < 6; i++) {
-        ctx.fillStyle = '#89f0dc04'; ctx.beginPath(); ctx.moveTo(width * i / 5, 0); ctx.lineTo(width * i / 5 + width * 0.18, 0); ctx.lineTo(width * i / 5 - width * 0.1 + Math.sin(time * 0.1) * 30, height); ctx.lineTo(width * i / 5 - width * 0.16, height); ctx.fill();
-      }
-      ctx.fillStyle = '#213a44'; ctx.beginPath(); ctx.moveTo(0, height); ctx.lineTo(0, height - 24); ctx.bezierCurveTo(width * 0.3, height - 2, width * 0.7, height - 45, width, height - 24); ctx.lineTo(width, height); ctx.fill();
-      for (const cover of habitatFootprints(current.tank).filter(f => f.kind === 'cover')) {
-        ctx.save(); ctx.translate(cover.x * width, cover.y * height); ctx.rotate((cover.rotation ?? 0) * Math.PI / 180); ctx.translate(-cover.x * width, -cover.y * height);
-        for (let i = 0; i < 13; i++) {
-          const x = (cover.x + (i / 12 - 0.5) * cover.radius * 2) * width;
-          const bottom = (cover.y + cover.radius) * height, plantHeight = cover.radius * height * (1 + (i * 31 % 100) / 100);
-          ctx.strokeStyle = i % 2 ? '#3b686f80' : '#1b404f80'; ctx.lineWidth = 3 + i % 5;
-          ctx.beginPath(); ctx.moveTo(x, bottom); ctx.bezierCurveTo(x - 10, bottom - plantHeight * 0.4, x + 15, bottom - plantHeight * 0.7, x + Math.sin(time * 0.6 + i) * 8, bottom - plantHeight); ctx.stroke();
-        }
-        ctx.restore();
-      }
-      for (const footprint of habitatFootprints(current.tank)) {
-        if (footprint.kind !== 'rock') continue;
-        const x = footprint.x * width, y = footprint.y * height;
-        const stone = ctx.createLinearGradient(x, y - footprint.radius * height, x, y + footprint.radius * height);
-        stone.addColorStop(0, '#68898e'); stone.addColorStop(1, '#243d47');
-        ctx.fillStyle = stone; ctx.strokeStyle = '#9eb2b470'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.ellipse(x, y, footprint.radius * width, footprint.radius * height, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        const angle = (footprint.rotation ?? 0) * Math.PI / 180;
-        ctx.beginPath(); ctx.moveTo(x - Math.cos(angle) * footprint.radius * width * 0.65, y - Math.sin(angle) * footprint.radius * height * 0.65);
-        ctx.lineTo(x + Math.cos(angle) * footprint.radius * width * 0.65, y + Math.sin(angle) * footprint.radius * height * 0.65); ctx.stroke();
-      }
+      const scene = current.preview ?? savedScene(current.tank);
+      renderer.paintBack(ctx, width, height, scene, time);
+      renderer.paintPlants(ctx, width, height, scene, time, 'back');
       if (current.eggs > 0) {
         // Incubating eggs rest on the substrate as one cluster; the life model, not the drawing, decides when they hatch.
         const rng = random(hash(`egg-cluster:${current.tank.id}`)), anchor = current.tank.planted ? 0.22 : 0.5, radius = Math.max(2, Math.min(width, height) / 180);
@@ -174,7 +165,7 @@ export function TankCanvas(props: Props) {
       }
       for (let i = 0; i < 26; i++) {
         const x = (i * 137.3 + Math.sin(time * 0.2 + i) * 10) % width, y = height - ((i * 53.7 + time * (3 + i % 3)) % height);
-        ctx.fillStyle = '#89f0dc26'; ctx.beginPath(); ctx.arc(x, y, 0.7 + i % 2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(220,245,240,.16)'; ctx.beginPath(); ctx.arc(x, y, 0.7 + i % 2, 0, Math.PI * 2); ctx.fill();
       }
       const food = pellets.current;
       if (food.length) {
@@ -211,6 +202,8 @@ export function TankCanvas(props: Props) {
         ctx.restore();
         paintedNow.push({ actor: shown, facing, growth });
       }
+      renderer.paintPlants(ctx, width, height, scene, time, 'front');
+      renderer.paintFront(ctx, width, height, scene, time);
       painted.current = paintedNow;
       frame = requestAnimationFrame(render);
     };
@@ -221,6 +214,7 @@ export function TankCanvas(props: Props) {
   return <>
     <canvas ref={canvasRef} className="tank-canvas" role="img" aria-label={`${props.tank.name}, ${props.fish.length} swimming fish${props.eggs ? ` and ${props.eggs} incubating eggs` : ''}. Select a fish using the collection below.`}
       onClick={event => {
+        if (props.editing) return;
         const rect = event.currentTarget.getBoundingClientRect(), shown = painted.current, byId = new Map(shown.map(entry => [entry.actor.id, entry]));
         const x = event.clientX - rect.left, y = event.clientY - rect.top;
         const id = pickActor(shown.map(entry => entry.actor), rect.width, rect.height, x, y, 6,

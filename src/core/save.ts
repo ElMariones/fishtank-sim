@@ -1,4 +1,4 @@
-import { savedDecorationsSchema } from './tankSchema';
+import { savedDecorationsSchema, tankStyleSchema } from './tankSchema';
 import { decorationsOf, validateLayout } from './tankManagement';
 import { z } from 'zod';
 import { BLOCKER_CODES, CLUTCH_SIZES, CLUTCH_STAGES, idleBreeding, reservedPlaces } from './breeding';
@@ -108,7 +108,8 @@ const bloodline = z.object({
 }).strict();
 const worldV8 = {
   version: z.literal(8), ...header, nextClutchId: z.number().int().positive(),
-  tanks: z.array(z.object({ ...tank, water, care, decorations: savedDecorationsSchema })).min(1).max(MAX_TANKS),
+  // FS-117 appends an optional cosmetic look after the layout.
+  tanks: z.array(z.object({ ...tank, water, care, decorations: savedDecorationsSchema, style: tankStyleSchema.optional() })).min(1).max(MAX_TANKS),
   fish: z.array(z.object({ ...fishRecord, status: z.enum(['living', 'sold', 'rehomed']), life, breeding })).max(MAX_RECORDS), clutches: z.array(clutch).max(MAX_RECORDS),
   market, ledger, shop, naming: z.union([z.literal(1), z.literal(2), z.literal(3)]),
 };

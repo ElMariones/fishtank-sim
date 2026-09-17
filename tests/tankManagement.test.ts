@@ -45,7 +45,7 @@ describe('FS-503 aquarium expansion and decoration placement', () => {
 
   it('rejects funds, bounds, duplicate pieces and unsafe layouts atomically', () => {
     const world = createWorld(NOW), before = JSON.stringify(world);
-    for (const command of [layout([rock, rock]), layout([{ ...rock, x: NaN }]), layout([{ ...rock, x: 0.1 }]), layout([rock, { ...rock, id: 'DC-3', x: 0.5 }]), layout([{ ...rock, scale: 9 }]), { type: 'upgrade-tank', tankId: 'missing' }] as Command[]) {
+    for (const command of [layout([rock, rock]), layout([{ ...rock, x: NaN }]), layout([{ ...rock, x: 0.1 }]), layout([rock, { ...rock, id: 'DC-3', x: 0.62 }]), layout([{ ...rock, scale: 9 }]), { type: 'upgrade-tank', tankId: 'missing' }] as Command[]) {
       expect(() => applyCommand(world, command)).toThrow(); expect(JSON.stringify(world)).toBe(before);
     }
     const poor = { ...world, credits: 0, ledger: openingLedger(0) }, poorBefore = JSON.stringify(poor);

@@ -447,6 +447,14 @@ Two simultaneous buyers, duplicate command retries, rollback on debit/transfer f
 
 For a test report record task ID, source/model version, command or user journey, fixture/seed, environment, expected outcome, actual outcome, limitations, and relevant artifacts. Tests should verify domain promises or meaningful failure conditions, not mirror implementation line for line.
 
+## FS-117 aquascape overhaul
+
+17 September 2026, Windows 11, Node 22.18.0. `npm test`: 225 tests in 38 files pass; `npm run build` passes (CSS 89.95 kB, 19.37 kB gzip; main chunk 644.87 kB, 207.95 kB gzip).
+- `tests/aquascape.test.ts`: every catalog piece settles into a valid layout at three sizes and four positions and passes the command schema; all nine themes build valid layouts and apply; a solid dropped into the no-gap zone slides to a valid spot while plants may overlap solids; catalog prices, free moves and reshapes, and charging a different piece under a reused ID; per-facet look costs with unchanged water, ledger agreement and atomic refusal; look and layout replay after time passes, tamper detection, and unstyled worlds decoding unchanged; catalog footprint radii reach steering.
+- Existing FS-503 tests pass unchanged except one fixture: two rocks 0.05 apart now form an allowed cluster, so the unsafe-gap case uses 0.12 apart.
+- **Browser (in-app Chromium, port 5173, the local dev save):** the default tanks render sand, deep backdrop, daylight rays and caustics with the original four pieces. All nine themes were previewed full-frame at 800×500 and every piece in a gallery; the review fixed a rainbow hue on red ludwigia, floating river stones, an invalid Sunken ruins layout, over-strong water caustics, stick-like forest branches, an oversized chest lid and undersized solids. A mouse drag moved a stone pile 0.3→0.39 and opened the toolbar; a drag that lost pointer capture could stay in drag mode, fixed with `lostpointercapture`. Adding a lantern and red ludwigia and choosing Golden hour and River pebbles showed ◈ 155 (75 pieces, 80 look); Apply left ◈ 1,045, and a reload restored the layout and look through replay validation. At 375 px the editor, tray and themes fit without horizontal page overflow.
+- **Limits:** frame-rate figures in the hidden browser pane were unreliable (requestAnimationFrame pauses), so no device timing is claimed; static layers are cached and only plants, light and water repaint per frame. Keyboard move/resize/flip/reshape shortcuts and reduced motion were not exercised in the pane.
+
 ## FS-116 UI overhaul
 
 17 September 2026, Windows 11, Node 22.18.0, npm 10.9.3. `npm test`: 218 tests in 37 files pass; `npm run build` passes (CSS 83.95 kB, 18.32 kB gzip; main chunk 587.80 kB, 188.41 kB gzip). No core code changed.

@@ -2,7 +2,18 @@
 
 **Updated:** 17 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`). FS-405's incremental kinship cache with stated founder assumptions is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. M5 has started: FS-501's economy model v1 is DONE (`006b500`). FS-502 persistent shop (`3945d86`) and FS-503 habitat expansion (`f78d007`) are DONE. FS-504 onboarding and no-money recovery is DONE (`6335851`). FS-505's paid-economy playtest is DONE (`f5b1888`), completing M5's task list. M6 has started: FS-601's locus registry and genome v3 are DONE (`fb6b593`), FS-602's structure anatomy is DONE (`0e95249`), FS-603's mutation origins are DONE (`1d0d85c`), FS-604's bloodline registry is DONE (`d9f17c0`), and FS-605's unusual-line demonstration is DONE (`bb10985`), completing M6's task list.
 
-## Current continuation — FS-116 UI overhaul DONE, pushed `f3f6bcd` (user request)
+## Current continuation — FS-117 aquascape overhaul, implemented (user request)
+
+17 September 2026: started from `5a3b66b` (FS-116 marked DONE), equal to `origin/main`.
+
+- **Decorations:** 26 catalog pieces in four families (9 plants, 6 rocks, 4 woods, 7 ornaments), each drawn procedurally with 8 shape variants and a mirror option. Pieces keep the FS-503 footprint kinds: plants are permeable cover, everything else is solid. Catalog pieces carry their own price (◈ 15–70) and radius.
+- **Looks:** each tank can choose a substrate (6), backdrop (6) and lighting (6). Looks are cosmetic, paid per changed facet through the equipment ledger, and never change water, growth or behavior. Tanks that never chose one use the free defaults.
+- **Themes:** 9 ready-made aquascapes (Zen koi garden, Nature aquarium, Iwagumi, Blackwater creek, Sunken ruins, Coral lagoon, Moonlit pond, Aurora grotto, Bare breeding tank) load into the draft with their cost shown.
+- **Editor:** Aquascape (tank controls or Habitat tab) turns the live aquarium into the design surface. Pieces are dragged directly on the glass or from the tray and settle into the substrate by themselves; a piece dropped where it would pinch swimming space slides to the nearest valid spot. A floating toolbar resizes, flips, reshapes, duplicates and removes. The dock previews every look and theme with the tank renderer. One Apply sends the layout and the look.
+- **Renderer:** backdrop, substrate, caustics, light rays, lighting grade, lantern glow, bubbles, waterline and glass are painted on the tank canvas; static layers are cached per size, look and layout.
+- **Saves:** additive optional fields in world v12 (`item`, `variant` on decorations; `style` on tanks) and a new `style-tank` command. FS-503 layouts and journals replay unchanged. See [TESTING](TESTING.md#fs-117-aquascape-overhaul) and ADR-066.
+
+## Previous continuation — FS-116 UI overhaul DONE, pushed `f3f6bcd` (user request)
 
 17 September 2026: started from `e65fdcb` (FS-605 marked DONE), equal to `origin/main`.
 
