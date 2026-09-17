@@ -2,7 +2,16 @@
 
 **Updated:** 17 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is under way: FS-301 (water model, `4f61d8b`), FS-302 (life stages and growth, `5821f46`), FS-303 (utility behavior, `e7aefc1`) and FS-304 with the early FS-403 prediction (`5dbfb73`) are DONE. FS-305 care controls are DONE (`d425639`). FS-306 juvenile reveal is DONE (`325ceb4`). FS-307 care demonstration and absence summary is DONE (`a5d5ddc`), completing M3's task list. M4 has started: FS-401/402 normal breeding with courtship blockers and reserved nurseries is DONE (`9aabfdb`). FS-404's bounded six-generation family graph is DONE (`b7c3e37`). FS-405's incremental kinship cache with stated founder assumptions is DONE (`850f501`). FS-406's clutch selection, batch rehoming and two-generation demonstration are DONE (`44d7d98`), completing M4's task list. M5 has started: FS-501's economy model v1 is DONE (`006b500`). FS-502 persistent shop (`3945d86`) and FS-503 habitat expansion (`f78d007`) are DONE. FS-504 onboarding and no-money recovery is DONE (`6335851`). FS-505's paid-economy playtest is DONE (`f5b1888`), completing M5's task list. M6 has started: FS-601's locus registry and genome v3 are DONE (`fb6b593`), FS-602's structure anatomy is DONE (`0e95249`), FS-603's mutation origins are DONE (`1d0d85c`), FS-604's bloodline registry is DONE (`d9f17c0`), and FS-605's unusual-line demonstration is DONE (`bb10985`), completing M6's task list.
 
-## Current continuation — FS-117 aquascape overhaul DONE, pushed `229dcf1` (user request)
+## Current continuation — FS-118 instant tank switching (user request)
+
+17 September 2026: started from `f34e50e` (FS-117 drag performance), equal to `origin/main`.
+
+- **Canvas:** the motion worker and render loop now live for the whole session; a tank switch loads the new tank into the running worker and skips messages still queued from the old one. Backdrop/substrate and solid layers sit in one shared cache keyed by what they show, other tanks are painted in idle time, and substrates tile a grain strip drawn once per type instead of placing thousands of grains per layer.
+- **React:** the collection renders from a deferred tank ID, so the aquarium, heading and rail switch first; portraits are memoized, expressed once per genome, painted about 8 ms per frame and cached (240 most recent). A tank switch no longer triggers an extra render from resetting an already empty batch.
+- **Loading states:** a "Filling …" pill with rising bubbles over the tank, a "Loading …'s fish" pill with a sweeping bar over the dimmed collection, and a spinner ring on the rail card. Each appears only after about 0.12–0.14 s, so fast switches never flash.
+- **Evidence:** production build, 46/60/60-fish save with three decorated tanks: longest main-thread block per switch 9–29 ms (was 22–82 ms before this change on the same save); rail highlight in 7–18 ms. A cached tank's first frame is 8–15 ms against 85–163 ms for the old full layer rebuild. See [TESTING](TESTING.md#fs-118-tank-switching) and ADR-068.
+
+## Previous continuation — FS-117 aquascape overhaul DONE, pushed `229dcf1` (user request)
 
 17 September 2026: started from `5a3b66b` (FS-116 marked DONE), equal to `origin/main`.
 

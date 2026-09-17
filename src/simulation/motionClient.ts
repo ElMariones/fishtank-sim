@@ -20,6 +20,11 @@ export class MotionWorkerClient {
     this.initial = { type: 'initialize', protocol: MOTION_PROTOCOL, fish, tick, speed, planted, footprints };
     this.spawn(false);
   }
+  /** Load another tank into the running worker: it rebuilds its world from `initialize` without a new worker start-up. */
+  reset(fish: Fish[], tick: number, speed: PlaybackSpeed, planted = false, footprints?: readonly Footprint[]) {
+    this.initial = { type: 'initialize', protocol: MOTION_PROTOCOL, fish, tick, speed, planted, footprints };
+    if (this.worker) this.worker.postMessage(this.initial); else this.spawn(false);
+  }
   synchronize(fish: Fish[]) { this.post({ type: 'synchronize', protocol: MOTION_PROTOCOL, fish }); if (this.initial) this.initial.fish = fish; }
   playback(speed: PlaybackSpeed) { this.post({ type: 'playback', protocol: MOTION_PROTOCOL, speed }); if (this.initial) this.initial.speed = speed; }
   environment(planted: boolean, footprints?: readonly Footprint[]) { this.post({ type: 'environment', protocol: MOTION_PROTOCOL, planted, footprints }); if (this.initial) { this.initial.planted = planted; this.initial.footprints = footprints; } }

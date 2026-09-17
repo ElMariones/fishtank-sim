@@ -150,25 +150,51 @@ function substratePath(ctx: CanvasRenderingContext2D, W: number, H: number) {
   ctx.lineTo(W, groundAt(1) * H); ctx.lineTo(W, H); ctx.closePath();
 }
 
+/** Grain tiles: CSS size of one tile and the resolution it is rendered at. */
+const TILE_W = 480, TILE_H = 48, TILE_SCALE = 2;
+const grainTiles = new Map<TankStyle['substrate'], HTMLCanvasElement>();
+/**
+ * One seamless strip of substrate grains per substrate type, drawn once per session. Painting a tank then tiles it
+ * instead of placing thousands of grains, so a new tank's layer costs a few milliseconds.
+ */
+function grainTile(substrate: TankStyle['substrate']) {
+  const cached = grainTiles.get(substrate);
+  if (cached) return cached;
+  const grain = GRAINS[substrate], rng = random(hash(`substrate:${substrate}`));
+  const canvas = document.createElement('canvas'); canvas.width = TILE_W * TILE_SCALE; canvas.height = TILE_H * TILE_SCALE;
+  const ctx = canvas.getContext('2d')!; ctx.scale(TILE_SCALE, TILE_SCALE);
+  const count = Math.round(TILE_W * TILE_H / 10 * grain.count);
+  for (let i = 0; i < count; i++) {
+    const x = rng() * TILE_W, depth = Math.pow(rng(), 1.4), y = -3 + depth * (TILE_H + 3), size = grain.size[0] + rng() * (grain.size[1] - grain.size[0]);
+    const color = grain.colors[Math.floor(rng() * grain.colors.length)], tilt = rng() * Math.PI, squash = 0.65 + rng() * 0.3;
+    // Grains crossing the tile edge are drawn on both sides, so the strip repeats without a seam.
+    for (const offset of x < size * 2 ? [0, TILE_W] : x > TILE_W - size * 2 ? [0, -TILE_W] : [0]) {
+      const gx = x + offset;
+      ctx.globalAlpha = 1 - depth * 0.55; ctx.fillStyle = color;
+      ctx.beginPath();
+      if (grain.round) ctx.ellipse(gx, y, size, size * squash, tilt, 0, Math.PI * 2);
+      else { ctx.moveTo(gx + Math.cos(tilt) * size, y + Math.sin(tilt) * size * 0.7); ctx.lineTo(gx + Math.cos(tilt + 2.1) * size, y + Math.sin(tilt + 2.1) * size * 0.7); ctx.lineTo(gx + Math.cos(tilt + 4.2) * size * 0.8, y + Math.sin(tilt + 4.2) * size * 0.6); }
+      ctx.fill();
+      if (size > 2.5 && depth < 0.6) { ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.beginPath(); ctx.ellipse(gx - size * 0.3, y - size * 0.35, size * 0.35, size * 0.18, 0, 0, Math.PI * 2); ctx.fill(); }
+    }
+  }
+  grainTiles.set(substrate, canvas);
+  return canvas;
+}
+
 function paintSubstrate(ctx: CanvasRenderingContext2D, W: number, H: number, style: TankStyle) {
-  const grain = GRAINS[style.substrate], rng = random(hash(`substrate:${style.substrate}`));
-  const top = SUBSTRATE_TOP * H;
+  const grain = GRAINS[style.substrate], rng = random(hash(`substrate-detail:${style.substrate}`));
+  const top = SUBSTRATE_TOP * H, band = H - top + 3;
   substratePath(ctx, W, H);
   const g = ctx.createLinearGradient(0, top - 4, 0, H); g.addColorStop(0, grain.base[0]); g.addColorStop(1, grain.base[1]);
   ctx.fillStyle = g; ctx.fill();
   ctx.save(); substratePath(ctx, W, H); ctx.clip();
-  const count = Math.round(W * (H - top) / 10 * grain.count);
-  for (let i = 0; i < count; i++) {
-    const x = rng() * W, depth = Math.pow(rng(), 1.4), y = top - 3 + depth * (H - top + 3), size = grain.size[0] + rng() * (grain.size[1] - grain.size[0]);
-    const shade = 1 - depth * 0.55;
-    ctx.globalAlpha = shade; ctx.fillStyle = grain.colors[Math.floor(rng() * grain.colors.length)];
-    ctx.beginPath();
-    if (grain.round) ctx.ellipse(x, y, size, size * (0.65 + rng() * 0.3), rng() * Math.PI, 0, Math.PI * 2);
-    else { const a = rng() * Math.PI; ctx.moveTo(x + Math.cos(a) * size, y + Math.sin(a) * size * 0.7); ctx.lineTo(x + Math.cos(a + 2.1) * size, y + Math.sin(a + 2.1) * size * 0.7); ctx.lineTo(x + Math.cos(a + 4.2) * size * 0.8, y + Math.sin(a + 4.2) * size * 0.6); }
-    ctx.fill();
-    if (size > 2.5 && depth < 0.6) { ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.beginPath(); ctx.ellipse(x - size * 0.3, y - size * 0.35, size * 0.35, size * 0.18, 0, 0, Math.PI * 2); ctx.fill(); }
+  const pattern = ctx.createPattern(grainTile(style.substrate), 'repeat-x');
+  if (pattern) {
+    const scale = band / TILE_H;
+    pattern.setTransform(new DOMMatrix().translateSelf(0, top - 3).scaleSelf(scale / TILE_SCALE, scale / TILE_SCALE));
+    ctx.fillStyle = pattern; ctx.fillRect(0, top - 6, W, band + 6);
   }
-  ctx.globalAlpha = 1;
   if (style.substrate === 'sand' || style.substrate === 'coral') {
     ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 1;
     for (let r = 0; r < 14; r++) { const y = top + 6 + rng() * (H - top) * 0.7, x = rng() * W; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 30, y - 3, x + 60 + rng() * 40, y); ctx.stroke(); }
@@ -204,6 +230,28 @@ function caustics() {
 
 // ---- Renderer -------------------------------------------------------------------------------------------------------
 
+/**
+ * Painted backdrop/substrate and solid layers shared by every renderer, keyed by what they show. Switching back to a
+ * tank, or to one warmed in advance, reuses its layers. Least recently used layers are dropped past a pixel budget.
+ */
+const LAYER_PIXEL_BUDGET = 14_000_000;
+const layerCache = new Map<string, HTMLCanvasElement>();
+function cachedLayer(key: string, W: number, H: number, dpr: number, paint: (ctx: CanvasRenderingContext2D) => void) {
+  const hit = layerCache.get(key);
+  if (hit) { layerCache.delete(key); layerCache.set(key, hit); return hit; }
+  const canvas = paintLayer(undefined, W, H, dpr, paint);
+  layerCache.set(key, canvas);
+  let pixels = 0;
+  for (const layer of layerCache.values()) pixels += layer.width * layer.height;
+  for (const [oldest, layer] of layerCache) {
+    if (pixels <= LAYER_PIXEL_BUDGET || oldest === key) break;
+    pixels -= layer.width * layer.height; layerCache.delete(oldest);
+  }
+  return canvas;
+}
+const baseKey = (scene: Scene, size: string) => `base:${size}:${scene.style.substrate}:${scene.style.backdrop}`;
+const staticSolids = (scene: Scene) => scene.decorations.filter(piece => isStatic(piece) && piece.id !== scene.live).sort(depthOrder);
+
 /** Paint into a reusable offscreen canvas at the target's pixel density. */
 function paintLayer(existing: HTMLCanvasElement | undefined, W: number, H: number, dpr: number, paint: (ctx: CanvasRenderingContext2D) => void) {
   const canvas = existing ?? document.createElement('canvas'), width = Math.max(1, Math.round(W * dpr)), height = Math.max(1, Math.round(H * dpr));
@@ -218,10 +266,6 @@ const isStatic = (piece: Decoration) => !PIECE_DRAWERS[itemOf(piece).id].animate
 const depthOrder = (a: Decoration, b: Decoration) => (a.kind === b.kind ? 0 : a.kind === 'rock' ? -1 : 1) || pieceRadius(b) - pieceRadius(a) || a.x - b.x;
 
 export class AquascapeRenderer {
-  /** Backdrop and substrate: rebuilt only when the size or look changes. */
-  private base: { canvas: HTMLCanvasElement; key: string } | null = null;
-  /** Solid pieces except a dragged one: rebuilt only when one of them changes. */
-  private solids: { canvas: HTMLCanvasElement; key: string } | null = null;
   private plantLayers: Record<'back' | 'front', { canvas: HTMLCanvasElement; key: string; decorations: readonly Decoration[] } | null> = { back: null, front: null };
   private glass: { canvas: HTMLCanvasElement; key: string } | null = null;
   private patterns: CanvasPattern[] = [];
@@ -229,16 +273,8 @@ export class AquascapeRenderer {
 
   /** Backdrop, substrate, solid pieces and caustics: everything behind the fish except moving plants. */
   paintBack(ctx: CanvasRenderingContext2D, W: number, H: number, scene: Scene, time: number) {
-    const dpr = ctx.getTransform().a || 1, size = `${W}x${H}@${dpr}`;
-    const baseKey = `${size}:${scene.style.substrate}:${scene.style.backdrop}`;
-    if (this.base?.key !== baseKey) this.base = { canvas: paintLayer(this.base?.canvas, W, H, dpr, layer => { paintBackdrop(layer, W, H, scene.style); paintSubstrate(layer, W, H, scene.style); }), key: baseKey };
-    ctx.drawImage(this.base.canvas, 0, 0, W, H);
-    const solids = scene.decorations.filter(piece => isStatic(piece) && piece.id !== scene.live).sort(depthOrder);
-    if (solids.length) {
-      const solidKey = `${size}:${JSON.stringify(solids)}`;
-      if (this.solids?.key !== solidKey) this.solids = { canvas: paintLayer(this.solids?.canvas, W, H, dpr, layer => { for (const piece of solids) drawPiece(layer, piece, pieceBox(piece, W, H), 0, 'all', H); }), key: solidKey };
-      ctx.drawImage(this.solids.canvas, 0, 0, W, H);
-    }
+    const dpr = ctx.getTransform().a || 1;
+    for (const layer of this.staticLayers(scene, W, H, dpr)) ctx.drawImage(layer, 0, 0, W, H);
     const live = scene.live ? scene.decorations.find(piece => piece.id === scene.live && isStatic(piece)) : undefined;
     if (live) drawPiece(ctx, live, pieceBox(live, W, H), 0, 'all', H);
     const grade = gradeFor(scene.style.lighting, time);
@@ -254,6 +290,19 @@ export class AquascapeRenderer {
       ctx.globalAlpha = grade.caustics * alpha; ctx.fillRect(0, floor, W, H - floor);
     }
     ctx.restore();
+  }
+
+  /** The cached backdrop/substrate and solid layers for a scene, painting whichever is missing. */
+  private staticLayers(scene: Scene, W: number, H: number, dpr: number) {
+    const size = `${W}x${H}@${dpr}`, solids = staticSolids(scene);
+    const layers = [cachedLayer(baseKey(scene, size), W, H, dpr, layer => { paintBackdrop(layer, W, H, scene.style); paintSubstrate(layer, W, H, scene.style); })];
+    if (solids.length) layers.push(cachedLayer(`solids:${size}:${JSON.stringify(solids)}`, W, H, dpr, layer => { for (const piece of solids) drawPiece(layer, piece, pieceBox(piece, W, H), 0, 'all', H); }));
+    return layers;
+  }
+
+  /** Paint a scene's static layers ahead of time, so opening that tank later draws them straight from the cache. */
+  warm(scene: Scene, W: number, H: number, dpr: number) {
+    if (W >= 1 && H >= 1) this.staticLayers(scene, W, H, dpr);
   }
 
   /** Moving plants: `back` before fish, `front` leaves after them, so fish can hide among the stems. */

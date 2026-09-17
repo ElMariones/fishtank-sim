@@ -23,6 +23,8 @@ type Props = {
   preview?: PreviewSource | null;
   /** While editing, the aquarium is frozen (no motion, no sway) and clicks belong to the editor overlay. */
   editing?: boolean;
+  /** Every aquarium: their backdrops and pieces are painted in idle time, so switching to one shows it at once. */
+  tanks?: readonly Tank[];
 };
 /** Anything that can hand the canvas a scene and say when it changed, such as the aquascape editor's draft store. */
 export type PreviewSource = { scene: () => Scene; subscribe: (listener: () => void) => () => void };
@@ -65,6 +67,12 @@ export function TankCanvas(props: Props) {
   const reported = useRef('');
   const lastFeedSignal = useRef(props.feedSignal);
   const [workerState, setWorkerState] = useState<WorkerState>({ status: 'starting', message: '' });
+  /** The tank still waiting for its first frame of motion; its loading veil shows only if that takes a noticeable moment. */
+  const [loadingTank, setLoadingTank] = useState<string | null>(props.tank.id);
+  const awaitingReady = useRef(true);
+  const loadingRef = useRef(true);
+  loadingRef.current = loadingTank !== null;
+  const shownTank = useRef(props.tank.id);
   /** A still aquarium (paused or editing) repaints only when something it shows has changed. */
   const dirty = useRef(true);
   latest.current = props;
@@ -82,8 +90,24 @@ export function TankCanvas(props: Props) {
     if (key !== reported.current) { reported.current = key; onBehavior?.(summary); }
   };
 
+  /** Forget the previous tank's motion, so its last frames can never be drawn over the new one. */
+  const resetMotion = (fish: Fish[]) => {
+    actors.current = fish.map(createActor);
+    workerIds.current = fish.map(member => member.id);
+    previous.current = new Map(); facings.current.clear(); phases.current.clear(); painted.current = [];
+    frameClock.current = { receivedAt: 0, fromTime: 0 };
+    simulationTime.current = 0;
+    behaviorFrame.current = null;
+    pellets.current = new Float32Array();
+    awaitingReady.current = true;
+    dirty.current = true;
+  };
+
   useEffect(() => {
     const receive = (message: FromMotionWorker) => {
+      // Messages still queued from the previous tank arrive before the new world's `ready`; skip them.
+      if (message.type === 'ready') awaitingReady.current = false;
+      else if (awaitingReady.current) return;
       if (message.type === 'ready' || message.type === 'entities') workerIds.current = message.ids;
       if (message.type !== 'frame') return;
       dirty.current = true;
@@ -110,11 +134,7 @@ export function TankCanvas(props: Props) {
       onStatus: (status, message = '') => setWorkerState({ status, message }),
     });
     client.current = motion;
-    actors.current = props.fish.map(createActor);
-    previous.current = new Map(); facings.current.clear(); phases.current.clear(); painted.current = [];
-    frameClock.current = { receivedAt: 0, fromTime: 0 };
-    simulationTime.current = 0;
-    behaviorFrame.current = null;
+    resetMotion(props.fish);
     motion.start(props.fish, 0, playbackSpeed(props), props.tank.planted, habitatFootprints(props.tank));
     const fault = () => { if (import.meta.env.DEV) motion.simulateFaultForTest(); };
     window.addEventListener('fishtank:simulate-worker-fault', fault);
@@ -123,7 +143,15 @@ export function TankCanvas(props: Props) {
       client.current = null;
       motion.destroy();
     };
-    // A tank switch creates a fresh deterministic visual trajectory; persistent lifecycle time is independent.
+  }, []);
+
+  // A tank switch loads a fresh deterministic visual trajectory into the running worker; lifecycle time is independent.
+  useEffect(() => {
+    if (shownTank.current === props.tank.id) return;
+    shownTank.current = props.tank.id;
+    resetMotion(props.fish);
+    setLoadingTank(props.tank.id);
+    client.current?.reset(props.fish, 0, playbackSpeed(props), props.tank.planted, habitatFootprints(props.tank));
   }, [props.tank.id]);
 
   useEffect(() => { client.current?.synchronize(props.fish); }, [props.fish]);
@@ -145,13 +173,35 @@ export function TankCanvas(props: Props) {
   useEffect(() => {
     const canvas = canvasRef.current, ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
-    let width = 800, height = 500, frame = 0, lastPaint = performance.now();
+    let width = 800, height = 500, frame = 0, lastPaint = performance.now(), idle = 0;
     const renderer = new AquascapeRenderer();
+    // Idle time paints the other aquariums' static layers at this canvas size, one tank per idle period. A warmed layer
+    // stays in the shared cache; warming an already cached scene is only a lookup.
+    let warmedSize = '', warmed = new Set<string>();
+    const warmNext = (deadline?: IdleDeadline) => {
+      idle = 0;
+      const current = latest.current, dpr = ctx.getTransform().a || 1, sizeKey = `${width}x${height}@${dpr}`;
+      if (sizeKey !== warmedSize) { warmedSize = sizeKey; warmed = new Set(); }
+      const pending = (current.tanks ?? []).filter(tank => tank.id !== current.tank.id && !warmed.has(JSON.stringify(savedScene(tank))));
+      for (const tank of pending) {
+        if (deadline && !deadline.didTimeout && deadline.timeRemaining() < 6) break;
+        const scene = savedScene(tank);
+        renderer.warm(scene, width, height, dpr); warmed.add(JSON.stringify(scene));
+        pending.shift();
+        break;
+      }
+      if (pending.length) scheduleWarm();
+    };
+    const scheduleWarm = () => {
+      if (idle) return;
+      idle = typeof requestIdleCallback === 'function' ? requestIdleCallback(warmNext, { timeout: 2000 }) : window.setTimeout(() => warmNext(), 300);
+    };
     const resize = new ResizeObserver(entries => {
       width = entries[0].contentRect.width; height = entries[0].contentRect.height;
       const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
       canvas.width = width * dpr; canvas.height = height * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       dirty.current = true;
+      scheduleWarm();
     });
     resize.observe(canvas);
     const render = () => {
@@ -218,11 +268,16 @@ export function TankCanvas(props: Props) {
       renderer.paintPlants(ctx, width, height, scene, time, 'front');
       renderer.paintFront(ctx, width, height, scene, time);
       painted.current = paintedNow;
+      // The first frame with the new tank's own motion ends its loading state.
+      if (!awaitingReady.current && loadingRef.current) { loadingRef.current = false; setLoadingTank(null); scheduleWarm(); }
       frame = requestAnimationFrame(render);
     };
     frame = requestAnimationFrame(render);
-    return () => { cancelAnimationFrame(frame); resize.disconnect(); };
-  }, [props.tank.id]);
+    return () => {
+      cancelAnimationFrame(frame); resize.disconnect();
+      if (idle) { if (typeof cancelIdleCallback === 'function') cancelIdleCallback(idle); else window.clearTimeout(idle); }
+    };
+  }, []);
 
   return <>
     <canvas ref={canvasRef} className="tank-canvas" role="img" aria-label={`${props.tank.name}, ${props.fish.length} swimming fish${props.eggs ? ` and ${props.eggs} incubating eggs` : ''}. Select a fish using the collection below.`}
@@ -235,6 +290,9 @@ export function TankCanvas(props: Props) {
         // Clicking open water taps the glass: nearby fish are startled, and shy ones look for cover.
         if (id) props.onSelect(id); else client.current?.startle(x / rect.width, y / rect.height);
       }} />
+    {loadingTank === props.tank.id && workerState.status !== 'failed' ? <div className="tank-loading" role="status" aria-live="polite">
+      <span className="tank-loading-bubbles" aria-hidden="true"><i /><i /><i /></span><span>Filling {props.tank.name}…</span>
+    </div> : null}
     {workerState.status === 'recovering' || workerState.status === 'recovered' || workerState.status === 'failed' ? <div className={`worker-state ${workerState.status}`} role="status">
       {workerState.status === 'recovering' ? 'Aquarium motion stopped; restarting it…' : workerState.status === 'recovered' ? 'Aquarium motion recovered.' : `Aquarium motion is paused. ${workerState.message}`}
       {workerState.status === 'failed' ? <button onClick={() => client.current?.restart()}>Restart aquarium motion</button> : null}

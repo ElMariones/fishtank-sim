@@ -447,6 +447,16 @@ Two simultaneous buyers, duplicate command retries, rollback on debit/transfer f
 
 For a test report record task ID, source/model version, command or user journey, fixture/seed, environment, expected outcome, actual outcome, limitations, and relevant artifacts. Tests should verify domain promises or meaningful failure conditions, not mirror implementation line for line.
 
+## FS-118 tank switching
+
+17 September 2026, Windows 11, Node 22.18.0. `npm test`: 225 tests in 38 files pass; `npm run build` passes (CSS 92.58 kB, 19.82 kB gzip).
+- **Fixture:** a seeded save generated through domain commands (three tanks with 46, 60 and 60 living fish after 120 game days; Nature aquarium, Sunken ruins and Moonlit pond themes), loaded into isolated origins: `vite preview` on port 5190 and dev on 5176. The local dev save on 5173 was not used.
+- **Production, before:** switching tanks blocked the main thread for 22–82 ms per task (three to four tasks per switch), measured with a MessageChannel probe; the canvas was not painting (hidden pane), so the worker restart and layer rebuild came on top. Dev mode showed about 450 ms per switch, mostly React 19 development overhead and three cascaded full renders.
+- **Production, after:** longest block per switch 9–29 ms over five switches, the rail marking the new tank after 7–18 ms.
+- **Renderer, dev tab, 733×413 at 1.5×, GPU-flushed:** first visit to a theme 12–106 ms (the highest includes drawing that substrate's grain tile once per session), a cached visit 8–15 ms, steady frames 5–8 ms; the old per-switch rebuild was 85–163 ms.
+- **Behavior:** five rapid switches ended on the right tank with its 60 cards and a matching canvas label; all 60 portraits painted; the aquascape editor still opens and closes on a switch. The tank, collection and rail indicators were checked in screenshots and computed styles.
+- **Limits:** the browser pane was hidden for most runs, so frame rates and the time until the tank veil clears were not measured; those run only with a visible page.
+
 ## FS-117 aquascape overhaul
 
 17 September 2026, Windows 11, Node 22.18.0. `npm test`: 225 tests in 38 files pass; `npm run build` passes (CSS 89.95 kB, 19.37 kB gzip; main chunk 644.87 kB, 207.95 kB gzip).

@@ -131,6 +131,12 @@ World v9 adds `relief`. `claim-relief` is the only way to receive free fish. It 
 - **Editing freeze (ADR-067):** while the editor is open, keep the game clock frozen (`frozenTick` in `App.tsx`) and the canvas on its dirty-flag paint path. Any new per-frame visual must mark the canvas dirty when it changes, or it will not show while frozen. Keep the draft out of App state: drag updates must not re-render the app.
 - **Playtest harness:** `paidEconomy.ts` does not send `style-tank`; if it ever does, add the spend to its sources and sinks.
 
+### FS-118 contract
+
+- **One worker, one render loop:** `TankCanvas` must not key its worker or paint effects on the tank. Use `MotionWorkerClient.reset` for a switch, and keep `awaitingReady` so a previous tank's frames are never drawn.
+- **Shared layers:** static layers are cached by content key (`base:` size/substrate/backdrop, `solids:` size/pieces). Anything new drawn into them must be part of that key.
+- **Deferred collection:** grid-only derivations follow `collectionTankId`; the aquarium, heading and commands use the urgent `tank`. Portraits must stay memoized and keep painting through the queue.
+
 ## 5. Verification and task completion
 
 Run npm test and npm run build after core/code changes. Browser verification should exercise the affected journey, not just inspect a screenshot. Read TESTING.md before broadening tests.

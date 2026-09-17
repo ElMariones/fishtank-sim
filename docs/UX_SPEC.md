@@ -222,6 +222,10 @@ The FS-503 slider editor is replaced. **Aquascape** in the tank controls, or **O
 
 Below the tank a dock replaces the workspace tabs: Themes, Plants, Rocks, Wood, Ornaments, Substrate, Backdrop and Lighting. Piece cards show a rendered thumbnail, price and Cover/Solid tag and can be clicked (placed in the most open spot) or dragged onto the glass. Look and theme cards are rendered previews of the current draft or theme. The footer shows pieces used, new-piece cost, look cost and balance after; Apply is disabled for invalid layouts, missing funds or no change. Removed pieces are not refunded, and looks never change water or growth.
 
+## Implemented tank switching feedback (FS-118)
+
+Choosing an aquarium in the rail updates the rail, heading and live tank immediately; the collection follows a moment later. If the tank has not drawn its first motion frame after about 0.14 s, a "Filling <tank>…" pill with rising bubbles appears in the middle of the aquarium. While the collection is loading, its cards dim, a "Loading <tank>'s fish" pill with a sweeping bar sits over them, and the tank's rail card shows a spinning ring. Portraits fill in over a few frames. Reduced motion shows the indicators without animation.
+
 ## Implemented first-session guide, recovery and family at a glance (FS-504)
 
 **First-session guide.** A panel above the aquarium names the next of seven steps: meet your fish, name a fish, feed the tank, start a courtship, hatch and keep a candidate, trace a family, choose a breeding goal. It shows how many are done, with **Show me**, **All steps** (each step marked Done, Next or Not yet, in text as well as a mark) and **Hide guide**. **Guide · N/7** in the save bar shows or hides it.

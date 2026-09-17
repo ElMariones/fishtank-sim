@@ -1,7 +1,7 @@
 import { HabitatPanel } from './HabitatPanel';
 import { AquascapeDock, AquascapeOverlay, createDraftStore, draftFor, type DraftStore } from './AquascapeEditor';
 import { decorationsOf } from '../core/tankManagement';
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { describeAppearance } from '../core/appearance';
 import { daysToHatch, environmentLimits, INCUBATION_DAYS, isEgg, lifeStage, type LifeStage } from '../core/development';
 import { advanceWorld, tankEnvironment, tankLoad } from '../core/habitat';
@@ -217,6 +217,9 @@ export function App({ initial }: { initial: LoadedSession }) {
   const living = world.fish.filter(f => f.status === 'living');
   const residents = useMemo(() => world.fish.filter(f => f.tankId === tank.id && f.status === 'living'), [world.fish, tank.id]);
   const swimmers = useMemo(() => residents.filter(f => !isEgg(f.life)), [residents]);
+  // A tank switch shows the new aquarium at once; the collection of up to 60 portraits follows in a deferred render.
+  const collectionTankId = useDeferredValue(tank.id), collectionPending = collectionTankId !== tank.id;
+  const collectionResidents = useMemo(() => collectionTankId === tank.id ? residents : world.fish.filter(f => f.tankId === collectionTankId && f.status === 'living'), [residents, world.fish, collectionTankId, tank.id]);
   const breeders = living.filter(f => !isEgg(f.life));
   const p = useMemo(() => fish ? express(fish.genome) : null, [fish]);
   const selectedLimits = useMemo(() => {
@@ -250,7 +253,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const guideProgress = guideSteps(guide);
 
   // Collection pipeline: view → cohort → favorites → sex → sort. Counts show what each filter would reveal.
-  const viewFish = (showArchived ? world.fish.filter(f => f.status !== 'living') : residents).filter(f => `${f.name} ${f.id}`.toLowerCase().includes(query.toLowerCase()));
+  const viewFish = (showArchived ? world.fish.filter(f => f.status !== 'living') : collectionResidents).filter(f => `${f.name} ${f.id}`.toLowerCase().includes(query.toLowerCase()));
   const cohorts = cohortsOf(viewFish);
   const cohort = cohorts.find(c => c.key === cohortKey) ?? null;
   // Within a parent pair, the clutch filter narrows the view to fish laid together (FS-406).
@@ -295,7 +298,8 @@ export function App({ initial }: { initial: LoadedSession }) {
     return partnerTank === moveDestination.id ? [] : [`${f.name} is courting ${partner?.name ?? 'a partner'}; the courtship pauses until they share a tank again.`];
   }) : [];
 
-  useEffect(() => { setBatchIds([]); setBatchReview(null); setLastBatchId(null); setMovedTo(null); }, [tank.id, showArchived, sexFilter, favoritesOnly, cohortKey, birthKey]);
+  // Functional updates keep unchanged state identical, so a tank switch does not trigger an extra full render.
+  useEffect(() => { setBatchIds(ids => ids.length ? [] : ids); setBatchReview(null); setLastBatchId(null); setMovedTo(null); }, [tank.id, showArchived, sexFilter, favoritesOnly, cohortKey, birthKey]);
 
   function run(command: Command, message: string): World | null {
     if (initial.readOnly) { setNotice('This tab is read-only. Close the editing tab and reload to take control.'); return null; }
@@ -494,7 +498,7 @@ export function App({ initial }: { initial: LoadedSession }) {
 
   return <div className={`app-shell view-${view}`}>
     {view === 'aquarium' ? <><a className="skip-link" href="#collection" onClick={() => setWorkspace('collection')}>Skip to collection</a><a className="skip-link" href="#inspector">Skip to inspector</a></> : null}
-    <NavRail view={view} onView={next => { setView(next); openDrawer(null); }} tanks={tankSummaries} activeTankId={tank.id}
+    <NavRail view={view} onView={next => { setView(next); openDrawer(null); }} tanks={tankSummaries} activeTankId={tank.id} loadingTankId={collectionPending ? tank.id : null}
       onTank={id => { setTankId(id); setShowArchived(false); setQuery(''); }} onHabitat={() => { setView('aquarium'); setWorkspace('habitat'); focusSoon('workspace-panel'); }}
       credits={world.credits} saveState={saveState} guide={{ done: guideProgress.filter(step => step.done).length, total: guideProgress.length, hidden: guide.hidden }}
       onMarket={() => openDrawer(showMarket ? null : 'market')} onShop={() => openDrawer(showShop ? null : 'shop')} onSaves={() => openDrawer(showSaves ? null : 'saves')}
@@ -532,7 +536,7 @@ export function App({ initial }: { initial: LoadedSession }) {
           <div className="tank-heading-meta"><span className="count-tag"><Icon name="fish" size={14} />{residents.length} / {tank.capacity}</span><span className="count-tag">{tank.planted ? <><Icon name="leaf" size={14} />Planted</> : <><Icon name="wave" size={14} />Open water</>}</span></div></div>
         <section className={`aquarium ${aquascape ? 'is-editing' : ''}`} aria-label="Live aquarium">
           
-          <TankCanvas fish={swimmers} eggs={residents.length - swimmers.length} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={speed} feedSignal={feedSignal} onBehavior={setBehavior} preview={aquascape} editing={!!aquascape} />
+          <TankCanvas fish={swimmers} eggs={residents.length - swimmers.length} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={speed} feedSignal={feedSignal} onBehavior={setBehavior} tanks={world.tanks} preview={aquascape} editing={!!aquascape} />
           {aquascape ? <><AquascapeOverlay store={aquascape} saved={decorationsOf(tank)} /><span className="editing-badge"><Icon name="pause" size={14} />Aquascaping · time and fish paused until you apply or cancel</span></> : null}
           <TankHud status={activeStatus} warnings={warningCount} paused={paused} onCare={() => { setWorkspace('care'); focusSoon('workspace-panel'); }} />
           {residents.length > swimmers.length ? <span className="egg-badge"><Icon name="egg" size={14} />{residents.length - swimmers.length} eggs incubating</span> : null}
@@ -572,7 +576,7 @@ export function App({ initial }: { initial: LoadedSession }) {
             </>}
           </div> : null}
         </section> : null}
-        {workspace === 'collection' ? <section role="tabpanel" id="panel-collection" aria-labelledby="tab-collection" className="collection"><div id="collection" tabIndex={-1} aria-labelledby="collection-title">
+        {workspace === 'collection' ? <section role="tabpanel" id="panel-collection" aria-labelledby="tab-collection" className={`collection ${collectionPending ? 'is-loading' : ''}`} aria-busy={collectionPending}><div id="collection" tabIndex={-1} aria-labelledby="collection-title">
           <div className="collection-heading"><h2 id="collection-title">{showArchived ? 'Archived fish' : 'Your collection'} <span>{collection.length}</span></h2><button className="quiet" onClick={() => { setShowArchived(v => !v); setQuery(''); }}>{showArchived ? 'Show residents' : 'View archive'}</button></div>
           <div className="collection-toolbar"><input aria-label="Search fish" placeholder="Search by name or ID…" value={query} onChange={e => setQuery(e.target.value)} /><button aria-expanded={showShop} onClick={() => openDrawer(showShop ? null : 'shop')}><Icon name="shop" size={16} />NPC shop <span>{world.shop.listings.length} listed</span></button></div>
           <div className="collection-filters">
@@ -639,6 +643,7 @@ export function App({ initial }: { initial: LoadedSession }) {
             <div className="batch-review-actions"><button className="confirm" disabled={placesAfter < 0 || initial.readOnly} onClick={moveBatch}>Confirm move of {batch.length}</button><button className="quiet" onClick={() => setBatchReview(null)}>Cancel</button></div>
           </div> : null}
           <Pagination page={page} count={collection.length} size={pageSize} onPage={setCollectionPage} label="Collection" />
+          {collectionPending ? <div className="collection-loading-anchor"><div className="collection-loading" role="status"><span className="loading-bar" aria-hidden="true" />Loading {tank.name}'s fish…</div></div> : null}
           <div className="fish-grid">{visibleCollection.map((f, index) => {
             const rank = page * pageSize + index;
             const inBatch = batch.some(member => member.id === f.id), favorite = favoriteIds.has(f.id);

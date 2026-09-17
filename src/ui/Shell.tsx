@@ -11,13 +11,15 @@ const TONE_TEXT = { good: 'water good', warn: 'needs care', alert: 'urgent care'
 type RailProps = {
   view: LabView; onView: (view: LabView) => void;
   tanks: TankSummary[]; activeTankId: string; onTank: (id: string) => void; onHabitat: () => void;
+  /** The aquarium whose collection is still loading, shown with a spinner on its card. */
+  loadingTankId?: string | null;
   credits: number; saveState: string; guide: { done: number; total: number; hidden: boolean };
   onMarket: () => void; onShop: () => void; onSaves: () => void; onGuide: () => void; onExport: () => void;
   open: { market: boolean; shop: boolean; saves: boolean };
 };
 
 /** The left navigation rail: lab views, aquariums with live capacity and water status, and lab tools. */
-export function NavRail({ view, onView, tanks, activeTankId, onTank, onHabitat, credits, saveState, guide, onMarket, onShop, onSaves, onGuide, onExport, open }: RailProps) {
+export function NavRail({ view, onView, tanks, activeTankId, loadingTankId, onTank, onHabitat, credits, saveState, guide, onMarket, onShop, onSaves, onGuide, onExport, open }: RailProps) {
   const saving = saveState === 'Saving…', failed = saveState === 'Session not saved';
   const tool = (icon: IconName, label: string, onClick: () => void, extra?: React.ReactNode, expanded?: boolean) =>
     <button className="rail-tool" onClick={onClick} aria-expanded={expanded}><Icon name={icon} /><span className="rail-label">{label}</span>{extra}</button>;
@@ -33,7 +35,7 @@ export function NavRail({ view, onView, tanks, activeTankId, onTank, onHabitat, 
     </nav>
     {view === 'aquarium' ? <div className="rail-section rail-tanks">
       <div className="rail-heading rail-label">Aquariums <span>{tanks.length}/8</span></div>
-      <nav aria-label="Aquariums">{tanks.map((tank, i) => <button key={tank.id} className={`tank-card ${tank.id === activeTankId ? 'active' : ''}`} aria-current={tank.id === activeTankId ? 'true' : undefined}
+      <nav aria-label="Aquariums">{tanks.map((tank, i) => <button key={tank.id} className={`tank-card ${tank.id === activeTankId ? 'active' : ''} ${tank.id === loadingTankId ? 'loading' : ''}`} aria-current={tank.id === activeTankId ? 'true' : undefined} aria-busy={tank.id === loadingTankId}
         onClick={() => onTank(tank.id)} title={`${tank.name}: ${tank.living} of ${tank.capacity} places, ${TONE_TEXT[tank.tone]}`}>
         <span className={`tank-dot ${tank.tone}`} aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
         <span className="rail-label tank-card-body">
