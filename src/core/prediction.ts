@@ -4,12 +4,14 @@ import { GOAL_BY_KEY } from './breedingGoals';
 import { express, fingerprint, inherit } from './genetics';
 import { hash } from './random';
 import type { Genome } from './types';
+import { isAxolotlGenome } from './axolotlGenetics';
 
 export const PREDICTION_SAMPLES = 256;
 export type GenotypeOdds = { alleles: [number, number]; probability: number };
 
 /** Unordered genotype odds at one locus, before mutation; linkage does not change marginal odds. */
 export function singleLocusOdds(mother: Genome, father: Genome, locus: string): GenotypeOdds[] {
+  if (isAxolotlGenome(mother) || isAxolotlGenome(father)) throw new Error('Koi offspring prediction cannot accept an axolotl genome.');
   if (!LOCUS_BY_ID.has(locus as never)) throw new Error('Unknown prediction locus.');
   // Registry alleles: a parent whose genome predates the locus transmits its baseline (FS-601).
   const copies = (genome: Genome) => allelesAt(genome, locus);
@@ -26,6 +28,7 @@ export function singleLocusOdds(mother: Genome, father: Genome, locus: string): 
 export type PredictedRange = { key: string; label: string; unit: 'cm' | 'score'; low: number; median: number; high: number };
 /** Prediction v1 owns its seed namespace; no world, sequence IDs or birth PRNG are touched. Samples use genome v2, or v3 for genome v3 parents; the measured traits come from the shared v1 loci. */
 export function predictOffspring(mother: Genome, father: Genome, goals: readonly string[] = []) {
+  if (isAxolotlGenome(mother) || isAxolotlGenome(father)) throw new Error('Koi offspring prediction cannot accept an axolotl genome.');
   const keys = [...new Set(goals)];
   if (keys.length > 4 || keys.some(key => !GOAL_BY_KEY.has(key))) throw new Error('Choose up to four known prediction traits.');
   const seedKey = `prediction-v1:${fingerprint(mother)}:${fingerprint(father)}`;

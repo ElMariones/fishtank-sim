@@ -5,12 +5,14 @@ import { metabolicPotential } from '../core/genetics';
 import { LISTING_LABELS, previewFish, SHOP_LISTING_DAYS, SHOP_REFRESH_DAYS, SHOP_SIZE } from '../core/shop';
 import type { Listing, ListingCategory, Tank, World } from '../core/types';
 import { MAX_LIVING, MAX_RECORDS } from '../core/world';
+import { STOCK_PRICE } from '../core/world';
 import { SexMark } from './Controls';
 import { FishPortrait } from './FishPortrait';
 
 type Props = {
   world: World; tank: Tank; day: number; readOnly: boolean; traitCache: TraitCache;
   onBuy: (listing: Listing, tankId: string) => void; onClose: () => void;
+  onBuyAxolotl: (tankId: string) => void;
   /** Opens the FS-504 recovery options when credits cannot cover any listing. */
   onRecovery: () => void;
 };
@@ -19,7 +21,7 @@ type Sort = 'price' | 'size' | 'leaving';
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
 /** FS-502 NPC shop: fixed listings that change only on delivery days, with filters and capacity-aware purchase. */
-export function ShopPanel({ world, tank, day, readOnly, traitCache, onBuy, onClose, onRecovery }: Props) {
+export function ShopPanel({ world, tank, day, readOnly, traitCache, onBuy, onBuyAxolotl, onClose, onRecovery }: Props) {
   const [sex, setSex] = useState<'all' | 'F' | 'M'>('all');
   const [category, setCategory] = useState<'all' | ListingCategory>('all');
   const [sort, setSort] = useState<Sort>('price');
@@ -47,6 +49,9 @@ export function ShopPanel({ world, tank, day, readOnly, traitCache, onBuy, onClo
     : free(destination) < 1 ? `${destination.name} has no free place.`
     : occupancy.living + reserved >= MAX_LIVING ? 'The lab is at its living fish limit.'
     : world.fish.length + reserved >= MAX_RECORDS ? 'The permanent record limit is reached. Export this world before starting another.' : '';
+  const axolotlBlocked = readOnly ? 'This tab is read-only.' : world.credits < STOCK_PRICE ? `Needs ◈ ${STOCK_PRICE - world.credits} more.`
+    : free(destination) < 1 ? `${destination.name} has no free place.` : occupancy.living + reserved >= MAX_LIVING ? 'The lab is at its living animal limit.'
+      : world.fish.length + reserved >= MAX_RECORDS ? 'The permanent record limit is reached.' : '';
 
   return <section className="shop-panel" aria-labelledby="shop-title">
     <div className="market-heading">
@@ -54,6 +59,11 @@ export function ShopPanel({ world, tank, day, readOnly, traitCache, onBuy, onClo
       <button className="quiet panel-close" onClick={onClose}>Close</button>
     </div>
     <p className="help-copy">Choose unrelated founders, visible variants or documented carriers of a hidden variant. Stock stays the same when you reopen or reload.</p>
+    <div className="shop-listing axolotl-stock">
+      <div className="shop-species-mark" aria-hidden="true">AX</div>
+      <div><strong>Independent axolotl founder</strong><small>Ambystoma mexicanum · separate 66-locus genome · unrelated adult stock</small><small>Body, head, limbs, digits, tail, external gills, pigment morph, colors, patterns, life history and behavior are generated from the axolotl genome. It can share aquariums with koi, but breeds only with axolotls.</small></div>
+      <div className="shop-buy"><span>◈ {STOCK_PRICE}</span><button className="primary" disabled={Boolean(axolotlBlocked)} onClick={() => onBuyAxolotl(destination.id)}>Buy axolotl</button>{axolotlBlocked ? <small>{axolotlBlocked}</small> : null}</div>
+    </div>
     <p className="help-copy">Empty places refill every {SHOP_REFRESH_DAYS} game days. Listings leave after {SHOP_LISTING_DAYS} game days. Buying to resell always loses credits.</p>
     <div className="shop-filters">
       <div className="sex-filter" role="group" aria-label="Show listings by sex">

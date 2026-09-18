@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { anatomyFor } from '../core/anatomy';
+import { axolotlAnatomyFor } from '../core/axolotlAnatomy';
 import { hash, random } from '../core/random';
 import type { Fish, Tank } from '../core/types';
 import { drawEgg, drawFish } from '../rendering/fish';
@@ -253,7 +254,9 @@ export function TankCanvas(props: Props) {
         const growth = visualGrowth(fish.life.lengthCm, actor.phenotype.adultLengthCm), pose = fishPose(shown, width, height, growth, facing);
         ctx.save(); ctx.translate(pose.x, pose.y);
         if (actor.id === current.selectedId) {
-          const b = anatomyFor(shown.phenotype).bounds, length = pose.bodyLength;
+          const b = shown.phenotype.species === 'axolotl' && shown.phenotype.axolotl
+            ? axolotlAnatomyFor(shown.phenotype.axolotl).bounds : anatomyFor(shown.phenotype).bounds;
+          const length = pose.bodyLength;
           ctx.save(); ctx.scale(pose.flip < 0 ? -1 : 1, 1); ctx.rotate(pose.angle);
           ctx.strokeStyle = '#89f0dc75'; ctx.lineWidth = 1; ctx.setLineDash([3, 6]);
           ctx.beginPath(); ctx.ellipse((b.minX + b.maxX) / 2 * length, (b.minY + b.maxY) / 2 * length, (b.maxX - b.minX) / 2 * length * 1.06, (b.maxY - b.minY) / 2 * length * 1.12, 0, 0, Math.PI * 2); ctx.stroke();

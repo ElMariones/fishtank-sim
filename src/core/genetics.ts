@@ -5,7 +5,14 @@ import { LOCUS_REGISTRY, type LocusDefinition } from './registry';
 import { expressStructure } from './structure';
 import { markingAnchors } from './pattern';
 import { clamp, hash, random } from './random';
-import type { Genome, Mutation, Phenotype } from './types';
+import {
+  AXOLOTL_DEFAULT_MUTATION_RATE,
+} from './axolotlCatalog';
+import {
+  axolotlFingerprint, axolotlHeterozygosity, expressAxolotl, inheritAxolotl, isAxolotlGenome,
+  type AxolotlGenome, type AxolotlPhenotype,
+} from './axolotlGenetics';
+import type { CreatureGenome, Genome, Mutation, Phenotype } from './types';
 
 function weighted(rng: () => number, weights: readonly number[]): number {
   const draw = rng();
@@ -43,9 +50,21 @@ const LOCUS_BLOCKS = [LOCUS_REGISTRY.slice(0, LOCI.length), LOCUS_REGISTRY.slice
  * `mutationRate` sets the small-effect rate; registry loci with their own class (structural) keep their rate unless it is 0.
  * A `trace` receives the homolog each parent transmitted at every locus (FS-603) without changing any random draw.
  */
-export function inherit(mother: Genome, father: Genome, seed: number, mutationRate = MUTATION_RATE, version: GenomeVersion = GENOME_VERSION, trace?: InheritanceTrace): { genome: Genome; mutations: Mutation[] } {
+export function inherit(mother: Genome, father: Genome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace): { genome: Genome; mutations: Mutation[] };
+export function inherit(mother: AxolotlGenome, father: AxolotlGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace): { genome: AxolotlGenome; mutations: Mutation[] };
+export function inherit(mother: CreatureGenome, father: CreatureGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace): { genome: CreatureGenome; mutations: Mutation[] };
+export function inherit(mother: CreatureGenome, father: CreatureGenome, seed: number, mutationRate = MUTATION_RATE, version: GenomeVersion = GENOME_VERSION, trace?: InheritanceTrace): { genome: CreatureGenome; mutations: Mutation[] } {
+  const motherAxolotl = isAxolotlGenome(mother), fatherAxolotl = isAxolotlGenome(father);
+  if (motherAxolotl !== fatherAxolotl) throw new Error('Different species cannot produce offspring.');
+  if (motherAxolotl && fatherAxolotl) {
+    // Normal shared breeding passes the koi default; axolotls retain their own species-local baseline mutation rate.
+    const rate = mutationRate === MUTATION_RATE ? AXOLOTL_DEFAULT_MUTATION_RATE : mutationRate;
+    const result = inheritAxolotl(mother, father, seed, rate, trace);
+    return { genome: result.genome, mutations: result.mutations };
+  }
+  const koiMother = mother as Genome, koiFather = father as Genome;
   if (mutationRate < 0 || mutationRate > 1 || !Number.isFinite(mutationRate)) throw new Error('Invalid mutation rate.');
-  if (version < Math.max(mother.version, father.version)) throw new Error(`Genome v${Math.max(mother.version, father.version)} parents cannot produce a genome v${version} child.`);
+  if (version < Math.max(koiMother.version, koiFather.version)) throw new Error(`Genome v${Math.max(koiMother.version, koiFather.version)} parents cannot produce a genome v${version} child.`);
   const mutations: Mutation[] = [];
   const transmit = (rng: () => number, loci: readonly LocusDefinition[], parent: Genome, copy: Mutation['copy']) => {
     let side: 0 | 1 = 0;
@@ -64,28 +83,56 @@ export function inherit(mother: Genome, father: Genome, seed: number, mutationRa
   };
   const [core, appearance, structure] = LOCUS_BLOCKS;
   const rng = random(seed);
-  const maternal = transmit(rng, core, mother, 'maternal');
-  const paternal = transmit(rng, core, father, 'paternal');
+  const maternal = transmit(rng, core, koiMother, 'maternal');
+  const paternal = transmit(rng, core, koiFather, 'paternal');
   if (version === 1) return { genome: { version, maternal, paternal }, mutations };
   const stream = random(hash(`appearance-v2:birth:${seed}`));
-  maternal.push(...transmit(stream, appearance, mother, 'maternal'));
-  paternal.push(...transmit(stream, appearance, father, 'paternal'));
+  maternal.push(...transmit(stream, appearance, koiMother, 'maternal'));
+  paternal.push(...transmit(stream, appearance, koiFather, 'paternal'));
   if (version === 2) return { genome: { version, maternal, paternal }, mutations };
   const structural = random(hash(`structure-v3:birth:${seed}`));
-  maternal.push(...transmit(structural, structure, mother, 'maternal'));
-  paternal.push(...transmit(structural, structure, father, 'paternal'));
+  maternal.push(...transmit(structural, structure, koiMother, 'maternal'));
+  paternal.push(...transmit(structural, structure, koiFather, 'paternal'));
   return { genome: { version, maternal, paternal }, mutations };
 }
 
+function axolotlCompatibilityPhenotype(axolotl: AxolotlPhenotype): Phenotype {
+  const m = axolotl.morphology, p = axolotl.pigmentation, pattern = axolotl.pattern;
+  const bodyHue = p.bodyColor.h / 360;
+  return {
+    species: 'axolotl', axolotl,
+    length: m.body.length, depth: m.body.depth, taper: m.body.taper * 0.25, curve: m.body.flex,
+    head: m.head.length, snout: m.head.snoutRoundness * 0.12,
+    eye: m.eyes.size, eyePosition: m.eyes.height, iris: p.irisColor.h, pupil: m.eyes.pupilRatio,
+    mouth: m.head.mouthWidth, barbel: 0,
+    tail: m.tail.length, spread: m.tail.height, fork: 0, dorsal: m.tail.finHeight,
+    pectoral: (m.limbs.foreLength + m.limbs.hindLength) / 2, finPigment: p.melanin,
+    red: clamp(1 - Math.abs(bodyHue - 0.02) * 2), yellow: p.xanthophore, black: p.melanin, white: 1 - p.melanin,
+    metallic: p.iridophore, translucency: p.translucency,
+    frequency: 3 + Math.round(pattern.density * 13), patternScale: pattern.scale, warp: m.tail.wave,
+    symmetry: pattern.symmetry, edge: pattern.edge, speckle: pattern.density,
+    adultLengthCm: axolotl.adultLengthCm, growth: axolotl.growth, longevity: axolotl.longevity,
+    metabolism: axolotl.metabolism, oxygen: axolotl.oxygen, fertility: axolotl.fertility,
+    speed: axolotl.speed, turning: axolotl.turning, activity: axolotl.activity, social: axolotl.social,
+    bold: axolotl.bold, curious: axolotl.curious,
+    markings: [],
+    // Compatibility-only neutral koi surfaces. Species-specific UI/rendering never interprets these as axolotl loci.
+    appearance: { base: ['classic'], accent: ['classic'], dots: ['ink'], iris: ['natural'], shimmer: p.iridescence, scales: 'smooth', patches: 0, motifs: [], density: pattern.density, motifScale: pattern.scale, contrast: pattern.contrast, reach: 0, finMotifs: [] },
+    structure: { tail: 'standard', lobeBalance: 1, spread: 0, dorsal: 'normal', barbels: 0, rays: 1 },
+  };
+}
+
 /** Development v3: adult genetic potential, inherited marking anchors and appearance; age/environment come later. */
-export function express(genome: Genome): Phenotype {
+export function express(genome: CreatureGenome): Phenotype {
+  if (isAxolotlGenome(genome)) return axolotlCompatibilityPhenotype(expressAxolotl(genome));
+  const koi = genome as Genome;
   const g = (name: Locus) => {
     const i = LOCI.indexOf(name);
-    return (genome.maternal[i] + genome.paternal[i]) / 10;
+    return (koi.maternal[i] + koi.paternal[i]) / 10;
   };
   const recessive = (name: Locus) => {
     const i = LOCI.indexOf(name);
-    return genome.maternal[i] === 5 && genome.paternal[i] === 5;
+    return koi.maternal[i] === 5 && koi.paternal[i] === 5;
   };
   const fin = 0.65 + g('fin_gain') * 0.7;
   const pigment = 0.65 + g('pigment_gain') * 0.7;
@@ -112,9 +159,9 @@ export function express(genome: Genome): Phenotype {
     fertility: 0.3 + 0.6 * g('fertility'),
     speed: (0.035 + g('thrust') * 0.055) / (1 + tail * 0.7 + depth * 0.35),
     turning: 0.7 + g('turning') * 1.4, activity: g('activity'), social: g('sociability'), bold: g('boldness'), curious: g('curiosity'),
-    markings: markingAnchors(genome),
-    appearance: expressAppearance(genome),
-    structure: expressStructure(genome),
+    markings: markingAnchors(koi),
+    appearance: expressAppearance(koi),
+    structure: expressStructure(koi),
   };
 }
 
@@ -122,10 +169,15 @@ export function express(genome: Genome): Phenotype {
  * Size and metabolic potential from genome v1 loci using basic arithmetic only: cheap enough for every simulation advance
  * and identical on every browser. Values match express() for adult length and metabolism.
  */
-export function metabolicPotential(genome: Genome): { adultLengthCm: number; metabolism: number; oxygenDemand: number; growth: number; longevityYears: number; fertility: number } {
+export function metabolicPotential(genome: CreatureGenome): { adultLengthCm: number; metabolism: number; oxygenDemand: number; growth: number; longevityYears: number; fertility: number } {
+  if (isAxolotlGenome(genome)) {
+    const p = expressAxolotl(genome);
+    return { adultLengthCm: p.adultLengthCm, metabolism: p.metabolism, oxygenDemand: p.oxygen, growth: p.growth, longevityYears: p.longevity, fertility: p.fertility };
+  }
+  const koi = genome as Genome;
   const g = (name: Locus) => {
     const i = LOCI.indexOf(name);
-    return (genome.maternal[i] + genome.paternal[i]) / 10;
+    return (koi.maternal[i] + koi.paternal[i]) / 10;
   };
   const tail = (0.14 + g('tail_length') * 0.62) * (0.65 + g('fin_gain') * 0.7);
   return {
@@ -142,11 +194,13 @@ export function metabolicPotential(genome: Genome): { adultLengthCm: number; met
   };
 }
 
-export function fingerprint(genome: Genome): string {
+export function fingerprint(genome: CreatureGenome): string {
+  if (isAxolotlGenome(genome)) return axolotlFingerprint(genome);
   return hash(`g${genome.version}:${genome.maternal.join(',')}|${genome.paternal.join(',')}`).toString(16).padStart(8, '0').toUpperCase();
 }
 
 /** Share of carried loci that are heterozygous; genome v1 fish are assayed over their 48 loci. */
-export function heterozygosity(genome: Genome): number {
+export function heterozygosity(genome: CreatureGenome): number {
+  if (isAxolotlGenome(genome)) return axolotlHeterozygosity(genome);
   return genome.maternal.filter((allele, i) => allele !== genome.paternal[i]).length / genome.maternal.length;
 }

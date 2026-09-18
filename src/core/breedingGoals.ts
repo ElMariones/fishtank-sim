@@ -26,8 +26,15 @@ export const GOAL_DESCRIPTORS: GoalDescriptor[] = [
 ];
 export const GOAL_BY_KEY = new Map(GOAL_DESCRIPTORS.map(d => [d.key, d]));
 export type GoalTrait = { descriptor: string; direction: 'higher' | 'lower' };
-export const traitValue = (fish: Fish, goal: GoalTrait) => GOAL_BY_KEY.get(goal.descriptor)?.value(express(fish.genome)) ?? 0;
+export const traitValue = (fish: Fish, goal: GoalTrait) => {
+  const descriptor = GOAL_BY_KEY.get(goal.descriptor);
+  // The current goal catalog is a koi catalog. Shared behavior values can still be read on axolotls, but koi shape/color
+  // descriptors and loci must never be projected onto the independent axolotl genome.
+  if (!descriptor || (fish.species === 'axolotl' && descriptor.group !== 'Behavior')) return 0;
+  return descriptor.value(express(fish.genome));
+};
 export function carrierCopies(fish: Fish, key: string): number | null {
+  if (fish.species === 'axolotl') return null;
   const d = GOAL_BY_KEY.get(key);
   return d?.locus === undefined ? null : appearanceAlleles(fish.genome, d.locus).filter(a => a === d.allele).length;
 }

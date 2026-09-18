@@ -48,6 +48,9 @@ export function toggleFavorite(preferences: LabPreferences, fishId: string): Lab
 
 /** Normalized 0–1 value of the goal descriptor (adult genetic potential). */
 export function goalValue(fish: Fish, goal: BreedingGoal): number {
+  // Breeding goals are presently koi-defined. Axolotls sort neutrally rather than being assigned fake koi appearance
+  // scores through the compatibility phenotype used by shared simulation code.
+  if (fish.species === 'axolotl') return 0.5;
   const traits = [goal, ...(goal.secondary ?? [])];
   const phenotype = express(fish.genome);
   const match = traits.reduce((sum, trait) => {
@@ -115,7 +118,9 @@ export function birthGroupsOf(fish: readonly Fish[], motherId: string, fatherId:
 
 /** Highest-ranked living, hatched fish of each sex for the goal: a convenience, not a universal "best match". Eggs cannot breed. */
 export function goalLeaders(fish: readonly Fish[], goal: BreedingGoal): { mother: Fish | null; father: Fish | null } {
-  const ranked = sortCollection(fish.filter(f => f.status === 'living' && !isEgg(f.life)), 'goal', goal);
+  // The persisted goal catalog is koi-specific. Axolotls have their own pair preview and must never displace koi leaders
+  // because a compatibility/default score happens to compare favorably.
+  const ranked = sortCollection(fish.filter(f => f.species === 'koi' && f.status === 'living' && !isEgg(f.life)), 'goal', goal);
   return { mother: ranked.find(f => f.sex === 'F') ?? null, father: ranked.find(f => f.sex === 'M') ?? null };
 }
 

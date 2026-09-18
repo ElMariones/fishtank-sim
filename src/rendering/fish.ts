@@ -4,6 +4,7 @@ import { buildOrnament, isEmptyOrnament, type OrnamentLayer, type OrnamentShape,
 import { markingPosition, placeMarkings, type PlacedMarking } from '../core/pattern';
 import { clamp, hash, random } from '../core/random';
 import type { AccentColor, BaseColor, DotColor, IrisColor, Phenotype } from '../core/types';
+import { drawAxolotl } from './axolotl';
 
 const placedMarkings = new WeakMap<Phenotype, { seed: number; markings: PlacedMarking[] }>();
 function markingsFor(p: Phenotype, seed: number): PlacedMarking[] {
@@ -124,6 +125,10 @@ export type SwimMotion = { tailPhase: number; finPhase: number; effort: number }
  * identity decisions belong here.
  */
 export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: number, size: number, time = 0, motion?: SwimMotion) {
+  if (p.species === 'axolotl' && p.axolotl) {
+    drawAxolotl(ctx, p.axolotl, seed, size, time, motion ? { tailPhase: motion.tailPhase, limbPhase: motion.finPhase, effort: motion.effort } : undefined);
+    return;
+  }
   const a = anatomyFor(p);
   const l = size * p.length, h = l * p.depth;
   const wave = motion

@@ -11,6 +11,8 @@ import { VISUAL_DESCRIPTORS } from './descriptors';
 import { adultLife } from './development';
 import { BUYER_BY_ID, defaultMarket, LEDGER_LIMIT, LEDGER_REASONS, ledgerBalance, openingLedger } from './economy';
 import { metabolicPotential } from './genetics';
+import { AXOLOTL_LOCI } from './axolotlCatalog';
+import { axolotlGenomeProblem, isAxolotlGenome } from './axolotlGenetics';
 import { NAMING_MODEL } from './names';
 import { CARRIER_LOCI, initialShop, LISTING_GENOME, LISTING_PRICES, SHOP_SIZE } from './shop';
 import { defaultRelief, RELIEF_COOLDOWN_DAYS } from './recovery';
@@ -27,6 +29,11 @@ const genome = z.discriminatedUnion('version', [
   // Genome v3 (FS-601) appends the Structure chromosome; the registry also rejects alleles a structure locus does not support.
   z.object({ version: z.literal(3), maternal: alleles(GENOME_LOCI.length), paternal: alleles(GENOME_LOCI.length) }),
 ]).superRefine((value, context) => { const problem = genomeProblem(value); if (problem) context.addIssue({ code: 'custom', message: problem }); });
+/** Axolotl genomes have an independent discriminator and locus registry; keep this branch first so Zod never strips it as an extra koi key. */
+const axolotlGenome = z.object({
+  species: z.literal('axolotl'), version: z.literal(1), maternal: alleles(AXOLOTL_LOCI.length), paternal: alleles(AXOLOTL_LOCI.length),
+}).strict().superRefine((value, context) => { const problem = axolotlGenomeProblem(value); if (problem) context.addIssue({ code: 'custom', message: problem }); });
+const creatureGenome = z.union([axolotlGenome, genome]);
 const bounded = ([minimum, maximum]: readonly [number, number]) => z.number().min(minimum).max(maximum);
 /** Water model v1 state, carried by every world v2+ tank. */
 const water = z.object({
@@ -48,11 +55,15 @@ const breeding = z.object({ model: z.literal(1), cooldownDays: z.number().int().
 /** Clutch records, world v5 (FS-402). */
 const clutch = z.object({
   id: z.string().regex(/^CL-\d{6}$/), motherId: fishIdSchema, fatherId: fishIdSchema, tankId: z.string().max(50), nurseryId: z.string().max(50),
+  // Optional only on historical schemas: tests/importers may downgrade a current koi snapshot by changing its world version.
+  // The migration below always rewrites this to the canonical required v13 field.
+  species: z.literal('koi').optional(),
   size: z.union([z.literal(CLUTCH_SIZES[0]), z.literal(CLUTCH_SIZES[1]), z.literal(CLUTCH_SIZES[2]), z.literal(CLUTCH_SIZES[3]), z.literal(CLUTCH_SIZES[4])]),
   genomeVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]), pairedAt: z.string().datetime(), stage: z.enum(CLUTCH_STAGES),
   days: z.number().int().min(0).max(10_000_000), progress: z.number().min(0).max(1), blockers: z.array(z.enum(BLOCKER_CODES)).max(BLOCKER_CODES.length),
   spawnedDay: z.number().int().min(0).max(10_000_000).nullable(), firstFishId: fishIdSchema.nullable(),
 }).strict();
+const clutchV13 = clutch.extend({ species: z.enum(['koi', 'axolotl']) }).strict();
 /** NPC demand and the credit ledger, world v6 (FS-501). */
 const demand = (id: keyof typeof BUYER_BY_ID) => z.number().min(0).max(BUYER_BY_ID[id].capacity);
 const market = z.object({
@@ -87,6 +98,15 @@ const fishRecord = {
   tankId: z.string(), status: z.enum(['living', 'sold']),
   mutations: z.array(z.object({ locus: z.number().int().min(0).max(GENOME_LOCI.length - 1), copy: z.enum(['maternal', 'paternal']), from: z.number().int().min(0).max(5), to: z.number().int().min(0).max(5) })).max(GENOME_LOCI.length * 2),
 };
+const mutationV13 = z.object({
+  locus: z.number().int().min(0).max(Math.max(GENOME_LOCI.length, AXOLOTL_LOCI.length) - 1),
+  locusId: z.enum(AXOLOTL_LOCI).optional(),
+  copy: z.enum(['maternal', 'paternal']), from: z.number().int().min(0).max(5), to: z.number().int().min(0).max(5),
+}).strict();
+const fishRecordV13 = {
+  ...fishRecord, species: z.enum(['koi', 'axolotl']), genome: creatureGenome,
+  mutations: z.array(mutationV13).max(Math.max(GENOME_LOCI.length, AXOLOTL_LOCI.length) * 2),
+};
 const recordsOnly = z.array(z.object(fishRecord)).max(MAX_RECORDS);
 const withLife = z.array(z.object({ ...fishRecord, life })).max(MAX_RECORDS);
 const tanksWithWater = z.array(z.object({ ...tank, water })).min(1).max(MAX_TANKS);
@@ -114,6 +134,9 @@ const worldV8 = {
   market, ledger, shop, naming: z.union([z.literal(1), z.literal(2), z.literal(3)]),
 };
 const schema = z.discriminatedUnion('version', [
+  // World v13 makes species persistent and permits the independent axolotl genome while leaving koi genomes untouched.
+  z.object({ ...worldV8, version: z.literal(13), fish: z.array(z.object({ ...fishRecordV13, status: z.enum(['living', 'sold', 'rehomed']), life, breeding, origins })).max(MAX_RECORDS),
+    clutches: z.array(clutchV13).max(MAX_RECORDS), relief, bloodlines: z.array(bloodline).max(MAX_BLOODLINES), nextBloodlineId: z.number().int().positive() }),
   // World v12 appends the bloodline registry after `relief` (FS-604).
   z.object({ ...worldV8, version: z.literal(12), fish: z.array(z.object({ ...fishRecord, status: z.enum(['living', 'sold', 'rehomed']), life, breeding, origins })).max(MAX_RECORDS), relief,
     bloodlines: z.array(bloodline).max(MAX_BLOODLINES), nextBloodlineId: z.number().int().positive() }),
@@ -157,39 +180,52 @@ const schema = z.discriminatedUnion('version', [
  * Worlds v1–v8 predate the koi rescue (FS-504): they start with no claims and nothing to wait for.
  * Worlds v1–v10 predate mutation origins (FS-603): origins are rebuilt from genomes where the transmitted copy is certain.
  * Worlds v1–v9 predate genome v3 (FS-601): v7–v9 shops keep model 1 until the runtime rebases them; v6 and older open
- * with a current shop.
+ * with a current shop. Worlds v1–v12 predate explicit species identity: every existing animal and clutch migrates as koi.
  */
 export function decodeSave(raw: string): World {
   if (raw.length > 12_000_000) throw new Error('Save is too large for this lab.');
   const parsed = schema.parse(JSON.parse(raw));
   let world: World;
-  type Unoriginated = Omit<World, 'fish' | 'version' | 'bloodlines' | 'nextBloodlineId'> & { version: 12; fish: Omit<Fish, 'origins'>[] };
-  let legacy: Unoriginated | null = null;
-  if (parsed.version === 12) world = parsed;
-  // Worlds v1–v11 predate bloodlines (FS-604): the registry starts empty, appended after `relief`.
-  else if (parsed.version === 11) world = { ...parsed, version: 12, bloodlines: [], nextBloodlineId: 1 };
-  else if (parsed.version === 10) legacy = { ...parsed, version: 12 };
-  // A world v9 kept shop model 1 and genome v2 stock; the runtime moves it to model 2 when it rebases (FS-601).
-  else if (parsed.version === 9) legacy = { ...parsed, version: 12 };
-  // Keys follow the v9 schema order: every migration appends `relief` last, after the fields its version lacked.
-  else if (parsed.version === 8) legacy = { ...parsed, version: 12, relief: defaultRelief() };
-  else if (parsed.version === 7) legacy = { ...parsed, version: 12, relief: defaultRelief() };
-  // v6 appended market and ledger to the v5 order, and v7 appends the shop and naming.
-  else if (parsed.version === 6) legacy = { ...parsed, version: 12, shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() };
-  else if (parsed.version === 5) legacy = { ...parsed, version: 12, market: defaultMarket(), ledger: openingLedger(parsed.credits), shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() };
+  if (parsed.version === 13) world = parsed as World;
   else {
-    const watered: Omit<Tank, 'care'>[] = parsed.version === 1 ? parsed.tanks.map(entry => ({ ...entry, water: defaultWater() })) : parsed.tanks;
-    const cared: Tank[] = parsed.version === 4 ? parsed.tanks : watered.map(entry => ({ ...entry, care: defaultCare(entry.water) }));
-    const lived: Omit<Fish, 'breeding' | 'origins'>[] = parsed.version === 3 || parsed.version === 4 ? parsed.fish : parsed.fish.map(member => ({ ...member, life: adultLife(member.genome) }));
-    // Keys follow the v5 schema order: replay validation compares serialized worlds, so a migrated world must
-    // serialize exactly like a decoded current one or every older save would fail to load.
-    legacy = { version: 12, seed: parsed.seed, nextId: parsed.nextId, credits: parsed.credits, nextClutchId: 1, tanks: cared,
-      fish: lived.map(member => ({ ...member, breeding: idleBreeding() })), clutches: [], market: defaultMarket(), ledger: openingLedger(parsed.credits),
-      shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() };
+    // Build the historical v12 logical shape first. It is deliberately local/structural because each old schema lacks
+    // different fields; validation above has already proven every input member before this migration runs.
+    let legacy: Record<string, unknown>;
+    let needsOrigins = false;
+    if (parsed.version === 12) legacy = parsed;
+    // Worlds v1–v11 predate bloodlines (FS-604): the registry starts empty, appended after `relief`.
+    else if (parsed.version === 11) legacy = { ...parsed, version: 12, bloodlines: [], nextBloodlineId: 1 };
+    else if (parsed.version === 10) { legacy = { ...parsed, version: 12 }; needsOrigins = true; }
+    // A world v9 kept shop model 1 and genome v2 stock; the runtime moves it to model 2 when it rebases (FS-601).
+    else if (parsed.version === 9) { legacy = { ...parsed, version: 12 }; needsOrigins = true; }
+    else if (parsed.version === 8) { legacy = { ...parsed, version: 12, relief: defaultRelief() }; needsOrigins = true; }
+    else if (parsed.version === 7) { legacy = { ...parsed, version: 12, relief: defaultRelief() }; needsOrigins = true; }
+    else if (parsed.version === 6) { legacy = { ...parsed, version: 12, shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() }; needsOrigins = true; }
+    else if (parsed.version === 5) { legacy = { ...parsed, version: 12, market: defaultMarket(), ledger: openingLedger(parsed.credits), shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() }; needsOrigins = true; }
+    else {
+      const watered: Omit<Tank, 'care'>[] = parsed.version === 1 ? parsed.tanks.map(entry => ({ ...entry, water: defaultWater() })) : parsed.tanks;
+      const cared: Tank[] = parsed.version === 4 ? parsed.tanks : watered.map(entry => ({ ...entry, care: defaultCare(entry.water) }));
+      const lived = parsed.version === 3 || parsed.version === 4 ? parsed.fish : parsed.fish.map(member => ({ ...member, life: adultLife(member.genome) }));
+      legacy = { version: 12, seed: parsed.seed, nextId: parsed.nextId, credits: parsed.credits, nextClutchId: 1, tanks: cared,
+        fish: lived.map(member => ({ ...member, breeding: idleBreeding() })), clutches: [], market: defaultMarket(), ledger: openingLedger(parsed.credits),
+        shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() };
+      needsOrigins = true;
+    }
+    const oldFish = (legacy.fish as Omit<Fish, 'species'>[]).map(member => {
+      // Canonical v13 key order puts species after mutation identity and before developmental state. Replay comparison is
+      // intentionally byte-oriented elsewhere, so keep migrated records identical to records parsed by the v13 schema.
+      const { life: memberLife, breeding: memberBreeding, origins: memberOrigins, ...identity } = member as Omit<Fish, 'species'>;
+      return { ...identity, species: 'koi' as const, life: memberLife, breeding: memberBreeding, ...(memberOrigins ? { origins: memberOrigins } : {}) };
+    });
+    const oldClutches = ((legacy.clutches ?? []) as Omit<World['clutches'][number], 'species'>[]).map(entry => ({ ...entry, species: 'koi' as const }));
+    const withOrigins = needsOrigins ? reconstructOrigins(oldFish as Omit<Fish, 'origins'>[]).fish : oldFish as Fish[];
+    world = {
+      ...(legacy as Omit<World, 'version' | 'fish' | 'clutches' | 'bloodlines' | 'nextBloodlineId'>), version: 13,
+      fish: withOrigins, clutches: oldClutches,
+      bloodlines: (legacy.bloodlines as World['bloodlines'] | undefined) ?? [],
+      nextBloodlineId: (legacy.nextBloodlineId as number | undefined) ?? 1,
+    };
   }
-  // Worlds v1–v10 predate mutation origins (FS-603): they are rebuilt from genomes where the transmitted copy is certain.
-  if (legacy) world = { ...legacy, fish: reconstructOrigins(legacy.fish).fish, bloodlines: [], nextBloodlineId: 1 };
-  world = world!;
   world.tanks = world.tanks.map(tank => ({ ...tank, decorations: decorationsOf(tank) }));
   for (const tank of world.tanks) {
     validateLayout(decorationsOf(tank));
@@ -200,19 +236,31 @@ export function decodeSave(raw: string): World {
   if (ids.size !== world.fish.length || tanks.size !== world.tanks.length) throw new Error('Duplicate records in save.');
   for (const member of world.fish) {
     if (!tanks.has(member.tankId) || Number(member.id.slice(4)) >= world.nextId) throw new Error('Invalid record reference.');
+    if ((member.species === 'axolotl') !== isAxolotlGenome(member.genome)) throw new Error('Species does not match its genome.');
     if (member.mutations.some(mutation => mutation.locus >= member.genome.maternal.length)) throw new Error('Mutation record is outside the genome.');
+    for (const mutation of member.mutations) {
+      if (member.species === 'axolotl') {
+        const expected = AXOLOTL_LOCI[mutation.locus];
+        // A few v13 development builds could save axolotl mutations before locusId was persisted. Recover the stable ID
+        // from the immutable v1 registry when it is absent, but reject a contradictory ID.
+        if (mutation.locusId !== undefined && mutation.locusId !== expected) throw new Error('Axolotl mutation locus ID does not match its genome locus.');
+        mutation.locusId ??= expected;
+      }
+      if (member.species === 'koi' && mutation.locusId !== undefined) throw new Error('Koi mutation record cannot carry an axolotl locus ID.');
+    }
     const originIssue = originProblem(member, ids);
     if (originIssue) throw new Error(originIssue);
     if (member.life.lengthCm > metabolicPotential(member.genome).adultLengthCm) throw new Error('A fish is longer than its genetic potential.');
     if (member.parents) {
       const [m, p] = member.parents.map(parent => ids.get(parent));
-      if (!m || !p || m.id === p.id || m.sex !== 'F' || p.sex !== 'M' || Math.max(m.generation, p.generation) + 1 !== member.generation) throw new Error('Invalid pedigree.');
+      if (!m || !p || m.id === p.id || m.sex !== 'F' || p.sex !== 'M' || m.species !== member.species || p.species !== member.species || Math.max(m.generation, p.generation) + 1 !== member.generation) throw new Error('Invalid pedigree.');
     } else if (member.generation !== 0) throw new Error('Founder generation must be zero.');
   }
   const clutchIds = new Set<string>(), courtingNurseries = new Set<string>(), courtingParents = new Set<string>();
   for (const entry of world.clutches) {
     const mother = ids.get(entry.motherId), father = ids.get(entry.fatherId);
     if (clutchIds.has(entry.id) || Number(entry.id.slice(3)) >= world.nextClutchId || !mother || !father || mother.sex !== 'F' || father.sex !== 'M'
+      || mother.species !== entry.species || father.species !== entry.species
       || !tanks.has(entry.tankId) || !tanks.has(entry.nurseryId)) throw new Error('Invalid clutch record.');
     clutchIds.add(entry.id);
     if (entry.stage === 'courting' || entry.stage === 'cancelled') {

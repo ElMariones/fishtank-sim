@@ -11,6 +11,7 @@ import { defaultMarket, openingLedger, planSales, recordEntry, saleDetail } from
 import { initialShop } from './shop';
 import { defaultRelief, RELIEF_COOLDOWN_DAYS, reliefStatus } from './recovery';
 import { express, founderGenome, inherit } from './genetics';
+import { axolotlFounderGenome } from './axolotlGenetics';
 import { adultLife, eggLife, isEgg } from './development';
 import { tankLoad } from './habitat';
 import { addFood, defaultWater, temperatureFactor } from './water';
@@ -19,7 +20,7 @@ import { NAMING_MODEL, newFishName, takenNames } from './names';
 import { hash } from './random';
 import { childOrigins, emptyTrace } from './origins';
 import { bloodlineId, captureStandard, MAX_FOUNDATION, registrationProblem } from './bloodlines';
-import type { Fish, Ration, Tank, World } from './types';
+import type { Fish, Genome, Ration, Species, Tank, World } from './types';
 
 export const COHORT_SIZE = 20;
 export const MAX_TANKS = 8;
@@ -36,9 +37,9 @@ export const STOCK_PRICE = 250;
  * (FS-401/402); NPC demand and the credit ledger (FS-501). World v7 adds persistent shop stock (FS-502); v8 adds placed
  * decorations (FS-503); v9 adds the koi rescue for no-money recovery (FS-504); v10 accepts genome v3 records and
  * genome v3 shop stock (FS-601); v11 adds mutation origins to every fish (FS-603); v12 adds named
- * bloodlines (FS-604).
+ * bloodlines (FS-604); v13 adds explicit species identity and independent axolotl genetics.
  */
-export const WORLD_VERSION = 12;
+export const WORLD_VERSION = 13;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -48,7 +49,14 @@ const count = (n: number) => n.toLocaleString('en');
 
 function founder(world: World, name: string, sex: Fish['sex'], timestamp: string, version: GenomeVersion = GENOME_VERSION): Fish {
   const birthSeed = hash(`${world.seed}:founder:${world.nextId}`), genome = founderGenome(birthSeed, version);
-  return { id: id(world.nextId), name, sex, genome, birthSeed,
+  return { id: id(world.nextId), name, sex, species: 'koi', genome, birthSeed,
+    generation: 0, parents: null, bornAt: iso(timestamp), tankId: world.tanks[0].id, status: 'living', mutations: [], life: adultLife(genome), breeding: idleBreeding(), origins: [] };
+}
+
+/** Axolotl founder stream is namespaced independently so adding the species never perturbs historical koi seeds. */
+function axolotlFounder(world: World, name: string, sex: Fish['sex'], timestamp: string): Fish {
+  const birthSeed = hash(`${world.seed}:axolotl-founder:${world.nextId}`), genome = axolotlFounderGenome(birthSeed);
+  return { id: id(world.nextId), name, sex, species: 'axolotl', genome, birthSeed,
     generation: 0, parents: null, bornAt: iso(timestamp), tankId: world.tanks[0].id, status: 'living', mutations: [], life: adultLife(genome), breeding: idleBreeding(), origins: [] };
 }
 
@@ -59,7 +67,7 @@ function newTank(id: string, name: string, planted: boolean): Tank {
 
 /** New worlds use the current genome. Research fixtures pass genome version 1 to reproduce the frozen FS-101 founders. */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = GENOME_VERSION): World {
-  const world: World = { version: 12, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
+  const world: World = { version: 13, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
   ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed), naming: NAMING_MODEL, relief: defaultRelief(), bloodlines: [], nextBloodlineId: 1 };
@@ -81,7 +89,7 @@ export type Command =
   | { type: 'sell'; fishId: string; priceModel?: 1 }
   | { type: 'sell-batch'; fishIds: string[]; priceModel?: 1 }
   | { type: 'rehome-batch'; fishIds: string[] }
-  | { type: 'buy'; tankId: string; timestamp: string; genomeVersion?: GenomeVersion }
+  | { type: 'buy'; tankId: string; timestamp: string; genomeVersion?: GenomeVersion; species?: Species }
   | { type: 'buy-listing'; listingId: string; tankId: string; timestamp: string }
   | { type: 'add-tank' }
   | { type: 'purchase-tank' }
@@ -113,7 +121,7 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('sell'), fishId: fishIdSchema, priceModel: z.literal(1).optional() }).strict(),
   z.object({ type: z.literal('sell-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING), priceModel: z.literal(1).optional() }).strict(),
   z.object({ type: z.literal('rehome-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING) }).strict(),
-  z.object({ type: z.literal('buy'), tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema }).strict(),
+  z.object({ type: z.literal('buy'), tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema, species: z.enum(['koi', 'axolotl']).optional() }).strict(),
   z.object({ type: z.literal('buy-listing'), listingId: z.string().regex(/^LS-\d{6,16}$/), tankId: tankIdSchema, timestamp: z.string().datetime() }).strict(),
   z.object({ type: z.literal('add-tank') }).strict(),
   z.object({ type: z.literal('purchase-tank') }).strict(),
@@ -210,18 +218,21 @@ export function applyCommand(world: World, command: Command): World {
       const mother = getFish(command.motherId), father = getFish(command.fatherId);
       if (mother.id === father.id || mother.sex !== 'F' || father.sex !== 'M') throw new Error('Choose a female and a male.');
       if (isEgg(mother.life) || isEgg(father.life)) throw new Error('Eggs cannot breed. Wait until they hatch.');
+      if (mother.species !== father.species) throw new Error('Koi and axolotls cannot breed with each other. Choose two members of the same species.');
       room(COHORT_SIZE);
       space(command.tankId, COHORT_SIZE);
       // A pre-FS-113 command could only name genome v1 parents, which then produced genome v1 children.
       // A command without a version keeps what its parents allow; genome v3 parents never existed before FS-601.
-      const version = command.genomeVersion ?? (mother.genome.version === 1 && father.genome.version === 1 ? 1 : Math.max(2, mother.genome.version, father.genome.version) as GenomeVersion);
+      const version = mother.species === 'koi'
+        ? command.genomeVersion ?? (((mother.genome as Genome).version === 1 && (father.genome as Genome).version === 1) ? 1 : Math.max(2, (mother.genome as Genome).version, (father.genome as Genome).version) as GenomeVersion)
+        : GENOME_VERSION;
       const taken = takenNames(next);
       for (let i = 0; i < COHORT_SIZE; i++) {
         const birthSeed = hash(`${world.seed}:birth:${next.nextId}:${mother.id}:${father.id}`);
         const trace = emptyTrace(), result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, version, trace);
         const sex: Fish['sex'] = hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M';
         const name = newFishName(`${next.seed}:fish:${next.nextId}`, { sex, genome: result.genome }, taken);
-        next.fish.push({ id: id(next.nextId), name, sex,
+        next.fish.push({ id: id(next.nextId), name, sex, species: mother.species,
           ...result, birthSeed, generation: Math.max(mother.generation, father.generation) + 1,
           parents: [mother.id, father.id], bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', life: eggLife(), breeding: idleBreeding(),
           origins: childOrigins(id(next.nextId), mother, father, trace, result.mutations) });
@@ -249,7 +260,10 @@ export function applyCommand(world: World, command: Command): World {
       space(command.tankId, 1);
       if (next.credits < STOCK_PRICE) throw new Error('You need 250 lab credits for unrelated stock.');
       room(1);
-      const fish = founder(next, '', next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp, command.genomeVersion ?? 1);
+      const species = command.species ?? 'koi';
+      const fish = species === 'axolotl'
+        ? axolotlFounder(next, '', next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp)
+        : founder(next, '', next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp, command.genomeVersion ?? 1);
       fish.name = newFishName(`${next.seed}:fish:${next.nextId}`, fish, takenNames(next));
       fish.tankId = command.tankId;
       next.fish.push(fish); next.nextId++; next.credits -= STOCK_PRICE;
@@ -264,7 +278,7 @@ export function applyCommand(world: World, command: Command): World {
       room(1);
       afford(listing.price, `${listing.name} (${listing.id})`);
       next.fish.push({
-        id: id(next.nextId), name: listing.name, sex: listing.sex, genome: listing.genome, birthSeed: listing.birthSeed, generation: 0, parents: null,
+        id: id(next.nextId), name: listing.name, sex: listing.sex, species: 'koi', genome: listing.genome, birthSeed: listing.birthSeed, generation: 0, parents: null,
         bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', mutations: [], life: adultLife(listing.genome), breeding: idleBreeding(), origins: [],
       });
       next.nextId++;
@@ -356,11 +370,11 @@ export function applyCommand(world: World, command: Command): World {
         { maxLiving: MAX_LIVING, maxRecords: MAX_RECORDS });
       if (blockers.length) throw new Error(blockers.map(blocker => blocker.message).join(' '));
       const mother = getFish(command.motherId), father = getFish(command.fatherId);
-      if (command.genomeVersion < Math.max(mother.genome.version, father.genome.version))
-        throw new Error(`Genome v${Math.max(mother.genome.version, father.genome.version)} parents cannot produce a genome v${command.genomeVersion} clutch.`);
+      if (mother.species === 'koi' && command.genomeVersion < Math.max((mother.genome as Genome).version, (father.genome as Genome).version))
+        throw new Error(`Genome v${Math.max((mother.genome as Genome).version, (father.genome as Genome).version)} parents cannot produce a genome v${command.genomeVersion} clutch.`);
       next.clutches.push({
         id: clutchId(next.nextClutchId), motherId: mother.id, fatherId: father.id, tankId: mother.tankId, nurseryId: command.nurseryId,
-        size: command.size, genomeVersion: command.genomeVersion, pairedAt: iso(command.timestamp), stage: 'courting', days: 0, progress: 0,
+        species: mother.species, size: command.size, genomeVersion: mother.species === 'koi' ? command.genomeVersion : GENOME_VERSION, pairedAt: iso(command.timestamp), stage: 'courting', days: 0, progress: 0,
         blockers: [], spawnedDay: null, firstFishId: null,
       });
       next.nextClutchId++;
@@ -402,7 +416,7 @@ export function applyCommand(world: World, command: Command): World {
       for (const sex of status.sexes) {
         const birthSeed = hash(`${next.seed}:relief:${next.nextId}`), genome = founderGenome(birthSeed, command.genomeVersion);
         const fish: Fish = {
-          id: id(next.nextId), name: newFishName(`${next.seed}:fish:${next.nextId}`, { sex, genome }, taken), sex, genome, birthSeed, generation: 0, parents: null,
+          id: id(next.nextId), name: newFishName(`${next.seed}:fish:${next.nextId}`, { sex, genome }, taken), sex, species: 'koi', genome, birthSeed, generation: 0, parents: null,
           bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', mutations: [], life: adultLife(genome), breeding: idleBreeding(), origins: [],
         };
         rescued.push(fish); next.fish.push(fish); next.nextId++;

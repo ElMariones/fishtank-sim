@@ -23,10 +23,10 @@ const credits = (amount: number) => `◈ ${amount.toLocaleString('en')}`;
 
 export const defaultRelief = (): ReliefState => ({ model: 1, claims: 0, cooldownDays: 0 });
 
-/** Sexes with no living fish at any stage. Eggs and fry count, because they grow into breeders. */
+/** Koi sexes with no living koi at any stage. Eggs and fry count, because they grow into breeders. */
 export function missingSexes(world: Pick<World, 'fish'>): Fish['sex'][] {
   const present = new Set<Fish['sex']>();
-  for (const fish of world.fish) if (fish.status === 'living') present.add(fish.sex);
+  for (const fish of world.fish) if (fish.status === 'living' && fish.species === 'koi') present.add(fish.sex);
   return SEXES.filter(sex => !present.has(sex));
 }
 
@@ -51,12 +51,12 @@ export function advanceRelief(world: World): World {
   return world.relief.cooldownDays > 0 ? { ...world, relief: { ...world.relief, cooldownDays: world.relief.cooldownDays - 1 } } : world;
 }
 
-/** Default home for rescued fish: the tank with room that holds the most hatched fish to pair with, else the first with room. */
+/** Default home for rescued koi: the tank with room that holds the most hatched koi partners, else the first with room. */
 export function reliefDestination(world: World, arriving: number): string | null {
   const residents = new Map<string, number>(), hatched = new Map<string, number>();
   for (const fish of world.fish) if (fish.status === 'living') {
     residents.set(fish.tankId, (residents.get(fish.tankId) ?? 0) + 1);
-    if (!isEgg(fish.life)) hatched.set(fish.tankId, (hatched.get(fish.tankId) ?? 0) + 1);
+    if (fish.species === 'koi' && !isEgg(fish.life)) hatched.set(fish.tankId, (hatched.get(fish.tankId) ?? 0) + 1);
   }
   let best: { id: string; partners: number } | null = null;
   for (const tank of world.tanks) {
@@ -68,6 +68,7 @@ export function reliefDestination(world: World, arriving: number): string | null
 }
 
 export type RecoveryOverview = {
+  /** Living koi by sex; axolotls cannot satisfy the koi rescue's breeding-pair requirement. */
   living: Record<Fish['sex'], number>;
   relief: ReliefStatus;
   /** Hatched living fish that are not courting: those that can be sold or rehomed today. */
@@ -83,7 +84,7 @@ export function recoveryOverview(world: World, cache?: TraitCache): RecoveryOver
   const living = { F: 0, M: 0 }, releasable: string[] = [];
   for (const fish of world.fish) {
     if (fish.status !== 'living') continue;
-    living[fish.sex]++;
+    if (fish.species === 'koi') living[fish.sex]++;
     if (!isEgg(fish.life) && !courting.has(fish.id)) releasable.push(fish.id);
   }
   const plan = planBestSales(world, releasable, cache);

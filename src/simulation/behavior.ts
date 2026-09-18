@@ -39,6 +39,7 @@ export type BehaviorActor = Actor & {
 export type Pellet = { x: number; y: number; settled: number };
 export type BehaviorWorld = { actors: BehaviorActor[]; pellets: Pellet[]; planted: boolean; footprints?: readonly Footprint[]; step: number; feeds: number };
 export type BehaviorSummary = { state: BehaviorState; reasons: number; leaderId: string | null };
+const sameSpecies = (a: Pick<Actor, 'species'>, b: Pick<Actor, 'species'>) => (a.species ?? 'koi') === (b.species ?? 'koi');
 
 export function createBehaviorActor(fish: Fish): BehaviorActor {
   const rng = random(hash(`behavior-v1:${fish.id}`));
@@ -85,7 +86,7 @@ export function chooseBehavior(actor: BehaviorActor, world: BehaviorWorld, nearb
   const p = actor.phenotype, food = world.pellets.length > 0;
   let neighbors = 0, leader: BehaviorActor | null = null;
   for (const other of nearby) {
-    if (other.id === actor.id || Math.hypot(other.x - actor.x, other.y - actor.y) > NEIGHBOR_RADIUS) continue;
+    if (other.id === actor.id || !sameSpecies(other, actor) || Math.hypot(other.x - actor.x, other.y - actor.y) > NEIGHBOR_RADIUS) continue;
     neighbors++;
     if (!leader || other.phenotype.bold > leader.phenotype.bold || (other.phenotype.bold === leader.phenotype.bold && other.id < leader.id)) leader = other;
   }
@@ -160,7 +161,7 @@ export function stepBehavior(world: BehaviorWorld): BehaviorWorld {
       if (other.id === actor.id) continue;
       const dx = other.x - actor.x, dy = other.y - actor.y, distance = Math.hypot(dx, dy);
       if (distance < SEPARATION_RADIUS) { ax -= dx * 0.7; ay -= dy * 0.7; }
-      else if (state === 'cruise' && distance < NEIGHBOR_RADIUS) { ax += dx * p.social * 0.018; ay += dy * p.social * 0.018; }
+      else if (state === 'cruise' && sameSpecies(other, actor) && distance < NEIGHBOR_RADIUS) { ax += dx * p.social * 0.018; ay += dy * p.social * 0.018; }
     }
     if (actor.x < 0.15) ax += (0.15 - actor.x) * 1.4;
     if (actor.x > 0.85) ax -= (actor.x - 0.85) * 1.4;

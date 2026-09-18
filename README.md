@@ -1,6 +1,6 @@
 # Fishtank Sim
 
-A living aquarium and genetics sandbox where ordinary koi can become the ancestors of extraordinary lineages.
+A living aquarium and genetics sandbox where koi and axolotls can develop extraordinary, heritable lineages in the same tanks while keeping separate species genetics.
 
 **Current version: 0.1 — working research lab and project design handoff.** The long-term game is specified in the documents below. The current app proves a bounded core loop; it is not yet the full care simulation or an online marketplace.
 
@@ -26,11 +26,11 @@ The npm cache is configured inside this checkout for compatibility with the work
 
 ## Try the lab
 
-1. Select a swimming fish or its collection card. Rename it and inspect its 48- or 60-locus genome, including named Genome 2 appearance alleles.
-2. Choose an adult mother and father that share a tank, pick a nursery, and start a courtship. It reserves the nursery places, pauses with a reason if anything is wrong, and lays tracked eggs when it completes. **Instant lab cross** still lays twenty eggs at once as a research shortcut.
+1. Select a swimming animal or its collection card. Koi expose their historic v1–v3 genome; axolotls expose an independent 66-locus Genome v1 covering body/head/limbs/digits/tail/gills, pigment cells, colors, patterns, life history and behavior.
+2. Choose an adult mother and father of the same species that share a tank, pick a nursery, and start a courtship. It reserves the nursery places, pauses with a reason if anything is wrong, and lays tracked eggs when it completes. **Instant lab cross** still lays twenty eggs at once as a research shortcut. Koi and axolotls can live together but cannot interbreed.
 3. Select a child, then open Family. Follow ancestors up to six generations back or descendants forward, find any record by name or ID, and use Back to retrace your path.
-4. Review the planner's exact single-locus odds and 256-sample adult-potential ranges. Filter the collection to one clutch, move the rest to another aquarium in one reviewed batch, and select the best as the next parents. **Research → Two generations** runs the whole cycle in a seeded world.
-5. Open **NPC shop** for fixed founder, visible-variant and documented-carrier listings; choose a receiving aquarium for outcrossing stock. Sell surplus to the buyer with the best offer, or rehome it for free; either way the fish’s family record is preserved.
+4. For koi, review exact single-locus odds and 256-sample adult-potential ranges. For axolotls, the planner uses the independent axolotl linkage/mutation model to preview morphology, pigment morphs and life/behavior ranges. Filter the collection to one clutch, move the rest to another aquarium in one reviewed batch, and select the next parents.
+5. Open **NPC shop** for fixed koi founder/variant/carrier listings or introduce an independent axolotl founder; choose a receiving aquarium for outcrossing stock. Sell surplus to the buyer with the best offer, or rehome it for free; either way the animal’s family record is preserved.
 6. Open **Saves** to export, preview a v1/v2 import, or restore one of two backups. The app automatically reloads its validated IndexedDB save and preserves the original v1 localStorage data.
 
 Offspring start as eggs. They hatch after 3 game days and grow toward their genetic adult length, faster in well-kept water; one game day passes per real minute. The tank and **Now** portraits show each fish's current stage (hatchlings have big heads and eyes, and pigment reveals over about ten game days); **Adult potential** previews its genetics. Each tank has a feeder, filter, aeration and thermostat under **Care controls**, with previews and costs; warnings name what to fix. Poor care lowers condition and slows growth, and fish never die. Motion speed does not change growth. Five NPC buyers pay for different traits within a limited daily demand, and every offer explains its price; the credits in the header open **Buyers and ledger**. Founders and bought stock never resell for more than they cost, and any hatched fish can be rehomed for free. Lab breeding and food are still free. **Habitat & expansion** offers paid extra tanks, capacity expansions and placed plants/rocks with saved position, size and rotation. Two starter tanks are included.
@@ -60,7 +60,7 @@ New contributors and agents should start with [AGENTS.md](AGENTS.md), then [impl
 
 ## Technical foundation
 
-React + TypeScript + Vite. Pure seeded genetics and pedigree core, with genome v2 color and ornament chromosomes. Procedural Canvas fish shared between live tank and portraits, including body and eye colors, fine spots, tiger stripes, marbling, calico, rosettes, scale types, shimmer and tail/dorsal patterns. A versioned Web Worker runs fixed-step visual motion. The persistent clock integrates visible, background and protected offline time, including a one-compartment water model and care (feeding, equipment, thermostat) per tank; life stages, accumulated growth and condition are active. Versioned command replay, transactional IndexedDB backups and a single-writer browser lock protect local worlds.
+React + TypeScript + Vite. Pure seeded genetics and pedigree core. Koi retain the historic v1–v3 genome/appearance pipeline; axolotls use a separate 66-locus Genome v1 and standalone anatomy/Canvas renderer with four limbs, variable digits, finned tail and feathery external gills. Both species share tanks and the deterministic motion/care world, but inheritance and breeding remain species-local. A versioned Web Worker runs fixed-step visual motion. The persistent clock integrates visible, background and protected offline time, including a one-compartment water model and care (feeding, equipment, thermostat) per tank; life stages, accumulated growth and condition are active. Versioned command replay, transactional IndexedDB backups and a single-writer browser lock protect local worlds.
 
 M2 (FS-201–206) is complete. Five human observers scored 54/60 in the M1 resemblance study (FS-111), meeting M1's human-resemblance gate. PixiJS and an authoritative database-backed market remain planned. Care controls and juvenile appearance reveal are implemented. See the [M2 runtime report](docs/research/M2-RUNTIME-AND-RECOVERY.md) and [human resemblance results](docs/research/FS-111-HUMAN-RESEMBLANCE.md).
 

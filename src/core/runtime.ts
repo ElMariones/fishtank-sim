@@ -117,12 +117,18 @@ export function decodeRuntime(raw: string): Runtime {
   replayed = advanceRuntime(replayed, parsed.tick);
   const staleNames = world.naming !== NAMING_MODEL;
   const comparable = (candidate: World) => {
-    if (sourceVersion < 7) return JSON.stringify(recordsOnly(candidate));
+    // World v13 adds species identity. Every older world was koi-only, so this field carries no historical evidence and
+    // is omitted only while proving an old snapshot against its replay. Current v13 snapshots compare it normally.
+    if (sourceVersion < 7) {
+      const records = recordsOnly(candidate);
+      return JSON.stringify(sourceVersion < 13 ? withoutSpecies(records) : records);
+    }
     const named = staleNames ? withoutNamesWorld(candidate) : candidate;
     // Decorations are recorded from world v8; the koi rescue (world v9) starts at its default in every older snapshot.
     // Mutation origins are recorded from world v11 (FS-603); older snapshots rebuild them, so they are compared without.
     const decorated = sourceVersion < 8 ? withoutDecorations(named) : named;
-    return JSON.stringify(sourceVersion < 11 ? withoutOrigins(decorated) : decorated);
+    const originated = sourceVersion < 11 ? withoutOrigins(decorated) : decorated;
+    return JSON.stringify(sourceVersion < 13 ? withoutSpecies(originated) : originated);
   };
   if (comparable(decodeSave(JSON.stringify(replayed.world))) !== comparable(world)) throw mismatch;
   const simulation = parsed.simulation ?? { version: 1 as const, tankTicks: Object.fromEntries(world.tanks.map(tank => [tank.id, parsed.tick])) };
@@ -165,6 +171,14 @@ function withoutNamesWorld(world: World) {
 
 function withoutOrigins<T extends { fish: readonly object[] }>(world: T) {
   return { ...world, fish: world.fish.map(member => ({ ...member, origins: null })) };
+}
+
+function withoutSpecies<T extends { fish: readonly object[]; clutches: readonly object[] }>(world: T) {
+  return {
+    ...world,
+    fish: world.fish.map(member => { const { species: _species, ...rest } = member as { species?: unknown }; return rest; }),
+    clutches: world.clutches.map(entry => { const { species: _species, ...rest } = entry as { species?: unknown }; return rest; }),
+  };
 }
 
 function withoutDecorations(world: ReturnType<typeof withoutNamesWorld> | World) {

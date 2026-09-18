@@ -44,6 +44,46 @@ export function stagePhenotype(p: Phenotype, maturity: Maturity): Phenotype {
   const b = clamp(maturity.body), g = clamp(maturity.pigment), h = HATCHLING_PROPORTIONS;
   if (b === 1 && g === 1) return p;
   const toward = (ratio: number, adult: number) => adult * (ratio + (1 - ratio) * b);
+  if (p.species === 'axolotl' && p.axolotl) {
+    const ax = p.axolotl, m = ax.morphology, pigment = ax.pigmentation;
+    // Axolotl juveniles keep the species' recognizable broad head/external gills while their tail and limbs approach
+    // adult proportions. Pigment and pattern reveal independently; the genome itself is never modified.
+    const staged = {
+      ...ax,
+      morphology: {
+        ...m,
+        body: { ...m.body, depth: toward(0.82, m.body.depth), mass: toward(0.86, m.body.mass) },
+        head: {
+          ...m.head,
+          width: toward(1.18, m.head.width), length: toward(1.14, m.head.length),
+          neckWidth: toward(0.9, m.head.neckWidth),
+        },
+        limbs: {
+          ...m.limbs,
+          foreLength: toward(0.58, m.limbs.foreLength), hindLength: toward(0.52, m.limbs.hindLength),
+          thickness: toward(0.72, m.limbs.thickness), digitLength: toward(0.55, m.limbs.digitLength),
+        },
+        tail: { ...m.tail, length: toward(0.68, m.tail.length), height: toward(0.84, m.tail.height), finHeight: toward(0.74, m.tail.finHeight) },
+        gills: {
+          ...m.gills,
+          stalkLength: toward(1.16, m.gills.stalkLength), filamentLength: toward(1.12, m.gills.filamentLength),
+          saturation: m.gills.saturation * (0.45 + 0.55 * g),
+        },
+        eyes: { ...m.eyes, size: toward(1.28, m.eyes.size) },
+      },
+      pigmentation: {
+        ...pigment,
+        melanin: pigment.melanin * (0.35 + 0.65 * g),
+        xanthophore: pigment.xanthophore * (0.35 + 0.65 * g),
+        iridophore: pigment.iridophore * g,
+        iridescence: pigment.iridescence * g,
+        translucency: Math.max(pigment.translucency, 0.52) + (pigment.translucency - Math.max(pigment.translucency, 0.52)) * g,
+        skinLuster: pigment.skinLuster * (0.55 + 0.45 * g),
+      },
+      pattern: { ...ax.pattern, density: ax.pattern.density * g, contrast: ax.pattern.contrast * g },
+    };
+    return { ...p, axolotl: staged };
+  }
   const reveal = <T extends string>(motifs: readonly Motif<T>[]): Motif<T>[] => g === 0 ? [] : motifs.map(motif => ({ ...motif, strength: motif.strength * g }));
   const pale = Math.max(p.translucency, HATCHLING_TRANSLUCENCY), a = p.appearance;
   return {

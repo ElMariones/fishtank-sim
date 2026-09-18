@@ -1,4 +1,5 @@
 import { anatomyFor, containsPoint } from '../core/anatomy';
+import { axolotlAnatomyFor, axolotlContainsPoint, axolotlShapeFromPhenotype } from '../core/axolotlAnatomy';
 import type { Actor } from '../simulation/motion';
 
 /**
@@ -16,10 +17,12 @@ export const facingFor = (actor: Pick<Actor, 'vx'>) => (actor.vx > 0 ? -1 : 1);
 
 export function fishPose(actor: Actor, width: number, height: number, growth = 1, facing = facingFor(actor)): FishPose {
   const size = Math.min(width / 10, 79) * (0.8 + actor.phenotype.adultLengthCm / 200) * growth;
+  const displayLength = actor.phenotype.species === 'axolotl' && actor.phenotype.axolotl
+    ? axolotlShapeFromPhenotype(actor.phenotype.axolotl).length : actor.phenotype.length;
   return {
     x: actor.x * width, y: actor.y * height, flip: facing,
     angle: Math.atan2(actor.vy, Math.max(Math.abs(actor.vx), 0.01)) * (facing < 0 ? -0.3 : 0.3),
-    size, bodyLength: size * actor.phenotype.length,
+    size, bodyLength: size * displayLength,
   };
 }
 
@@ -36,7 +39,11 @@ export function pickActor(actors: readonly Actor[], width: number, height: numbe
   growth: (actor: Actor) => number = () => 1, facing: (actor: Actor) => number = facingFor): string | null {
   for (let i = actors.length - 1; i >= 0; i--) {
     const pose = fishPose(actors[i], width, height, growth(actors[i]), facing(actors[i])), local = toBodySpace(pose, px, py);
-    if (containsPoint(anatomyFor(actors[i].phenotype), local.x, local.y, slopPixels / pose.bodyLength)) return actors[i].id;
+    const phenotype = actors[i].phenotype;
+    const hit = phenotype.species === 'axolotl' && phenotype.axolotl
+      ? axolotlContainsPoint(axolotlAnatomyFor(phenotype.axolotl), local, slopPixels / pose.bodyLength)
+      : containsPoint(anatomyFor(phenotype), local.x, local.y, slopPixels / pose.bodyLength);
+    if (hit) return actors[i].id;
   }
   return null;
 }

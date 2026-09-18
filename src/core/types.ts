@@ -1,10 +1,19 @@
 import type { Decoration, TankStyle } from './tankManagement';
 import type { AppearanceLocus } from './catalog';
 import type { VisualDescriptorKey } from './descriptors';
+import type { AxolotlGenome, AxolotlPhenotype } from './axolotlGenetics';
+import type { AxolotlLocus } from './axolotlCatalog';
 
 /** Genome v1 holds 48 loci per copy; genome v2 appends the 12 Color and Ornament loci (60); genome v3 the 6 Structure loci (66). */
 export type Genome = { version: 1 | 2 | 3; maternal: number[]; paternal: number[] };
-export type Mutation = { locus: number; copy: 'maternal' | 'paternal'; from: number; to: number };
+/** Species is explicit on persistent animals/clutches; koi keeps its historic genome byte shape while axolotls own a separate registry. */
+export type Species = 'koi' | 'axolotl';
+export type CreatureGenome = Genome | AxolotlGenome;
+export type Mutation = {
+  locus: number; copy: 'maternal' | 'paternal'; from: number; to: number;
+  /** World v13 axolotl mutations persist their species-local stable locus ID; koi mutations intentionally omit it. */
+  locusId?: AxolotlLocus;
+};
 /** A carried allele descended from a recorded mutation (FS-603): `id` names the fish, locus and copy where it arose. */
 export type AlleleOrigin = { locus: number; copy: 'maternal' | 'paternal'; id: string };
 /** Life model v1 state (FS-302). Age, size and condition accumulate on game-day boundaries; genetics only set the potential. */
@@ -20,14 +29,14 @@ export type LifeState = {
 /** Breeding model v1 state per fish (FS-401): whole game days until it can court again after spawning. */
 export type BreedingState = { model: 1; cooldownDays: number };
 export type Fish = {
-  id: string; name: string; sex: 'F' | 'M'; genome: Genome; birthSeed: number;
+  id: string; name: string; sex: 'F' | 'M'; species: Species; genome: CreatureGenome; birthSeed: number;
   generation: number; parents: [string, string] | null; bornAt: string;
   tankId: string; status: 'living' | 'sold' | 'rehomed'; mutations: Mutation[]; life: LifeState; breeding: BreedingState;
   /** Mutation origins this fish carries, by locus and copy (world v11). */
   origins: AlleleOrigin[];
 };
 /** Why a pairing is refused or a courtship is paused (FS-401). */
-export type BlockerCode = 'role' | 'unavailable' | 'immature' | 'condition' | 'cooldown' | 'busy' | 'apart' | 'water' | 'nursery-missing' | 'nursery-full' | 'nursery-busy' | 'limit';
+export type BlockerCode = 'role' | 'species' | 'unavailable' | 'immature' | 'condition' | 'cooldown' | 'busy' | 'apart' | 'water' | 'nursery-missing' | 'nursery-full' | 'nursery-busy' | 'limit';
 export type ClutchStage = 'courting' | 'incubating' | 'hatched' | 'cancelled';
 /**
  * Clutch record (FS-402). While courting it reserves `size` places in the nursery. When courtship completes those places
@@ -35,6 +44,8 @@ export type ClutchStage = 'courting' | 'incubating' | 'hatched' | 'cancelled';
  */
 export type Clutch = {
   id: string; motherId: string; fatherId: string;
+  /** Species is frozen when courtship starts so delayed spawning and replay cannot reinterpret the cross. */
+  species: Species;
   /** Tank where the pair started courting. */
   tankId: string;
   /** Tank that receives the eggs and holds the reservation until spawning. */
@@ -123,11 +134,11 @@ export type ReliefState = { model: 1; claims: number; cooldownDays: number };
  * clutches (FS-401/402), v6 NPC demand, a credit ledger and rehomed fish (FS-501), v7 persistent shop stock (FS-502),
  * v8 persisted decoration transforms (FS-503). World v9 adds the koi rescue (FS-504). World v10 (FS-601) accepts genome v3
  * records and shop model 2, which delivers genome v3 stock. World v11 (FS-603) adds mutation origins to every fish;
- * world v12 (FS-604) adds the bloodline registry.
+ * world v12 (FS-604) adds the bloodline registry. World v13 adds explicit species identity and the independent axolotl genome.
  * Older saves migrate with defaults.
  */
 export type World = {
-  version: 12; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
+  version: 13; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
   market: MarketState; ledger: Ledger; shop: ShopState; naming: NamingModel; relief: ReliefState;
   /** Registered bloodlines and the next registry number (world v12). */
   bloodlines: Bloodline[]; nextBloodlineId: number;
@@ -169,6 +180,8 @@ export type BarbelCount = 0 | 2 | 4 | 6;
  */
 export type Structure = { tail: TailTopology; lobeBalance: number; spread: number; dorsal: DorsalForm; barbels: BarbelCount; rays: number };
 export type Phenotype = {
+  /** Absent means the historic koi phenotype. Axolotls carry their independent expressed phenotype alongside shared motion/life projections. */
+  species?: 'axolotl'; axolotl?: AxolotlPhenotype;
   length: number; depth: number; taper: number; curve: number; head: number; snout: number;
   eye: number; eyePosition: number; iris: number; pupil: number; mouth: number; barbel: number;
   tail: number; spread: number; fork: number; dorsal: number; pectoral: number; finPigment: number;

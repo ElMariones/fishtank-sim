@@ -28,7 +28,7 @@ export const COURTSHIP_RATE_LIMITS = [0.25, 0.75] as const;
 export const SPAWNING_TEMPERATURE = [18, 28] as const;
 /** Real milliseconds per game day at 1×, used only to date eggs from the pairing timestamp. */
 export const MS_PER_GAME_DAY = 60_000;
-export const BLOCKER_CODES = ['role', 'unavailable', 'immature', 'condition', 'cooldown', 'busy', 'apart', 'water', 'nursery-missing', 'nursery-full', 'nursery-busy', 'limit'] as const satisfies readonly BlockerCode[];
+export const BLOCKER_CODES = ['role', 'species', 'unavailable', 'immature', 'condition', 'cooldown', 'busy', 'apart', 'water', 'nursery-missing', 'nursery-full', 'nursery-busy', 'limit'] as const satisfies readonly BlockerCode[];
 export const CLUTCH_STAGES = ['courting', 'incubating', 'hatched', 'cancelled'] as const satisfies readonly ClutchStage[];
 
 export const idleBreeding = (): BreedingState => ({ model: 1, cooldownDays: 0 });
@@ -70,6 +70,10 @@ export function pairingBlockers(world: World, request: PairRequest, limits: Popu
   }
   if (request.motherId === request.fatherId) blockers.push({ code: 'role', message: 'A fish cannot pair with itself.', fix: 'Choose a female and a male.' });
   if (blockers.length || !mother || !father) return blockers;
+  if (mother.species !== father.species) return [{
+    code: 'species', message: `${mother.name} is ${mother.species === 'koi' ? 'a koi' : 'an axolotl'} and ${father.name} is ${father.species === 'koi' ? 'a koi' : 'an axolotl'}; only members of the same species can breed.`,
+    fix: `Choose a ${mother.species === 'koi' ? 'koi' : 'axolotl'} partner.`,
+  }];
 
   for (const parent of [mother, father]) {
     const potential = metabolicPotential(parent.genome), stage = lifeStage(parent.life, potential);
@@ -127,6 +131,7 @@ export function courtshipBlockers(world: World, pair: Pick<Clutch, 'motherId' | 
   const byId = new Map(world.fish.map(member => [member.id, member])), mother = byId.get(pair.motherId), father = byId.get(pair.fatherId);
   if (!mother || !father || mother.status !== 'living' || father.status !== 'living')
     return [{ code: 'unavailable', message: 'A parent is no longer a living resident.', fix: 'Cancel this courtship.' }];
+  if (mother.species !== father.species) return [{ code: 'species', message: 'The recorded parents are different species.', fix: 'Cancel this invalid courtship.' }];
   const blockers: Blocker[] = [];
   if (mother.tankId !== father.tankId) blockers.push({
     code: 'apart', message: `${mother.name} and ${father.name} are in different tanks.`, fix: 'Move them back into one tank.',
@@ -188,7 +193,7 @@ export function advanceClutches(world: World): World {
       const birthSeed = hash(`${next.seed}:spawn:${clutch.id}:${nextId}`);
       const trace = emptyTrace(), result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, clutch.genomeVersion, trace), sex: Fish['sex'] = hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M';
       eggs.push({
-        id: fishId(nextId), name: newFishName(`${next.seed}:fish:${nextId}`, { sex, genome: result.genome }, taken), sex, ...result, birthSeed,
+        id: fishId(nextId), name: newFishName(`${next.seed}:fish:${nextId}`, { sex, genome: result.genome }, taken), sex, species: clutch.species, ...result, birthSeed,
         generation: Math.max(mother.generation, father.generation) + 1, parents: [mother.id, father.id], bornAt, tankId: nursery.id,
         status: 'living', life: eggLife(), breeding: idleBreeding(), origins: childOrigins(fishId(nextId), mother, father, trace, result.mutations),
       });

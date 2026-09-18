@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useRef } from 'react';
 import { portraitFrame, type Extent } from '../core/anatomy';
+import { axolotlPortraitFrame } from '../core/axolotlAnatomy';
 import { INCUBATION_DAYS, isEgg, lifeStage } from '../core/development';
 import { express, metabolicPotential } from '../core/genetics';
 import type { Fish, Genome, Phenotype } from '../core/types';
@@ -75,7 +76,9 @@ export function PhenotypePortrait({ phenotype, seed, label, large = false, share
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
     const sharedExtent = sharedWidth && sharedHeight ? { width: sharedWidth, height: sharedHeight } : undefined;
     const draw = (target: CanvasRenderingContext2D) => {
-      const frame = portraitFrame(phenotype, w, h, sharedExtent);
+      const frame = phenotype.species === 'axolotl' && phenotype.axolotl
+        ? axolotlPortraitFrame(phenotype.axolotl, w, h)
+        : portraitFrame(phenotype, w, h, sharedExtent);
       target.setTransform(1, 0, 0, 1, 0, 0); target.clearRect(0, 0, w, h); target.translate(frame.originX, frame.originY);
       drawFish(target, phenotype, seed, frame.size, 0);
       target.setTransform(1, 0, 0, 1, 0, 0);

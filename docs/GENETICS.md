@@ -1,6 +1,16 @@
 # Genetics and development specification
 
-**Baseline:** lab genome v1, v2 (FS-113) and v3 (FS-601), registry model 1, development v5, anatomy v2, renderer v6. **Scope:** synthetic game genetics. Gene names describe fictional controls, not identified koi genes. Source notes are preserved in [source/original-concept.txt](source/original-concept.txt).
+**Baseline:** koi genome v1, v2 (FS-113) and v3 (FS-601), plus independent axolotl Genome v1 (18 September 2026); registry model 1, development v5 and species-dispatched anatomy/rendering. **Scope:** synthetic game genetics. Locus names describe fictional controls unless explicitly called out as biological phenotype anchors. Source notes are preserved in [source/original-concept.txt](source/original-concept.txt).
+
+### Independent axolotl genome (implemented)
+
+Axolotls are not represented as koi with different art. `AxolotlGenome` is a separate discriminated genome with **66 ordered loci on 11 synthetic chromosomes**, six allele states per locus, its own founder distributions, map positions, linkage/crossover, mutation multipliers/targets, validation, fingerprint and phenotype expression. The stable locus IDs are `axo_*`; no koi locus ID or koi registry entry is reused. World v13 stores species explicitly and rejects a species/genome mismatch.
+
+The axolotl genome covers body length/width/depth/mass/taper/flex; head width/length, neck, snout, mouth and jaw; separate fore/hind limb lengths, thickness, digit length/spread/count; tail length/height/taper/fin height/reach/wave; external gill stalk length, branch/filament structure, angle, saturation and oxygen efficiency; eye geometry; skin texture/luster; melanophore/xanthophore/iridophore expression; translucency/iridescence/color; six pattern modes; growth, maturity, longevity, metabolism, fertility, oxygen demand and regeneration; activity, boldness, sociability, curiosity, feeding drive, cruise speed and turning.
+
+Leucistic-like, albino-like and melanoid-like outcomes use recessive-switch game loci as recognizable phenotype anchors; axanthic-like and other pigment outcomes also exist. Decorative colors, patterns and morphology are deliberately synthetic/polygenic game genetics and are not claims about identified real axolotl genes. The standalone renderer consumes the expressed axolotl phenotype directly.
+
+Axolotl meiosis is species-local and deterministic. Each chromosome starts on one parental homolog, switches according to the synthetic map distance, then mutates the transmitted allele using the axolotl locus definition. Mutation records persist both numeric locus index and stable `axo_*` locus ID. Axolotl × koi inheritance is invalid at the domain boundary.
 
 ## 1. Representation and actual combinatorics
 

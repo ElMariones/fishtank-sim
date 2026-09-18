@@ -1,4 +1,6 @@
 import { GENOME_LOCI } from './catalog';
+import { AXOLOTL_LOCUS_REGISTRY, axolotlAlleleLabel } from './axolotlCatalog';
+import { isAxolotlGenome } from './axolotlGenetics';
 import { alleleLabel, LOCUS_REGISTRY } from './registry';
 import type { AlleleOrigin, Fish, Mutation, World } from './types';
 
@@ -56,7 +58,7 @@ export function reconstructOrigins(fish: readonly Omit<Fish, 'origins'>[]): { fi
     if (member.parents) {
       for (const [copy, parentId] of [['maternal', member.parents[0]], ['paternal', member.parents[1]]] as const) {
         const parent = done.get(parentId);
-        if (!parent) continue;
+        if (!parent || parent.species !== member.species) continue;
         for (const origin of parent.origins) {
           if (own.has(`${origin.locus}${copy}`) || origin.locus >= member.genome.maternal.length) continue;
           const other = origin.copy === 'maternal' ? 'paternal' : 'maternal';
@@ -79,6 +81,28 @@ export type OriginSummary = {
 };
 export type MutationNotebook = { living: number; records: number; origins: OriginSummary[] };
 
+function originLabels(first: Fish, mutation: Mutation, locus: number): Pick<OriginSummary, 'locusId' | 'locusLabel' | 'change' | 'structural'> {
+  if (isAxolotlGenome(first.genome)) {
+    const entry = AXOLOTL_LOCUS_REGISTRY[locus];
+    if (!entry) return { locusId: `axo-locus-${locus}`, locusLabel: `Axolotl locus ${locus}`, change: `A${mutation.from} → A${mutation.to}`, structural: false };
+    const from = axolotlAlleleLabel(entry.id, mutation.from), to = axolotlAlleleLabel(entry.id, mutation.to);
+    return {
+      locusId: entry.id,
+      locusLabel: entry.label,
+      change: `A${mutation.from} → A${mutation.to} (${from} → ${to})`,
+      structural: false,
+    };
+  }
+  const entry = LOCUS_REGISTRY[locus];
+  const named = entry.index >= 48 ? ` (${alleleLabel(entry.id, mutation.from)} → ${alleleLabel(entry.id, mutation.to)})` : '';
+  return {
+    locusId: entry.id,
+    locusLabel: entry.id.replaceAll('_', ' '),
+    change: `A${mutation.from} → A${mutation.to}${named}`,
+    structural: entry.sinceGenome === 3 && entry.mutationRate < 0.003,
+  };
+}
+
 /** Save-local carrier counts for every origin, in one pass over the records; living carriers first, then oldest. */
 export function mutationNotebook(world: Pick<World, 'fish'>): MutationNotebook {
   const byId = new Map(world.fish.map(member => [member.id, member]));
@@ -93,11 +117,11 @@ export function mutationNotebook(world: Pick<World, 'fish'>): MutationNotebook {
       let summary = summaries.get(id);
       if (!summary) {
         const parsed = parseOriginId(id)!, first = byId.get(parsed.fishId), mutation = first?.mutations.find(m => m.locus === parsed.locus && m.copy === parsed.copy);
-        const entry = LOCUS_REGISTRY[parsed.locus], from = mutation?.from ?? 0, to = mutation?.to ?? 0;
-        const named = entry.index >= 48 ? ` (${alleleLabel(entry.id, from)} → ${alleleLabel(entry.id, to)})` : '';
+        if (!first || !mutation) continue;
+        const labels = originLabels(first, mutation, parsed.locus), from = mutation.from, to = mutation.to;
         summary = {
-          id, locus: parsed.locus, locusId: entry.id, locusLabel: entry.id.replaceAll('_', ' '), from, to, change: `A${from} → A${to}${named}`,
-          firstCarrierId: parsed.fishId, firstCarrierName: first?.name ?? parsed.fishId, generation: first?.generation ?? 0, structural: entry.sinceGenome === 3 && entry.mutationRate < 0.003,
+          id, locus: parsed.locus, ...labels, from, to,
+          firstCarrierId: parsed.fishId, firstCarrierName: first.name, generation: first.generation,
           living: 0, homozygous: 0, records: 0,
         };
         summaries.set(id, summary);
@@ -119,6 +143,7 @@ export function originProblem(member: Fish, byId: ReadonlyMap<string, Fish>): st
     positions.add(key);
     const first = byId.get(parsed.fishId), mutation = first?.mutations.find(m => m.locus === parsed.locus && m.copy === parsed.copy);
     if (!first || !mutation || parsed.locus !== origin.locus) return 'A mutation origin names no recorded mutation.';
+    if (first.species !== member.species || isAxolotlGenome(first.genome) !== isAxolotlGenome(member.genome)) return 'A mutation origin cannot cross species.';
     if (member.genome[origin.copy][origin.locus] !== mutation.to) return 'A carried mutation origin does not match the allele.';
     if (first.id === member.id ? parsed.copy !== origin.copy : !member.parents) return 'A founder cannot inherit a mutation origin.';
   }

@@ -1,4 +1,5 @@
 import { describeAppearance } from './appearance';
+import { expressAxolotl, isAxolotlGenome } from './axolotlGenetics';
 import { GOAL_BY_KEY } from './breedingGoals';
 import { isEgg, lifeStage, type LifeStage } from './development';
 import { express, metabolicPotential } from './genetics';
@@ -62,6 +63,27 @@ const percent = (value: number) => `${Math.round(value * 100)}%`;
 export function saleTraits(fish: Fish, cache?: TraitCache): SaleTraits {
   const cached = cache?.get(fish.id);
   if (cached) return cached;
+  if (isAxolotlGenome(fish.genome)) {
+    const p = expressAxolotl(fish.genome);
+    const morphRarity: Record<typeof p.pigmentation.morph, 0 | 1 | 2 | 3> = {
+      wild: 0,
+      'hypomelanistic': 1,
+      'xanthic-like': 1,
+      'axanthic-like': 2,
+      'leucistic-like': 3,
+      'albino-like': 3,
+      'melanoid-like': 3,
+    };
+    const traits: SaleTraits = {
+      tail: p.morphology.tail.length,
+      adultLengthCm: p.adultLengthCm,
+      longevityYears: p.longevity,
+      metabolism: p.metabolism,
+      rarity: morphRarity[p.pigmentation.morph],
+    };
+    cache?.set(fish.id, traits);
+    return traits;
+  }
   const potential = metabolicPotential(fish.genome);
   const rarity = describeAppearance(fish.genome).reduce<0 | 1 | 2 | 3>((best, row) => row.rarity ? Math.max(best, RARITY_RANK[row.rarity]) as 0 | 1 | 2 | 3 : best, 0);
   const traits: SaleTraits = { tail: GOAL_BY_KEY.get('tail')!.value(express(fish.genome)), adultLengthCm: potential.adultLengthCm, longevityYears: potential.longevityYears, metabolism: potential.metabolism, rarity };

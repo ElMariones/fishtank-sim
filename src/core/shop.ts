@@ -85,7 +85,7 @@ export function refreshShop(world: World, day: number): World {
 /** The fish a listing would become, for portraits and resale offers. Its ID is the listing ID. */
 export function previewFish(listing: Listing): Fish {
   return {
-    id: listing.id, name: listing.name, sex: listing.sex, genome: listing.genome, birthSeed: listing.birthSeed, generation: 0, parents: null,
+    id: listing.id, name: listing.name, sex: listing.sex, species: 'koi', genome: listing.genome, birthSeed: listing.birthSeed, generation: 0, parents: null,
     bornAt: '2026-01-01T00:00:00.000Z', tankId: '', status: 'living', mutations: [], life: adultLife(listing.genome), breeding: idleBreeding(), origins: [],
   };
 }
