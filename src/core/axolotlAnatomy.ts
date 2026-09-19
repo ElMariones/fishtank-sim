@@ -7,8 +7,8 @@
  * +y is ventral (canvas down). All public numeric shape fields are sanitized before geometry is constructed.
  */
 
-export const AXOLOTL_ANATOMY_VERSION = 1 as const;
-export const AXOLOTL_TAIL_WAVE = 0.055;
+export const AXOLOTL_ANATOMY_VERSION = 2 as const;
+export const AXOLOTL_TAIL_WAVE = 0.085;
 
 export type AxolotlVec = { x: number; y: number };
 export type AxolotlCurve = { start: AxolotlVec; control: AxolotlVec; end: AxolotlVec };
@@ -413,22 +413,22 @@ function limb(kind: 'fore' | 'hind', side: 'near' | 'far', root: AxolotlVec, p: 
   const spreadChannel = hind ? p.hindlimbSpread : p.forelimbSpread;
   const digitLengthChannel = hind ? p.hindDigitLength : p.foreDigitLength;
   const digitCount = hind ? p.hindDigitCount : p.foreDigitCount;
-  const length = 0.14 + lengthChannel * 0.2 + (hind ? 0.025 : 0);
-  const splay = (0.17 + spreadChannel * 0.29) * (near ? 1 : 0.78);
+  const length = 0.10 + lengthChannel * 0.14 + (hind ? 0.025 : 0);
+  const splay = (0.055 + spreadChannel * 0.075) * (near ? 1 : 0.85);
   const direction = hind ? 0.82 : 1.95;
   const joint = {
-    x: root.x + Math.cos(direction) * length * (hind ? 0.58 : 0.52),
+    x: root.x + (hind ? 0.55 : 0.35) * length + (near ? 0 : 0.065),
     y: root.y + splay + (near ? 0.03 : -0.015),
   };
   const hand = {
-    x: joint.x + Math.cos(direction + (hind ? -0.28 : 0.2)) * length * 0.64,
-    y: joint.y + length * (0.42 + spreadChannel * 0.18),
+    x: joint.x + Math.cos(direction + (hind ? 0.2 : 0.4)) * length * 0.8,
+    y: joint.y + length * 0.40,
   };
   const digit = 0.032 + digitLengthChannel * 0.06;
   return {
     kind, side, root, joint, hand,
     toes: toesAt(hand, hind ? 0.5 : 2.05, digitCount, digit, p.digitSpread),
-    width: 0.023 + thicknessChannel * 0.038 + (near ? 0.008 : 0),
+    width: 0.018 + thicknessChannel * 0.030 + (near ? 0.006 : 0),
   };
 }
 
@@ -436,28 +436,30 @@ function gill(side: 'near' | 'far', index: number, count: number, anchor: Axolot
   const far = side === 'far';
   const u = count <= 1 ? 0.5 : index / (count - 1);
   const halfFan = 0.55 + p.gillSpread * 0.45;
-  const angle = -1.3 + (u - 0.5) * 2 * halfFan + (far ? 0.1 : -0.04);
-  const length = (0.20 + p.gillLength * 0.24) * (far ? 0.88 : 1);
+  const angle = -1.05 + (u - 0.5) * 2 * halfFan + (far ? -0.20 : 0.04);
+  const length = (0.16 + p.gillLength * 0.24) * (far ? 0.90 : 1) * (1 - u * 0.12);
   const start = { x: anchor.x + (far ? 0.018 : 0), y: anchor.y + (u - 0.5) * 0.052 + (far ? 0.025 : 0) };
   const end = { x: start.x + Math.cos(angle) * length, y: start.y + Math.sin(angle) * length };
-  const control = { x: lerp(start.x, end.x, 0.55) - Math.sin(angle) * 0.025, y: lerp(start.y, end.y, 0.55) + Math.cos(angle) * 0.025 };
+  const control = { x: lerp(start.x, end.x, 0.55) - Math.sin(angle) * 0.045, y: lerp(start.y, end.y, 0.55) + Math.cos(angle) * 0.045 };
   const stalk = { start, control, end };
   const frondCount = p.gillBranchCount;
   const frondScale = 0.027 + p.gillFilamentLength * 0.045;
   const fronds: AxolotlCurve[] = [];
   for (let i = 1; i <= frondCount; i++) {
     const t = 0.16 + i / (frondCount + 1) * 0.78;
-    const center = point(start, end, t);
-    const tangent = Math.atan2(end.y - start.y, end.x - start.x);
-    const taper = 1 - t * 0.38;
+    const center = { x: (1-t)**2*start.x + 2*(1-t)*t*control.x + t*t*end.x, y: (1-t)**2*start.y + 2*(1-t)*t*control.y + t*t*end.y };
+    const tangent = Math.atan2((1-t)*(control.y-start.y)+t*(end.y-control.y), (1-t)*(control.x-start.x)+t*(end.x-control.x));
+    const taper = Math.sin(t * Math.PI) * 0.75 + 0.22;
     for (const sign of [-1, 1]) {
-      const a = tangent + sign * (Math.PI / 2) + sign * 0.12;
+      const a = tangent + sign * 1.04;
       const fl = frondScale * taper * (far ? 0.85 : 1);
       const tip = { x: center.x + Math.cos(a) * fl, y: center.y + Math.sin(a) * fl };
-      fronds.push({ start: center, control: point(center, tip, 0.58), end: tip });
+      const bend = point(center, tip, 0.58);
+      bend.x -= Math.cos(tangent) * fl * 0.28; bend.y -= Math.sin(tangent) * fl * 0.28;
+      fronds.push({ start: center, control: bend, end: tip });
     }
   }
-  return { side, index, stalk, fronds, width: 0.017 + p.gillThickness * 0.021 };
+  return { side, index, stalk, fronds, width: 0.010 + p.gillThickness * 0.017 };
 }
 
 function allAnatomyPoints(a: Omit<AxolotlAnatomy, 'bounds'>): AxolotlVec[] {
@@ -475,7 +477,7 @@ function allAnatomyPoints(a: Omit<AxolotlAnatomy, 'bounds'>): AxolotlVec[] {
 export function buildAxolotlAnatomy(input: AxolotlShapeInput): AxolotlAnatomy {
   const p = shapeFrom(input);
   const snoutX = -0.48 - p.headLength * 0.18;
-  const headHalf = 0.19 + p.headWidth * 0.105;
+  const headHalf = 0.17 + p.headWidth * 0.095;
   const torsoHalf = 0.095 + p.bodyDepth * 0.072 + p.bodyWidth * 0.028;
   const round = 0.7 + p.bodyRoundness * 0.3;
   const neckHalf = torsoHalf * (0.78 + p.neckWidth * 0.34);
@@ -532,19 +534,18 @@ export function buildAxolotlAnatomy(input: AxolotlShapeInput): AxolotlAnatomy {
 
   const fin = 0.04 + p.tailFin * 0.115;
   const finStart = 0.22 - p.tailFinReach * 0.2;
+  const crest = { x: tailBaseX + 0.25, y: -tailHalf - fin + flexY * 0.24 };
   const dorsalFin = [
-    { x: finStart, y: -torsoHalf * 0.9 },
-    { x: lerp(finStart, 0.45, 0.55), y: -torsoHalf - fin * 0.68 },
-    { x: tailBaseX + 0.14, y: -tailHalf - fin + flexY * 0.24 },
-    { x: tailTipX - 0.2, y: -0.035 - fin * 0.46 + flexY * 0.84 },
-    tip,
+    ...cubic({ x: finStart, y: -torsoHalf * 0.9 },
+      { x: finStart + 0.17, y: -torsoHalf * 0.9 },
+      { x: tailBaseX, y: crest.y }, crest),
+    ...cubic(crest, { x: tailTipX - 0.35, y: crest.y },
+      { x: tailTipX - 0.035, y: -0.065 }, tip).slice(1),
   ];
-  const ventralFin = [
+  const ventralFin = cubic(
     { x: tailBaseX + 0.02, y: pedHalf * 0.82 + flexY * 0.2 },
-    { x: tailBaseX + 0.29, y: tailHalf + fin * 0.54 + flexY * 0.45 },
-    { x: tailTipX - 0.18, y: 0.03 + fin * 0.32 + flexY * 0.86 },
-    tip,
-  ];
+    { x: tailBaseX + 0.29, y: tailHalf + fin * 0.85 + flexY * 0.45 },
+    { x: tailTipX - 0.18, y: 0.07 + fin * 0.5 + flexY * 0.86 }, tip, 24);
 
   const limbs = [
     limb('fore', 'far', { x: -0.2, y: torsoHalf * 0.12 }, p),
@@ -557,13 +558,13 @@ export function buildAxolotlAnatomy(input: AxolotlShapeInput): AxolotlAnatomy {
   const gills: AxolotlGill[] = (['far', 'near'] as const).flatMap(side =>
     Array.from({ length: p.gillStalkCount }, (_, index) => gill(side, index, p.gillStalkCount, gillAnchor, p)));
 
-  const eyeRadius = 0.024 + p.eyeSize * 0.026;
+  const eyeRadius = 0.017 + p.eyeSize * 0.022;
   const eye = {
     center: { x: snoutX + 0.155 + p.headLength * 0.025 + p.eyeSpacing * 0.025, y: -headHalf * (0.2 + p.eyeLift * 0.34) },
     radius: eyeRadius,
     pupilRadius: eyeRadius * clamp(p.pupilRatio, 0.22, 0.86),
   };
-  const mouthY = headHalf * (0.19 + p.jawDepth * 0.1 + p.mouthCurve * 0.055);
+  const mouthY = headHalf * (0.12 + p.jawDepth * 0.08 + p.mouthCurve * 0.035);
   const mouthReach = 0.17 + p.mouthWidth * 0.09;
   const mouth = {
     start: { x: snoutX + 0.035, y: mouthY * 0.52 },
@@ -575,7 +576,8 @@ export function buildAxolotlAnatomy(input: AxolotlShapeInput): AxolotlAnatomy {
   const points = allAnatomyPoints(withoutBounds);
   const limbPad = Math.max(...limbs.map(l => l.width)) * 0.7;
   const gillPad = Math.max(...gills.map(g => g.width)) * 0.7;
-  const pad = 0.02 + Math.max(limbPad, gillPad);
+  // Includes limb stepping, gill ventilation and the small breathing displacement.
+  const pad = 0.075 + Math.max(limbPad, gillPad);
   const tailPoints = [...topTail, ...bottomTail, ...dorsalFin, ...ventralFin];
   const tailMinX = tailBaseX - 0.02;
   const tailWavePoints = tailPoints.filter(v => v.x >= tailMinX);

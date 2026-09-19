@@ -2,7 +2,15 @@
 
 **Updated:** 19 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
 
-## Current continuation — FS-119 axolotl shop, pricing and locus notes DONE, pushed `0ff7934` (user request)
+## Current continuation — FS-120 axolotl anatomy and locomotion overhaul DONE (user request)
+
+19 September 2026: axolotl anatomy v2 adds compact articulated limbs with tapered flesh, visible far feet, smoothly sampled tail membranes, smaller inset eyes, nostrils, attached curved gill filaments and feather detail. Inherited shape, pigment, skin and pattern variables drive finer granules, irregular markings, soft shading and restrained iridophore reflections. A pure transient pose adds breathing, gill sway/ventilation, a traveling tail wave and alternating diagonal steps versus swimming limb sweep. Behavior v3 gives axolotls slower push/glide exploration near the substrate while keeping food pursuit, hiding, collisions and species-local social behavior.
+
+Genome v1, the 66-locus order, expression model, world v14, breeding, prices and all identity/lineage records are unchanged. Existing axolotls receive the new presentation; koi retain their renderer and steering. This remains a stylized synthetic research lab, not a biological locomotion or care model.
+
+Verification: **286 tests / 45 files**, TypeScript and production build pass; isolated Chrome purchase/select/genome/feed/pause/reload journey passes without page errors. Six morphology/pigment portraits and eight movement poses reviewed; small-scale 60-animal drawing pass measured 7.8 ms median / 8.1 ms p95 in the final run. See [FS-120 evidence](TESTING.md#fs-120-axolotl-anatomy-and-locomotion) and ADR-071. M7's full performance gate remains open.
+
+## Previous continuation — FS-119 axolotl shop, pricing and locus notes DONE, pushed `0ff7934` (user request)
 
 19 September 2026: started from `ef8c3e6` (independent axolotl species), equal to `origin/main`. Review of that commit found and fixed:
 

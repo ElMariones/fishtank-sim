@@ -115,7 +115,7 @@ function paint(ctx: CanvasRenderingContext2D, layers: readonly PreparedLayer[]) 
 }
 
 /** Live swimming state from the tank: accumulated tail and fin phases and effort (swim speed over top speed, 0–1). */
-export type SwimMotion = { tailPhase: number; finPhase: number; effort: number };
+export type SwimMotion = { tailPhase: number; finPhase: number; effort: number; grounded?: number };
 
 /**
  * Renderer v7: anatomy v3, classic markings and development v4 ornament, with optional swimming motion (FS-306). Portraits
@@ -126,7 +126,7 @@ export type SwimMotion = { tailPhase: number; finPhase: number; effort: number }
  */
 export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: number, size: number, time = 0, motion?: SwimMotion) {
   if (p.species === 'axolotl' && p.axolotl) {
-    drawAxolotl(ctx, p.axolotl, seed, size, time, motion ? { tailPhase: motion.tailPhase, limbPhase: motion.finPhase, effort: motion.effort } : undefined);
+    drawAxolotl(ctx, p.axolotl, seed, size, time, motion ? { tailPhase: motion.tailPhase, limbPhase: motion.finPhase, effort: motion.effort, grounded: motion.grounded } : undefined);
     return;
   }
   const a = anatomyFor(p);

@@ -6,11 +6,11 @@ import { SpatialHash } from './spatial';
 import { habitatFootprints, obstacleForce, resolveObstacles } from './footprints';
 
 /**
- * Behavior model v2 (FS-303/304). A utility system chooses each fish's desire (cruise, forage, eat, hide or school), then
+ * Behavior model v3 (FS-303/304/120). A utility system chooses each fish's desire (cruise, forage, eat, hide or school), then
  * steering pursues it. Hunger and fear are transient drives in the motion worker: they are never saved and never change
  * growth or condition, which belong to the persistent world. Every step is seeded and deterministic for the same inputs.
  */
-export const BEHAVIOR_MODEL = 2;
+export const BEHAVIOR_MODEL = 3;
 export const STEP_SECONDS = 0.05;
 /** Utilities are re-evaluated every half second. */
 export const DECISION_STEPS = 10;
@@ -144,7 +144,7 @@ export function stepBehavior(world: BehaviorWorld): BehaviorWorld {
         if (best < EAT_RADIUS) { eaten.add(nearest); hunger = Math.max(0, hunger - PELLET_MEAL); meals++; }
       }
     } else if (state === 'forage') {
-      seek(actor.x + Math.cos(time * 0.4 + actor.phase) * 0.2, BOTTOM_Y - 0.04, 0.025);
+      seek(actor.x + Math.cos(time * 0.4 + actor.phase) * 0.2, actor.species === 'axolotl' ? 0.85 : BOTTOM_Y - 0.04, 0.025);
       speedScale = 0.75;
     } else if (state === 'hide') {
       const cover = (world.footprints?.some(f => f.kind === 'cover') ? world.footprints.filter(f => f.kind === 'cover') : coverPoints(world.planted)).reduce((a, b) => Math.hypot(a.x - actor.x, a.y - actor.y) <= Math.hypot(b.x - actor.x, b.y - actor.y) ? a : b);
@@ -157,6 +157,17 @@ export function stepBehavior(world: BehaviorWorld): BehaviorWorld {
         ax += (guide.vx - actor.vx) * 0.4; ay += (guide.vy - actor.vy) * 0.4;
       }
     }
+    if (actor.species === 'axolotl') {
+      // Bottom-biased exploration with a slow push/glide rhythm. Food and fear
+      // can still draw the animal into open water; obstacle steering remains shared.
+      if (state === 'cruise' || state === 'forage') {
+        const bottom = 0.85 + Math.sin(time * 0.19 + actor.phase) * 0.008;
+        ay += (bottom - actor.y) * 0.15 - actor.vy * 0.9;
+        const push = 0.5 + 0.5 * Math.sin(time * (0.65 + p.activity * 0.45) + actor.phase);
+        speedScale *= 0.24 + p.activity * 0.22 + push * 0.28;
+        ax -= actor.vx * (0.25 + (1 - push) * 0.5);
+      } else speedScale *= 0.78;
+    }
     for (const other of nearby) {
       if (other.id === actor.id) continue;
       const dx = other.x - actor.x, dy = other.y - actor.y, distance = Math.hypot(dx, dy);
@@ -166,7 +177,8 @@ export function stepBehavior(world: BehaviorWorld): BehaviorWorld {
     if (actor.x < 0.15) ax += (0.15 - actor.x) * 1.4;
     if (actor.x > 0.85) ax -= (actor.x - 0.85) * 1.4;
     if (actor.y < 0.18) ay += (0.18 - actor.y) * 0.8;
-    if (actor.y > 0.83) ay -= (actor.y - 0.83) * 0.8;
+    const lowerWall = actor.species === 'axolotl' ? 0.86 : 0.83;
+    if (actor.y > lowerWall) ay -= (actor.y - lowerWall) * 0.8;
     const avoidance = obstacleForce(actor, { x: actor.vx, y: actor.vy }, rocks);
     ax += avoidance.x; ay += avoidance.y;
     let vx = actor.vx + ax * STEP_SECONDS * p.turning, vy = actor.vy + ay * STEP_SECONDS * p.turning;

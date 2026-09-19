@@ -248,8 +248,10 @@ export function TankCanvas(props: Props) {
         facings.current.set(actor.id, facing);
         const effort = Math.min(1, Math.hypot(shown.vx, shown.vy) / Math.max(actor.phenotype.speed, 1e-6));
         const phase = phases.current.get(actor.id) ?? { tail: hash(actor.id) % 628 / 100, fin: hash(`${actor.id}:fin`) % 628 / 100 };
-        phase.tail = (phase.tail + dt * playing * (3 + 5 * effort + 2 * actor.phenotype.activity)) % PHASE_WRAP;
-        phase.fin = (phase.fin + dt * playing * (2.5 + 2 * actor.phenotype.activity)) % PHASE_WRAP;
+        const axolotl = actor.phenotype.species === 'axolotl';
+        const grounded = axolotl ? Math.max(0, Math.min(1, (shown.y - 0.78) / 0.06)) : 0;
+        phase.tail = (phase.tail + dt * playing * (axolotl ? 1.2 + 3 * effort : 3 + 5 * effort + 2 * actor.phenotype.activity)) % PHASE_WRAP;
+        phase.fin = (phase.fin + dt * playing * (axolotl ? 0.4 + effort * 4 : 2.5 + 2 * actor.phenotype.activity)) % PHASE_WRAP;
         phases.current.set(actor.id, phase);
         const growth = visualGrowth(fish.life.lengthCm, actor.phenotype.adultLengthCm), pose = fishPose(shown, width, height, growth, facing);
         ctx.save(); ctx.translate(pose.x, pose.y);
@@ -264,7 +266,7 @@ export function TankCanvas(props: Props) {
           ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#89f0dc'; ctx.fillText(fish.name, 0, -Math.max(-b.minY, b.maxY) * length * 1.15 - 6);
         }
         ctx.scale(pose.flip, 1); ctx.rotate(pose.angle);
-        drawFish(ctx, shown.phenotype, fish.birthSeed, pose.size, time, { tailPhase: phase.tail, finPhase: phase.fin, effort });
+        drawFish(ctx, shown.phenotype, fish.birthSeed, pose.size, time, { tailPhase: phase.tail, finPhase: phase.fin, effort, grounded });
         ctx.restore();
         paintedNow.push({ actor: shown, facing, growth });
       }

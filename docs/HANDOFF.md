@@ -2,6 +2,8 @@
 
 ## 1. Context
 
+Latest user-requested work: **FS-120 axolotl anatomy/locomotion overhaul**. `axolotlAnatomy.ts` is presentation version 2; `axolotlPose.ts` is the pure transient breathing/gill/limb/tail deformation layer. Behavior v3 adds an axolotl-only bottom bias and push/glide rhythm. Genome/expression/world versions are unchanged. The 286-test/build run and isolated browser journey pass; see [FS-120 testing](TESTING.md#fs-120-axolotl-anatomy-and-locomotion). Fine detail is scale-dependent; preserve the separate pigment-layout and contour RNG streams when adjusting LOD. M7 FS-701 remains the next roadmap task.
+
 The user wants a web-based living fish simulator centered on genetics, behavior, environment, breeding, detailed inspection, permanent family trees, multiple decorated tanks, sales and a marketplace. They supplied a concept document and an empty GitHub repository.
 
 This handoff provides the design and a runnable research prototype. The central intended progression is ordinary koi → selected variants → supported structural mutations → unusual stable lineages, with every individual’s ancestry inspectable.
