@@ -2,7 +2,7 @@
 
 **Updated:** 19 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
 
-## Current continuation — FS-121 fast breeding switch READY (user request)
+## Current continuation — FS-121 fast breeding switch DONE, pushed `1857fd4` (user request)
 
 19 September 2026: the Breeding panel's **Normal breeding / Instant lab cross** buttons became one **Fast breeding** on/off switch, remembered per device in collection preferences (off by default). With it on, the selected parents breed instantly without maturity, condition, rest-day, courtship or shared-tank checks; parents stay in their own tanks. The player chooses the destination tank and 1, 2, 4, 8, 12, 16, 20 or 24 eggs. The `breed` command gained an optional `count` (1–24); recorded commands without it still lay 20, so journals replay unchanged. World and genome versions are unchanged. `fastBreedingBlockers` lists what still blocks a cross: roles, eggs, mixed species, destination capacity and lab limits. Evidence: [TESTING](TESTING.md#fs-121-fast-breeding-switch).
 
