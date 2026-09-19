@@ -1,73 +1,91 @@
 # Fishtank Sim
 
-A living aquarium and genetics sandbox where koi and axolotls can develop extraordinary, heritable lineages in the same tanks while keeping separate species genetics.
+**A living aquarium and genetics sandbox.** Breed koi and axolotls whose looks and behavior come from inherited (synthetic) genomes. Every animal is drawn from its genes, every child keeps a permanent family record, and a rare trait can be followed across generations.
 
-**Current version: 0.1 — working research lab and project design handoff.** The long-term game is specified in the documents below. The current app proves a bounded core loop; it is not yet the full care simulation or an online marketplace.
+![The Koi Garden: koi, two axolotls and a fresh clutch of fry swimming in a planted tank, with the selected fry's details in the inspector](docs/screenshots/aquarium.png)
+
+> **Version 0.1: a working research lab.** The core loop works: genome → development → appearance → breeding → lineage. The full care game and an online marketplace are designed but not built yet. See [implementation status](docs/IMPLEMENTATION_STATUS.md).
+
+## Features
+
+- **Heritable genetics.** Koi genomes carry up to 66 loci on 11 synthetic chromosomes (body shape, color, patterns, fins, structure and behavior), with phased chromosomes, crossover and mutation. Axolotls have their own separate 66-locus genome covering limbs, gills, pigment morphs, patterns and temperament.
+- **Two species, one tank.** Koi and axolotls share aquariums, water and care, but each species only breeds with its own kind.
+- **Breeding.** Pair two healthy adults that share a tank. Courtship takes a few game days, reserves places in a nursery tank, pauses with a reason if something goes wrong, and ends in a tracked clutch of eggs. An optional fast mode skips courtship for quicker experiments.
+- **Offspring prediction.** Exact single-locus odds and sampled adult-trait ranges before you breed, plus breeding goals that rank candidates for up to four traits.
+- **Family trees.** Six generations of ancestors and descendants, pedigree inbreeding, mutation origins and named bloodlines.
+- **Growth and care.** Eggs hatch into fry that grow toward their genetic adult size. Water quality, feeding, filters, aeration and temperature affect condition and growth.
+- **A small economy.** NPC buyers with different tastes, a credit ledger, an NPC shop for unrelated stock, extra aquariums, and a free koi rescue if you run out of options.
+- **Safe local saves.** Everything is stored in your browser with two automatic backups, export/import, and replayable command journals.
+
+| | |
+|---|---|
+| ![Collection filtered to axolotls, with the inspector showing an albino-like axolotl's genome](docs/screenshots/collection-genome.png) | ![NPC shop listing axolotl founders and pigment morphs with prices and traits](docs/screenshots/shop.png) |
+| **Collection and genome inspector** | **NPC shop** with axolotl pigment morphs |
+
+## Tech stack
+
+| Area | Used |
+|---|---|
+| UI | [React 19](https://react.dev) and TypeScript 7 |
+| Build and dev server | [Vite 8](https://vite.dev) |
+| Rendering | HTML Canvas 2D, with procedural anatomy for every animal |
+| Simulation | A Web Worker running fixed-step motion and steering |
+| Genetics | A pure TypeScript core with seeded random number streams, so every cross replays exactly |
+| Validation | [Zod 4](https://zod.dev) for commands, saves and imports |
+| Storage | IndexedDB with backups, plus a Web Locks single-writer lease |
+| Tests | [Vitest 5](https://vitest.dev) (about 290 tests); Playwright scripts for browser journeys |
+
+There is no backend, account, API key or environment file.
 
 ## Run locally
 
-Requires Node.js 22.12+ (verified here with Node 24.11.1) and npm.
+Requires Node.js 22.12 or newer, and npm.
 
 ```sh
 npm ci
 npm run dev
 ```
 
-Open the local address printed by Vite, normally [http://127.0.0.1:5173](http://127.0.0.1:5173). No accounts, API keys, database, or environment files are needed.
+Open the address Vite prints, normally [http://127.0.0.1:5173](http://127.0.0.1:5173).
 
 ```sh
 npm test        # Genetics, pedigree, commands, save validation and motion
-npm run build  # Strict TypeScript check and production bundle
-npm run check  # Both
-npm run preview
+npm run build   # Strict TypeScript check and production bundle
+npm run check   # Both
+npm run preview # Serve the production build
 ```
 
-The npm cache is configured inside this checkout for compatibility with the workspace sandbox. Generated files, the cache and dependencies are ignored by Git.
+The npm cache is kept inside the checkout (`.npmrc`); it, `node_modules` and build output are ignored by Git.
 
-## Try the lab
+## Quick tour
 
-1. Select a swimming animal or its collection card. Koi expose their historic v1–v3 genome; axolotls expose an independent 66-locus Genome v1 covering body/head/limbs/digits/tail/gills, pigment cells, colors, patterns, life history and behavior.
-2. Choose an adult mother and father of the same species that share a tank, pick a nursery, and start a courtship. It reserves the nursery places, pauses with a reason if anything is wrong, and lays tracked eggs when it completes. Switch **Fast breeding** on for an instant shortcut: the selected parents can live in different tanks, and you pick how many eggs (1–24) and which tank they spawn in. Koi and axolotls can live together but cannot interbreed.
-3. Select a child, then open Family. Follow ancestors up to six generations back or descendants forward, find any record by name or ID, and use Back to retrace your path.
-4. For koi, review exact single-locus odds and 256-sample adult-potential ranges. For axolotls, the planner uses the independent axolotl linkage/mutation model to preview morphology, pigment morphs and life/behavior ranges. Filter the collection to one clutch, move the rest to another aquarium in one reviewed batch, and select the next parents.
-5. Open **NPC shop** for fixed koi founder/variant/carrier listings or introduce an independent axolotl founder; choose a receiving aquarium for outcrossing stock. Sell surplus to the buyer with the best offer, or rehome it for free; either way the animal’s family record is preserved.
-6. Open **Saves** to export, preview a v1/v2 import, or restore one of two backups. The app automatically reloads its validated IndexedDB save and preserves the original v1 localStorage data.
+1. **Meet your fish.** Click a swimming animal or a collection card to open it in the inspector: overview, genome and family.
+2. **Breed.** Open **Breeding**, pick a mother and father, choose a nursery and start a courtship.
+3. **Watch them grow.** Eggs hatch after 3 game days (one game day passes per real minute) and grow faster in well-kept water.
+4. **Follow the lineage.** Open **Family** on any child to walk up to six generations back or forward.
+5. **Manage the lab.** Sell to NPC buyers or rehome for free, buy new stock in the **NPC shop**, add aquariums and decorate them under **Habitat**.
+6. **Keep your world.** **Saves** exports, imports and restores backups.
 
-Offspring start as eggs. They hatch after 3 game days and grow toward their genetic adult length, faster in well-kept water; one game day passes per real minute. The tank and **Now** portraits show each fish's current stage (hatchlings have big heads and eyes, and pigment reveals over about ten game days); **Adult potential** previews its genetics. Each tank has a feeder, filter, aeration and thermostat under **Care controls**, with previews and costs; warnings name what to fix. Poor care lowers condition and slows growth, and fish never die. Motion speed does not change growth. Five NPC buyers pay for different traits within a limited daily demand, and every offer explains its price; the credits in the header open **Buyers and ledger**. Founders and bought stock never resell for more than they cost, and any hatched fish can be rehomed for free. Lab breeding and food are still free. **Habitat & expansion** offers paid extra tanks, capacity expansions and placed plants/rocks with saved position, size and rotation. Two starter tanks are included.
-
-A **first-session guide** above the aquarium walks through selecting, naming, feeding, courting, keeping a hatched offspring, following a parent and setting a goal. Its **Show me** buttons point at each control, and **Guide** in the save bar shows or hides it. Under every fish's name, parent links and sibling and offspring counts lead into its family. If you lose every fish of one sex and cannot afford stock, the **koi rescue** in **Buyers and ledger** gives one unrelated adult of each missing sex at no cost, at most once every 10 game days.
-
-Limits: 60 residents per tank, eight tanks, 480 living fish and 10,000 total fish records including archives. A full twenty-fish cohort must fit before any birth is created.
+A first-session guide above the aquarium walks through these steps. Limits: 60 animals per tank, 8 tanks, 480 living animals and 10,000 records including the archive.
 
 ## Project documents
 
 | Read | Purpose |
 |---|---|
-| [Game design document](docs/GDD.md) | Full product vision, concept critique, gameplay, care, economy and progression |
-| [Genetics specification](docs/GENETICS.md) | Exact genome v1/v2 rules, all 60 loci, color and ornament expression, rarity, pedigree, planned genome v3 expansion |
-| [Architecture](docs/ARCHITECTURE.md) | Current source map, target data model, command contracts, worker/server strategy |
+| [Game design document](docs/GDD.md) | Product vision, gameplay, care, economy and progression |
+| [Genetics specification](docs/GENETICS.md) | Genome rules, loci, color and ornament expression, pedigree |
+| [Architecture](docs/ARCHITECTURE.md) | Source map, data model, command contracts, worker strategy |
 | [UX specification](docs/UX_SPEC.md) | Aquarium, inspector, breeding, family, market and recovery flows |
-| [Balance and experiments](docs/BALANCE.md) | Implemented constants, future tuning, measurable experiments |
-| [Milestone schedule](docs/ROADMAP.md) | Relative/calendar schedule, effort assumptions, critical path and release gates |
-| [Task backlog](docs/BACKLOG.md) | Task IDs, estimates, dependencies, roles and acceptance criteria |
-| [Implementation status](docs/IMPLEMENTATION_STATUS.md) | What actually works, limitations and first next task |
-| [Testing and verification](docs/TESTING.md) | Automated/browser evidence and future validation gates |
-| [Agent handoff](docs/HANDOFF.md) | Read order, commands, continuation prompts and repository conventions |
-| [Decision log](docs/DECISIONS.md) | Decisions, rationale and conditions for revisiting them |
-| [Original supplied concept](docs/source/original-concept.txt) | Preserved source notes |
+| [Balance and experiments](docs/BALANCE.md) | Implemented constants and tuning experiments |
+| [Roadmap](docs/ROADMAP.md) and [backlog](docs/BACKLOG.md) | Milestones, task IDs and acceptance criteria |
+| [Implementation status](docs/IMPLEMENTATION_STATUS.md) | What actually works today, and known limits |
+| [Testing and verification](docs/TESTING.md) | Automated and browser evidence |
+| [Decision log](docs/DECISIONS.md) | Decisions and when to revisit them |
+| [Agent handoff](docs/HANDOFF.md) | Read order, commands and conventions |
+| [Original concept](docs/source/original-concept.txt) | The preserved source notes |
 
 New contributors and agents should start with [AGENTS.md](AGENTS.md), then [implementation status](docs/IMPLEMENTATION_STATUS.md).
 
-## Technical foundation
+## Status and license
 
-Axolotl presentation v2 adds articulated limbs, feathery moving gills, smooth tail membranes, textured skin and inherited pigment variation. Axolotls breathe and fan their gills at rest, use a traveling tail wave while swimming, and explore near the substrate with alternating steps and a slower push/glide rhythm. These are illustrative game animations; the independent 66-locus genome and saved lineages retain their existing semantics. See [the overhaul verification](docs/TESTING.md#fs-120-axolotl-anatomy-and-locomotion).
-
-React + TypeScript + Vite. Pure seeded genetics and pedigree core. Koi retain the historic v1–v3 genome/appearance pipeline; axolotls use a separate 66-locus Genome v1 and standalone anatomy/Canvas renderer with four limbs, variable digits, finned tail and feathery external gills. Both species share tanks and the deterministic motion/care world, but inheritance and breeding remain species-local. A versioned Web Worker runs fixed-step visual motion. The persistent clock integrates visible, background and protected offline time, including a one-compartment water model and care (feeding, equipment, thermostat) per tank; life stages, accumulated growth and condition are active. Versioned command replay, transactional IndexedDB backups and a single-writer browser lock protect local worlds.
-
-M2 (FS-201–206) is complete. Five human observers scored 54/60 in the M1 resemblance study (FS-111), meeting M1's human-resemblance gate. PixiJS and an authoritative database-backed market remain planned. Care controls and juvenile appearance reveal are implemented. See the [M2 runtime report](docs/research/M2-RUNTIME-AND-RECOVERY.md) and [human resemblance results](docs/research/FS-111-HUMAN-RESEMBLANCE.md).
-
-FS-304 adds spatial steering around shared rock and plant-cover footprints. FS-403 offers exact single-locus odds and sampled offspring ranges early in the lab. M3 is delivered: care controls with previews and warnings (FS-305), juvenile reveal and swim animation (FS-306), and a per-tank return summary plus healthy and stressed care scenarios in Research (FS-307). M4's task list is delivered: normal breeding with courtship blockers and reserved nurseries (FS-401/402), a six-generation family graph with record search (FS-404), a session kinship cache with stated founder assumptions (FS-405), and clutch selection, batch rehoming and a two-generation demonstration without instant crosses (FS-406). M5's task list is delivered: economy model v1 with NPC buyers, a credit ledger and free rehoming is delivered (FS-501). Persistent stock, shop filters and capacity-aware purchases are delivered (FS-502, pushed `3945d86`). Paid tank expansion and saved decoration placement (FS-503) are DONE, pushed `f78d007`; see [habitat evidence](docs/research/FS-503-HABITAT-EXPANSION.md). The first-session guide, the koi rescue for no-money recovery and family links under every fish (FS-504) are DONE, pushed `6335851`; see [FS-504 evidence](docs/research/FS-504-ONBOARDING-AND-RECOVERY.md). The paid-economy playtest with best-first batch sales (FS-505) is DONE, pushed `f5b1888`, completing M5's task list; see [FS-505 evidence](docs/research/FS-505-PAID-ECONOMY-PLAYTEST.md). M6's task list is delivered: a data-driven locus registry and genome v3 with a Structure chromosome (FS-601) are DONE, pushed `fb6b593`; see [FS-601 evidence](docs/research/FS-601-REGISTRY-AND-GENOME-V3.md). Paired fan and crown-four tails, reduced or absent dorsal fins and 0–6 barbels (FS-602) are DONE, pushed `0e95249`; see [FS-602 evidence](docs/research/FS-602-STRUCTURE-ANATOMY.md). Mutation origins by descent with save-local carrier counts (FS-603) are DONE, pushed `1d0d85c`; see [FS-603 evidence](docs/research/FS-603-MUTATION-ORIGINS.md). Named bloodlines with ancestry and standard similarity shown separately (FS-604) are DONE, pushed `d9f17c0`; see [FS-604 evidence](docs/research/FS-604-BLOODLINE-REGISTRY.md). A seeded koi-to-paired-fan-line demonstration with a mutation pacing review (FS-605) is DONE, pushed `bb10985`, completing M6's task list; see [FS-605 evidence](docs/research/FS-605-UNUSUAL-LINE.md). See [spatial and prediction evidence](docs/research/FS-304-403-SPATIAL-AND-PREDICTION.md).
-
-## Repository status
-
-Created in a clone of [ElMariones/fishtank-sim](https://github.com/ElMariones/fishtank-sim), which was empty at the start of this work. The lab is maintained on `main`; task completion and push references are tracked in [the backlog](docs/BACKLOG.md). No public deployment was performed. No license has been selected; do not infer a public reuse license from repository visibility.
+Developed on `main` in [ElMariones/fishtank-sim](https://github.com/ElMariones/fishtank-sim). There is no public deployment. No license has been chosen yet, so public visibility does not grant reuse rights.
