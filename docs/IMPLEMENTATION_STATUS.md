@@ -2,7 +2,7 @@
 
 **Updated:** 19 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
 
-## Current continuation — FS-119 axolotl shop, pricing and locus notes READY (user request)
+## Current continuation — FS-119 axolotl shop, pricing and locus notes DONE, pushed `0ff7934` (user request)
 
 19 September 2026: started from `ef8c3e6` (independent axolotl species), equal to `origin/main`. Review of that commit found and fixed:
 
