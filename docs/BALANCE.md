@@ -131,7 +131,7 @@ Game rules in `src/core/breeding.ts`.
 | Courtship pauses | Parents in different tanks, a parent below 70% condition, critical oxygen, high ammonia, or water outside 18–28 °C | Recorded daily with a reason and fix |
 | Nursery limit | One courting clutch per nursery tank | Bounded, readable nursery management |
 | Egg timestamp | Pairing time + game days × 60 real seconds | One game day per real minute at 1× |
-| Instant lab cross | 20 eggs at once in the current tank, no courtship checks | Research shortcut; counts reservations |
+| Fast breeding (instant cross) | 1–24 eggs (default 20) at once in any chosen tank; parents may live in different tanks; no maturity, condition, rest or courtship checks | Opt-in shortcut switch; counts reservations and capacity |
 
 ### Economy model v1 (FS-501)
 

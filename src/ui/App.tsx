@@ -43,6 +43,7 @@ import { downloadText, SavePanel } from './SavePanel';
 import type { AxolotlListing, Clutch, Fish, Listing, World } from '../core/types';
 import { TICKS_PER_GAME_DAY } from '../core/water';
 import { COHORT_SIZE, type Command } from '../core/world';
+import { FastBreeding } from './FastBreeding';
 import { Pagination, SexMark } from './Controls';
 import { FamilyView } from './FamilyView';
 import { FishPortrait, type PortraitView } from './FishPortrait';
@@ -145,7 +146,8 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [breedingOpen, setBreedingOpen] = useState(true);
   const [heroView, setHeroView] = useState<PortraitView>('current');
   const [absence, setAbsence] = useState(initial.absence);
-  const [breedingMode, setBreedingMode] = useState<'normal' | 'lab'>('normal');
+  const [fastTankId, setFastTankId] = useState(initial.runtime.world.tanks[0].id);
+  const [fastCount, setFastCount] = useState(COHORT_SIZE);
   const [nurseryId, setNurseryId] = useState(initial.runtime.world.tanks[1]?.id ?? initial.runtime.world.tanks[0].id);
   const [clutchSize, setClutchSize] = useState<ClutchSize>(20);
   const inspectorHeading = useRef<HTMLHeadingElement>(null);
@@ -202,6 +204,7 @@ export function App({ initial }: { initial: LoadedSession }) {
 
   const { goal, favorites } = preferences;
   const portraitView: PortraitView = preferences.portraits ?? 'current';
+  const fastBreeding = preferences.fastBreeding === true;
   const favoriteIds = new Set(favorites);
   const tank = world.tanks.find(t => t.id === tankId) ?? world.tanks[0];
   // The draft lives in its own store, so dragging a piece never re-renders the app (FS-117).
@@ -226,8 +229,6 @@ export function App({ initial }: { initial: LoadedSession }) {
   // A tank switch shows the new aquarium at once; the collection of up to 60 portraits follows in a deferred render.
   const collectionTankId = useDeferredValue(tank.id), collectionPending = collectionTankId !== tank.id;
   const collectionResidents = useMemo(() => collectionTankId === tank.id ? residents : world.fish.filter(f => f.tankId === collectionTankId && f.status === 'living'), [residents, world.fish, collectionTankId, tank.id]);
-  const breeders = living.filter(f => !isEgg(f.life));
-  const selectedMother = breeders.find(f => f.id === motherId), selectedFather = breeders.find(f => f.id === fatherId);
   const p = useMemo(() => fish ? express(fish.genome) : null, [fish]);
   const selectedLimits = useMemo(() => {
     const home = fish?.status === 'living' ? world.tanks.find(t => t.id === fish.tankId) : undefined;
@@ -380,7 +381,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   /** "Show me" in the first-session guide points at the control for a step; it never performs the step itself (FS-504). */
   function showGuideStep(step: GuideStepId) {
     const newest = (match: (f: Fish) => boolean) => { for (let i = world.fish.length - 1; i >= 0; i--) if (match(world.fish[i])) return world.fish[i]; return undefined; };
-    const openBreeding = () => { setWorkspace('breeding'); setBreedingOpen(true); setBreedingMode('normal'); focusSoon('planner-mother'); };
+    const openBreeding = () => { setWorkspace('breeding'); setBreedingOpen(true); focusSoon('planner-mother'); };
     if (step === 'select') { setWorkspace('collection'); setNotice('Click a swimming fish in the aquarium, or choose a card under Your collection.'); focusSoon('collection'); }
     else if (step === 'rename') {
       const target = fish?.status === 'living' ? fish : newest(f => f.status === 'living');
@@ -408,10 +409,12 @@ export function App({ initial }: { initial: LoadedSession }) {
 
   function breed() {
     const pairText = ` Showing this clutch of ${fishName(motherId)} × ${fishName(fatherId)}${goal ? `, ranked by ${descriptorLabel.get(goal.descriptor)?.toLowerCase()}` : ''}.`;
-    const timestamp = new Date().toISOString();
-    const next = run({ type: 'breed', motherId, fatherId, tankId: tank.id, timestamp, genomeVersion: GENOME_VERSION }, `${COHORT_SIZE} eggs laid. They hatch in ${INCUBATION_DAYS} game days and grow fastest in good water; each inherited one recombined copy from each parent.${pairText}`);
+    const timestamp = new Date().toISOString(), destination = world.tanks.find(t => t.id === fastTankId) ?? tank;
+    const next = run({ type: 'breed', motherId, fatherId, tankId: destination.id, timestamp, genomeVersion: GENOME_VERSION, count: fastCount },
+      `${fastCount} egg${fastCount === 1 ? '' : 's'} laid in ${destination.name}. They hatch in ${INCUBATION_DAYS} game days and grow fastest in good water; each inherited one recombined copy from each parent.${pairText}`);
     if (next) {
-      setSelectedId(next.fish[next.fish.length - COHORT_SIZE].id); setShowArchived(false); setQuery('');
+      if (destination.id !== tank.id) setTankId(destination.id);
+      setSelectedId(next.fish[next.fish.length - fastCount].id); setShowArchived(false); setQuery('');
       setCohortKey(`${motherId}×${fatherId}`); setBirthKey(timestamp); setFavoritesOnly(false); setSexFilter('all');
     }
   }
@@ -576,24 +579,22 @@ export function App({ initial }: { initial: LoadedSession }) {
         {workspace === 'habitat' ? <div role="tabpanel" id="panel-habitat" aria-labelledby="tab-habitat"><HabitatPanel key={tank.id} world={world} tank={tank} readOnly={initial.readOnly} expanded onAquascape={openAquascape} onRun={(command, message) => run(command, message) !== null} /></div> : null}
         {workspace === 'breeding' ? <section role="tabpanel" id="panel-breeding" aria-labelledby="tab-breeding" className="breeding-panel is-open">
           <div className="breed-intro">
-            <div><div className="eyebrow">THE NEXT GENERATION</div><h2 id="breeding-title">What will they inherit?</h2><p>{breedingOpen ? breedingMode === 'normal' ? 'Pair two adults that share a tank; courtship reserves places in a nursery.' : 'Instant lab cross: twenty eggs at once, without courtship.' : goal ? `Goal active · ${goalLabel}` : 'Breeding planner is tucked away.'}</p></div>
+            <div><div className="eyebrow">THE NEXT GENERATION</div><h2 id="breeding-title">What will they inherit?</h2><p>{breedingOpen ? !fastBreeding ? 'Pair two adults that share a tank; courtship reserves places in a nursery.' : 'Fast breeding: instant eggs from any two parents, in the tank you choose.' : goal ? `Goal active · ${goalLabel}` : 'Breeding planner is tucked away.'}</p></div>
           </div>
           {breedingOpen || workspace === 'breeding' ? <div id="breeding-options" className="breeding-options">
-            <div className="framing-toggle breeding-mode" role="group" aria-label="Breeding mode">
-              <button aria-pressed={breedingMode === 'normal'} onClick={() => setBreedingMode('normal')}>Normal breeding</button>
-              <button aria-pressed={breedingMode === 'lab'} onClick={() => setBreedingMode('lab')}>Instant lab cross</button>
+            <div className="breeding-mode fast-switch">
+              <button className="pill-toggle" id="fast-breeding-toggle" aria-pressed={fastBreeding} onClick={() => setPreferences(current => ({ ...current, fastBreeding: !fastBreeding }))}>
+                <span aria-hidden="true">⚡</span>Fast breeding · {fastBreeding ? 'On' : 'Off'}</button>
+              <small>{fastBreeding ? 'Instant, any tanks, you pick where eggs spawn.' : 'Off: normal courtship rules apply.'}</small>
             </div>
             <BreedingPlanner fish={world.fish} tanks={world.tanks} goal={goal} motherId={motherId} fatherId={fatherId} onMother={setMotherId} onFather={setFatherId}
               onGoal={(next: BreedingGoal | null) => setPreferences(current => ({ ...current, goal: next, sort: next ? 'goal' : current.sort === 'goal' ? 'newest' : current.sort }))} />
-            {breedingMode === 'normal' ? <>
+            {!fastBreeding ? <>
               <NormalBreeding world={world} motherId={motherId} fatherId={fatherId} nurseryId={nurseryId} size={clutchSize} readOnly={initial.readOnly}
                 onNursery={setNurseryId} onSize={setClutchSize} onPair={pair} onCancel={cancelClutch} onShowClutch={showClutch} />
               <p className="help-copy">Expected pedigree F: {percent(prospectiveF)}, from recorded ancestry; {pairFounders === 1 ? 'the one founder behind this pair is' : `the ${pairFounders} founders behind this pair are`} assumed unrelated and not inbred. Parents must be adults with at least 70% condition, not resting after a clutch, and in the same tank. Courtship pauses, with the reason shown, if they are separated, their condition falls or the water turns harsh.</p>
-            </> : <>
-              <div className="breed-action"><button className="primary" onClick={breed} disabled={!selectedMother || !selectedFather || selectedMother.species !== selectedFather.species || residents.length + reservedPlaces(world, tank.id) + COHORT_SIZE > tank.capacity}>Breed 20 offspring <span>↗</span></button><small>Expected pedigree F: {percent(prospectiveF)}</small></div>
-              <p className="help-copy">Clutch destination: {tank.name} · {tank.capacity - residents.length - reservedPlaces(world, tank.id)} free places · {COHORT_SIZE} required.</p>
-              <p className="lab-note">Research shortcut: an instant cross skips maturity, condition, rest days, courtship and shared-habitat checks, and lays twenty eggs in this tank at once. Eggs still hatch after {INCUBATION_DAYS} game days and grow under this tank’s care. Goal values are normalized adult genetic potential.</p>
-            </>}
+            </> : <FastBreeding world={world} motherId={motherId} fatherId={fatherId} tankId={fastTankId} count={fastCount} readOnly={initial.readOnly} expectedF={percent(prospectiveF)}
+              onTank={setFastTankId} onCount={setFastCount} onBreed={breed} />}
           </div> : null}
         </section> : null}
         {workspace === 'collection' ? <section role="tabpanel" id="panel-collection" aria-labelledby="tab-collection" className={`collection ${collectionPending ? 'is-loading' : ''}`} aria-busy={collectionPending}><div id="collection" tabIndex={-1} aria-labelledby="collection-title">

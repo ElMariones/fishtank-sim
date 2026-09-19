@@ -14,9 +14,12 @@ export type GoalDirection = 'higher' | 'lower';
 export type BreedingGoal = GoalTrait & { secondary?: GoalTrait[] };
 export const COLLECTION_SORTS = ['newest', 'oldest', 'name', 'goal'] as const;
 export type CollectionSort = typeof COLLECTION_SORTS[number];
-/** Collection portraits show the current stage (FS-306 default) or adult genetic potential; absent in older preferences. */
+/**
+ * Collection portraits show the current stage (FS-306 default) or adult genetic potential; absent in older preferences.
+ * Fast breeding is a device-local switch for the instant cross, off (absent) by default.
+ */
 export type PortraitPreference = 'current' | 'adult';
-export type LabPreferences = { version: 1; goal: BreedingGoal | null; sort: CollectionSort; favorites: string[]; portraits?: PortraitPreference };
+export type LabPreferences = { version: 1; goal: BreedingGoal | null; sort: CollectionSort; favorites: string[]; portraits?: PortraitPreference; fastBreeding?: boolean };
 
 export const DEFAULT_PREFERENCES: LabPreferences = { version: 1, goal: null, sort: 'newest', favorites: [] };
 
@@ -28,6 +31,7 @@ const schema = z.object({
   sort: z.enum(COLLECTION_SORTS),
   favorites: z.array(z.string().regex(/^FSH-\d{6}$/)).max(10_000),
   portraits: z.enum(['current', 'adult']).optional(),
+  fastBreeding: z.boolean().optional(),
 });
 
 /** Parses stored preferences for this world. Unknown fish IDs and duplicates are dropped; anything invalid yields defaults. */
@@ -35,7 +39,7 @@ export function decodePreferences(raw: string | null, fishIds: ReadonlySet<strin
   if (!raw) return DEFAULT_PREFERENCES;
   try {
     const parsed = schema.parse(JSON.parse(raw));
-    return { version: 1, goal: parsed.goal, sort: parsed.sort, favorites: [...new Set(parsed.favorites)].filter(id => fishIds.has(id)), ...(parsed.portraits ? { portraits: parsed.portraits } : {}) };
+    return { version: 1, goal: parsed.goal, sort: parsed.sort, favorites: [...new Set(parsed.favorites)].filter(id => fishIds.has(id)), ...(parsed.portraits ? { portraits: parsed.portraits } : {}), ...(parsed.fastBreeding ? { fastBreeding: true } : {}) };
   } catch {
     return DEFAULT_PREFERENCES;
   }

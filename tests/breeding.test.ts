@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { absenceObserver } from '../src/core/absence';
-import { clutchMembers, COOLDOWN_DAYS, courtingClutchOf, courtshipRate, MS_PER_GAME_DAY, pairingBlockers, reservedPlaces } from '../src/core/breeding';
+import { clutchMembers, COOLDOWN_DAYS, courtingClutchOf, courtshipRate, fastBreedingBlockers, MS_PER_GAME_DAY, pairingBlockers, reservedPlaces } from '../src/core/breeding';
 import { INCUBATION_DAYS, isEgg, lifeStage } from '../src/core/development';
 import { metabolicPotential } from '../src/core/genetics';
 import { advanceWorld } from '../src/core/habitat';
@@ -214,5 +214,43 @@ describe('FS-402 reserved clutch scheduler and bounded nursery', () => {
     expect(decoded).toMatchObject({ tick: DAY + 9, revision: 1, events: [] });
     expect(decoded.world.fish).toHaveLength(26);
     expect(decoded.world.clutches).toEqual([]);
+  });
+});
+
+describe('Fast breeding (instant cross with destination and count)', () => {
+  it('breeds parents in different tanks into a chosen tank with the chosen count', () => {
+    const world = applyCommand(createWorld(NOW), { type: 'move', fishId: 'FSH-000002', tankId: 'tank-2' });
+    const mother = world.fish.find(f => f.id === 'FSH-000001')!, father = world.fish.find(f => f.id === 'FSH-000002')!;
+    expect(mother.tankId).not.toBe(father.tankId);
+    const target = 'tank-2';
+    expect(fastBreedingBlockers(world, { motherId: mother.id, fatherId: father.id, tankId: target, count: 4 }, limits)).toEqual([]);
+    const next = applyCommand(world, { type: 'breed', motherId: mother.id, fatherId: father.id, tankId: target, timestamp: NOW, genomeVersion: 3, count: 4 });
+    const born = next.fish.slice(world.fish.length);
+    expect(born).toHaveLength(4);
+    for (const child of born) { expect(child.tankId).toBe(target); expect(child.parents).toEqual([mother.id, father.id]); expect(isEgg(child.life)).toBe(true); }
+    // Parents stay where they are and gain no rest days.
+    expect(next.fish.find(f => f.id === mother.id)!.tankId).toBe(mother.tankId);
+    expect(next.fish.find(f => f.id === father.id)!.breeding.cooldownDays).toBe(0);
+  });
+
+  it('skips courtship readiness but still refuses wrong roles, eggs, mixed species and full tanks', () => {
+    const world = createWorld(NOW);
+    const weak = structuredClone(world); weak.fish[0].life.condition = 0.2; weak.fish[1].breeding.cooldownDays = 5;
+    expect(fastBreedingBlockers(weak, { motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId: 'tank-1', count: 1 }, limits)).toEqual([]);
+    expect(fastBreedingBlockers(world, { motherId: 'FSH-000002', fatherId: 'FSH-000001', tankId: 'tank-1', count: 1 }, limits).map(b => b.code)).toContain('role');
+    expect(fastBreedingBlockers(world, { motherId: '', fatherId: 'FSH-000002', tankId: 'tank-1', count: 1 }, limits).map(b => b.code)).toContain('role');
+    const eggs = applyCommand(world, labCross('tank-1'));
+    const eggMother = eggs.fish.slice(6).find(f => f.sex === 'F')!;
+    expect(fastBreedingBlockers(eggs, { motherId: eggMother.id, fatherId: 'FSH-000002', tankId: 'tank-2', count: 1 }, limits).map(b => b.code)).toContain('immature');
+    const tooMany = { motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId: 'tank-2', count: 24 };
+    const crowded = applyCommand(applyCommand(world, labCross('tank-2')), labCross('tank-2'));
+    expect(fastBreedingBlockers(crowded, tooMany, limits).map(b => b.code)).toContain('nursery-full');
+    expect(() => applyCommand(crowded, { type: 'breed', ...tooMany, timestamp: NOW, genomeVersion: 3 })).toThrow('free places');
+    expect(() => applyCommand(world, { type: 'breed', motherId: 'FSH-000001', fatherId: 'FSH-000002', tankId: 'tank-1', timestamp: NOW, genomeVersion: 3, count: 0 })).toThrow();
+  });
+
+  it('keeps recorded commands without a count at twenty eggs', () => {
+    const world = createWorld(NOW);
+    expect(applyCommand(world, labCross('tank-2')).fish.length - world.fish.length).toBe(20);
   });
 });

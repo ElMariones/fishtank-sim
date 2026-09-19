@@ -219,3 +219,43 @@ export function breedingStatus(world: World, fish: Fish): string {
   if (fish.life.condition < BREEDING_CONDITION) return `Condition too low to court (${pct(fish.life.condition)})`;
   return 'Ready to court';
 }
+
+export type FastBreedRequest = { motherId: string; fatherId: string; tankId: string; count: number };
+
+/**
+ * Why a fast-breeding (instant) cross cannot run right now. Mirrors the `breed` command: parents only need to be a
+ * living, hatched female and male of one species. Maturity, condition, rest, courtship and a shared tank are skipped;
+ * the destination tank and the lab limits must still hold the offspring. An empty list means the cross can run.
+ */
+export function fastBreedingBlockers(world: World, request: FastBreedRequest, limits: PopulationLimits): Blocker[] {
+  const blockers: Blocker[] = [], byId = new Map(world.fish.map(member => [member.id, member]));
+  const mother = byId.get(request.motherId), father = byId.get(request.fatherId);
+  for (const [parent, id, sex] of [[mother, request.motherId, 'F'], [father, request.fatherId, 'M']] as const) {
+    const role = sex === 'F' ? 'female as the mother' : 'male as the father';
+    if (!id) blockers.push({ code: 'role', message: `Choose a ${role}.`, fix: 'Pick one in the planner above.' });
+    else if (!parent || parent.status !== 'living') blockers.push({ code: 'unavailable', fishId: id, message: `${parent?.name ?? id} is not a living resident.`, fix: `Choose a living ${role}.` });
+    else if (parent.sex !== sex) blockers.push({ code: 'role', fishId: id, message: `${parent.name} is ${parent.sex === 'F' ? 'female' : 'male'}.`, fix: `Choose a ${role}.` });
+    else if (isEgg(parent.life)) blockers.push({ code: 'immature', fishId: id, message: `${parent.name} is still an egg.`, fix: 'Wait until it hatches.' });
+  }
+  if (mother && father && mother.species !== father.species) blockers.push({
+    code: 'species', message: `${mother.name} and ${father.name} are different species; only members of the same species can breed.`, fix: 'Choose two koi or two axolotls.',
+  });
+  const tank = world.tanks.find(t => t.id === request.tankId);
+  if (!tank) blockers.push({ code: 'nursery-missing', message: 'Choose where the offspring will spawn.', fix: 'Pick one of your tanks.' });
+  else {
+    const residents = world.fish.filter(member => member.status === 'living' && member.tankId === tank.id).length;
+    const free = tank.capacity - residents - reservedPlaces(world, tank.id);
+    if (free < request.count) blockers.push({
+      code: 'nursery-full', message: `${tank.name} has ${plural(Math.max(0, free), 'free place')}; ${plural(request.count, 'offspring')} need${request.count === 1 ? 's' : ''} ${request.count}.`,
+      fix: 'Choose fewer offspring or another tank, or move fish out.',
+    });
+  }
+  const living = world.fish.filter(member => member.status === 'living').length, reserved = reservedPlaces(world);
+  if (living + reserved + request.count > limits.maxLiving) blockers.push({
+    code: 'limit', message: `The lab holds at most ${limits.maxLiving.toLocaleString('en')} living fish, counting reserved eggs.`, fix: 'Sell fish to make room.',
+  });
+  else if (world.fish.length + reserved + request.count > limits.maxRecords) blockers.push({
+    code: 'limit', message: `This save supports ${limits.maxRecords.toLocaleString('en')} fish records, counting reserved eggs.`, fix: 'Export your save before starting another lineage.',
+  });
+  return blockers;
+}

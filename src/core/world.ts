@@ -24,6 +24,9 @@ import { bloodlineId, captureStandard, MAX_FOUNDATION, registrationProblem } fro
 import type { Fish, Genome, Ration, Species, Tank, World } from './types';
 
 export const COHORT_SIZE = 20;
+/** Fast breeding offspring choices; the default instant cross lays COHORT_SIZE eggs. */
+export const FAST_OFFSPRING_COUNTS = [1, 2, 4, 8, 12, 16, 20, 24] as const;
+export const MAX_FAST_OFFSPRING = 24;
 export const MAX_TANKS = 8;
 export const TANK_CAPACITY = 60;
 /** Living fish across every tank. Sold fish become archive records and do not count. */
@@ -88,7 +91,7 @@ export function quote(fish: Fish): number {
 export type Command =
   | { type: 'rename'; fishId: string; name: string }
   | { type: 'move'; fishId: string; tankId: string }
-  | { type: 'breed'; motherId: string; fatherId: string; tankId: string; timestamp: string; genomeVersion?: GenomeVersion }
+  | { type: 'breed'; motherId: string; fatherId: string; tankId: string; timestamp: string; genomeVersion?: GenomeVersion; count?: number }
   | { type: 'sell'; fishId: string; priceModel?: PriceModel }
   | { type: 'sell-batch'; fishIds: string[]; priceModel?: PriceModel }
   | { type: 'rehome-batch'; fishIds: string[] }
@@ -123,7 +126,7 @@ const genomeVersionSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]).
 export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('rename'), fishId: fishIdSchema, name: z.string().trim().min(1).max(32) }).strict(),
   z.object({ type: z.literal('move'), fishId: fishIdSchema, tankId: tankIdSchema }).strict(),
-  z.object({ type: z.literal('breed'), motherId: fishIdSchema, fatherId: fishIdSchema, tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema }).strict(),
+  z.object({ type: z.literal('breed'), motherId: fishIdSchema, fatherId: fishIdSchema, tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema, count: z.number().int().min(1).max(MAX_FAST_OFFSPRING).optional() }).strict(),
   z.object({ type: z.literal('sell'), fishId: fishIdSchema, priceModel: priceModelSchema }).strict(),
   z.object({ type: z.literal('sell-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING), priceModel: priceModelSchema }).strict(),
   z.object({ type: z.literal('rehome-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING) }).strict(),
@@ -221,20 +224,23 @@ export function applyCommand(world: World, command: Command): World {
       break;
     }
     case 'breed': {
-      // The instant lab cross: a research shortcut with no courtship, maturity, condition or rest checks.
+      // The instant cross behind fast breeding: a shortcut with no courtship, maturity, condition, rest or shared-tank
+      // checks. Offspring go to any tank with room. Commands recorded before the count option always laid 20 eggs.
+      const offspring = command.count ?? COHORT_SIZE;
+      if (!Number.isInteger(offspring) || offspring < 1 || offspring > MAX_FAST_OFFSPRING) throw new Error(`Choose between 1 and ${MAX_FAST_OFFSPRING} offspring.`);
       const mother = getFish(command.motherId), father = getFish(command.fatherId);
       if (mother.id === father.id || mother.sex !== 'F' || father.sex !== 'M') throw new Error('Choose a female and a male.');
       if (isEgg(mother.life) || isEgg(father.life)) throw new Error('Eggs cannot breed. Wait until they hatch.');
       if (mother.species !== father.species) throw new Error('Koi and axolotls cannot breed with each other. Choose two members of the same species.');
-      room(COHORT_SIZE);
-      space(command.tankId, COHORT_SIZE);
+      room(offspring);
+      space(command.tankId, offspring);
       // A pre-FS-113 command could only name genome v1 parents, which then produced genome v1 children.
       // A command without a version keeps what its parents allow; genome v3 parents never existed before FS-601.
       const version = mother.species === 'koi'
         ? command.genomeVersion ?? (((mother.genome as Genome).version === 1 && (father.genome as Genome).version === 1) ? 1 : Math.max(2, (mother.genome as Genome).version, (father.genome as Genome).version) as GenomeVersion)
         : GENOME_VERSION;
       const taken = takenNames(next);
-      for (let i = 0; i < COHORT_SIZE; i++) {
+      for (let i = 0; i < offspring; i++) {
         const birthSeed = hash(`${world.seed}:birth:${next.nextId}:${mother.id}:${father.id}`);
         const trace = emptyTrace(), result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, version, trace);
         const sex: Fish['sex'] = hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M';

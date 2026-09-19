@@ -339,3 +339,6 @@ footer a{display:inline-flex;align-items:center;min-height:24px}
 /* FS-605 unusual-line portrait strip. */
 .unusual-strip { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 @media (max-width: 650px) { .unusual-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.fast-switch { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.fast-switch small { font-size: .74rem; color: #afcfd2; }
+.fast-switch .pill-toggle[aria-pressed="true"] { background: #3a3417; border-color: #c9a640; color: #ffe7a0; }

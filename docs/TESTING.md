@@ -1,6 +1,13 @@
 # Testing and verification
 
-**Latest recorded automated run:** FS-120, 19 September 2026, Windows 11 / Node 24.11.1: 286 tests in 45 files, strict TypeScript and the production build pass ([details](#fs-120-axolotl-anatomy-and-locomotion)).
+**Latest recorded automated run:** FS-121, 19 September 2026, Windows 11 / Node 22.18.0: 289 tests in 45 files, strict TypeScript and the production build pass ([details](#fs-121-fast-breeding-switch)).
+
+## FS-121 fast breeding switch
+
+- `npm run check`: **289 tests in 45 files**, strict TypeScript and production build pass. One earlier full run timed out in `tests/economy.test.ts` (5 s limit) both with and without this change; it passes alone and on the rerun, so it is load-dependent, not caused here.
+- `tests/breeding.test.ts` adds three tests: parents in different tanks breed 4 eggs into a chosen tank, keep their tanks and gain no rest days; low condition and rest days do not block, while a wrong role, a missing parent, an egg parent, a full destination and a zero count do; a recorded `breed` command without `count` still lays 20 eggs.
+- Browser pane on port 5173: switched **Fast breeding** on, moved Haru to Breeding Studio, left Sumi in The Koi Garden, chose The Koi Garden and 4 eggs. The panel read "can breed across tanks"; **Breed now** laid 4 eggs there (54 → 50 free places) with no console errors. After a reload the switch was still on; switching it off restored **Start courtship**.
+- `scripts/verify-m2.cjs` now switches Fast breeding on before its keyboard breed step; it was not re-run in this pass.
 
 ## FS-120 axolotl anatomy and locomotion
 
