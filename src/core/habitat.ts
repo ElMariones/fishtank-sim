@@ -2,6 +2,7 @@ import { advanceClutches } from './breeding';
 import { recoverDemand } from './economy';
 import { advanceRelief } from './recovery';
 import { refreshShop } from './shop';
+import { refreshAxolotlShop } from './axolotlShop';
 import { CARE_RATES, closeCareDay, integrateTank, type CareLoad } from './care';
 import { developDay, environmentFor, nutritionFactor, type Environment } from './development';
 import { metabolicPotential } from './genetics';
@@ -95,7 +96,7 @@ export function advanceWorld(world: World, fromTick: number, toTick: number, onD
     if (end === boundary) {
       // Development first, then breeding (FS-402): eggs laid at this boundary start developing at the next one. NPC
       // demand recovers (FS-501), the shop delivers (FS-502) and the koi rescue's wait counts down (FS-504) last.
-      const developed = developResidents(current), bred = advanceRelief(refreshShop(recoverDemand(advanceClutches(developed.world)), boundary / TICKS_PER_GAME_DAY));
+      const developed = developResidents(current), day = boundary / TICKS_PER_GAME_DAY, bred = advanceRelief(refreshAxolotlShop(refreshShop(recoverDemand(advanceClutches(developed.world)), day), day));
       onDay?.({ tick: boundary, before: current, after: bred, environments: developed.environments });
       current = bred;
     }

@@ -7,8 +7,9 @@ import {
   AERATION_TIERS, applyCareSettings, applyWaterChange, CARE_RATES, careCost, defaultCare, FILTER_TIERS, RATION_KEYS, THERMOSTAT_RANGE,
   waterChangeCost, type WaterChangePercent,
 } from './care';
-import { defaultMarket, openingLedger, planSales, recordEntry, saleDetail } from './economy';
+import { defaultMarket, openingLedger, planSales, recordEntry, saleDetail, type PriceModel } from './economy';
 import { initialShop } from './shop';
+import { initialAxolotlShop } from './axolotlShop';
 import { defaultRelief, RELIEF_COOLDOWN_DAYS, reliefStatus } from './recovery';
 import { express, founderGenome, inherit } from './genetics';
 import { axolotlFounderGenome } from './axolotlGenetics';
@@ -37,9 +38,10 @@ export const STOCK_PRICE = 250;
  * (FS-401/402); NPC demand and the credit ledger (FS-501). World v7 adds persistent shop stock (FS-502); v8 adds placed
  * decorations (FS-503); v9 adds the koi rescue for no-money recovery (FS-504); v10 accepts genome v3 records and
  * genome v3 shop stock (FS-601); v11 adds mutation origins to every fish (FS-603); v12 adds named
- * bloodlines (FS-604); v13 adds explicit species identity and independent axolotl genetics.
+ * bloodlines (FS-604); v13 adds explicit species identity and independent axolotl genetics; v14 adds the persistent
+ * axolotl shop.
  */
-export const WORLD_VERSION = 13;
+export const WORLD_VERSION = 14;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -67,10 +69,11 @@ function newTank(id: string, name: string, planted: boolean): Tank {
 
 /** New worlds use the current genome. Research fixtures pass genome version 1 to reproduce the frozen FS-101 founders. */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = GENOME_VERSION): World {
-  const world: World = { version: 13, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
+  const world: World = { version: 14, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
-  ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed), naming: NAMING_MODEL, relief: defaultRelief(), bloodlines: [], nextBloodlineId: 1 };
+  ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed), naming: NAMING_MODEL, relief: defaultRelief(), bloodlines: [], nextBloodlineId: 1,
+    axolotlShop: initialAxolotlShop(seed) };
   ['Haru', 'Sumi', 'Kohaku', 'Yuki', 'Akira', 'Momo'].forEach((name, i) => {
     world.fish.push(founder(world, name, i % 2 === 0 ? 'F' : 'M', timestamp, genomeVersion)); world.nextId++;
   });
@@ -86,11 +89,12 @@ export type Command =
   | { type: 'rename'; fishId: string; name: string }
   | { type: 'move'; fishId: string; tankId: string }
   | { type: 'breed'; motherId: string; fatherId: string; tankId: string; timestamp: string; genomeVersion?: GenomeVersion }
-  | { type: 'sell'; fishId: string; priceModel?: 1 }
-  | { type: 'sell-batch'; fishIds: string[]; priceModel?: 1 }
+  | { type: 'sell'; fishId: string; priceModel?: PriceModel }
+  | { type: 'sell-batch'; fishIds: string[]; priceModel?: PriceModel }
   | { type: 'rehome-batch'; fishIds: string[] }
   | { type: 'buy'; tankId: string; timestamp: string; genomeVersion?: GenomeVersion; species?: Species }
   | { type: 'buy-listing'; listingId: string; tankId: string; timestamp: string }
+  | { type: 'buy-axolotl-listing'; listingId: string; tankId: string; timestamp: string }
   | { type: 'add-tank' }
   | { type: 'purchase-tank' }
   | { type: 'upgrade-tank'; tankId: string }
@@ -108,6 +112,8 @@ export type Command =
   | { type: 'rename-bloodline'; bloodlineId: string; name: string };
 
 const fishIdSchema = z.string().regex(/^FSH-\d{6}$/);
+/** Price model 1 sales predate species-aware axolotl offers; both stay valid so every recorded sale replays. */
+const priceModelSchema = z.union([z.literal(1), z.literal(2)]).optional();
 const tankIdSchema = z.string().max(50);
 /**
  * Commands recorded before FS-113 carry no genomeVersion. They must replay exactly as the genome v1 reducer produced
@@ -118,11 +124,12 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('rename'), fishId: fishIdSchema, name: z.string().trim().min(1).max(32) }).strict(),
   z.object({ type: z.literal('move'), fishId: fishIdSchema, tankId: tankIdSchema }).strict(),
   z.object({ type: z.literal('breed'), motherId: fishIdSchema, fatherId: fishIdSchema, tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema }).strict(),
-  z.object({ type: z.literal('sell'), fishId: fishIdSchema, priceModel: z.literal(1).optional() }).strict(),
-  z.object({ type: z.literal('sell-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING), priceModel: z.literal(1).optional() }).strict(),
+  z.object({ type: z.literal('sell'), fishId: fishIdSchema, priceModel: priceModelSchema }).strict(),
+  z.object({ type: z.literal('sell-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING), priceModel: priceModelSchema }).strict(),
   z.object({ type: z.literal('rehome-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING) }).strict(),
   z.object({ type: z.literal('buy'), tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema, species: z.enum(['koi', 'axolotl']).optional() }).strict(),
   z.object({ type: z.literal('buy-listing'), listingId: z.string().regex(/^LS-\d{6,16}$/), tankId: tankIdSchema, timestamp: z.string().datetime() }).strict(),
+  z.object({ type: z.literal('buy-axolotl-listing'), listingId: z.string().regex(/^AX-\d{6,16}$/), tankId: tankIdSchema, timestamp: z.string().datetime() }).strict(),
   z.object({ type: z.literal('add-tank') }).strict(),
   z.object({ type: z.literal('purchase-tank') }).strict(),
   z.object({ type: z.literal('upgrade-tank'), tankId: tankIdSchema }).strict(),
@@ -182,7 +189,7 @@ export function applyCommand(world: World, command: Command): World {
   const names = (fish: Fish[]) => fish.length <= 3 ? fish.map(f => f.name).join(', ') : `${fish.slice(0, 3).map(f => f.name).join(', ')} and ${fish.length - 3} more`;
   // A sale with a price model goes to the best NPC offers and uses up their demand (FS-501). Journal entries recorded
   // before the economy carry no price model and keep the lab quote, so older saves replay to the credits they stored.
-  const sell = (batch: Fish[], priceModel: 1 | undefined) => {
+  const sell = (batch: Fish[], priceModel: PriceModel | undefined) => {
     if (priceModel === undefined) {
       const total = batch.reduce((sum, fish) => sum + quote(fish), 0);
       for (const fish of batch) fish.status = 'sold';
@@ -190,7 +197,7 @@ export function applyCommand(world: World, command: Command): World {
       next.ledger = recordEntry(next.ledger, 'sale', total, batch.length, `${names(batch)} at the lab quote`);
       return;
     }
-    const plan = planSales(next, batch.map(fish => fish.id));
+    const plan = planSales(next, batch.map(fish => fish.id), undefined, priceModel);
     if (plan.unsold.length) {
       const unsold = batch.filter(fish => plan.unsold.includes(fish.id));
       throw new Error(`No NPC buyer wants ${names(unsold)} right now. Wait for demand to recover, or rehome ${unsold.length === 1 ? 'it' : 'them'} instead.`);
@@ -283,6 +290,22 @@ export function applyCommand(world: World, command: Command): World {
       });
       next.nextId++;
       next.shop = { ...next.shop, listings: next.shop.listings.filter(entry => entry.id !== listing.id) };
+      next.ledger = recordEntry(next.ledger, 'stock', -listing.price, 1, `${listing.name} from ${listing.id}`);
+      break;
+    }
+    case 'buy-axolotl-listing': {
+      // An axolotl shop specimen (world v14): the listed genome, sex and name become an axolotl founder in the chosen tank.
+      const listing = next.axolotlShop.listings.find(entry => entry.id === command.listingId);
+      if (!listing) throw new Error('That axolotl is no longer in the shop.');
+      space(command.tankId, 1);
+      room(1);
+      afford(listing.price, `${listing.name} (${listing.id})`);
+      next.fish.push({
+        id: id(next.nextId), name: listing.name, sex: listing.sex, species: 'axolotl', genome: listing.genome, birthSeed: listing.birthSeed, generation: 0, parents: null,
+        bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', mutations: [], life: adultLife(listing.genome), breeding: idleBreeding(), origins: [],
+      });
+      next.nextId++;
+      next.axolotlShop = { ...next.axolotlShop, listings: next.axolotlShop.listings.filter(entry => entry.id !== listing.id) };
       next.ledger = recordEntry(next.ledger, 'stock', -listing.price, 1, `${listing.name} from ${listing.id}`);
       break;
     }

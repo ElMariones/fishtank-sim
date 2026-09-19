@@ -180,7 +180,7 @@ describe('axolotl release integration', () => {
     expect(recovered.fish.at(-1)!.mutations[0].locusId).toBe(AXOLOTL_LOCI[locus]);
   });
 
-  it('migrates a v12 koi world to v13 by adding koi species without changing genomes or identities', () => {
+  it('migrates a v12 koi world to the current version by adding koi species without changing genomes or identities', () => {
     const current = createWorld(NOW);
     const legacy = structuredClone(current) as unknown as Record<string, unknown>;
     legacy.version = 12;
@@ -188,7 +188,7 @@ describe('axolotl release integration', () => {
     legacy.clutches = current.clutches.map(({ species: _species, ...clutch }) => clutch);
 
     const migrated = decodeSave(JSON.stringify(legacy));
-    expect(migrated.version).toBe(13);
+    expect(migrated.version).toBe(WORLD_VERSION);
     expect(migrated.fish.every(fish => fish.species === 'koi')).toBe(true);
     expect(migrated.fish.map(fish => [fish.id, fish.name, fish.birthSeed, fish.genome, fish.parents, fish.generation, fish.tankId, fish.status]))
       .toEqual(current.fish.map(fish => [fish.id, fish.name, fish.birthSeed, fish.genome, fish.parents, fish.generation, fish.tankId, fish.status]));

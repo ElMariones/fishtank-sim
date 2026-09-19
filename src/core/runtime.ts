@@ -119,6 +119,7 @@ export function decodeRuntime(raw: string): Runtime {
   const comparable = (candidate: World) => {
     // World v13 adds species identity. Every older world was koi-only, so this field carries no historical evidence and
     // is omitted only while proving an old snapshot against its replay. Current v13 snapshots compare it normally.
+    // World v14 adds the axolotl shop. An older snapshot has none to prove, so its replayed stock is left out.
     if (sourceVersion < 7) {
       const records = recordsOnly(candidate);
       return JSON.stringify(sourceVersion < 13 ? withoutSpecies(records) : records);
@@ -128,7 +129,8 @@ export function decodeRuntime(raw: string): Runtime {
     // Mutation origins are recorded from world v11 (FS-603); older snapshots rebuild them, so they are compared without.
     const decorated = sourceVersion < 8 ? withoutDecorations(named) : named;
     const originated = sourceVersion < 11 ? withoutOrigins(decorated) : decorated;
-    return JSON.stringify(sourceVersion < 13 ? withoutSpecies(originated) : originated);
+    const speciated = sourceVersion < 13 ? withoutSpecies(originated) : originated;
+    return JSON.stringify(sourceVersion < 14 ? { ...speciated, axolotlShop: null } : speciated);
   };
   if (comparable(decodeSave(JSON.stringify(replayed.world))) !== comparable(world)) throw mismatch;
   const simulation = parsed.simulation ?? { version: 1 as const, tankTicks: Object.fromEntries(world.tanks.map(tank => [tank.id, parsed.tick])) };
@@ -138,6 +140,9 @@ export function decodeRuntime(raw: string): Runtime {
   if (legacyWorld || staleNames) {
     // The first delivery arrives at migration, not at the old world's day zero.
     if (sourceVersion < 7) world.shop = initialShop(world.seed, Math.floor(parsed.tick / TICKS_PER_GAME_DAY));
+    // An older world had no axolotl shop to store. Its replay from the checkpoint stocked one under the same delivery rules,
+    // so the rebased world keeps that stock: deterministic, and what the shop would hold had it existed all along.
+    if (sourceVersion < 14) world.axolotlShop = replayed.world.axolotlShop;
     // Existing fish and listings keep their names; only fish named after the rebase use the current model.
     world.naming = NAMING_MODEL;
     // Listings already in the shop keep their genomes; deliveries after the rebase use genome v3 (FS-601).
@@ -153,7 +158,7 @@ export function decodeRuntime(raw: string): Runtime {
  */
 function recordsOnly(world: World) {
   return {
-    ...world, market: null, ledger: null, shop: null, naming: null,
+    ...world, market: null, ledger: null, shop: null, naming: null, axolotlShop: null,
     tanks: world.tanks.map(tank => ({ id: tank.id, name: tank.name, capacity: tank.capacity, planted: tank.planted })),
     fish: world.fish.map(member => ({ ...member, name: null, life: null, breeding: null })),
   };
@@ -165,6 +170,7 @@ function withoutNamesWorld(world: World) {
     ...world, naming: null,
     fish: world.fish.map(member => ({ ...member, name: null })),
     shop: { ...world.shop, listings: world.shop.listings.map(listing => ({ ...listing, name: null })) },
+    axolotlShop: { ...world.axolotlShop, listings: world.axolotlShop.listings.map(listing => ({ ...listing, name: null })) },
     ledger: { ...world.ledger, entries: world.ledger.entries.map(entry => ({ ...entry, detail: null })) },
   };
 }

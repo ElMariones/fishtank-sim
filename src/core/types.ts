@@ -116,6 +116,16 @@ export type Listing = {
   carries: { locus: AppearanceLocus; allele: number } | null;
 };
 export type ShopState = { model: 1 | 2; nextListing: number; refreshedDay: number; listings: Listing[] };
+export type AxolotlListingCategory = 'founder' | 'morph' | 'carrier';
+export type AxolotlSwitch = 'axo_leucistic_switch' | 'axo_albinism_switch' | 'axo_melanoid_switch';
+/** An axolotl shop specimen (world v14): like a koi listing, fixed from arrival until it is bought or leaves. */
+export type AxolotlListing = {
+  id: string; category: AxolotlListingCategory; name: string; sex: 'F' | 'M'; genome: AxolotlGenome; birthSeed: number; price: number;
+  expiresDay: number; note: string;
+  /** For documented carriers: the recessive pigment switch and the severe allele carried as one hidden copy. */
+  carries: { locus: AxolotlSwitch; allele: number } | null;
+};
+export type AxolotlShopState = { model: 1; nextListing: number; refreshedDay: number; listings: AxolotlListing[] };
 /** How new fish are named: 1 numbered ("Fry 12"), 2 generated from name parts (ADR-055), 3 parts true to the fish's traits (ADR-056). */
 export type NamingModel = 1 | 2 | 3;
 /** A bloodline's standard (FS-604), taken from its foundation fish when it was registered and never changed after. */
@@ -134,14 +144,17 @@ export type ReliefState = { model: 1; claims: number; cooldownDays: number };
  * clutches (FS-401/402), v6 NPC demand, a credit ledger and rehomed fish (FS-501), v7 persistent shop stock (FS-502),
  * v8 persisted decoration transforms (FS-503). World v9 adds the koi rescue (FS-504). World v10 (FS-601) accepts genome v3
  * records and shop model 2, which delivers genome v3 stock. World v11 (FS-603) adds mutation origins to every fish;
- * world v12 (FS-604) adds the bloodline registry. World v13 adds explicit species identity and the independent axolotl genome.
+ * world v12 (FS-604) adds the bloodline registry. World v13 adds explicit species identity and the independent axolotl genome;
+ * world v14 adds the persistent axolotl shop.
  * Older saves migrate with defaults.
  */
 export type World = {
-  version: 13; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
+  version: 14; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
   market: MarketState; ledger: Ledger; shop: ShopState; naming: NamingModel; relief: ReliefState;
   /** Registered bloodlines and the next registry number (world v12). */
   bloodlines: Bloodline[]; nextBloodlineId: number;
+  /** Persistent axolotl stock (world v14), separate from the koi shop so koi deliveries never change. */
+  axolotlShop: AxolotlShopState;
 };
 /**
  * Development v2 inherited marking anchor, derived from one phased two-locus haplotype block.

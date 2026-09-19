@@ -1,5 +1,5 @@
 import { describeAppearance } from './appearance';
-import { expressAxolotl, isAxolotlGenome } from './axolotlGenetics';
+import { AXOLOTL_MORPH_RARITY, expressAxolotl, isAxolotlGenome } from './axolotlGenetics';
 import { GOAL_BY_KEY } from './breedingGoals';
 import { isEgg, lifeStage, type LifeStage } from './development';
 import { express, metabolicPotential } from './genetics';
@@ -14,8 +14,15 @@ import type { BuyerId, Fish, Ledger, LedgerReason, MarketState, World } from './
  * reconcile with the balance, and rehoming is economy-neutral. Values are game rules, not real market data.
  */
 export const ECONOMY_MODEL = 1;
-/** Sale commands carry this. Journal entries without it replay with the lab quote they were recorded under. */
-export const PRICE_MODEL = 1;
+/**
+ * Sale commands carry this. Journal entries without it replay with the lab quote they were recorded under. Price model 2
+ * judges axolotls within their own species (see AXOLOTL_WANTS); koi prices are identical in both models, and model 1
+ * commands keep pricing axolotls as they were recorded.
+ */
+export const PRICE_MODEL = 2;
+export type PriceModel = 1 | 2;
+/** Axolotl adults at or below this length interest the miniature keeper under price model 2. */
+export const AXOLOTL_MINIATURE_CM = 20;
 export const LEDGER_LIMIT = 100;
 /** Founders and bought stock never resell for more than this, which stays below the 250-credit stock price. */
 export const FOUNDER_RESALE_CAP = 150;
@@ -27,7 +34,11 @@ export const LEDGER_REASONS = ['sale', 'stock', 'equipment', 'waterChange', 'reh
 export const LEDGER_LABELS: Record<LedgerReason, string> = { sale: 'Sales', stock: 'Unrelated stock', equipment: 'Equipment', waterChange: 'Water changes', rehome: 'Rehoming' };
 
 /** Traits buyers read. They depend only on the genome, so a cache keyed by fish ID stays valid. */
-export type SaleTraits = { tail: number; adultLengthCm: number; longevityYears: number; metabolism: number; rarity: 0 | 1 | 2 | 3 };
+export type SaleTraits = {
+  tail: number; adultLengthCm: number; longevityYears: number; metabolism: number; rarity: 0 | 1 | 2 | 3;
+  /** Axolotls only: tail length normalized within the species, 0-1, for price model 2. */
+  axolotlTail?: number;
+};
 export type TraitCache = Map<string, SaleTraits>;
 
 export type Buyer = {
@@ -56,6 +67,29 @@ export const BUYER_BY_ID = Object.fromEntries(BUYERS.map(buyer => [buyer.id, buy
 /** The most credits buyers can pay in one game day once their starting demand is used: recovery × budget, summed. */
 export const DAILY_DEMAND_CEILING = BUYERS.reduce((sum, buyer) => sum + buyer.recovery * buyer.budget, 0);
 
+/**
+ * Price model 2 buyer interest for axolotls. Koi thresholds measure koi: every axolotl is under the miniature keeper's
+ * 40 cm and its tail ratio is not a koi fin, so under model 1 nearly every axolotl looked like a prize. Here the long-fin
+ * collector ranks tails within the species, the miniature keeper wants the smallest axolotls, and the pond keeper, who
+ * stocks outdoor koi ponds, does not take them. The pet shop and color collector read the same values as for koi.
+ */
+export const AXOLOTL_WANTS: Record<BuyerId, string> = {
+  petShop: 'any healthy hatched axolotl',
+  longFin: 'axolotls with a tail in the longest 45% of the species range',
+  pondKeeper: 'no axolotls: it stocks outdoor koi ponds',
+  miniature: `axolotl adults of ${AXOLOTL_MINIATURE_CM} cm or less`,
+  colorCollector: 'an uncommon or rare axolotl pigment morph',
+};
+function axolotlInterest(buyer: Buyer, traits: SaleTraits): number | null {
+  const tail = traits.axolotlTail ?? 0;
+  switch (buyer.id) {
+    case 'longFin': return tail >= 0.55 ? clamp((tail - 0.55) / 0.45) : null;
+    case 'pondKeeper': return null;
+    case 'miniature': return traits.adultLengthCm <= AXOLOTL_MINIATURE_CM ? clamp((AXOLOTL_MINIATURE_CM + 2 - traits.adultLengthCm) / 6) : null;
+    default: return buyer.interest(traits);
+  }
+}
+
 const RARITY_RANK = { uncommon: 1, rare: 2, 'very rare': 3 } as const;
 const STAGE_TEXT: Record<LifeStage, string> = { egg: 'Egg', fry: 'Fry', juvenile: 'Juvenile', adult: 'Adult', elderly: 'Elderly' };
 const percent = (value: number) => `${Math.round(value * 100)}%`;
@@ -65,21 +99,13 @@ export function saleTraits(fish: Fish, cache?: TraitCache): SaleTraits {
   if (cached) return cached;
   if (isAxolotlGenome(fish.genome)) {
     const p = expressAxolotl(fish.genome);
-    const morphRarity: Record<typeof p.pigmentation.morph, 0 | 1 | 2 | 3> = {
-      wild: 0,
-      'hypomelanistic': 1,
-      'xanthic-like': 1,
-      'axanthic-like': 2,
-      'leucistic-like': 3,
-      'albino-like': 3,
-      'melanoid-like': 3,
-    };
     const traits: SaleTraits = {
       tail: p.morphology.tail.length,
       adultLengthCm: p.adultLengthCm,
       longevityYears: p.longevity,
       metabolism: p.metabolism,
-      rarity: morphRarity[p.pigmentation.morph],
+      rarity: AXOLOTL_MORPH_RARITY[p.pigmentation.morph],
+      axolotlTail: clamp((p.morphology.tail.length - 0.42) / 0.42),
     };
     cache?.set(fish.id, traits);
     return traits;
@@ -95,9 +121,9 @@ export type OfferTerm = { label: string; amount: number };
 /** `amount` is the sum of `terms`. */
 export type Offer = { buyer: BuyerId; buyerName: string; amount: number; terms: OfferTerm[] };
 
-function offerFrom(buyer: Buyer, fish: Fish, stage: LifeStage, traits: SaleTraits, demand: number): Offer | null {
+function offerFrom(buyer: Buyer, fish: Fish, stage: LifeStage, traits: SaleTraits, demand: number, model: PriceModel): Offer | null {
   if (stage === 'egg' || (stage === 'fry' && !buyer.takesFry) || demand < 1) return null;
-  const interest = buyer.interest(traits);
+  const interest = model >= 2 && traits.axolotlTail !== undefined ? axolotlInterest(buyer, traits) : buyer.interest(traits);
   if (interest === null) return null;
   // Each step rounds the running price and records the change, so the terms always add up to the offer.
   const terms: OfferTerm[] = [{ label: 'Base price', amount: buyer.base }];
@@ -119,10 +145,10 @@ function offerFrom(buyer: Buyer, fish: Fish, stage: LifeStage, traits: SaleTrait
 }
 
 /** Every buyer's offer for a living, hatched fish, best first; ties keep catalog order. */
-export function offersFor(world: Pick<World, 'market'>, fish: Fish, cache?: TraitCache, demand: Record<BuyerId, number> = world.market.demand): Offer[] {
+export function offersFor(world: Pick<World, 'market'>, fish: Fish, cache?: TraitCache, demand: Record<BuyerId, number> = world.market.demand, model: PriceModel = PRICE_MODEL): Offer[] {
   if (fish.status !== 'living' || isEgg(fish.life)) return [];
   const traits = saleTraits(fish, cache), stage = lifeStage(fish.life, traits);
-  return BUYERS.flatMap(buyer => { const offer = offerFrom(buyer, fish, stage, traits, demand[buyer.id]); return offer ? [offer] : []; })
+  return BUYERS.flatMap(buyer => { const offer = offerFrom(buyer, fish, stage, traits, demand[buyer.id], model); return offer ? [offer] : []; })
     .sort((a, b) => b.amount - a.amount);
 }
 
@@ -131,12 +157,12 @@ export const bestOffer = (world: Pick<World, 'market'>, fish: Fish, cache?: Trai
 export type SalePlan = { sales: { fishId: string; offer: Offer }[]; unsold: string[]; total: number; demand: Record<BuyerId, number> };
 
 /** Sells in the given order: each fish goes to its best offer, which uses up that buyer's demand for the fish after it. */
-export function planSales(world: Pick<World, 'market' | 'fish'>, fishIds: readonly string[], cache?: TraitCache): SalePlan {
+export function planSales(world: Pick<World, 'market' | 'fish'>, fishIds: readonly string[], cache?: TraitCache, model: PriceModel = PRICE_MODEL): SalePlan {
   const demand = { ...world.market.demand }, byId = new Map(world.fish.map(member => [member.id, member]));
   const sales: SalePlan['sales'] = [], unsold: string[] = [];
   let total = 0;
   for (const id of fishIds) {
-    const fish = byId.get(id), offer = fish ? offersFor(world, fish, cache, demand)[0] : undefined;
+    const fish = byId.get(id), offer = fish ? offersFor(world, fish, cache, demand, model)[0] : undefined;
     if (!offer) { unsold.push(id); continue; }
     sales.push({ fishId: id, offer });
     demand[offer.buyer] -= 1;
@@ -151,18 +177,18 @@ export function planSales(world: Pick<World, 'market' | 'fish'>, fishIds: readon
  * stale queue entry is an upper bound and is re-priced before it is chosen. Realized prices never rise along the plan,
  * ties keep the given order, and sending the planned order to `sell-batch` pays exactly this plan.
  */
-export function planBestSales(world: Pick<World, 'market' | 'fish'>, fishIds: readonly string[], cache?: TraitCache): SalePlan {
+export function planBestSales(world: Pick<World, 'market' | 'fish'>, fishIds: readonly string[], cache?: TraitCache, model: PriceModel = PRICE_MODEL): SalePlan {
   type Entry = { id: string; index: number; fish: Fish | undefined; amount: number };
   const byId = new Map(world.fish.map(member => [member.id, member])), demand = { ...world.market.demand };
   const before = (a: Entry, b: Entry) => b.amount - a.amount || a.index - b.index;
   const queue: Entry[] = fishIds.map((id, index) => {
     const fish = byId.get(id);
-    return { id, index, fish, amount: fish ? offersFor(world, fish, cache, demand)[0]?.amount ?? 0 : 0 };
+    return { id, index, fish, amount: fish ? offersFor(world, fish, cache, demand, model)[0]?.amount ?? 0 : 0 };
   }).sort(before);
   const sales: SalePlan['sales'] = [], unsold: Entry[] = [];
   let total = 0;
   while (queue.length) {
-    const head = queue.shift()!, offer = head.fish ? offersFor(world, head.fish, cache, demand)[0] : undefined;
+    const head = queue.shift()!, offer = head.fish ? offersFor(world, head.fish, cache, demand, model)[0] : undefined;
     if (!offer) { unsold.push(head); continue; }
     if (offer.amount < head.amount) {
       head.amount = offer.amount;

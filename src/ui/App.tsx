@@ -40,7 +40,7 @@ import { OnboardingGuide } from './OnboardingGuide';
 import type { LoadedSession } from '../persistence/session';
 import { ACTIVE_CHECKPOINT_MS } from '../simulation/time';
 import { downloadText, SavePanel } from './SavePanel';
-import type { Clutch, Fish, Listing, World } from '../core/types';
+import type { AxolotlListing, Clutch, Fish, Listing, World } from '../core/types';
 import { TICKS_PER_GAME_DAY } from '../core/water';
 import { COHORT_SIZE, type Command } from '../core/world';
 import { Pagination, SexMark } from './Controls';
@@ -48,6 +48,8 @@ import { FamilyView } from './FamilyView';
 import { FishPortrait, type PortraitView } from './FishPortrait';
 import { AxolotlGenomeView, AxolotlTraitPanel } from './AxolotlGenetics';
 import { isAxolotlGenome } from '../core/axolotlGenetics';
+import { LocusTip } from './LocusTip';
+import { KOI_EXPRESSION_NOTES, KOI_LOCUS_NOTES } from '../core/locusNotes';
 import { TankCanvas } from './TankCanvas';
 import './styles.css';
 import './theme.css';
@@ -473,10 +475,10 @@ export function App({ initial }: { initial: LoadedSession }) {
     }
   }
 
-  /** Axolotls use their own founder stream/genome but the same aquarium capacity and stock price. */
-  function buyAxolotl(destinationId: string) {
-    const next = run({ type: 'buy', species: 'axolotl', tankId: destinationId, timestamp: new Date().toISOString() },
-      `An unrelated axolotl founder joined ${tankName(destinationId)}.`);
+  /** An axolotl shop listing (world v14): its listed genome, sex and name join the chosen tank. */
+  function buyAxolotlListing(listing: AxolotlListing, destinationId: string) {
+    const next = run({ type: 'buy-axolotl-listing', listingId: listing.id, tankId: destinationId, timestamp: new Date().toISOString() },
+      `${listing.name} the axolotl joined ${tankName(destinationId)} for ◈ ${listing.price}. ${listing.note.replace(/^./, c => c.toUpperCase())}.`);
     if (!next) return;
     const newcomer = next.fish[next.fish.length - 1];
     setSelectedId(newcomer.id); setTankId(destinationId); setShowArchived(false); setQuery('');
@@ -534,7 +536,7 @@ export function App({ initial }: { initial: LoadedSession }) {
     </header>
     <Drawer open={showSaves} label="Saves" onClose={() => openDrawer(null)}><SavePanel runtime={runtime} session={initial.session} blocked={blocked} readOnly={initial.readOnly} onBusy={value => { saveBusy.current = value; }} onSaved={() => { setBlocked(false); setSaveError(''); }} /></Drawer>
     <Drawer open={showMarket} label="Buyers and ledger" onClose={() => openDrawer(null)}><MarketPanel world={world} readOnly={initial.readOnly} traitCache={traitCache} onClaimRelief={claimRelief} onClose={() => openDrawer(null)} /></Drawer>
-    <Drawer open={showShop && view === 'aquarium'} label="NPC shop" wide onClose={() => openDrawer(null)}><ShopPanel world={world} tank={tank} day={gameDay} readOnly={initial.readOnly} traitCache={traitCache} onBuy={buyListing} onBuyAxolotl={buyAxolotl} onClose={() => openDrawer(null)} onRecovery={openRecovery} /></Drawer>
+    <Drawer open={showShop && view === 'aquarium'} label="NPC shop" wide onClose={() => openDrawer(null)}><ShopPanel world={world} tank={tank} day={gameDay} readOnly={initial.readOnly} traitCache={traitCache} onBuy={buyListing} onBuyAxolotl={buyAxolotlListing} onClose={() => openDrawer(null)} onRecovery={openRecovery} /></Drawer>
     {view === 'fixtures' ? <Suspense fallback={<p className="loading-card" role="status">Loading visual fixtures…</p>}><VisualFixtureLab onClose={() => setView('aquarium')} /></Suspense> : view === 'research' ? <Suspense fallback={<p className="loading-card" role="status">Loading research…</p>}><ResearchLab onClose={() => setView('aquarium')} /></Suspense> : <div className="workspace">
       <main>
         {saveError && saveError !== 'Saving…' ? <p className="warning" role="alert">{saveError}</p> : null}
@@ -728,7 +730,7 @@ export function App({ initial }: { initial: LoadedSession }) {
           {tab === 'Genome' && fish.species === 'koi' ? <div className="genome-view"><div className="genome-fingerprint"><span>Genome checksum</span><code>{fingerprint(fish.genome)}</code></div><p className="help-copy">Two phased copies per locus. A0–A5 are allele IDs. Most blend; A5/A5 at the metallic switch expresses strong metallic color. Chromosomes 09–10 (genome v2) hold color and ornament, with named categorical alleles and additive intensity levels. Classic dominates body, accent and eye colors; variants need two nonclassic copies. One motif copy shows faintly, and different motifs mix. Smooth scales dominate variants. Chromosome 11 (genome v3) holds structure: a paired fan or crown tail, a reduced or missing dorsal fin and other barbel counts each need two variant copies, and additive levels shape them. Hidden copies can still pass to offspring.</p>{CHROMOSOMES.map((chromosome, chromosomeIndex) => <div className="chromosome" key={chromosome}><h3>{String(chromosomeIndex + 1).padStart(2, '0')} / {chromosome}{chromosomeIndex * 6 >= fish.genome.maternal.length ? ` · not carried by genome v${fish.genome.version}` : ''}</h3>{LOCUS_REGISTRY.slice(chromosomeIndex * 6, chromosomeIndex * 6 + 6).map(entry => {
             const i = entry.index, locus = entry.id, mutation = fish.mutations.some(m => m.locus === i), inherited = !mutation && fish.origins.some(o => o.locus === i);
             const carried = i < fish.genome.maternal.length, baseline = `Not carried by genome v${fish.genome.version}; reads as ${alleleLabel(locus, entry.baseline ?? 0)}`;
-            return <div className={`locus ${i >= 48 ? 'appearance-locus' : ''} ${mutation ? 'mutated' : ''} ${carried ? '' : 'absent'}`} key={locus}><span>{label(locus)}{mutation ? ' *' : inherited ? ' ◆' : ''}</span>{carried ? <><code title="Copy inherited from mother">A{fish.genome.maternal[i]}{i >= 48 ? <small>{alleleLabel(locus, fish.genome.maternal[i])}</small> : null}</code><code title="Copy inherited from father">A{fish.genome.paternal[i]}{i >= 48 ? <small>{alleleLabel(locus, fish.genome.paternal[i])}</small> : null}</code></> : <><code title={baseline}>—</code><code title={baseline}>—</code></>}</div>;
+            return <div className={`locus ${i >= 48 ? 'appearance-locus' : ''} ${mutation ? 'mutated' : ''} ${carried ? '' : 'absent'}`} key={locus}><span><LocusTip label={label(locus)} description={KOI_LOCUS_NOTES[locus]} inheritance={KOI_EXPRESSION_NOTES[entry.expression]}>{mutation ? ' *' : inherited ? ' ◆' : ''}</LocusTip></span>{carried ? <><code title="Copy inherited from mother">A{fish.genome.maternal[i]}{i >= 48 ? <small>{alleleLabel(locus, fish.genome.maternal[i])}</small> : null}</code><code title="Copy inherited from father">A{fish.genome.paternal[i]}{i >= 48 ? <small>{alleleLabel(locus, fish.genome.paternal[i])}</small> : null}</code></> : <><code title={baseline}>—</code><code title={baseline}>—</code></>}</div>;
           })}</div>)}<p className="help-copy">* A new mutation in this fish. ◆ A copy inherited from a recorded mutation. No global rarity is measured in this offline lab.</p>{notebook ? <MutationOrigins fish={fish} notebook={notebook} onSelect={id => select(id, true)} /> : null}<div className="marking-blocks"><h3>Inherited marking blocks</h3><p className="help-copy">Each pair of neighbouring Pigments or Pattern loci on one chromosome copy places one marking. Siblings that inherit the same copy share it; a crossover or mutation inside the pair moves it.</p><ol>{p.markings.map((anchor, index) => {
             const visible = (anchor.layer === 'dark' ? p.black : p.red) * (1 - p.translucency) >= MARKING_VISIBLE_ALPHA, drawn = index < p.frequency;
             return <li key={anchor.key} className={drawn && visible ? '' : 'muted'}><span className={`marking-swatch ${anchor.layer}`} aria-hidden="true" /><span>{MARKING_BLOCKS[anchor.block].label}<small>A{anchor.alleles[0]}·A{anchor.alleles[1]} · {anchor.origin === 'both' ? 'on both copies (bolder)' : anchor.origin === 'maternal' ? 'copy from mother' : 'copy from father'}</small></span><span>{anchor.layer === 'dark' ? 'Dark' : 'Warm'}{!drawn ? ' · not drawn' : !visible ? ' · too faint' : ''}</span></li>;

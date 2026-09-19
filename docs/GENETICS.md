@@ -12,6 +12,8 @@ Leucistic-like, albino-like and melanoid-like outcomes use recessive-switch game
 
 Axolotl meiosis is species-local and deterministic. Each chromosome starts on one parental homolog, switches according to the synthetic map distance, then mutates the transmitted allele using the axolotl locus definition. Mutation records persist both numeric locus index and stable `axo_*` locus ID. Axolotl × koi inheritance is invalid at the domain boundary.
 
+Only two severe alleles (A4–A5) at a recessive switch change the animal; milder switch alleles (A1–A3) are recorded and inherited but have no visible effect in this model. Maturity timing, feeding drive and regeneration are inherited and displayed as recorded values; the lab does not simulate them yet (FS-119). Axolotl shop morphs and carriers are ordinary founders with one switch set by the shop, not a separate genetic mechanism.
+
 ## 1. Representation and actual combinatorics
 
 A fish is diploid. Each locus has two copies; chromosomes retain phase, meaning which alleles lie together on one homolog. Lab v1 uses eight synthetic chromosomes of six ordered loci each, 48 total. Each allele is an integer ID A0–A5.

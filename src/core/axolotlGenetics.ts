@@ -141,6 +141,8 @@ export type AxolotlPhenotypeDescriptor = {
   group: 'Morphology' | 'Pigmentation' | 'Pattern' | 'Life' | 'Behavior';
   trait: string;
   value: string;
+  /** Set when the value is recorded from the genome but not simulated yet. */
+  note?: string;
 };
 
 const weighted = (rng: () => number, weights: readonly number[]): number => {
@@ -554,30 +556,70 @@ export function describeAxolotlGenotype(genome: AxolotlGenome): AxolotlGenotypeD
   });
 }
 
-/** Compact human-facing adult-potential descriptors; deliberately separate from koi descriptors. */
+const level = (value: number, labels: readonly [string, string, string, string, string]) =>
+  labels[Math.min(4, Math.max(0, Math.floor(value * 5)))];
+const MORPH_TEXT: Record<AxolotlPigmentMorph, string> = {
+  wild: 'Wild type', 'leucistic-like': 'Leucistic-like', 'albino-like': 'Albino-like', 'melanoid-like': 'Melanoid-like',
+  'axanthic-like': 'Axanthic-like', hypomelanistic: 'Hypomelanistic', 'xanthic-like': 'Xanthic-like',
+};
+const COLOR_WORDS: readonly [number, string][] = [
+  [10, 'red'], [20, 'coral'], [30, 'copper'], [42, 'bronze'], [58, 'gold'], [100, 'olive'], [170, 'green'], [250, 'blue'], [300, 'violet'], [340, 'pink'], [361, 'rose'],
+];
+/** A plain color word for an expressed HSL color, so descriptors read as colors rather than numbers. */
+export function axolotlColorName(color: AxolotlColor): string {
+  if (color.l >= 0.82 && color.s < 0.35) return 'pearl white';
+  if (color.l <= 0.2) return 'near black';
+  if (color.s < 0.16) return color.l > 0.55 ? 'pale grey' : 'charcoal';
+  const hue = COLOR_WORDS.find(([limit]) => color.h < limit)?.[1] ?? 'rose';
+  return `${color.l > 0.7 ? 'pale ' : color.l < 0.34 ? 'deep ' : ''}${hue}`;
+}
+
+/**
+ * Compact human-facing adult-potential descriptors; deliberately separate from koi descriptors. A `note` marks a value the
+ * lab records but does not simulate yet, so the interface can say so.
+ */
 export function describeAxolotlPhenotype(genome: AxolotlGenome): AxolotlPhenotypeDescriptor[] {
   const p = expressAxolotl(genome);
   const title = (value: string) => value.replace(/^./, c => c.toUpperCase());
+  const m = p.morphology, pig = p.pigmentation;
+  const tailLevel = level((m.tail.length - 0.42) / 0.42, ['Short', 'Compact', 'Medium', 'Long', 'Very long']);
+  const finLevel = level((m.tail.finHeight - 0.05) / 0.19, ['a low', 'a slim', 'a medium', 'a tall', 'a sail-like']);
+  const gillLevel = level((m.gills.branchCount - 4) / 11, ['Sparse', 'Light', 'Full', 'Feathery', 'Plume-like']);
+  const hidden = pig.carriers.map(carrier => `${carrier}-like`);
+  const pct = (value: number) => `${Math.round(value * 100)}%`;
   return [
-    { group: 'Morphology', trait: 'Adult length', value: `${p.morphology.adultLengthCm.toFixed(1)} cm` },
-    { group: 'Morphology', trait: 'Body build', value: p.morphology.body.mass > 1.02 ? 'Heavy' : p.morphology.body.mass < 0.92 ? 'Slender' : 'Balanced' },
-    { group: 'Morphology', trait: 'Tail', value: `${p.morphology.tail.length.toFixed(2)}× length · ${p.morphology.tail.finHeight.toFixed(2)} fin` },
-    { group: 'Morphology', trait: 'Gills', value: `${p.morphology.gills.branchCount} branches · ${p.morphology.gills.stalkLength.toFixed(2)} stalk` },
-    { group: 'Morphology', trait: 'Digits', value: `${p.morphology.limbs.frontDigits} front / ${p.morphology.limbs.rearDigits} rear` },
-    { group: 'Pigmentation', trait: 'Morph', value: title(p.pigmentation.morph) },
-    { group: 'Pigmentation', trait: 'Pigment cells', value: `M ${Math.round(p.pigmentation.melanin * 100)} · X ${Math.round(p.pigmentation.xanthophore * 100)} · I ${Math.round(p.pigmentation.iridophore * 100)}` },
-    { group: 'Pigmentation', trait: 'Skin', value: `${title(p.pigmentation.texture)} · luster ${Math.round(p.pigmentation.skinLuster * 100)}%` },
-    { group: 'Pigmentation', trait: 'Optics', value: `iridescence ${Math.round(p.pigmentation.iridescence * 100)}% · translucency ${Math.round(p.pigmentation.translucency * 100)}%` },
+    { group: 'Morphology', trait: 'Adult length', value: `${m.adultLengthCm.toFixed(1)} cm` },
+    { group: 'Morphology', trait: 'Body build', value: m.body.mass > 1.02 ? 'Heavy' : m.body.mass < 0.92 ? 'Slender' : 'Balanced' },
+    { group: 'Morphology', trait: 'Head', value: `${m.head.width > 0.31 ? 'Broad' : m.head.width < 0.27 ? 'Narrow' : 'Rounded'} · ${m.head.snoutRoundness > 0.6 ? 'blunt' : m.head.snoutRoundness < 0.4 ? 'pointed' : 'soft'} snout` },
+    { group: 'Morphology', trait: 'Tail', value: `${tailLevel}, with ${finLevel} fin crest` },
+    { group: 'Morphology', trait: 'Gills', value: `${gillLevel} · ${m.gills.branchCount} branches per stalk` },
+    { group: 'Morphology', trait: 'Digits', value: `${m.limbs.frontDigits} front / ${m.limbs.rearDigits} rear` },
+    { group: 'Pigmentation', trait: 'Morph', value: MORPH_TEXT[pig.morph] },
+    { group: 'Pigmentation', trait: 'Hidden copies', value: hidden.length ? `Carries ${hidden.join(', ')}` : 'None detected' },
+    { group: 'Pigmentation', trait: 'Colors', value: `${title(axolotlColorName(pig.bodyColor))} skin · ${axolotlColorName(pig.gillColor)} gills · ${axolotlColorName(pig.irisColor)} eyes` },
+    { group: 'Pigmentation', trait: 'Pigment cells', value: `dark ${pct(pig.melanin)} · yellow ${pct(pig.xanthophore)} · shine ${pct(pig.iridophore)}` },
+    { group: 'Pigmentation', trait: 'Skin', value: `${title(pig.texture)} · luster ${pct(pig.skinLuster)}` },
+    { group: 'Pigmentation', trait: 'Optics', value: `iridescence ${pct(pig.iridescence)} · translucency ${pct(pig.translucency)}` },
     { group: 'Pattern', trait: 'Pattern', value: p.pattern.modes.map(title).join(' + ') },
-    { group: 'Pattern', trait: 'Pattern strength', value: `${Math.round(p.pattern.density * 100)}% density · ${Math.round(p.pattern.contrast * 100)}% contrast` },
-    { group: 'Life', trait: 'Growth', value: `${p.life.growthMultiplier.toFixed(2)}×` },
-    { group: 'Life', trait: 'Maturity', value: `${p.life.maturityMonths.toFixed(1)} months` },
+    { group: 'Pattern', trait: 'Pattern strength', value: p.pattern.modes[0] === 'plain' ? 'No marks' : `${pct(p.pattern.density)} coverage · ${pct(p.pattern.contrast)} contrast` },
+    { group: 'Life', trait: 'Growth', value: `${p.life.growthMultiplier.toFixed(2)}× the typical rate` },
     { group: 'Life', trait: 'Longevity potential', value: `${p.life.longevityYears.toFixed(1)} years` },
-    { group: 'Life', trait: 'Regeneration potential', value: `${Math.round(p.life.regeneration * 100)}%` },
-    { group: 'Behavior', trait: 'Activity', value: `${Math.round(p.behavior.activity * 100)}%` },
+    { group: 'Life', trait: 'Maturity', value: `${p.life.maturityMonths.toFixed(1)} months`, note: 'Recorded only' },
+    { group: 'Life', trait: 'Regeneration potential', value: pct(p.life.regeneration), note: 'Recorded only' },
+    { group: 'Behavior', trait: 'Activity', value: pct(p.behavior.activity) },
     { group: 'Behavior', trait: 'Temperament', value: `bold ${Math.round(p.behavior.boldness * 100)} · social ${Math.round(p.behavior.sociability * 100)} · curious ${Math.round(p.behavior.curiosity * 100)}` },
+    { group: 'Behavior', trait: 'Feeding drive', value: pct(p.behavior.feedingDrive), note: 'Recorded only' },
   ];
 }
+
+/**
+ * How unusual each pigment morph is in founder stock, 0 (wild) to 3 (a recessive morph that needs two severe copies).
+ * Buyers and the axolotl shop both read this, so a morph is valued the same way everywhere.
+ */
+export const AXOLOTL_MORPH_RARITY: Record<AxolotlPigmentMorph, 0 | 1 | 2 | 3> = {
+  wild: 0, hypomelanistic: 1, 'xanthic-like': 1, 'axanthic-like': 2, 'leucistic-like': 3, 'albino-like': 3, 'melanoid-like': 3,
+};
+export const AXOLOTL_MORPH_LABELS = MORPH_TEXT;
 
 export function axolotlGenomeProblem(value: unknown): string | null {
   if (!value || typeof value !== 'object') return 'Axolotl genome must be an object.';

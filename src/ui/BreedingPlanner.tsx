@@ -6,7 +6,7 @@ import type { Fish, Tank } from '../core/types';
 import { FishPortrait } from './FishPortrait';
 import { OffspringPrediction } from './OffspringPrediction';
 import { AxolotlOffspringPrediction } from './AxolotlOffspringPrediction';
-import { expressAxolotl, isAxolotlGenome } from '../core/axolotlGenetics';
+import { AXOLOTL_MORPH_LABELS, expressAxolotl, isAxolotlGenome } from '../core/axolotlGenetics';
 import type { Species } from '../core/types';
 
 const groups = [...new Set(GOAL_DESCRIPTORS.map(d => d.group))];
@@ -62,7 +62,7 @@ export function BreedingPlanner({ fish, tanks, goal, onGoal, motherId, fatherId,
         {available.map(f => <option key={f.id} value={f.id}>{f.name} · {home(f)}{species === 'koi' && goal ? ` · ${match(f)} match` : ''}</option>)}
       </select></label>
       {selected ? <div className="planner-preview"><FishPortrait fish={selected} /><div><strong>{selected.name}</strong><small>{home(selected)} · G{selected.generation}</small>
-        {species === 'koi' && goal ? <><b>{match(selected)} adult trait match</b>{traits.map(t => <small key={t.descriptor}>{GOAL_BY_KEY.get(t.descriptor)?.label}: {percent(traitValue(selected, t))}{carrierCopies(selected, t.descriptor) !== null ? ` · ${carrierCopies(selected, t.descriptor)}/2 target copies` : ''}</small>)}</> : selected.species === 'axolotl' && isAxolotlGenome(selected.genome) ? (() => { const ax = expressAxolotl(selected.genome); return <><b>{ax.pigmentation.morph.replaceAll('-', ' ')}</b><small>{ax.adultLengthCm.toFixed(1)} cm adult length · {ax.morphology.gills.branchCount} gill branches</small><small>Tail {Math.round(ax.morphology.tail.length * 100)} · activity {percent(ax.activity)} · regeneration {percent(ax.life.regeneration)}</small></>; })() : null}</div></div> : null}
+        {species === 'koi' && goal ? <><b>{match(selected)} adult trait match</b>{traits.map(t => <small key={t.descriptor}>{GOAL_BY_KEY.get(t.descriptor)?.label}: {percent(traitValue(selected, t))}{carrierCopies(selected, t.descriptor) !== null ? ` · ${carrierCopies(selected, t.descriptor)}/2 target copies` : ''}</small>)}</> : selected.species === 'axolotl' && isAxolotlGenome(selected.genome) ? (() => { const ax = expressAxolotl(selected.genome); return <><b>{AXOLOTL_MORPH_LABELS[ax.pigmentation.morph]}{ax.pigmentation.carriers.length ? ` · carries ${ax.pigmentation.carriers.map(c => `${c}-like`).join(', ')}` : ''}</b><small>{ax.adultLengthCm.toFixed(1)} cm adult length · {ax.morphology.gills.branchCount} gill branches</small><small>Tail {Math.round(ax.morphology.tail.length * 100)}% of body length · activity {percent(ax.activity)} · regeneration {percent(ax.life.regeneration)}</small></>; })() : null}</div></div> : null}
       {species === 'koi' && goal && leader ? <button className="quiet" onClick={() => choose(leader.id)}>Choose {leader.name} · {match(leader)} match</button> : <p className="help-copy">{available.length ? species === 'koi' ? 'Choose a goal to rank these candidates.' : 'Choose any same-species parent; the pair preview appears below.' : `No eligible ${species === 'koi' ? 'koi' : 'axolotl'} of this sex in this filter.`}</p>}
       </div>;
     })}</div>

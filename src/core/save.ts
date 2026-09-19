@@ -15,6 +15,7 @@ import { AXOLOTL_LOCI } from './axolotlCatalog';
 import { axolotlGenomeProblem, isAxolotlGenome } from './axolotlGenetics';
 import { NAMING_MODEL } from './names';
 import { CARRIER_LOCI, initialShop, LISTING_GENOME, LISTING_PRICES, SHOP_SIZE } from './shop';
+import { AXOLOTL_SHOP_SIZE, AXOLOTL_SWITCHES, axolotlListingProblem, initialAxolotlShop } from './axolotlShop';
 import { defaultRelief, RELIEF_COOLDOWN_DAYS } from './recovery';
 import type { Fish, Tank, World } from './types';
 import { defaultWater, WATER_LIMITS } from './water';
@@ -88,6 +89,15 @@ const listing = z.object({
 const shop = z.object({
   model: z.union([z.literal(1), z.literal(2)]), nextListing: z.number().int().positive(), refreshedDay: z.number().int().min(0).max(1e12), listings: z.array(listing).max(SHOP_SIZE),
 }).strict();
+/** Persistent axolotl stock, world v14. */
+const axolotlListing = z.object({
+  id: z.string().regex(/^AX-\d{6,16}$/), category: z.enum(['founder', 'morph', 'carrier']), name: z.string().min(1).max(32), sex: z.enum(['F', 'M']),
+  genome: axolotlGenome, birthSeed: z.number().int().min(0).max(4294967295), price: z.number().int().positive().max(1e6), expiresDay: z.number().int().min(0).max(1e12),
+  note: z.string().max(120), carries: z.object({ locus: z.enum(AXOLOTL_SWITCHES), allele: z.number().int().min(4).max(5) }).strict().nullable(),
+}).strict();
+const axolotlShop = z.object({
+  model: z.literal(1), nextListing: z.number().int().positive(), refreshedDay: z.number().int().min(0).max(1e12), listings: z.array(axolotlListing).max(AXOLOTL_SHOP_SIZE),
+}).strict();
 const tank = { id: z.string().max(50), name: z.string().min(1).max(32), capacity: z.number().int().min(1).max(60), planted: z.boolean() };
 const header = { seed: z.number().int().min(0).max(4294967295), nextId: z.number().int().positive(), credits: z.number().int().nonnegative().max(1e9) };
 const fishRecord = {
@@ -133,10 +143,15 @@ const worldV8 = {
   fish: z.array(z.object({ ...fishRecord, status: z.enum(['living', 'sold', 'rehomed']), life, breeding })).max(MAX_RECORDS), clutches: z.array(clutch).max(MAX_RECORDS),
   market, ledger, shop, naming: z.union([z.literal(1), z.literal(2), z.literal(3)]),
 };
+const worldV13 = {
+  ...worldV8, version: z.literal(13), fish: z.array(z.object({ ...fishRecordV13, status: z.enum(['living', 'sold', 'rehomed']), life, breeding, origins })).max(MAX_RECORDS),
+  clutches: z.array(clutchV13).max(MAX_RECORDS), relief, bloodlines: z.array(bloodline).max(MAX_BLOODLINES), nextBloodlineId: z.number().int().positive(),
+};
 const schema = z.discriminatedUnion('version', [
+  // World v14 appends the persistent axolotl shop after the bloodline registry.
+  z.object({ ...worldV13, version: z.literal(14), axolotlShop }),
   // World v13 makes species persistent and permits the independent axolotl genome while leaving koi genomes untouched.
-  z.object({ ...worldV8, version: z.literal(13), fish: z.array(z.object({ ...fishRecordV13, status: z.enum(['living', 'sold', 'rehomed']), life, breeding, origins })).max(MAX_RECORDS),
-    clutches: z.array(clutchV13).max(MAX_RECORDS), relief, bloodlines: z.array(bloodline).max(MAX_BLOODLINES), nextBloodlineId: z.number().int().positive() }),
+  z.object(worldV13),
   // World v12 appends the bloodline registry after `relief` (FS-604).
   z.object({ ...worldV8, version: z.literal(12), fish: z.array(z.object({ ...fishRecord, status: z.enum(['living', 'sold', 'rehomed']), life, breeding, origins })).max(MAX_RECORDS), relief,
     bloodlines: z.array(bloodline).max(MAX_BLOODLINES), nextBloodlineId: z.number().int().positive() }),
@@ -186,7 +201,10 @@ export function decodeSave(raw: string): World {
   if (raw.length > 12_000_000) throw new Error('Save is too large for this lab.');
   const parsed = schema.parse(JSON.parse(raw));
   let world: World;
-  if (parsed.version === 13) world = parsed as World;
+  if (parsed.version === 14) world = parsed as World;
+  // Worlds v1–v13 predate the axolotl shop: it opens with a day-0 delivery, appended last. When the runtime rebases an
+  // older world it keeps the stock the world's own replay delivered instead.
+  else if (parsed.version === 13) world = { ...parsed, version: 14, axolotlShop: initialAxolotlShop(parsed.seed) } as World;
   else {
     // Build the historical v12 logical shape first. It is deliberately local/structural because each old schema lacks
     // different fields; validation above has already proven every input member before this migration runs.
@@ -220,10 +238,11 @@ export function decodeSave(raw: string): World {
     const oldClutches = ((legacy.clutches ?? []) as Omit<World['clutches'][number], 'species'>[]).map(entry => ({ ...entry, species: 'koi' as const }));
     const withOrigins = needsOrigins ? reconstructOrigins(oldFish as Omit<Fish, 'origins'>[]).fish : oldFish as Fish[];
     world = {
-      ...(legacy as Omit<World, 'version' | 'fish' | 'clutches' | 'bloodlines' | 'nextBloodlineId'>), version: 13,
+      ...(legacy as Omit<World, 'version' | 'fish' | 'clutches' | 'bloodlines' | 'nextBloodlineId' | 'axolotlShop'>), version: 14,
       fish: withOrigins, clutches: oldClutches,
       bloodlines: (legacy.bloodlines as World['bloodlines'] | undefined) ?? [],
       nextBloodlineId: (legacy.nextBloodlineId as number | undefined) ?? 1,
+      axolotlShop: initialAxolotlShop(legacy.seed as number),
     };
   }
   world.tanks = world.tanks.map(tank => ({ ...tank, decorations: decorationsOf(tank) }));
@@ -308,6 +327,14 @@ export function decodeSave(raw: string): World {
       const pair = [entry.genome.maternal[offset], entry.genome.paternal[offset]];
       if (!pair.includes(0) || !pair.includes(carrier.allele)) throw new Error('Shop carrier does not match its genome.');
     } else if (entry.carries !== null) throw new Error('Only carrier listings may document a hidden copy.');
+    listingIds.add(entry.id);
+  }
+  for (const entry of world.axolotlShop.listings) {
+    const sequence = Number(entry.id.slice(3));
+    if (listingIds.has(entry.id) || !Number.isSafeInteger(sequence) || sequence < 1 || sequence >= world.axolotlShop.nextListing
+      || entry.expiresDay <= world.axolotlShop.refreshedDay) throw new Error('Invalid axolotl shop listing.');
+    const problem = axolotlListingProblem(entry);
+    if (problem) throw new Error(problem);
     listingIds.add(entry.id);
   }
   return world;

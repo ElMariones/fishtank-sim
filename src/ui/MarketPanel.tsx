@@ -1,4 +1,4 @@
-import { BUYERS, FOUNDER_RESALE_CAP, LEDGER_LABELS, LEDGER_REASONS, ledgerBalance, type TraitCache } from '../core/economy';
+import { AXOLOTL_WANTS, BUYERS, FOUNDER_RESALE_CAP, LEDGER_LABELS, LEDGER_REASONS, ledgerBalance, type TraitCache } from '../core/economy';
 import type { World } from '../core/types';
 import { STOCK_PRICE } from '../core/world';
 import { RecoveryOptions } from './RecoveryOptions';
@@ -21,6 +21,7 @@ export function MarketPanel({ world, readOnly, traitCache, onClaimRelief, onClos
       return <li key={buyer.id}>
         <strong>{buyer.name}</strong>
         <small>Wants {buyer.wants} · pays up to ◈ {buyer.budget}</small>
+        <small>Axolotls: {AXOLOTL_WANTS[buyer.id]}</small>
         <meter min={0} max={buyer.capacity} value={demand} aria-label={`${buyer.name}: will take ${wanted} more of ${buyer.capacity}`} />
         <small>{wanted >= 1 ? `Will take ${wanted} more of ${buyer.capacity}` : 'Satisfied for now'} · {buyer.recovery} more each game day</small>
       </li>;

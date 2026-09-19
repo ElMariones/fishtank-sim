@@ -222,6 +222,12 @@ The FS-503 slider editor is replaced. **Aquascape** in the tank controls, or **O
 
 Below the tank a dock replaces the workspace tabs: Themes, Plants, Rocks, Wood, Ornaments, Substrate, Backdrop and Lighting. Piece cards show a rendered thumbnail, price and Cover/Solid tag and can be clicked (placed in the most open spot) or dragged onto the glass. Look and theme cards are rendered previews of the current draft or theme. The footer shows pieces used, new-piece cost, look cost and balance after; Apply is disabled for invalid layouts, missing funds or no change. Removed pieces are not refunded, and looks never change water or growth.
 
+## Implemented axolotl shop counter and locus notes (FS-119)
+
+The NPC shop opens with a **Koi / Axolotls** switch, each with its listing count. The axolotl counter lists up to four specimens with an adult portrait, sex, kind (unrelated founder, pigment morph or documented carrier), adult length, gill branches, pattern, skin, temperament, when it leaves and its best resale today. The sex, kind, sort and delivery controls work for both counters. Buying selects the newcomer and filters the collection to axolotls. The Buyers panel lists what each buyer wants from axolotls.
+
+In both genome views each locus name has a dotted underline; hovering or focusing it shows a small note with what the locus does and how its two copies combine. The note is linked with `aria-describedby`, so screen readers hear it without hovering. Axolotl trait cards read in words (tail length, fin crest, gill fullness, color names), list hidden carrier copies, and mark maturity, regeneration and feeding drive **recorded only**.
+
 ## Implemented tank switching feedback (FS-118)
 
 Choosing an aquarium in the rail updates the rail, heading and live tank immediately; the collection follows a moment later. If the tank has not drawn its first motion frame after about 0.14 s, a "Filling <tank>…" pill with rising bubbles appears in the middle of the aquarium. While the collection is loading, its cards dim, a "Loading <tank>'s fish" pill with a sweeping bar sits over them, and the tank's rail card shows a spinning ring. Portraits fill in over a few frames. Reduced motion shows the indicators without animation.

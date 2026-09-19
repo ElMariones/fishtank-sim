@@ -114,6 +114,7 @@ describe('species boundaries outside breeding and rendering', () => {
       longevityYears: p.longevity,
       metabolism: p.metabolism,
       rarity: 3,
+      axolotlTail: Math.min(1, Math.max(0, (p.morphology.tail.length - 0.42) / 0.42)),
     });
     expect(offersFor(base, fish).length).toBeGreaterThan(0);
   });

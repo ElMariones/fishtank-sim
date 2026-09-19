@@ -442,3 +442,22 @@ footer { border-top: 1px solid var(--border); background: rgba(5, 14, 20, .6); c
   .tank-loading-bubbles i { animation: none !important; }
   .loading-bar::after { animation: none !important; width: 100%; opacity: .6; }
 }
+
+/* Genome view locus notes: a small descriptor on hover or keyboard focus. */
+.locus-name { position: relative; cursor: help; text-decoration: underline dotted rgba(164, 191, 189, .45); text-underline-offset: 3px; border-radius: 3px; }
+.locus-name:focus-visible { outline: 2px solid var(--aqua); outline-offset: 2px; }
+.locus-tip {
+  display: none; position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; width: min(290px, 72vw);
+  padding: 10px 12px; border-radius: var(--radius-sm); background: var(--surface-solid); border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow); color: var(--text-2); font-size: .72rem; line-height: 1.5; text-transform: none; letter-spacing: 0; font-weight: 400; white-space: normal;
+}
+.locus-tip strong { display: block; color: var(--text); font-weight: 600; margin-bottom: 3px; }
+.locus-tip em { display: block; font-style: normal; color: var(--text-3); margin-top: 6px; font-size: .68rem; }
+.locus-name:hover .locus-tip, .locus-name:focus .locus-tip { display: block; animation: locus-tip-in .12s var(--ease); }
+.locus > span:first-child { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.locus > span:first-child > small { color: var(--text-3); font-size: .64rem; }
+.rarity.recorded { border-color: rgba(164, 191, 189, .35); color: var(--text-3); margin-left: 6px; }
+@keyframes locus-tip-in { from { opacity: 0; transform: translateY(-2px); } }
+@media (prefers-reduced-motion: reduce) { .locus-name:hover .locus-tip, .locus-name:focus .locus-tip { animation: none; } }
+.shop-species { margin: 4px 0 2px; }
+.shop-listing.axolotl-listing { border-color: rgba(255, 139, 102, .22); }

@@ -137,6 +137,13 @@ World v9 adds `relief`. `claim-relief` is the only way to receive free fish. It 
 - **Shared layers:** static layers are cached by content key (`base:` size/substrate/backdrop, `solids:` size/pieces). Anything new drawn into them must be part of that key.
 - **Deferred collection:** grid-only derivations follow `collectionTankId`; the aquarium, heading and commands use the urgent `tank`. Portraits must stay memoized and keep painting through the queue.
 
+### FS-119 contract (world v14)
+
+- **Axolotl shop:** buy through `buy-axolotl-listing`; keep the legacy `buy` with `species: 'axolotl'` for journals. Stock derives from the world seed and listing number under the `axolotl-shop` namespace; never generate it while rendering. `axolotlListingProblem` must accept every listing `makeAxolotlListing` can create, and prices must stay above the ◈ 150 founder resale cap.
+- **Migration:** worlds v1–v13 gain a day-0 delivery in `decodeSave`; `decodeRuntime` omits `axolotlShop` when proving an older snapshot and then keeps its replayed stock.
+- **Price model 2:** new sale commands carry `priceModel: 2`. Model 1 must keep pricing axolotls with koi thresholds, or recorded journals stop replaying. Koi prices must stay identical in both models.
+- **Locus notes:** `KOI_LOCUS_NOTES` (`src/core/locusNotes.ts`) and `AXOLOTL_LOCUS_NOTES` (`axolotlCatalog.ts`) are typed records over every locus, so adding a locus without a note fails type-checking. Keep notes honest about loci the lab records but does not simulate.
+
 ## 5. Verification and task completion
 
 Run npm test and npm run build after core/code changes. Browser verification should exercise the affected journey, not just inspect a screenshot. Read TESTING.md before broadening tests.
