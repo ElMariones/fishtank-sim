@@ -1,6 +1,6 @@
 # FS-701 — Canvas versus PixiJS, and the renderer cache/LOD decision
 
-**Date:** 20 September 2026. **Status:** spike complete; no renderer change shipped.
+**Date:** 20 September 2026. **Status:** DONE, pushed `abf16d5`. No renderer change shipped.
 **Models:** world save v14 · genome v3 · anatomy v3 · axolotl anatomy v2 · renderer v7. No save, command, genome or visual change.
 
 ## Starting state
