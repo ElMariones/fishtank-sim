@@ -140,7 +140,9 @@ describe('FS-501 ledger and rehoming', () => {
     const swapped = structuredClone(raw);
     [swapped.ledger.entries[0], swapped.ledger.entries[1]] = [swapped.ledger.entries[1], swapped.ledger.entries[0]];
     expect(() => decodeSave(JSON.stringify(swapped))).toThrow('out of order');
-  });
+    // A 900-step walk with a full ledger reconciliation lands within a few hundred milliseconds of the 5s default on
+    // this machine, so it fails intermittently without saying anything about the ledger. The work is the point here.
+  }, 30_000);
 
   it('rehomes fish without credits while keeping their records', () => {
     const cross: Command = { type: 'breed', motherId: fishId(1), fatherId: fishId(2), tankId: 'tank-2', timestamp: NOW, genomeVersion: 3 };

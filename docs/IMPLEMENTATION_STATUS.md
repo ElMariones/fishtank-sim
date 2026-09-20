@@ -1,8 +1,24 @@
 # Implementation status
 
-**Updated:** 19 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
+**Updated:** 20 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
 
-## Current continuation — FS-121 fast breeding switch DONE, pushed `1857fd4` (user request)
+## Current continuation — FS-701 renderer spike complete, renderer unchanged (awaiting push)
+
+20 September 2026: M7 started. FS-701 measured Canvas 2D against PixiJS 8.21.0 on a seeded, fixed-step scene at 1280 × 720, device pixel ratio 1, Chrome 152, with every frame flushed to completion. **No renderer change ships**, and the aquarium draws exactly as it did before; `drawFish`/`drawAxolotl` gained an optional trailing `detail` argument defaulting to full detail, and a test asserts the draw-op stream is identical to renderer v7 for all 83 visual fixtures.
+
+The headline is not the renderer choice. **Canvas 2D costs about 0.25–0.32 ms per fish, so the 60-place aquarium the shop already sells costs 19.0 ms a frame** — over a 60 fps budget before the aquascape, plants, caustics and glass are drawn at all. M7's performance gate is open, and FS-702/FS-704 inherit that number.
+
+Two designs were measured and **rejected**, which is why nothing shipped:
+- A detail-dropping LOD tier. Image differencing showed the marking gradient changes 59–66% of a fish's pixels at *every* size, and fin rays matter *more* as a fish shrinks because their stroke width is absolute. Both are heritable traits made visible, so the tier would have hidden genetics in exactly the crowded nurseries it was meant to speed up.
+- A full-detail flipbook sprite cache. Paired and warm it returned about 5% at 200 fry for 11.7 MB and a 27 s warm-up, because the per-frame vector work is already cached per phenotype and the remaining cost is Canvas 2D compositing, which `drawImage` does not avoid.
+
+PixiJS drawing the same rasterized frames as batched GPU sprites measured **20–40× faster** (0.5 ms against 19.0 ms at 60 fish) with pixel counts verified to match, and is recorded as the escape hatch with a concrete trigger rather than taken now: the aquascape, decor and water are all Canvas 2D and would need porting. PixiJS is a devDependency used only by `/bench.html`, which the production build does not build.
+
+Also fixed here: the load-dependent `tests/economy.test.ts` timeout recorded under FS-121 now declares a 30 s timeout, so the suite is green without reruns.
+
+Verification: **299 tests / 46 files**, strict TypeScript and the production build pass. No live-app browser journey was run — the browser pane was hidden all session, which suspends `requestAnimationFrame` — so the unchanged appearance rests on the op-stream test, not on watching it. See [FS-701 evidence](research/FS-701-RENDERER-SPIKE.md), [testing](TESTING.md#fs-701-renderer-spike) and ADR-072.
+
+## Previous continuation — FS-121 fast breeding switch DONE, pushed `1857fd4` (user request)
 
 19 September 2026: the Breeding panel's **Normal breeding / Instant lab cross** buttons became one **Fast breeding** on/off switch, remembered per device in collection preferences (off by default). With it on, the selected parents breed instantly without maturity, condition, rest-day, courtship or shared-tank checks; parents stay in their own tanks. The player chooses the destination tank and 1, 2, 4, 8, 12, 16, 20 or 24 eggs. The `breed` command gained an optional `count` (1–24); recorded commands without it still lay 20, so journals replay unchanged. World and genome versions are unchanged. `fastBreedingBlockers` lists what still blocks a cross: roles, eggs, mixed species, destination capacity and lab limits. Evidence: [TESTING](TESTING.md#fs-121-fast-breeding-switch).
 

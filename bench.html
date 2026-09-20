@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fishtank Sim · FS-701 renderer spike</title>
+    <style>
+      :root { color-scheme: dark; }
+      body { margin: 0; padding: 24px; background: #101e21; color: #dceae6; font: 14px/1.5 system-ui, sans-serif; }
+      h1 { font-size: 18px; margin: 0 0 4px; }
+      p.lede { margin: 0 0 16px; color: #8fb0a9; max-width: 70ch; }
+      button { background: #1d3a3c; color: #bdf0e2; border: 1px solid #2f5f5e; border-radius: 6px; padding: 8px 16px; font: inherit; cursor: pointer; }
+      button:disabled { opacity: .5; cursor: progress; }
+      #status { margin-left: 12px; color: #89f0dc; }
+      #stage { margin: 16px 0; border: 1px solid #22403f; border-radius: 8px; overflow: hidden; width: fit-content; background: #0b1618; }
+      table { border-collapse: collapse; margin-top: 16px; font-variant-numeric: tabular-nums; }
+      th, td { border: 1px solid #22403f; padding: 4px 10px; text-align: right; }
+      th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+      th { background: #16292c; }
+      ul { color: #8fb0a9; max-width: 80ch; padding-left: 20px; }
+      textarea { width: 100%; max-width: 900px; height: 180px; background: #0b1618; color: #cfe6e0; border: 1px solid #22403f; border-radius: 6px; padding: 8px; font-family: ui-monospace, monospace; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <h1>FS-701 · renderer spike</h1>
+    <p class="lede">
+      Canvas 2D against PixiJS on the same stepped scene, at the same size and pixel ratio. CPU columns time the draw
+      call itself; frame columns are wall-clock gaps between animation frames, which is where GPU work shows up. Close
+      other tabs before running, and keep this window focused — a background tab is throttled and its numbers are not
+      comparable.
+    </p>
+    <button id="run">Run all cases</button><span id="status">Idle.</span>
+    <div id="stage"></div>
+    <table id="results"></table>
+    <h2 style="font-size:15px">What each row drew</h2>
+    <ul id="notes"></ul>
+    <h2 style="font-size:15px">Markdown for the evidence document</h2>
+    <textarea id="markdown" readonly></textarea>
+    <script type="module" src="/src/bench/main.ts"></script>
+  </body>
+</html>

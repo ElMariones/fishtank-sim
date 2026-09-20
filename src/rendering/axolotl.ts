@@ -1,4 +1,5 @@
 import { hash, random } from '../core/random';
+import { FULL_DETAIL, type Detail } from './lod';
 import {
   axolotlAnatomyFor,
   type AxolotlAnatomy,
@@ -197,6 +198,7 @@ export function drawAxolotl(
   size: number,
   time = 0,
   motion?: AxolotlSwimMotion,
+  detail: Detail = FULL_DETAIL,
 ) {
   const a = axolotlAnatomyFor(input), p = a.shape;
   const safeSize = clamp(Math.abs(finite(size, 1)), 0.01, 10000);
@@ -249,7 +251,7 @@ export function drawAxolotl(
   bodyPath(ctx, a, at); ctx.clip();
   drawPattern(ctx, p, seed, l, at);
   // Stable, fine pigment granules, not scales. Density and luster remain inherited.
-  if (l > 65) {
+  if (detail.speckle && l > 65) {
     const rng = random(hash(`axolotl-skin:${seed}:${p.patternSeed}`));
     const count = Math.round((55 + p.texture * 140 + p.melanin * 65) * Math.min(1, l / 180));
     for (let i = 0; i < count; i++) {
@@ -260,8 +262,8 @@ export function drawAxolotl(
       ctx.beginPath(); ctx.ellipse(pos[0], pos[1], l * (0.0015 + rng()*0.003), l*0.0018, 0, 0, Math.PI*2); ctx.fill();
     }
   }
-  drawIridophores(ctx, p, seed, safeTime, l, at);
-  if (p.texture > 0.05) {
+  if (detail.sparkle) drawIridophores(ctx, p, seed, safeTime, l, at);
+  if (detail.finRays && p.texture > 0.05) {
     ctx.globalAlpha = 0.05 + p.texture * 0.09;
     ctx.strokeStyle = p.accentColor;
     ctx.lineWidth = Math.max(0.35, l * 0.003);

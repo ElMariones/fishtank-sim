@@ -5,6 +5,7 @@ import { markingPosition, placeMarkings, type PlacedMarking } from '../core/patt
 import { clamp, hash, random } from '../core/random';
 import type { AccentColor, BaseColor, DotColor, IrisColor, Phenotype } from '../core/types';
 import { drawAxolotl } from './axolotl';
+import { FULL_DETAIL, type Detail } from './lod';
 
 const placedMarkings = new WeakMap<Phenotype, { seed: number; markings: PlacedMarking[] }>();
 function markingsFor(p: Phenotype, seed: number): PlacedMarking[] {
@@ -123,10 +124,14 @@ export type SwimMotion = { tailPhase: number; finPhase: number; effort: number; 
  * the body, so anatomy bounds still contain every drawn point. Paired and crown tails draw every lobe as one fin, and an
  * absent dorsal fin is skipped (FS-602); a standard structure draws exactly as renderer v6. No inheritance, mutation, or
  * identity decisions belong here.
+ *
+ * `detail` selects which marks are drawn and defaults to every one of them, so an existing caller is unchanged. It is
+ * not a quality dial: FS-701 measured that the marks it can switch off are heritable traits made visible, so the only
+ * supported reduction is the one a cached flipbook frame forces (see `lod.ts`).
  */
-export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: number, size: number, time = 0, motion?: SwimMotion) {
+export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: number, size: number, time = 0, motion?: SwimMotion, detail: Detail = FULL_DETAIL) {
   if (p.species === 'axolotl' && p.axolotl) {
-    drawAxolotl(ctx, p.axolotl, seed, size, time, motion ? { tailPhase: motion.tailPhase, limbPhase: motion.finPhase, effort: motion.effort, grounded: motion.grounded } : undefined);
+    drawAxolotl(ctx, p.axolotl, seed, size, time, motion ? { tailPhase: motion.tailPhase, limbPhase: motion.finPhase, effort: motion.effort, grounded: motion.grounded } : undefined, detail);
     return;
   }
   const a = anatomyFor(p);
@@ -174,14 +179,14 @@ export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: numb
       gradient.addColorStop(0.45, '#18252600'); gradient.addColorStop(1, '#182526f2');
       ctx.globalAlpha = tips; ctx.fillStyle = gradient; ctx.fill(caudal);
     }
-    if (flame) {
+    if (flame && detail.finRays) {
       ctx.globalAlpha = flame; ctx.strokeStyle = orange; ctx.lineWidth = Math.max(1, l * 0.02); ctx.lineCap = 'round';
       for (const ray of lobes.flatMap(lobe => lobe.rays)) { ctx.beginPath(); ctx.moveTo(...at(ray.start)); ctx.quadraticCurveTo(...at(ray.control, wave * 0.5), ...at(tip(ray.end), wave)); ctx.stroke(); }
     }
     if (edge) { ctx.globalAlpha = edge; ctx.strokeStyle = orange; ctx.lineWidth = Math.max(1.5, l * 0.07); ctx.stroke(caudal); }
     ctx.restore();
   }
-  for (const ray of lobes.flatMap(lobe => lobe.rays)) { ctx.beginPath(); ctx.moveTo(...at(ray.start)); ctx.quadraticCurveTo(...at(ray.control, wave * 0.5), ...at(tip(ray.end), wave)); ctx.stroke(); }
+  if (detail.finRays) for (const ray of lobes.flatMap(lobe => lobe.rays)) { ctx.beginPath(); ctx.moveTo(...at(ray.start)); ctx.quadraticCurveTo(...at(ray.control, wave * 0.5), ...at(tip(ray.end), wave)); ctx.stroke(); }
   ctx.restore();
   // Dorsal and pectoral fins sit behind the body with roots inside the outline.
   for (const [fin, isDorsal] of [[dorsal, true], [pectoral, false]] as const) {
@@ -199,7 +204,7 @@ export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: numb
       gradient.addColorStop(0.35, '#18252600'); gradient.addColorStop(1, '#182526f2');
       ctx.globalAlpha = tips; ctx.fillStyle = gradient; ctx.fill(path);
     }
-    if (flame) {
+    if (flame && detail.finRays) {
       ctx.globalAlpha = flame; ctx.strokeStyle = orange; ctx.lineWidth = Math.max(1, l * 0.02); ctx.lineCap = 'round';
       const [endX] = at(fin.end);
       for (const t of [0.2, 0.4, 0.6, 0.8]) {
@@ -229,7 +234,7 @@ export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: numb
       if (marking.layer !== layer) continue;
       const [x, y] = at(markingPosition(a, marking)), radius = marking.radius * l;
       ctx.fillStyle = color;
-      if (p.edge > 0.55) {
+      if (p.edge > 0.55 && detail.markingGlow) {
         const glow = ctx.createRadialGradient(x, y, radius * 0.4, x, y, radius);
         glow.addColorStop(0, color); glow.addColorStop(1, 'transparent'); ctx.fillStyle = glow;
       }
@@ -239,16 +244,18 @@ export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: numb
   if (ornament) {
     ctx.save(); ctx.scale(l, l);
     paint(ctx, ornament.body);
-    if (ornament.shimmer >= SHIMMER_VISIBLE) {
+    if (detail.sparkle && ornament.shimmer >= SHIMMER_VISIBLE) {
       ctx.fillStyle = '#fffdf2';
       ornament.sparkles.forEach((path, i) => { ctx.globalAlpha = Math.min(1, ornament.shimmer) * (0.3 + 0.7 * Math.abs(Math.sin(time * 1.6 + i * 1.9 + seed % 7))); ctx.fill(path); });
     }
     ctx.restore();
   }
-  const speckle = random(hash(`speckle:${seed}`));
-  ctx.globalAlpha = 0.25;
-  ctx.fillStyle = '#263935';
-  for (let i = 0; i < p.speckle * 55; i++) { ctx.beginPath(); ctx.arc((speckle() - 0.5) * l, (speckle() - 0.5) * h, l * 0.008, 0, Math.PI * 2); ctx.fill(); }
+  if (detail.speckle) {
+    const speckle = random(hash(`speckle:${seed}`));
+    ctx.globalAlpha = 0.25;
+    ctx.fillStyle = '#263935';
+    for (let i = 0; i < p.speckle * 55; i++) { ctx.beginPath(); ctx.arc((speckle() - 0.5) * l, (speckle() - 0.5) * h, l * 0.008, 0, Math.PI * 2); ctx.fill(); }
+  }
   ctx.globalAlpha = 1;
   const shine = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
   shine.addColorStop(0, `rgba(255,255,255,${0.22 + p.metallic * 0.4})`); shine.addColorStop(0.42, '#ffffff00'); shine.addColorStop(1, '#092a344f');

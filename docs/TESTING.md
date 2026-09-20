@@ -1,6 +1,16 @@
 # Testing and verification
 
-**Latest recorded automated run:** FS-121, 19 September 2026, Windows 11 / Node 22.18.0: 289 tests in 45 files, strict TypeScript and the production build pass ([details](#fs-121-fast-breeding-switch)).
+**Latest recorded automated run:** FS-701, 20 September 2026, Windows 11 / Node 22.18.0: 299 tests in 46 files, strict TypeScript and the production build pass ([details](#fs-701-renderer-spike)).
+
+## FS-701 renderer spike
+
+- `npm test`: **299 tests in 46 files** pass. `npm run build`: strict TypeScript and the production build pass; the existing Vite main-chunk advisory remains (736.81 kB, gzip 238.35 kB).
+- The load-dependent `tests/economy.test.ts` timeout recorded under FS-121 is **fixed**: that test walks 900 steps and reconciles a full ledger, landing within a few hundred milliseconds of vitest's 5 s default on this machine. It now declares a 30 s timeout. It failed on the first full run of this pass and passes on every run since.
+- `tests/lod.test.ts` adds **10 tests**. The load-bearing one asserts that `drawFish` at full detail emits an identical draw-op stream to renderer v7 for all 83 visual fixtures, which is what makes "the app's rendering is unchanged" a checked claim rather than an assertion about a default argument. Others cover tier selection including non-finite sizes, the sprite tier keeping every trait except the clock-driven sparkles, flipbook bucket wrapping and NaN safety, the sprite ladder never scaling a frame up, and the axolotl renderer honouring the same flags (it has no visual fixtures of its own).
+- `tests/support/recordingContext.ts` is a counting stand-in for `CanvasRenderingContext2D` with a counting `Path2D`. It measures draw work headlessly, so the work claims in the FS-701 report are reproducible off this machine.
+- **Browser measurement** (`/bench.html`, Chrome 152.0.7977.76, Windows 11, 1280 × 720 at device pixel ratio 1, PixiJS 8.21.0): 12 cases, 700 warm-up and 150 measured frames each, every frame flushed to completion. Canvas 2D full detail measured 2.9 ms (12 fish), 19.0 ms (60 fish) and 39.0 ms (200 fry); PixiJS batched sprites measured 0.3 / 0.5 / 0.9 ms drawing verified-identical pixels. The Canvas sprite cache returned about 5% at 200 fry for 11.7 MB, paired back-to-back. Image differencing over 14 fixtures at 15 sizes set the tier thresholds. Full tables, device, memory and five recorded corrections: [FS-701 evidence](research/FS-701-RENDERER-SPIKE.md).
+- **Not verified:** no live-app browser journey and no screenshot. The Claude browser pane was hidden for the whole session, which suspends `requestAnimationFrame`, so the aquarium painted nothing to observe. The flush-forced bench loop does not depend on animation frames and ran normally. The app's render path is unchanged by construction (a defaulted trailing argument) and by the op-stream test above, but it was not watched running.
+- `scripts/verify-axolotl.cjs`, `verify-m2.cjs` and `verify-runtime.cjs` were not re-run in this pass.
 
 ## FS-121 fast breeding switch
 

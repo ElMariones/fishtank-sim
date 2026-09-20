@@ -57,6 +57,11 @@ npm run preview # Serve the production build
 
 The npm cache is kept inside the checkout (`.npmrc`); it, `node_modules` and build output are ignored by Git.
 
+With the dev server running, `/bench.html` is the renderer benchmark used by
+[FS-701](docs/research/FS-701-RENDERER-SPIKE.md): it times Canvas 2D against PixiJS on the same seeded scene and reports
+frame cost, cache size and how much each detail tier actually changes on screen. It is a measuring page — the production
+build does not include it, or PixiJS.
+
 ## Quick tour
 
 1. **Meet your fish.** Click a swimming animal or a collection card to open it in the inspector: overview, genome and family.
