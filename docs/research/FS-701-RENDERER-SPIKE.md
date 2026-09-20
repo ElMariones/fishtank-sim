@@ -46,7 +46,7 @@ Warm-up is **700 frames** per case. This matters more than it looks: every fish 
 
 Scenes are seeded and stepped by a fixed timestep, so every backend draws the same fish in the same places. Fish sizes come from the live tank's own `fishPose` formula.
 
-## Result 1 — the fish are already too expensive at the current maximum tank
+## Result 1 — comfortable at the tanks players use, tight at the maximum one
 
 Warm-up 700 frames, 150 measured frames, flush-forced. `f/s` is the fish count at full versus sprite tier.
 
@@ -67,7 +67,11 @@ Warm-up 700 frames, 150 measured frames, flush-forced. `f/s` is the fish count a
 
 **Canvas 2D costs about 0.25–0.32 ms per fish, roughly linearly.** A 16.7 ms frame has room for about 50 fish before the aquascape, plants, caustics and glass are drawn at all.
 
-`world.ts` caps an upgraded aquarium at **60 places**. The "Crowded, 60 mixed" row is therefore not a stress test — it is the largest tank the game currently sells, and the shipped renderer takes **19.0 ms per frame** to draw it on this device at device pixel ratio 1. A higher-density display multiplies the fill cost further. **M7's performance gate is not met by the current renderer**, and that, rather than the renderer choice, is the finding that matters most here.
+`world.ts` caps an upgraded aquarium at **60 places**, so the "Crowded, 60 mixed" row is not a stress test: it is the largest tank the game sells, reachable after two paid upgrades and then filling it. The shipped renderer takes **19.0 ms a frame** to draw it on this device at device pixel ratio 1.
+
+Kept in proportion: that is roughly **53 fps for the fish layer**, a modest shortfall rather than a stutter, and it is the extreme of the current design. The tank a player actually looks at most of the time is the 12-adult case, at **2.9 ms**. A higher-density display would multiply the fill cost, and a faster GPU would not help, because this is CPU-side rasterization.
+
+M7's gate is "alpha acceptance matrix passes on named hardware". **No target hardware and no acceptance matrix are defined yet** — both are still open in GDD §15 and HANDOFF §8 — so this measurement does not pass or fail that gate. It is the first number to put into it. FS-704 should set the matrix and re-run `/bench.html` per device; the decision below stands until it does.
 
 ## Result 2 — there is almost no "detail" to shed
 
