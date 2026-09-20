@@ -2,7 +2,17 @@
 
 **Updated:** 20 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
 
-## Current continuation — FS-701 renderer spike DONE, pushed `abf16d5`, renderer unchanged
+## Current continuation — FS-702 soak passing, one scaling defect recorded (awaiting push)
+
+20 September 2026: `src/core/soakScenario.ts` drives 100 generations and 2000 records entirely through the live command interface. It reaches **151 generations and 2030 records with zero problems**: no duplicate identifiers, no invalid record, every bounded structure still bounded, the journal replaying to the same revision, a repeated command absorbed and a stale one refused.
+
+"2000 owned fish" is read as 2000 *records*. Living fish are capped by design at 480 (8 tanks × 60 places); the record set — living plus sold plus rehomed — is what actually grows in a long save.
+
+**One defect found and deliberately not fixed here.** `applyCommand` begins with `structuredClone(world)`, which is what makes a rejected command unable to leave the world half-changed. The cost is that every command copies every record: measured at 2.0 ms per command at ~80 records, 22.5 ms at 806 and **84.9 ms at 2006**. The growth is close to proportional, so it is a scaling cost rather than a leak, but a 2000-record save hitches on every action and the schema allows five times as many records again. Replacing the deep copy with structural sharing is a command-layer change, not a QA task, so it is recorded for its own ticket with the measured curve as its before-figure.
+
+Verification: **304 tests / 47 files**, strict TypeScript and the production build pass. The soak run itself takes about 15 s, taking the suite from roughly 11 s to 27 s. See [FS-702 evidence](research/FS-702-SOAK.md) and [testing](TESTING.md#fs-702-soak).
+
+## Previous continuation — FS-701 renderer spike DONE, pushed `abf16d5`, renderer unchanged
 
 20 September 2026: M7 started. FS-701 measured Canvas 2D against PixiJS 8.21.0 on a seeded, fixed-step scene at 1280 × 720, device pixel ratio 1, Chrome 152, with every frame flushed to completion. **No renderer change ships**, and the aquarium draws exactly as it did before; `drawFish`/`drawAxolotl` gained an optional trailing `detail` argument defaulting to full detail, and a test asserts the draw-op stream is identical to renderer v7 for all 83 visual fixtures.
 

@@ -1,6 +1,15 @@
 # Testing and verification
 
-**Latest recorded automated run:** FS-701, 20 September 2026, Windows 11 / Node 22.18.0: 299 tests in 46 files, strict TypeScript and the production build pass ([details](#fs-701-renderer-spike)).
+**Latest recorded automated run:** FS-702, 20 September 2026, Windows 11 / Node 22.18.0: 304 tests in 47 files, strict TypeScript and the production build pass ([details](#fs-702-soak)).
+
+## FS-702 soak
+
+- `npm run check`: **304 tests in 47 files**, strict TypeScript and the production build pass.
+- `tests/soak.test.ts` adds **5 tests** over one shared run of `src/core/soakScenario.ts`. It is deliberately slow — about **15 s** — because the state it checks only exists after a hundred generations; the suite went from roughly 11 s to 27 s.
+- **Soak result:** 151 generations, 2030 records (2000 archived, 30 living), 453 game days, 365 commands, **0 problems**. Checked: unique fish/clutch/bloodline/ledger/journal-event/journal-command identifiers, strictly increasing ledger sequence, `decodeSave` acceptance, pedigree F finite in 0–1, and every bounded structure still bounded. The journal held 45 of 63 slots and the ledger sat exactly on its 100-entry cap, which is the rolling window working rather than a leak. After 151 generations an ancestor walk still visited 12 distinct ancestors over 6 generations, against limits of 126 and 6.
+- **Replay and retries:** the runtime decoded and replayed to the same revision and record count; a re-submitted recorded command was absorbed without changing the record count or revision; a stale-revision command was refused.
+- **Finding, not fixed:** `applyCommand` starts with `structuredClone(world)`, so every command copies every record. Measured with `rename` bursts: 2.0 ms per command at ~80 records, 22.5 ms at 806, **84.9 ms at 2006**. Growth is close to proportional (2.5× records for 3.8× cost) and the test pins it there, but the constant is large enough that a 2000-record save hitches on every action. The deep copy is the atomicity mechanism, so replacing it is a command-layer change rather than a QA fix. Full curve: [FS-702 evidence](research/FS-702-SOAK.md).
+- **Not covered:** the courtship path (the harness uses the instant `breed` cross, so `world.clutches` stays empty), broad pedigrees, axolotls, heap sampling, and the persistence layer. Named in the evidence document; the clutch path is covered instead by `tests/lifecycle.test.ts` and `src/core/unusualLineScenario.ts`.
 
 ## FS-701 renderer spike
 
