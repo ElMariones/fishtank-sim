@@ -1,6 +1,6 @@
 # FS-702 — 100-generation and 2000-record soak
 
-**Date:** 20 September 2026. **Status:** soak implemented and passing; one scaling defect found and recorded, not fixed.
+**Date:** 20 September 2026. **Status:** DONE, pushed `b8fde77`. One scaling defect found and recorded, not fixed.
 **Models:** world save v14 · genome v3 · renderer v7. No save, command, genome or visual change.
 
 ## Starting state
