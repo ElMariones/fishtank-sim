@@ -1,5 +1,7 @@
 /** Small inline stroke icons for the lab shell. Decorative: every use sits beside visible or accessible text. */
 const PATHS = {
+  trophy: 'M8 3h8v6a4 4 0 0 1-8 0zM8 5H4v2a4 4 0 0 0 4 4M16 5h4v2a4 4 0 0 1-4 4M12 13v5M8 21v-3h8v3z',
+  calendar: 'M5 5h14v16H5zM8 3v4M16 3v4M5 10h14M8 14h2M14 14h2M8 17h2',
   fish: 'M3 12c3-5 9-6 13-3l5-3v12l-5-3c-4 3-10 2-13-3zM15.5 11h.01',
   flask: 'M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3M7.5 15h9',
   grid: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',

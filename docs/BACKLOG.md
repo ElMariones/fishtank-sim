@@ -4,6 +4,21 @@
 
 Read [ROADMAP.md](ROADMAP.md) for schedule assumptions. Dependencies use task IDs. Each acceptance statement is an outcome to demonstrate, not merely a file to create.
 
+## User-requested competition circuit — FS-122–127
+
+Specification: [competition circuit and calendar](COMPETITIONS.md). Visual reference and implementation direction: [UI design](design/COMPETITION_UI.md).
+
+| ID | Status | Work and acceptance |
+|---|---|---|
+| FS-122 | DONE | Record the complete requested flow, generate a professional screen concept and pavilion art, and translate them into a UI design specification. |
+| FS-123 | DONE | Replace live/offline domain time with day/week/month calendar controls; actual growth, care and scheduled births advance and reload preserves the date. |
+| FS-124 | DONE | Seeded city/venue/name events, six tiers and separate species, atomic one/two-animal registration, reproducible scoring, single prizes and validated world-v15 persistence. |
+| FS-125 | DONE | Filtered entry collection, themed exhibit inspection, judges/animation/skip, podium, full rankings and personalized explanations; browser journey passes. |
+| FS-126 | DONE | NPC offers, bounded saved counters and exact-animal acquisition with credit/capacity safety. |
+| FS-127 | DONE | Permanent placements, animal honors and owned-animal trophy room; replay/migration tests, build and browser verification recorded. |
+
+These deliver the **local NPC** portion of FS-902. Online competitions and verified prestige remain part of a later server-owned release.
+
 ## M0 — delivered foundation
 
 | ID | Status | Deliverable |

@@ -15,12 +15,12 @@ function changes(tank: TankAbsence): string {
   return parts.join(' · ');
 }
 
-/** FS-307 return summary: per-tank changes during protected offline time, their causes, and what needs attention now. */
+/** Per-tank changes during an explicit calendar advance, their causes, and what needs attention now. */
 export function AbsencePanel({ summary, notice, onOpenTank, onDismiss }: { summary: AbsenceSummary; notice: string; onOpenTank: (tankId: string) => void; onDismiss: () => void }) {
   const reported = summary.tanks.filter(tank => !quietTank(tank)), quiet = summary.tanks.length - reported.length;
   return <section className="absence-panel" aria-labelledby="absence-title">
     <div className="absence-heading">
-      <div><div className="eyebrow">WHILE YOU WERE AWAY</div><h2 id="absence-title">{plural(summary.gameDays, 'game day')} passed</h2><p>{notice}</p></div>
+      <div><div className="eyebrow">CALENDAR REPORT</div><h2 id="absence-title">{plural(summary.gameDays, 'game day')} passed</h2><p>{notice}</p></div>
       <button className="quiet" onClick={onDismiss}>Dismiss</button>
     </div>
     {reported.length ? <ul>{reported.map(tank => <li key={tank.tankId}>

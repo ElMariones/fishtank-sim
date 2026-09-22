@@ -1,3 +1,4 @@
+import { competitionSchedule, createCompetitionRun, eligibility, initialCircuit, MAX_COMPETITION_HISTORY, negotiationFloor } from './competitions';
 import { savedDecorationsSchema, tankStyleSchema } from './tankSchema';
 import { piecePrice, styleCost, styleOf } from './aquascape';
 import { TANK_PRICE, TANK_UPGRADE_PRICE, decorationsOf, validateLayout, legacyDecorations, type Decoration, type TankStyle } from './tankManagement';
@@ -44,7 +45,7 @@ export const STOCK_PRICE = 250;
  * bloodlines (FS-604); v13 adds explicit species identity and independent axolotl genetics; v14 adds the persistent
  * axolotl shop.
  */
-export const WORLD_VERSION = 14;
+export const WORLD_VERSION = 15;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -72,11 +73,11 @@ function newTank(id: string, name: string, planted: boolean): Tank {
 
 /** New worlds use the current genome. Research fixtures pass genome version 1 to reproduce the frozen FS-101 founders. */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = GENOME_VERSION): World {
-  const world: World = { version: 14, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
+  const world: World = { version: 15, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
   ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed), naming: NAMING_MODEL, relief: defaultRelief(), bloodlines: [], nextBloodlineId: 1,
-    axolotlShop: initialAxolotlShop(seed) };
+    axolotlShop: initialAxolotlShop(seed), circuit: initialCircuit() };
   ['Haru', 'Sumi', 'Kohaku', 'Yuki', 'Akira', 'Momo'].forEach((name, i) => {
     world.fish.push(founder(world, name, i % 2 === 0 ? 'F' : 'M', timestamp, genomeVersion)); world.nextId++;
   });
@@ -89,6 +90,10 @@ export function quote(fish: Fish): number {
 }
 
 export type Command =
+  | { type: 'enter-competition'; eventId: string; fishIds: string[] }
+  | { type: 'judge-competition' }
+  | { type: 'close-competition' }
+  | { type: 'competition-offer'; participantId: string; amount: number; tankId: string; timestamp: string }
   | { type: 'rename'; fishId: string; name: string }
   | { type: 'move'; fishId: string; tankId: string }
   | { type: 'breed'; motherId: string; fatherId: string; tankId: string; timestamp: string; genomeVersion?: GenomeVersion; count?: number }
@@ -124,6 +129,10 @@ const tankIdSchema = z.string().max(50);
  */
 const genomeVersionSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]).optional();
 export const commandSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('enter-competition'), eventId: z.string().max(100), fishIds: z.array(fishIdSchema).min(1).max(2) }).strict(),
+  z.object({ type: z.literal('judge-competition') }).strict(),
+  z.object({ type: z.literal('close-competition') }).strict(),
+  z.object({ type: z.literal('competition-offer'), participantId: fishIdSchema, amount: z.number().int().min(1).max(1e9), tankId: tankIdSchema, timestamp: z.string().datetime() }).strict(),
   z.object({ type: z.literal('rename'), fishId: fishIdSchema, name: z.string().trim().min(1).max(32) }).strict(),
   z.object({ type: z.literal('move'), fishId: fishIdSchema, tankId: tankIdSchema }).strict(),
   z.object({ type: z.literal('breed'), motherId: fishIdSchema, fatherId: fishIdSchema, tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema, count: z.number().int().min(1).max(MAX_FAST_OFFSPRING).optional() }).strict(),
@@ -211,6 +220,61 @@ export function applyCommand(world: World, command: Command): World {
     next.ledger = recordEntry(next.ledger, 'sale', plan.total, batch.length, saleDetail(plan));
   };
   switch (command.type) {
+    case 'enter-competition': {
+      if (next.circuit.active) throw new Error('Finish and close the current competition first.');
+      if (next.circuit.history.length >= MAX_COMPETITION_HISTORY) throw new Error('This world has reached its 240-show archive limit. Export it before starting a new world.');
+      const event = competitionSchedule(next.seed, next.circuit.day).find(candidate => candidate.id === command.eventId);
+      if (!event) throw new Error('This competition has closed. Choose a current event.');
+      if (next.circuit.history.some(run => run.event.id === event.id)) throw new Error('You already entered this edition.');
+      if (new Set(command.fishIds).size !== command.fishIds.length) throw new Error('Choose each animal only once.');
+      const entrants = command.fishIds.map(getFish);
+      for (const fish of entrants) {
+        const problem = eligibility(fish, event);
+        if (problem) throw new Error(`${fish.name}: ${problem}`);
+        if (courtingClutchOf(next, fish.id)) throw new Error(`${fish.name} is courting. Finish the courtship before entering.`);
+      }
+      const cost = event.fee * entrants.length;
+      afford(cost, 'Competition entry');
+      next.circuit.active = createCompetitionRun(next, event, entrants);
+      next.ledger = recordEntry(next.ledger, 'competitionEntry', -cost, entrants.length, event.name);
+      break;
+    }
+    case 'judge-competition': {
+      const run = next.circuit.active;
+      if (!run || run.phase !== 'exhibition') throw new Error('There is no exhibition awaiting judging.');
+      const winners = run.participants.filter(p => p.isPlayer && p.rank <= 3);
+      const prize = winners.reduce((sum, p) => sum + run.event.prizes[p.rank - 1], 0);
+      run.phase = 'results'; next.credits += prize;
+      next.ledger = recordEntry(next.ledger, 'competitionPrize', prize, winners.length, run.event.name);
+      break;
+    }
+    case 'close-competition': {
+      const run = next.circuit.active;
+      if (!run || run.phase !== 'results') throw new Error('Judge the exhibition before closing it.');
+      next.circuit.history.push(run); next.circuit.active = null;
+      break;
+    }
+    case 'competition-offer': {
+      const run = next.circuit.active;
+      if (!run || run.phase !== 'results') throw new Error('Offers open after the results.');
+      const participant = run.participants.find(p => p.fish.id === command.participantId && !p.isPlayer);
+      if (!participant || participant.negotiation.status !== 'open') throw new Error('This animal is no longer available for negotiation.');
+      if (next.fish.some(f => f.id === participant.fish.id)) throw new Error('This animal already belongs to your collection.');
+      if (command.amount > next.credits) throw new Error('You cannot offer more credits than you have.');
+      space(command.tankId, 1); room(1);
+      const floor = negotiationFloor(run.event, participant), n = participant.negotiation;
+      n.attempts++;
+      if (command.amount >= floor) {
+        afford(command.amount, 'This offer');
+        next.fish.push({ ...structuredClone(participant.fish), tankId: command.tankId });
+        n.status = 'purchased'; n.counter = null;
+        next.ledger = recordEntry(next.ledger, 'competitionPurchase', -command.amount, 1, `${participant.fish.name} from ${participant.owner}`);
+      } else {
+        n.counter = Math.max(floor, Math.ceil(participant.askingPrice - (participant.askingPrice - floor) * n.attempts / 3));
+        if (n.attempts >= 3) n.status = 'declined';
+      }
+      break;
+    }
     case 'rename': {
       const name = command.name.trim();
       if (!name || name.length > 32) throw new Error('Use a name between 1 and 32 characters.');

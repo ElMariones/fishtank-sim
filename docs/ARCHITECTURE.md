@@ -50,7 +50,7 @@ src/
     visualFixtures.ts Frozen FS-101 fixtures, anatomy stress cases and v1-vs-v2 anatomy sweep
   persistence/
     database.ts     IndexedDB current/two backups, transaction/read-back and stale-writer checks
-    session.ts      Serialized commits, offline catch-up and legacy migration
+    session.ts      Serialized commits, exact-date restore and legacy migration
     writerLease.ts  Web Locks single-writer lease; IndexedDB compare-and-swap remains fallback
   simulation/
     motion.ts       Pure 20 Hz steering step, independent of React/Canvas
@@ -184,7 +184,7 @@ World save v6 adds `market` (demand per buyer), `ledger` (opening balance, total
 | State | React state + motion refs | UI store only if needed | Avoid global subscription to every swimming coordinate |
 | Genealogy | Session kinship cache that keeps computed pairs across births (FS-405); bounded six-generation ancestor graph and descendant generations from an on-demand index (FS-404) | Worker query for pathological pedigrees | Preserve history without world-sized matrix allocation |
 | Backend | None | Authoritative HTTP service + PostgreSQL | Durable transactions and trusted online ownership |
-| Shared simulation | Persistent 50 ms clock, event-boundary integrator, fixed-step care and water per tank (FS-301, FS-305) and daily life stages, growth and condition (FS-302) | Water, development and scheduled lifecycle events | One deterministic integrator must serve visible/background/offline modes |
+| Shared simulation | Explicit Day/Week/Month calendar over the event-boundary integrator, fixed-step care and water per tank (FS-301, FS-305), and daily life stages, growth and condition (FS-302) | Water, development and scheduled lifecycle events | One deterministic integrator serves single-day and multi-day advances |
 
 React documents Vite as one option for a custom setup; Vite provides the React TypeScript build workflow. These choices fit this single-page research application, rather than implying every React app needs this stack. [React guidance](https://react.dev/learn/creating-a-react-app), [Vite guide](https://vite.dev/guide/).
 
@@ -279,9 +279,9 @@ The lab clones the small world, validates, applies a command and swaps state. Th
 
 Command IDs are `worldId:revision`, events are `worldId:event:revision`. The domain parses payloads before cloning or mutation. Exact recent retries return the current runtime; conflicting content and stale revisions reject. Every 64 commands the current state becomes the replay checkpoint; older IDs remain stale, so compaction cannot duplicate births or credits. This is bounded recovery history, not the permanent FS-404 life-event journal. Import validates both worlds, replays the ordered events, and checks the resulting snapshot/tick/revision. Property order has no semantic meaning.
 
-The UI advances one monotonic integer clock every five minutes (`ACTIVE_CHECKPOINT_MS`) and samples it again when committing a command. Every owned tank receives the same elapsed ticks through `advanceRuntime`, independent of which tank is visible. The same bounded segment builder splits future model integration at scheduled event ticks. Motion controls still affect visual swimming only. Each advance is an autosave, and every commit serializes the world and validates the new, current and backup snapshots on the main thread. A 10,000-record world costs about 1.3 s per commit in the recorded Chrome run, so idle checkpoints are sparse (ADR-031). The saved tick and `savedAt` always describe the same moment, so reload catch-up covers any gap after the last save. At most five minutes of active time can count toward the offline cap.
+The UI advances the monotonic integer clock only when the player chooses Day, Week or Month. Every owned tank receives the same ticks through `advanceRuntime`, independent of which tank is visible. The bounded segment builder splits the requested interval at scheduled event ticks and daily boundaries, so multi-day skips preserve the same results as repeated daily advances. Motion controls affect visual swimming only. Each completed advance autosaves, and every command serializes the world and validates the new, current and backup snapshots on the main thread. A 10,000-record world costs about 1.3 s per commit in the recorded Chrome run, so command-layer cloning remains an M7 performance concern (ADR-073).
 
-On reload, `savedAt` supplies elapsed real time at normal 1×. Negative elapsed time becomes zero; catch-up stops after eight real hours and reports any protected remainder. This currently advances research time only. It does not age fish, change health or consume resources because those domain states do not exist yet.
+On reload, `savedAt` remains persistence metadata and supplies no elapsed domain time. The exact saved tick and circuit date return. `advanceRuntimeForOffline` remains as a bounded research/test helper for older evidence and is not called by the session restore path.
 
 The following envelope describes future server-authoritative work:
 
@@ -319,9 +319,9 @@ Never rely on disabling a button as the transaction guarantee.
 
 ### Time contract
 
-Persist integer world ticks and explicit speed multipliers. The real timestamp is metadata and offline-elapsed input. A browser refresh must not reroll or repeat the scheduled event at a tick.
+Persist integer world ticks and derive a 360-day calendar from them. Real timestamps are save metadata only. A browser refresh must not advance time, reroll a competition window, or repeat a scheduled event at a tick.
 
-Target fixed active simulation step: 50 ms (20 Hz). Rendering uses requestAnimationFrame, interpolating between previous/next transforms. Cap accumulated wall-time after a stall; lifecycle catch-up runs through the scheduler, not thousands of animation frames.
+Visual motion keeps its fixed 50 ms (20 Hz) worker step. Rendering uses requestAnimationFrame, interpolating between previous/next transforms. Domain time advances separately through Day, Week and Month commands.
 
 ### Simulation levels
 
@@ -329,24 +329,22 @@ Target fixed active simulation step: 50 ms (20 Hz). Rendering uses requestAnimat
 |---|---|---|
 | Visible | One active tank | Local steering, collisions/avoidance, state selection, feed targets, interpolation |
 | Background owned | Loaded but unseen tanks | Coarse integrated physiology, environment, scheduled births; no individual visual trajectories |
-| Offline | Protected elapsed interval | Deterministic aggregate integration up to cap; event-boundary splitting; return summary |
+| Calendar skip | All owned tanks | Deterministic 1/7/30-day integration; event-boundary splitting; calendar report |
 | Archive | Sold/dead/external inactive | Immutable record and last public portrait; no local live AI |
 
 Changing a tank’s visibility must not change birth RNG, lifetime, economy, or developmental results. Separate the high-frequency visual simulation from lifecycle equations shared by all levels.
 
-### Proposed offline rules
+### Calendar rules
 
-- Standard mode cap: 8 real hours converted using normal 1× game time, independent of the last chosen fast-forward setting.
-- Auto-feeding/equipment consumes known reserves; at reserve exhaustion, protective mode freezes harmful progression and reports why.
-- No new unsolicited clutches during offline catch-up. Already committed clutches honor their reservations and stage policy.
-- Handle negative clock deltas as zero. Sandbox clock manipulation is acceptable; online uses server time.
-- Process at scheduled event boundaries, using bounded integration steps and checkpoints for long jobs.
-
-These are design defaults requiring numerical comparison against active simulation before shipping.
+- Day, Week and Month advance 1, 7 and 30 game days.
+- Every intervening daily care, courtship, hatching, growth and competition boundary is processed.
+- Closing the app advances zero game time; changing the host clock has no domain effect.
+- Motion state has no effect on calendar results.
+- Long advances use bounded event segments and produce a player-readable report.
 
 ### Implemented water model (FS-301)
 
-`src/core/water.ts` holds one well-mixed compartment per tank in world save v2: volume (L), temperature (°C), dissolved oxygen (mg/L), ammonia nitrogen (mg N/L), uneaten food (g), biofilter capacity (mg N per game day) and aeration (kLa per game day). Care time is one game day per 1,200 ticks (60 real seconds at 1×). Water advances in fixed 25-tick steps (half a game hour) counted by absolute step boundaries, so any split of an interval produces identical values.
+`src/core/water.ts` holds one well-mixed compartment per tank in world save v2: volume (L), temperature (°C), dissolved oxygen (mg/L), ammonia nitrogen (mg N/L), uneaten food (g), biofilter capacity (mg N per game day) and aeration (kLa per game day). One game day remains 1,200 deterministic ticks internally. The UI advances 1, 7 or 30 days explicitly; real-world absence does not add ticks. Water advances in fixed 25-tick steps (half a game hour) counted by absolute step boundaries, so any split of an interval produces identical values.
 
 Each step, in order:
 - **Food:** uneaten food decays.
@@ -501,4 +499,3 @@ World v12 appends `bloodlines` and `nextBloodlineId`. The `register-bloodline` a
 ### FS-605 unusual line
 
 `unusualLineScenario.ts` drives a seeded runtime with live commands only: normal courtship, rehoming, bloodline registration and the clock. It finds a structural mutation by its recorded origin, outcrosses, intercrosses and fixes a line, then replays the journal. `mutationPacing` measures discovery without a world. Research → **Unusual line** shows both. See [FS-605 evidence](research/FS-605-UNUSUAL-LINE.md).
-

@@ -22,7 +22,7 @@ export const GUIDE_TEXT: Record<GuideStepId, { title: string; detail: string }> 
   feed: { title: 'Feed the tank', detail: 'Press ＋ Feed on the aquarium and watch which fish reach the pellets first. Food is free, and each tank’s auto-feeder keeps its fish fed.' },
   court: {
     title: 'Start a courtship',
-    detail: 'In What will they inherit?, choose an adult female and male that share a tank, pick a nursery and press Start courtship. It takes two to four game days, and one game day passes each real minute. If it pauses, the clutch list says why.',
+    detail: 'In What will they inherit?, choose an adult female and male that share a tank, pick a nursery and press Start courtship. It takes two to four game days, advanced with the Day, Week and Month calendar buttons. If it pauses, the clutch list says why.',
   },
   hatch: { title: 'Hatch and keep a candidate', detail: 'Eggs hatch three game days after they are laid, and markings appear as the fry grow. Star ☆ a hatched offspring you want to keep; favorites are never sold in bulk.' },
   family: { title: 'Trace a family', detail: 'Select a fish bred here and follow its mother or father, from the parent links under its name or the Family tab. The inspector moves to that fish’s aquarium, and Back returns.' },

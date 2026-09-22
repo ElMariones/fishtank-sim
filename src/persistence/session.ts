@@ -1,10 +1,9 @@
-import { absenceObserver, type AbsenceSummary } from '../core/absence';
-import { applyOfflineCatchup, createRuntime, importRuntime, type Runtime } from '../core/runtime';
+import type { AbsenceSummary } from '../core/absence';
+import { createRuntime, importRuntime, type Runtime } from '../core/runtime';
 import { SAVE_KEY } from '../core/save';
 import { createWorld } from '../core/world';
 import { commitSnapshot, openDatabase, readSlots, type SaveRecord } from './database';
 import { acquireWriterLease, type WriterLease } from './writerLease';
-import { TICK_MS } from '../simulation/time';
 
 export class SaveSession {
   private queue: Promise<unknown> = Promise.resolve();
@@ -22,16 +21,9 @@ export class SaveSession {
   async close() { await this.queue; this.database.close(); this.lease.release(); }
 }
 
-/** Whole hours stay exact ("8 hours"); shorter gaps read as minutes or seconds. */
-function formatDuration(seconds: number) {
-  const [value, unit]: [string, string] = seconds >= 3600 ? [(seconds / 3600).toFixed(seconds % 3600 ? 1 : 0), 'hour']
-    : seconds >= 60 ? [String(Math.round(seconds / 60)), 'minute'] : [String(seconds), 'second'];
-  return `${value} ${unit}${value === '1' ? '' : 's'}`;
-}
-
 export type LoadedSession = {
   runtime: Runtime; session: SaveSession | null; blocked: boolean; readOnly: boolean; warning: string; resumeNotice: string;
-  /** What changed per tank during protected offline catch-up (FS-307); null when less than a game day passed. */
+  /** A calendar report supplied by an active session; loading never advances time, so this starts null. */
   absence: AbsenceSummary | null;
 };
 export async function loadSession(): Promise<LoadedSession> {
@@ -46,17 +38,10 @@ export async function loadSession(): Promise<LoadedSession> {
     session = new SaveSession(database, slots.current?.token ?? null, lease);
     if (slots.current) {
       const stored = importRuntime(slots.current.raw, worldId);
-      // The observer only watches the ordinary catch-up, so the restored world is identical with or without a summary.
-      const observer = absenceObserver(stored.world);
-      const caughtUp = lease.writable ? applyOfflineCatchup(stored, Date.parse(slots.current.savedAt), Date.now(), observer.onDay) : { runtime: stored, window: null };
-      const seconds = caughtUp.window ? Math.round(caughtUp.window.appliedTicks * TICK_MS / 1000) : 0;
-      const summary = seconds ? observer.summarize(caughtUp.runtime.world) : null;
-      const resumeNotice = seconds
-        ? `${formatDuration(seconds)} of protected research time restored${caughtUp.window?.remainingTicks ? '; the eight-hour offline cap was reached' : ''}. Tank water, feeding and fish development kept going.`
-        : '';
-      return { runtime: caughtUp.runtime, session, blocked: false, readOnly: !lease.writable,
-        warning: lease.writable ? '' : 'Read-only: another tab controls this world. Close it, then reload this tab to continue.', resumeNotice,
-        absence: summary && summary.gameDays > 0 ? summary : null };
+      // The calendar is player-controlled. Wall-clock absence must never age animals or expire shows.
+      return { runtime: stored, session, blocked: false, readOnly: !lease.writable,
+        warning: lease.writable ? '' : 'Read-only: another tab controls this world. Close it, then reload this tab to continue.',
+        resumeNotice: 'Your calendar is exactly where you left it. Use Day, Week or Month to advance.', absence: null };
     }
     if (slots.backup1 || slots.backup2) throw new Error('The current snapshot is missing. Review a recovery copy before saving.');
     const legacy = localStorage.getItem(SAVE_KEY);

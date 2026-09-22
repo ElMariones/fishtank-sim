@@ -25,7 +25,7 @@ All planned values below are game hypotheses. They are not real aquarium-care re
 | Decoration (FS-503) | 25 credits per new piece | Up to 12 pieces/tank; movement, rotation, resizing/removal free, no refunds |
 | Koi rescue (FS-504) | One unrelated adult of each sex with no living fish, at no cost | Only while credits are below ◈ 250 per missing sex; the next rescue is 10 game days later. Rescued fish are founders, so they resell for at most ◈ 150 |
 | Motion tick | 50 ms | Visual motion only |
-| Motion speed | 1× / 2× / 4× | Does not age fish |
+| Swimming motion | On / off | Presentation only; does not age fish |
 | Visual pellets | Sink, can be eaten once, dissolve after 20 motion seconds | Transient worker display; the domain Feed command adds real food (FS-305) |
 
 ### Water model v1 (FS-301)
@@ -34,7 +34,7 @@ Game-rule approximations in `src/core/water.ts`; not aquarium-care advice.
 
 | Parameter | Value | Reason / limitation |
 |---|---:|---|
-| Care time | 1 game day = 1,200 ticks = 60 real seconds at 1× | GDD pacing hypothesis; motion speed does not change it |
+| Calendar | Day / Week / Month = 1 / 7 / 30 game days | Player-controlled; each skip integrates every intervening daily boundary; real-world absence does not advance it |
 | Integration step | 25 ticks (half a game hour) | Fixed absolute steps; aeration and decay cannot overshoot |
 | Default tank | 20,000 L at 22 °C, filter 60,000 mg N/day, aeration 24/day | A full tank of average adult lab fish stays "good" and "clean" |
 | Fish respiration | 6,000 mg O₂ per kg per day × metabolism × oxygen demand | Fish count at their current size (FS-302) |
@@ -83,7 +83,7 @@ Game rules in `src/core/care.ts` and `src/core/careAdvice.ts`; not aquarium-care
 | Water change | 10%, 25% or 50%; ◈ 1 per m³ replaced (◈ 2 / 5 / 10 for 20 m³) | Siphons the same share of uneaten food |
 | Manual portion | A quarter of a game day of the residents' need | Rejected when no hatched fish need food |
 | Warning bands | Underfed below 85% fed, starving below 50%; leftovers above 5% of a day's need | Warnings open a preview; nothing applies until confirmed |
-| Food cost | None | At one game day per minute, recurring food cost would dominate the lab economy and risk softlocks during protected absence; revisit in M5 |
+| Food cost | None | Keeps explicit multi-day skips from creating a recurring-cost softlock; revisit after calendar economy playtests |
 
 Probe with 60 founder-distribution adults (155 kg, 7.8 kg/m³) and default equipment over 10 game days: Measured rations kept ammonia clean (0.31 mg N/L) with oxygen just low (5.8 mg/L); Generous reached elevated ammonia and low oxygen; Heavy reached high ammonia and critical oxygen. Half that stock on Measured rations had no warnings. A tank of 60 of the largest adults (836 kg) stays critical under any equipment; only moving fish helps.
 
@@ -130,7 +130,7 @@ Game rules in `src/core/breeding.ts`.
 | Courtship speed | 0.5 progress per game day × fertility ÷ 0.6, bounded 0.25–0.75 | Two to four unpaused game days; the fertility locus is now active |
 | Courtship pauses | Parents in different tanks, a parent below 70% condition, critical oxygen, high ammonia, or water outside 18–28 °C | Recorded daily with a reason and fix |
 | Nursery limit | One courting clutch per nursery tank | Bounded, readable nursery management |
-| Egg timestamp | Pairing time + game days × 60 real seconds | One game day per real minute at 1× |
+| Egg timestamp | Pairing timestamp plus completed game-day boundaries | Calendar skips preserve the same deterministic ordering as daily advances |
 | Fast breeding (instant cross) | 1–24 eggs (default 20) at once in any chosen tank; parents may live in different tanks; no maturity, condition, rest or courtship checks | Opt-in shortcut switch; counts reservations and capacity |
 
 ### Economy model v1 (FS-501)

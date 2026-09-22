@@ -97,8 +97,9 @@ export function advanceWorld(world: World, fromTick: number, toTick: number, onD
       // Development first, then breeding (FS-402): eggs laid at this boundary start developing at the next one. NPC
       // demand recovers (FS-501), the shop delivers (FS-502) and the koi rescue's wait counts down (FS-504) last.
       const developed = developResidents(current), day = boundary / TICKS_PER_GAME_DAY, bred = advanceRelief(refreshAxolotlShop(refreshShop(recoverDemand(advanceClutches(developed.world)), day), day));
-      onDay?.({ tick: boundary, before: current, after: bred, environments: developed.environments });
-      current = bred;
+      const dated = { ...bred, circuit: { ...bred.circuit, day } };
+      onDay?.({ tick: boundary, before: current, after: dated, environments: developed.environments });
+      current = dated;
     }
     cursor = end;
   }

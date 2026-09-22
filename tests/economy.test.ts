@@ -170,7 +170,7 @@ describe('FS-501 ledger and rehoming', () => {
     expect(legacy.market).toEqual(world.market);
 
     const migrated = decodeSave(JSON.stringify(asV5(legacy)));
-    expect(migrated.ledger).toEqual({ model: 1, opening: legacy.credits, next: 1, totals: { sale: 0, stock: 0, equipment: 0, waterChange: 0, rehome: 0 }, entries: [] });
+    expect(migrated.ledger).toEqual({ model: 1, opening: legacy.credits, next: 1, totals: { sale: 0, stock: 0, equipment: 0, waterChange: 0, rehome: 0, competitionEntry: 0, competitionPrize: 0, competitionPurchase: 0 }, entries: [] });
     expect(migrated.market).toEqual(world.market);
     expect(Object.keys(migrated)).toEqual(Object.keys(decodeSave(JSON.stringify(legacy))));
     expect(() => decodeSave(JSON.stringify({ ...asV5(world), fish: world.fish.map((f, i) => i ? f : { ...f, status: 'rehomed' }) }))).toThrow();

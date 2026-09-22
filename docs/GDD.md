@@ -35,7 +35,7 @@ The supplied notes correctly place genotype-to-appearance ahead of shops and pro
 | Multiplicative market value | Use bounded, auditable contributions and demand budgets | Unbounded products cause inflation and make rare fish universally optimal |
 | Brother/sister breeding is automatically harmful | Calculate pedigree F; phenotype damage comes from modeled recessive burden | F is a probability of identity by descent, not a direct health percentage |
 | Thousands of individually simulated eggs | Reserve a bounded nursery cohort before spawning | Prevent exponential population growth and data creation |
-| Real-time absence can advance everything | Default to protected, capped offline catch-up; hard mode is opt-in | A relaxing game should not punish a player with an unobserved mass loss |
+| Real-time absence can advance everything | Time advances only from explicit Day, Week and Month actions | A relaxing game should not change animals, care or competition windows while the player is away |
 | Deterministic fish never need images | Keep versioned reconstruction inputs **and** optional archival portraits | Renderer changes should not erase the visual history of a prized ancestor |
 | “Line purity” as one percentage | Show pedigree contribution and similarity to a registered trait standard separately | Ancestry, allele identity, and phenotype resemblance are different measurements |
 | Two fish always produce children | Guaranteed accelerated lab crosses; transparent compatibility in the game | Supports debugging now and meaningful behavior later without opaque rejection |
@@ -91,9 +91,9 @@ These are scope boundaries for the first releases, not permanent prohibitions.
 - **Family:** parent links sit under every fish's name.
 - **Koi rescue:** when every fish of one sex is gone and credits cannot buy stock, the rescue gives one unrelated adult of each missing sex, at most once every 10 game days, so the economy has no permanent dead end.
 
-**First playable pacing hypothesis:** one game day per 60 real seconds at 1×; 1×/4×/12× time controls; maturity around 18–30 game days under healthy development; incubation 2–4 game days; juvenile pattern reveal over approximately 6–12 game days. This implies a first generation in roughly 20–35 minutes at normal speed, much faster with compression. These numbers are game rules awaiting playtests, not biological facts.
+**Current calendar pacing:** the player advances 1, 7 or 30 game days at a time. Each choice runs every intervening daily care, growth, courtship and birth boundary. Real-world absence does not advance the world. Maturity remains around 18–30 healthy game days; incubation takes 2–4 game days; juvenile pattern reveal spans approximately 6–12 game days. These are game rules awaiting playtests, not biological facts.
 
-Behavior uses real simulated seconds. Growth and care use explicit game-day units. Pausing stops both. Camera animation does not determine authoritative time.
+Swimming behavior uses real simulated seconds. Growth, care, breeding and competitions use explicit game-day units advanced by the calendar. Turning motion off stops swimming only. Camera animation does not determine authoritative time.
 
 ## 5. Fish identity and lifecycle
 

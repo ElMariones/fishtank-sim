@@ -1,3 +1,4 @@
+import { COMPETITION_TIERS, initialCircuit, MAX_COMPETITION_HISTORY, validateCircuit } from './competitions';
 import { savedDecorationsSchema, tankStyleSchema } from './tankSchema';
 import { decorationsOf, validateLayout } from './tankManagement';
 import { z } from 'zod';
@@ -74,7 +75,7 @@ const market = z.object({
 const credits = z.number().int().min(-1e12).max(1e12);
 const ledger = z.object({
   model: z.literal(1), opening: z.number().int().min(0).max(1e9), next: z.number().int().positive(),
-  totals: z.object({ sale: credits, stock: credits, equipment: credits, waterChange: credits, rehome: credits }).strict(),
+  totals: z.object({ sale: credits, stock: credits, equipment: credits, waterChange: credits, rehome: credits, competitionEntry: credits.default(0), competitionPrize: credits.default(0), competitionPurchase: credits.default(0) }).strict(),
   entries: z.array(z.object({
     seq: z.number().int().positive(), reason: z.enum(LEDGER_REASONS), amount: z.number().int().min(-1e9).max(1e9),
     fish: z.number().int().min(0).max(MAX_LIVING), detail: z.string().max(120),
@@ -147,7 +148,14 @@ const worldV13 = {
   ...worldV8, version: z.literal(13), fish: z.array(z.object({ ...fishRecordV13, status: z.enum(['living', 'sold', 'rehomed']), life, breeding, origins })).max(MAX_RECORDS),
   clutches: z.array(clutchV13).max(MAX_RECORDS), relief, bloodlines: z.array(bloodline).max(MAX_BLOODLINES), nextBloodlineId: z.number().int().positive(),
 };
+const competitionFish = z.object({ ...fishRecordV13, status: z.enum(['living', 'sold', 'rehomed']), life, breeding, origins }).strict();
+const event = z.object({ id: z.string().max(100), name: z.string().max(100), city: z.string().max(60), venue: z.string().max(80), tier: z.enum(COMPETITION_TIERS), species: z.enum(['koi', 'axolotl']), year: z.number().int().positive(), opensDay: z.number().int().nonnegative(), closesDay: z.number().int().positive(), fee: z.number().int().positive(), prizes: z.tuple([credits, credits, credits]), theme: z.number().int().min(0).max(3) }).strict();
+const score = z.number().min(0).max(100);
+const competitionRun = z.object({ event, participants: z.array(z.object({ fish: competitionFish, owner: z.string().min(1).max(60), isPlayer: z.boolean(), scores: z.object({ presentation: score, pattern: score, condition: score }).strict(), total: score, rank: z.number().int().min(1).max(10), comment: z.string().max(1000), askingPrice: z.number().int().positive().max(100000), negotiation: z.object({ attempts: z.number().int().min(0).max(3), counter: z.number().int().positive().max(100000).nullable(), status: z.enum(['open', 'declined', 'purchased']) }).strict() }).strict()).min(9).max(10), phase: z.enum(['exhibition', 'results']), enteredDay: z.number().int().min(0).max(10000000) }).strict();
+const circuit = z.object({ model: z.literal(1), day: z.number().int().min(0).max(10000000), active: competitionRun.nullable(), history: z.array(competitionRun).max(MAX_COMPETITION_HISTORY) }).strict();
+const currentLedger = ledger.extend({ totals: z.object({ sale: credits, stock: credits, equipment: credits, waterChange: credits, rehome: credits, competitionEntry: credits, competitionPrize: credits, competitionPurchase: credits }).strict() });
 const schema = z.discriminatedUnion('version', [
+  z.object({ ...worldV13, version: z.literal(15), ledger: currentLedger, axolotlShop, circuit }),
   // World v14 appends the persistent axolotl shop after the bloodline registry.
   z.object({ ...worldV13, version: z.literal(14), axolotlShop }),
   // World v13 makes species persistent and permits the independent axolotl genome while leaving koi genomes untouched.
@@ -201,10 +209,11 @@ export function decodeSave(raw: string): World {
   if (raw.length > 12_000_000) throw new Error('Save is too large for this lab.');
   const parsed = schema.parse(JSON.parse(raw));
   let world: World;
-  if (parsed.version === 14) world = parsed as World;
+  if (parsed.version === 15) world = parsed as World;
+  else if (parsed.version === 14) world = { ...parsed, version: 15, circuit: initialCircuit() } as World;
   // Worlds v1–v13 predate the axolotl shop: it opens with a day-0 delivery, appended last. When the runtime rebases an
   // older world it keeps the stock the world's own replay delivered instead.
-  else if (parsed.version === 13) world = { ...parsed, version: 14, axolotlShop: initialAxolotlShop(parsed.seed) } as World;
+  else if (parsed.version === 13) world = { ...parsed, version: 15, axolotlShop: initialAxolotlShop(parsed.seed), circuit: initialCircuit() } as World;
   else {
     // Build the historical v12 logical shape first. It is deliberately local/structural because each old schema lacks
     // different fields; validation above has already proven every input member before this migration runs.
@@ -238,11 +247,11 @@ export function decodeSave(raw: string): World {
     const oldClutches = ((legacy.clutches ?? []) as Omit<World['clutches'][number], 'species'>[]).map(entry => ({ ...entry, species: 'koi' as const }));
     const withOrigins = needsOrigins ? reconstructOrigins(oldFish as Omit<Fish, 'origins'>[]).fish : oldFish as Fish[];
     world = {
-      ...(legacy as Omit<World, 'version' | 'fish' | 'clutches' | 'bloodlines' | 'nextBloodlineId' | 'axolotlShop'>), version: 14,
+      ...(legacy as Omit<World, 'version' | 'fish' | 'clutches' | 'bloodlines' | 'nextBloodlineId' | 'axolotlShop' | 'circuit'>), version: 15,
       fish: withOrigins, clutches: oldClutches,
       bloodlines: (legacy.bloodlines as World['bloodlines'] | undefined) ?? [],
       nextBloodlineId: (legacy.nextBloodlineId as number | undefined) ?? 1,
-      axolotlShop: initialAxolotlShop(legacy.seed as number),
+      axolotlShop: initialAxolotlShop(legacy.seed as number), circuit: initialCircuit(),
     };
   }
   world.tanks = world.tanks.map(tank => ({ ...tank, decorations: decorationsOf(tank) }));
@@ -337,6 +346,7 @@ export function decodeSave(raw: string): World {
     if (problem) throw new Error(problem);
     listingIds.add(entry.id);
   }
+  validateCircuit(world);
   return world;
 }
 

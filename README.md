@@ -66,10 +66,11 @@ build does not include it, or PixiJS.
 
 1. **Meet your fish.** Click a swimming animal or a collection card to open it in the inspector: overview, genome and family.
 2. **Breed.** Open **Breeding**, pick a mother and father, choose a nursery and start a courtship.
-3. **Watch them grow.** Eggs hatch after 3 game days (one game day passes per real minute) and grow faster in well-kept water.
+3. **Watch them grow.** Use **Day**, **Week**, or **Month** to advance 1, 7, or 30 game days. Eggs hatch after 3 game days and grow faster in well-kept water. Time stays put while you are away.
 4. **Follow the lineage.** Open **Family** on any child to walk up to six generations back or forward.
 5. **Manage the lab.** Sell to NPC buyers or rehome for free, buy new stock in the **NPC shop**, add aquariums and decorate them under **Habitat**.
 6. **Keep your world.** **Saves** exports, imports and restores backups.
+7. **Enter the circuit.** **Competitions** offers separate koi and axolotl shows from amateur to global. Register one or two animals, inspect NPC rivals, watch judging, negotiate purchases, and visit the **Trophy room** for lasting honors.
 
 A first-session guide above the aquarium walks through these steps. Limits: 60 animals per tank, 8 tanks, 480 living animals and 10,000 records including the archive.
 
@@ -81,6 +82,7 @@ A first-session guide above the aquarium walks through these steps. Limits: 60 a
 | [Genetics specification](docs/GENETICS.md) | Genome rules, loci, color and ornament expression, pedigree |
 | [Architecture](docs/ARCHITECTURE.md) | Source map, data model, command contracts, worker strategy |
 | [UX specification](docs/UX_SPEC.md) | Aquarium, inspector, breeding, family, market and recovery flows |
+| [Competition circuit](docs/COMPETITIONS.md) and [visual design](docs/design/COMPETITION_UI.md) | Calendar, entry, exhibition, judging, NPC negotiation and lasting honors |
 | [Balance and experiments](docs/BALANCE.md) | Implemented constants and tuning experiments |
 | [Roadmap](docs/ROADMAP.md) and [backlog](docs/BACKLOG.md) | Milestones, task IDs and acceptance criteria |
 | [Implementation status](docs/IMPLEMENTATION_STATUS.md) | What actually works today, and known limits |

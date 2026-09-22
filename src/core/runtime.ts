@@ -29,9 +29,10 @@ export type Runtime = {
 /** Storage/command schema changes do not reinterpret genomes or appearance. */
 export function createRuntime(world: World, worldId: string): Runtime {
   worldIdSchema.parse(worldId);
-  return { schemaVersion: 2, runtimeVersion: 1, worldId, world, tick: 0, revision: 0,
-    checkpoint: { world, tick: 0, revision: 0 }, events: [],
-    simulation: { version: 1, tankTicks: Object.fromEntries(world.tanks.map(tank => [tank.id, 0])) } };
+  const tick = world.circuit.day * TICKS_PER_GAME_DAY;
+  return { schemaVersion: 2, runtimeVersion: 1, worldId, world, tick, revision: 0,
+    checkpoint: { world, tick, revision: 0 }, events: [],
+    simulation: { version: 1, tankTicks: Object.fromEntries(world.tanks.map(tank => [tank.id, tick])) } };
 }
 
 /**
@@ -121,7 +122,7 @@ export function decodeRuntime(raw: string): Runtime {
     // is omitted only while proving an old snapshot against its replay. Current v13 snapshots compare it normally.
     // World v14 adds the axolotl shop. An older snapshot has none to prove, so its replayed stock is left out.
     if (sourceVersion < 7) {
-      const records = recordsOnly(candidate);
+      const records = { ...recordsOnly(candidate), circuit: null };
       return JSON.stringify(sourceVersion < 13 ? withoutSpecies(records) : records);
     }
     const named = staleNames ? withoutNamesWorld(candidate) : candidate;
@@ -130,14 +131,17 @@ export function decodeRuntime(raw: string): Runtime {
     const decorated = sourceVersion < 8 ? withoutDecorations(named) : named;
     const originated = sourceVersion < 11 ? withoutOrigins(decorated) : decorated;
     const speciated = sourceVersion < 13 ? withoutSpecies(originated) : originated;
-    return JSON.stringify(sourceVersion < 14 ? { ...speciated, axolotlShop: null } : speciated);
+    const stocked = sourceVersion < 14 ? { ...speciated, axolotlShop: null } : speciated;
+    return JSON.stringify(sourceVersion < 15 ? { ...stocked, circuit: null } : stocked);
   };
   if (comparable(decodeSave(JSON.stringify(replayed.world))) !== comparable(world)) throw mismatch;
   const simulation = parsed.simulation ?? { version: 1 as const, tankTicks: Object.fromEntries(world.tanks.map(tank => [tank.id, parsed.tick])) };
   const tankIds = new Set(world.tanks.map(tank => tank.id));
   if (Object.keys(simulation.tankTicks).length !== tankIds.size || Object.entries(simulation.tankTicks).some(([id, tick]) => !tankIds.has(id) || tick !== parsed.tick))
     throw new Error('Simulation clocks do not agree with the world tick.');
+  if (sourceVersion >= 15 && world.circuit.day !== Math.floor(parsed.tick / TICKS_PER_GAME_DAY)) throw new Error('Calendar does not agree with the world tick.');
   if (legacyWorld || staleNames) {
+    if (sourceVersion < 15) world.circuit.day = Math.floor(parsed.tick / TICKS_PER_GAME_DAY);
     // The first delivery arrives at migration, not at the old world's day zero.
     if (sourceVersion < 7) world.shop = initialShop(world.seed, Math.floor(parsed.tick / TICKS_PER_GAME_DAY));
     // An older world had no axolotl shop to store. Its replay from the checkpoint stocked one under the same delivery rules,

@@ -1,0 +1,9 @@
+.calendar-bar { display:flex; align-items:center; flex-wrap:wrap; gap:18px; padding:16px 28px; background:#0b2028; border-bottom:1px solid #234049; }
+.calendar-date { display:flex; align-items:center; gap:12px; color:#e5c886; min-width:185px; }
+.calendar-date strong { display:block; font-size:15px; }
+.calendar-date small { display:block; color:#99b9bd; font-size:11px; margin-top:3px; }
+.calendar-actions { display:flex; gap:6px; }
+.calendar-actions button { padding:9px 16px; border-color:#356268; color:#c1eee3; min-height:42px; }
+.calendar-bar p { margin:0; flex:1; min-width:220px; font-size:12px; line-height:1.6; color:#b4cbcd; max-width:650px; }
+.calendar-actions button:focus-visible { outline:2px solid #e5c886; outline-offset:3px; }
+@media(max-width:700px) { .calendar-bar { padding:14px; gap:10px; } .calendar-date { min-width:150px; } .calendar-actions button { padding:8px 11px; } .calendar-bar p { flex-basis:100%; } }

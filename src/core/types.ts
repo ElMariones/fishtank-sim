@@ -1,3 +1,4 @@
+import type { CompetitionState } from './competitions';
 import type { Decoration, TankStyle } from './tankManagement';
 import type { AppearanceLocus } from './catalog';
 import type { VisualDescriptorKey } from './descriptors';
@@ -51,7 +52,7 @@ export type Clutch = {
   /** Tank that receives the eggs and holds the reservation until spawning. */
   nurseryId: string;
   size: number; genomeVersion: 1 | 2 | 3;
-  /** Timestamp of the pairing command; eggs are dated from it at one game day per real minute. */
+  /** Timestamp of the pairing command; eggs add completed deterministic game-day boundaries to it. */
   pairedAt: string;
   stage: ClutchStage;
   /** Whole game days since pairing. */
@@ -100,7 +101,7 @@ export type Tank = { id: string; name: string; capacity: number; planted: boolea
 export type BuyerId = 'petShop' | 'longFin' | 'pondKeeper' | 'miniature' | 'colorCollector';
 /** Economy model v1 NPC demand (FS-501): how many more fish each buyer will take; it recovers at game-day boundaries. */
 export type MarketState = { model: 1; demand: Record<BuyerId, number> };
-export type LedgerReason = 'sale' | 'stock' | 'equipment' | 'waterChange' | 'rehome';
+export type LedgerReason = 'sale' | 'stock' | 'equipment' | 'waterChange' | 'rehome' | 'competitionEntry' | 'competitionPrize' | 'competitionPurchase';
 /** One credit change: `amount` is signed, `fish` counts the fish involved, `detail` is short readable text. */
 export type LedgerEntry = { seq: number; reason: LedgerReason; amount: number; fish: number; detail: string };
 /** Credits always equal `opening` plus every total; only the latest entries are kept. */
@@ -149,12 +150,13 @@ export type ReliefState = { model: 1; claims: number; cooldownDays: number };
  * Older saves migrate with defaults.
  */
 export type World = {
-  version: 14; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
+  version: 15; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
   market: MarketState; ledger: Ledger; shop: ShopState; naming: NamingModel; relief: ReliefState;
   /** Registered bloodlines and the next registry number (world v12). */
   bloodlines: Bloodline[]; nextBloodlineId: number;
   /** Persistent axolotl stock (world v14), separate from the koi shop so koi deliveries never change. */
   axolotlShop: AxolotlShopState;
+  circuit: CompetitionState;
 };
 /**
  * Development v2 inherited marking anchor, derived from one phased two-locus haplotype block.

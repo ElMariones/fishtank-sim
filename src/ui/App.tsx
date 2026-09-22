@@ -4,7 +4,10 @@ import { decorationsOf } from '../core/tankManagement';
 import { lazy, Suspense, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { describeAppearance } from '../core/appearance';
 import { daysToHatch, environmentLimits, INCUBATION_DAYS, isEgg, lifeStage, type LifeStage } from '../core/development';
-import { advanceWorld, tankEnvironment, tankLoad } from '../core/habitat';
+import { tankEnvironment, tankLoad } from '../core/habitat';
+import { absenceObserver } from '../core/absence';
+import { calendarLabel } from '../core/competitions';
+import { AnimalHonors, Competitions, TrophyRoom } from './Competitions';
 import { describeBehavior, type BehaviorSummary } from '../simulation/behavior';
 import { AbsencePanel } from './AbsencePanel';
 import { CarePanel } from './CarePanel';
@@ -35,10 +38,9 @@ import { genealogyIndex, visitTrail } from '../core/genealogy';
 import { createKinshipCache } from '../core/pedigree';
 import { completeGuideSteps, decodeGuide, GUIDE_KEY, guideSteps, observedGuideSteps, type GuideStepId } from '../core/onboarding';
 import { RELIEF_COOLDOWN_DAYS, RELIEF_THRESHOLD, reliefStatus } from '../core/recovery';
-import { advanceRuntime, commandEnvelope, executeCommand, TICK_MS } from '../core/runtime';
+import { advanceRuntime, commandEnvelope, executeCommand } from '../core/runtime';
 import { OnboardingGuide } from './OnboardingGuide';
 import type { LoadedSession } from '../persistence/session';
-import { ACTIVE_CHECKPOINT_MS } from '../simulation/time';
 import { downloadText, SavePanel } from './SavePanel';
 import type { AxolotlListing, Clutch, Fish, Listing, World } from '../core/types';
 import { TICKS_PER_GAME_DAY } from '../core/water';
@@ -54,6 +56,7 @@ import { KOI_EXPRESSION_NOTES, KOI_LOCUS_NOTES } from '../core/locusNotes';
 import { TankCanvas } from './TankCanvas';
 import './styles.css';
 import './theme.css';
+import './calendar.css';
 
 const ResearchLab = lazy(() => import('./ResearchLab').then(module => ({ default: module.ResearchLab })));
 const VisualFixtureLab = lazy(() => import('./VisualFixtureLab').then(module => ({ default: module.VisualFixtureLab })));
@@ -65,7 +68,7 @@ const date = (timestamp: string) => new Date(timestamp).toLocaleDateString(undef
 const descriptorLabel = new Map(GOAL_DESCRIPTORS.map(descriptor => [descriptor.key, descriptor.label]));
 type SexFilter = 'all' | Fish['sex'];
 type SpeciesFilter = 'all' | Fish['species'];
-type View = 'aquarium' | 'fixtures' | 'research';
+type View = 'aquarium' | 'fixtures' | 'research' | 'competitions' | 'trophies';
 
 function readPreferences(world: World) {
   let raw: string | null = null;
@@ -90,18 +93,12 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [runtime, setRuntime] = useState(initial.runtime);
   const runtimeRef = useRef(runtime);
   const saveBusy = useRef(false);
-  const clockOrigin = useRef({ time: performance.now(), tick: runtime.tick });
-  /** While the aquascape editor is open, game time stands still at this tick (FS-117). */
-  const frozenTick = useRef<number | null>(null);
-  const clockTick = (now: number) => frozenTick.current ?? clockOrigin.current.tick + Math.floor((now - clockOrigin.current.time) / TICK_MS);
-  // The display previews the shared clock up to now every five seconds without saving; commands advance the saved runtime.
-  const [clockNow, setClockNow] = useState(() => performance.now());
-  useEffect(() => {
-    const interval = window.setInterval(() => { if (frozenTick.current === null) setClockNow(performance.now()); }, 5_000);
-    return () => window.clearInterval(interval);
-  }, []);
-  const liveTick = Math.max(runtime.tick, clockTick(clockNow));
-  const world = useMemo(() => advanceWorld(runtime.world, runtime.tick, liveTick), [runtime.world, runtime.tick, liveTick]);
+  // Only explicit calendar advances move domain time. Swimming is a separate presentation clock.
+  const liveTick = runtime.tick;
+  const world = runtime.world;
+  const [advancing, setAdvancing] = useState(false);
+  const advancingRef = useRef(false);
+  const [calendarNotice, setCalendarNotice] = useState('Time advances only when you choose. Your feeder settings apply during every skip.');
   const [blocked, setBlocked] = useState(initial.blocked);
   const [showSaves, setShowSaves] = useState(false);
   const [preferences, setPreferences] = useState(() => readPreferences(initial.runtime.world));
@@ -109,7 +106,6 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [selectedId, setSelectedId] = useState(initial.runtime.world.fish.find(f => f.status === 'living')?.id ?? '');
   const [tab, setTab] = useState<'Overview' | 'Genome' | 'Family'>('Overview');
   const [paused, setPaused] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const [speed, setSpeed] = useState(1);
   const [feedSignal, setFeedSignal] = useState(0);
   const [behavior, setBehavior] = useState<BehaviorSummary | null>(null);
   // The absence summary already carries the resume notice, so the live status line only points to it.
@@ -178,22 +174,6 @@ export function App({ initial }: { initial: LoadedSession }) {
     return () => { cancelled = true; };
   }, [runtime, blocked, initial.readOnly, initial.session]);
 
-  // One shared deterministic clock advances visible and background tanks; motion speed remains visual-only.
-  // Idle checkpoints are sparse because every commit validates snapshots on the main thread; commands still save at once.
-  useEffect(() => {
-    if (blocked || initial.readOnly) return;
-    const interval = window.setInterval(() => {
-      if (frozenTick.current !== null) return;
-      const target = clockTick(performance.now());
-      setRuntime(current => {
-        const advanced = advanceRuntime(current, Math.max(current.tick, target));
-        runtimeRef.current = advanced;
-        return advanced;
-      });
-    }, ACTIVE_CHECKPOINT_MS);
-    return () => window.clearInterval(interval);
-  }, [blocked, initial.readOnly]);
-
   useEffect(() => {
     if (blocked) return;
     try { localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences)); } catch { /* Preferences are optional. */ }
@@ -209,14 +189,8 @@ export function App({ initial }: { initial: LoadedSession }) {
   const tank = world.tanks.find(t => t.id === tankId) ?? world.tanks[0];
   // The draft lives in its own store, so dragging a piece never re-renders the app (FS-117).
   const [aquascape, setAquascapeStore] = useState<DraftStore | null>(null);
-  /**
-   * Editing freezes the aquarium: fish motion and plant sway stop, and game time stands still until Apply or Cancel.
-   * On close the clock resumes from the frozen tick, so the minutes spent designing never pass in the lab.
-   */
+  /** Calendar controls are disabled while a draft is being edited. */
   const setAquascape = (store: DraftStore | null) => {
-    const now = performance.now();
-    if (store && frozenTick.current === null) frozenTick.current = clockTick(now);
-    if (!store && frozenTick.current !== null) { clockOrigin.current = { time: now, tick: frozenTick.current }; frozenTick.current = null; setClockNow(now); }
     setAquascapeStore(store);
   };
   // A draft belongs to one aquarium: switching tanks or views discards it.
@@ -315,10 +289,10 @@ export function App({ initial }: { initial: LoadedSession }) {
   function run(command: Command, message: string): World | null {
     if (initial.readOnly) { setNotice('This tab is read-only. Close the editing tab and reload to take control.'); return null; }
     if (saveBusy.current) { setNotice('Wait for the save operation to finish.'); return null; }
+    if (advancingRef.current) { setNotice('Wait for the calendar to finish advancing.'); return null; }
     try {
       const current = runtimeRef.current;
-      const tick = Math.max(current.tick, clockTick(performance.now()));
-      const updated = executeCommand(current, commandEnvelope(current, command, tick));
+      const updated = executeCommand(current, commandEnvelope(current, command));
       runtimeRef.current = updated;
       setRuntime(updated);
       const next = updated.world;
@@ -328,6 +302,35 @@ export function App({ initial }: { initial: LoadedSession }) {
       return next;
     }
     catch (error) { setNotice(error instanceof Error ? error.message : 'The action could not be completed.'); return null; }
+  }
+
+  async function skipDays(days: 1 | 7 | 30) {
+    if (initial.readOnly || blocked || saveBusy.current || advancingRef.current || aquascape || world.circuit.active?.phase === 'exhibition') return;
+    advancingRef.current = true;
+    setAdvancing(true);
+    setShowSaves(false);
+    setCalendarNotice(`Advancing ${days} day${days === 1 ? '' : 's'}…`);
+    // Yield between whole days so month skips keep progress visible, while publishing one atomic final runtime.
+    const start = runtimeRef.current;
+    const observer = absenceObserver(start.world);
+    let next = start;
+    try {
+      for (let day = 0; day < days; day++) {
+        await new Promise<void>(resolve => window.setTimeout(resolve, 0));
+        next = advanceRuntime(next, next.tick + TICKS_PER_GAME_DAY, [], observer.onDay);
+      }
+      runtimeRef.current = next;
+      setRuntime(next);
+      const summary = observer.summarize(next.world);
+      setAbsence(summary);
+      const born = next.world.fish.length - start.world.fish.length;
+      setCalendarNotice(`${calendarLabel(Math.floor(next.tick / TICKS_PER_GAME_DAY))}. ${days} day${days === 1 ? '' : 's'} simulated${born ? ` · ${born} new eggs` : ''}. Growth, hatching, courtship and care updated in every aquarium.`);
+    } catch (error) {
+      setCalendarNotice(error instanceof Error ? error.message : 'Could not advance the calendar.');
+    } finally {
+      advancingRef.current = false;
+      setAdvancing(false);
+    }
   }
 
   /** `trail` is the family breadcrumb to keep; a selection made outside the family view starts a new one. */
@@ -363,6 +366,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   }
 
   function openDrawer(which: 'market' | 'shop' | 'saves' | null) {
+    if (which === 'saves' && advancingRef.current) { setNotice('Wait for the calendar advance before opening Saves.'); return; }
     setShowMarket(which === 'market'); setShowShop(which === 'shop'); setShowSaves(which === 'saves');
   }
 
@@ -517,7 +521,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const warningCount = { critical: activeWarnings.filter(w => w.severity === 'critical').length, total: activeWarnings.length };
   const courting = world.clutches.filter(c => c.stage === 'courting').length, incubating = world.clutches.filter(c => c.stage === 'incubating').length;
   const saveState = saveError === 'Saving…' ? 'Saving…' : saveError ? 'Session not saved' : 'Saved on this device';
-  const viewTitle = view === 'aquarium' ? tank.name : view === 'research' ? 'Research studies' : 'Visual fixtures';
+  const viewTitle = view === 'aquarium' ? tank.name : view === 'research' ? 'Research studies' : view === 'competitions' ? 'Competition circuit' : view === 'trophies' ? 'Trophy room' : 'Visual fixtures';
 
   return <div className={`app-shell view-${view}`}>
     {view === 'aquarium' ? <><a className="skip-link" href="#collection" onClick={() => setWorkspace('collection')}>Skip to collection</a><a className="skip-link" href="#inspector">Skip to inspector</a></> : null}
@@ -537,14 +541,19 @@ export function App({ initial }: { initial: LoadedSession }) {
         <StatPill icon="dna" tone="violet" label="records" value={<AnimatedNumber value={world.fish.length} />} />
       </div>
     </header>
+    <section className="calendar-bar" aria-label="Simulation calendar" aria-busy={advancing}>
+      <div className="calendar-date"><Icon name="calendar" /><div><strong>{calendarLabel(gameDay)}</strong><small>Game day {gameDay} · 360-day year</small></div></div>
+      <div className="calendar-actions" role="group" aria-label="Advance calendar">{([1, 7, 30] as const).map(days => <button key={days} disabled={initial.readOnly || blocked || advancing || !!aquascape || world.circuit.active?.phase === 'exhibition'} onClick={() => void skipDays(days)}>+ {days === 1 ? 'Day' : days === 7 ? 'Week' : 'Month'}</button>)}</div>
+      <p role="status">{world.circuit.active?.phase === 'exhibition' ? 'Finish judging your registered exhibition before advancing the date.' : calendarNotice}</p>
+    </section>
     <Drawer open={showSaves} label="Saves" onClose={() => openDrawer(null)}><SavePanel runtime={runtime} session={initial.session} blocked={blocked} readOnly={initial.readOnly} onBusy={value => { saveBusy.current = value; }} onSaved={() => { setBlocked(false); setSaveError(''); }} /></Drawer>
     <Drawer open={showMarket} label="Buyers and ledger" onClose={() => openDrawer(null)}><MarketPanel world={world} readOnly={initial.readOnly} traitCache={traitCache} onClaimRelief={claimRelief} onClose={() => openDrawer(null)} /></Drawer>
     <Drawer open={showShop && view === 'aquarium'} label="NPC shop" wide onClose={() => openDrawer(null)}><ShopPanel world={world} tank={tank} day={gameDay} readOnly={initial.readOnly} traitCache={traitCache} onBuy={buyListing} onBuyAxolotl={buyAxolotlListing} onClose={() => openDrawer(null)} onRecovery={openRecovery} /></Drawer>
-    {view === 'fixtures' ? <Suspense fallback={<p className="loading-card" role="status">Loading visual fixtures…</p>}><VisualFixtureLab onClose={() => setView('aquarium')} /></Suspense> : view === 'research' ? <Suspense fallback={<p className="loading-card" role="status">Loading research…</p>}><ResearchLab onClose={() => setView('aquarium')} /></Suspense> : <div className="workspace">
+    {view === 'competitions' ? <Competitions world={world} readOnly={initial.readOnly || blocked || advancing} onCommand={command => run(command, 'Competition record updated.') !== null} /> : view === 'trophies' ? <TrophyRoom world={world} onInspect={id => { setView('aquarium'); select(id, true); }} /> : view === 'fixtures' ? <Suspense fallback={<p className="loading-card" role="status">Loading visual fixtures…</p>}><VisualFixtureLab onClose={() => setView('aquarium')} /></Suspense> : view === 'research' ? <Suspense fallback={<p className="loading-card" role="status">Loading research…</p>}><ResearchLab onClose={() => setView('aquarium')} /></Suspense> : <div className="workspace">
       <main>
         {saveError && saveError !== 'Saving…' ? <p className="warning" role="alert">{saveError}</p> : null}
         {absence || !guide.hidden || relief.sexes.length ? <div className="notice-strip">
-        {absence ? <AbsencePanel summary={absence} notice={initial.resumeNotice} onDismiss={() => setAbsence(null)}
+        {absence ? <AbsencePanel summary={absence} notice="Growth, births and care across your aquariums during this calendar advance." onDismiss={() => setAbsence(null)}
           onOpenTank={id => { setTankId(id); setShowArchived(false); setQuery(''); }} /> : null}
         {guide.hidden ? null : <OnboardingGuide steps={guideProgress} onShow={showGuideStep} onHide={() => setGuide(current => ({ ...current, hidden: true }))} />}
         {relief.sexes.length ? <section className="recovery-alert" aria-labelledby="recovery-alert-title">
@@ -559,12 +568,12 @@ export function App({ initial }: { initial: LoadedSession }) {
           <div className="tank-heading-meta"><span className="count-tag"><Icon name="fish" size={14} />{residents.length} / {tank.capacity}</span><span className="count-tag">{tank.planted ? <><Icon name="leaf" size={14} />Planted</> : <><Icon name="wave" size={14} />Open water</>}</span></div></div>
         <section className={`aquarium ${aquascape ? 'is-editing' : ''}`} aria-label="Live aquarium">
           
-          <TankCanvas fish={swimmers} eggs={residents.length - swimmers.length} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={speed} feedSignal={feedSignal} onBehavior={setBehavior} tanks={world.tanks} preview={aquascape} editing={!!aquascape} />
+          <TankCanvas fish={swimmers} eggs={residents.length - swimmers.length} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={1} feedSignal={feedSignal} onBehavior={setBehavior} tanks={world.tanks} preview={aquascape} editing={!!aquascape} />
           {aquascape ? <><AquascapeOverlay store={aquascape} saved={decorationsOf(tank)} /><span className="editing-badge"><Icon name="pause" size={14} />Aquascaping · time and fish paused until you apply or cancel</span></> : null}
           <TankHud status={activeStatus} warnings={warningCount} paused={paused} onCare={() => { setWorkspace('care'); focusSoon('workspace-panel'); }} />
           {residents.length > swimmers.length ? <span className="egg-badge"><Icon name="egg" size={14} />{residents.length - swimmers.length} eggs incubating</span> : null}
           {!residents.length ? <div className="empty-tank">A little room to evolve.<small>Move a fish here or introduce unrelated stock, which can carry new colors and patterns.</small></div> : null}
-          <div className="tank-controls"><div><button aria-label={paused ? 'Resume aquarium' : 'Pause aquarium'} onClick={() => setPaused(v => !v)}><Icon name={paused ? 'play' : 'pause'} size={16} /></button><button onClick={() => setSpeed(v => v === 1 ? 2 : v === 2 ? 4 : 1)} aria-label={`Motion speed ${speed} times`}>{speed}×</button></div><span>Click a fish to inspect · click the water to startle</span><button className="aquascape-button" onClick={openAquascape} disabled={initial.readOnly}><Icon name="brush" size={16} />Aquascape</button><button className="feed-button" id="feed-button" onClick={() => {
+          <div className="tank-controls"><div><button aria-pressed={!paused} aria-label="Animate swimming" onClick={() => setPaused(v => !v)}><Icon name="wave" size={16} />Motion {paused ? 'off' : 'on'}</button></div><span>Click a fish to inspect · calendar controls advance time</span><button className="aquascape-button" onClick={openAquascape} disabled={initial.readOnly}><Icon name="brush" size={16} />Aquascape</button><button className="feed-button" id="feed-button" onClick={() => {
             if (run({ type: 'feed', tankId: tank.id }, 'A portion of food joined the water, a quarter of a game day of what these fish need. They eat it over the next hours and leftovers decay. The sinking pellets show hungry, bold fish reaching food first.')) { setFeedSignal(v => v + 1); markGuide('feed'); }
           }}><Icon name="plus" size={16} />Feed</button></div>
         </section>
@@ -700,6 +709,7 @@ export function App({ initial }: { initial: LoadedSession }) {
             <span>{heroView === 'adult' ? 'ADULT GENETIC POTENTIAL · A PREVIEW, NOT HOW THIS FISH LOOKS TODAY' : `${fish.status === 'living' ? 'NOW' : 'LAST RECORDED'} · ${lifeSummary(fish).toUpperCase()}`}</span>
           </div>
           <div className="fish-title"><h2 ref={inspectorHeading} tabIndex={-1}>{fish.name}</h2><SexMark sex={fish.sex} withLabel /></div>
+          <AnimalHonors world={world} fishId={fish.id} />
           <p className="fish-subtitle">{fish.species === 'axolotl' ? 'Axolotl' : 'Koi'} ancestry · {fish.parents ? 'Bred in your aquarium' : 'Founder stock'}{favoriteIds.has(fish.id) ? ' · ★ Favorite' : ''}</p>
           <div className="family-glance" role="group" aria-label={`${fish.name}’s family at a glance`}>
             <span>{fish.parents ? <>Parents {fish.parents.map((id, i) => <span key={id}>{i ? ' × ' : ''}{world.fish.some(f => f.id === id)

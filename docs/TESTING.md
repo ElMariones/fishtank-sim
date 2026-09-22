@@ -1,5 +1,21 @@
 # Testing and verification
 
+## Competition circuit and calendar
+
+22 September 2026, FS-122–127:
+
+- `npm test`: **317 tests in 49 files pass**. `npm run build`: strict TypeScript and production bundle pass; Vite retains the existing large-main-chunk advisory.
+- `tests/competitions.test.ts`: 11 tests cover deterministic schedule refresh/year rollover, one/two entrant fees, eligibility and atomic rejection, species-local opponents, exact axolotl acquisition, single rewards, bounded negotiations, affordability/capacity, preserved identity after rename/sale, replay/retries, malformed snapshots, world-v14 migration, bare imports, and month-versus-daily advancement including courtship/hatching/growth.
+- `tests/calendarSession.test.ts`: 2 tests prove a long real-world absence restores the exact saved runtime without advancing time, and corrupt data stays intact with autosave blocked.
+- Isolated in-app browser at port5192: fresh world with 1200 credits. Registered Haru and Kohaku for 80 credits; inspected 10 exhibits; watched the three-stage judging. Haru ranked first (86.7), Kohaku third (80.8); balance became 1400 after the 280 payout. Full scorecard matched the criterion averages.
+- Offered 1 credit for Sushi; NPC Theo Laurent countered at447. Accepted into Breeding Studio: balance953, seven residents, exact displayed specimen and fifth-place appearance retained. Finished the show; its board card became Completed. Trophy room showed both player medals and the acquired rival's appearance before and after reload.
+- Bought axolotl Poppyseed of the Moss from the existing shop, filtered to amateur axolotl events, registered the single eligible axolotl, invoked judges and used Skip to results. Nine axolotl specimens, podium, comments and scores rendered correctly; koi were absent from the entrant list. Poppyseed ranked first with84.0.
+- Day, Week, Month moved day0 →1 →8 →38. February showed a new event lineup, and reload retained day38. Normal courtship and a further week skip were also exercised; automated daily/month equivalence asserts hatching and growth.
+- At 390×844 the calendar and trophy layout fit, and navigation retained accessible names after fixing the hidden-label issue. Desktop exhibit and podium layouts were visually inspected against the generated concept direction. Browser error logs were empty in the tested journeys. Reduced-motion behavior is implemented in CSS and the ceremony branch; a separate OS-preference browser run was not performed.
+- `node scripts/check-docs.mjs`: no broken top-level documentation links. Generated reference: [competition concept](design/competition-concept.png); art direction: [UI design](design/COMPETITION_UI.md).
+
+Not established by this work: external playtest balance, all-browser parity, maximum-history performance, online competition integrity, or M7's hardware performance gate. The 240-show archive limit is explicit; no prior medals are silently evicted.
+
 **Latest recorded automated run:** FS-702, 20 September 2026, Windows 11 / Node 22.18.0: 304 tests in 47 files, strict TypeScript and the production build pass ([details](#fs-702-soak)).
 
 ## FS-702 soak

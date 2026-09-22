@@ -30,8 +30,8 @@ export const FOUNDER_RESALE_CAP = 150;
 export const HEALTHY_CONDITION = 0.7;
 export const BREEDER_BONUS = { perGeneration: 6, max: 30 } as const;
 export const STAGE_FACTOR: Record<LifeStage, number> = { egg: 0, fry: 0.25, juvenile: 0.6, adult: 1, elderly: 0.8 };
-export const LEDGER_REASONS = ['sale', 'stock', 'equipment', 'waterChange', 'rehome'] as const satisfies readonly LedgerReason[];
-export const LEDGER_LABELS: Record<LedgerReason, string> = { sale: 'Sales', stock: 'Unrelated stock', equipment: 'Equipment', waterChange: 'Water changes', rehome: 'Rehoming' };
+export const LEDGER_REASONS = ['sale', 'stock', 'equipment', 'waterChange', 'rehome', 'competitionEntry', 'competitionPrize', 'competitionPurchase'] as const satisfies readonly LedgerReason[];
+export const LEDGER_LABELS: Record<LedgerReason, string> = { sale: 'Sales', stock: 'Unrelated stock', equipment: 'Equipment', waterChange: 'Water changes', rehome: 'Rehoming', competitionEntry: 'Competition entry', competitionPrize: 'Competition prizes', competitionPurchase: 'Competition purchases' };
 
 /** Traits buyers read. They depend only on the genome, so a cache keyed by fish ID stays valid. */
 export type SaleTraits = {
@@ -219,7 +219,7 @@ export function recoverDemand(world: World): World {
   return { ...world, market: { ...world.market, demand: Object.fromEntries(BUYERS.map(buyer => [buyer.id, Math.min(buyer.capacity, demand[buyer.id] + buyer.recovery)])) as Record<BuyerId, number> } };
 }
 
-export const openingLedger = (credits: number): Ledger => ({ model: 1, opening: credits, next: 1, totals: { sale: 0, stock: 0, equipment: 0, waterChange: 0, rehome: 0 }, entries: [] });
+export const openingLedger = (credits: number): Ledger => ({ model: 1, opening: credits, next: 1, totals: { sale: 0, stock: 0, equipment: 0, waterChange: 0, rehome: 0, competitionEntry: 0, competitionPrize: 0, competitionPurchase: 0 }, entries: [] });
 
 export function recordEntry(ledger: Ledger, reason: LedgerReason, amount: number, fish: number, detail: string): Ledger {
   return {

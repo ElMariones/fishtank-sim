@@ -7,7 +7,7 @@ import type { WaterState } from './types';
  * same interval, and any browser, produces identical saved values for replay validation.
  */
 export const WATER_MODEL = 1;
-/** Care time runs at one game day per 60 real seconds at 1× (GDD §4 pacing hypothesis). Motion speed never changes it. */
+/** Deterministic domain unit: the UI advances these ticks through explicit Day, Week and Month calendar actions. */
 export const TICKS_PER_GAME_DAY = 1200;
 /** Half a game hour. Aeration and decay are capped per step, so no step can overshoot. */
 export const WATER_STEP_TICKS = 25;

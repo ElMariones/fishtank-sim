@@ -66,7 +66,7 @@ export function UnusualLine() {
         <thead><tr><th scope="col">Structural locus</th><th scope="col">Founder carries a hidden copy</th><th scope="col">Founder shows it</th><th scope="col">Share of first new mutations</th></tr></thead>
         <tbody>{Object.keys(pacing.founderCarrier).map(id => <tr key={id}><th scope="row">{LABELS[id]}</th><td>{pct(pacing.founderCarrier[id])}</td><td>{pct(pacing.founderExpressing[id])}</td><td>{pct(pacing.firstLocus[id])}</td></tr>)}</tbody>
       </table></div>
-      <p className="fixture-note">From standard parents, the first new structural mutation took {pacing.birthsToMutation.median} births at the median ({pacing.birthsToMutation.p10}–{pacing.birthsToMutation.p90} for the 10th–90th percentiles, {pacing.samples} seeded lineages). A tail-topology mutation alone takes about three times as many. At one game day per real minute, this demonstration’s {demo.days} game days would take about {Math.round(demo.days / 60 * 10) / 10} hours of play.</p>
+      <p className="fixture-note">From standard parents, the first new structural mutation took {pacing.birthsToMutation.median} births at the median ({pacing.birthsToMutation.p10}–{pacing.birthsToMutation.p90} for the 10th–90th percentiles, {pacing.samples} seeded lineages). A tail-topology mutation alone takes about three times as many. This demonstration spans {demo.days} game days; the calendar now lets you advance by a day, week or month.</p>
     </>}
   </section>;
 }

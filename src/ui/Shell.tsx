@@ -2,10 +2,10 @@ import type { CareStatus } from '../core/careAdvice';
 import { Icon, type IconName } from './Icon';
 import { AnimatedNumber, CapacityBar } from './ShellParts';
 
-export type LabView = 'aquarium' | 'research' | 'fixtures';
+export type LabView = 'aquarium' | 'research' | 'fixtures' | 'competitions' | 'trophies';
 export type TankSummary = { id: string; name: string; capacity: number; living: number; eggs: number; tone: 'good' | 'warn' | 'alert' };
 
-const VIEW_ITEMS: [LabView, string, IconName][] = [['aquarium', 'Aquarium', 'fish'], ['research', 'Research', 'flask'], ['fixtures', 'Visual fixtures', 'grid']];
+const VIEW_ITEMS: [LabView, string, IconName][] = [['aquarium', 'Aquarium', 'fish'], ['competitions', 'Competitions', 'trophy'], ['trophies', 'Trophy room', 'spark'], ['research', 'Research', 'flask'], ['fixtures', 'Visual fixtures', 'grid']];
 const TONE_TEXT = { good: 'water good', warn: 'needs care', alert: 'urgent care' } as const;
 
 type RailProps = {
@@ -22,14 +22,14 @@ type RailProps = {
 export function NavRail({ view, onView, tanks, activeTankId, loadingTankId, onTank, onHabitat, credits, saveState, guide, onMarket, onShop, onSaves, onGuide, onExport, open }: RailProps) {
   const saving = saveState === 'Saving…', failed = saveState === 'Session not saved';
   const tool = (icon: IconName, label: string, onClick: () => void, extra?: React.ReactNode, expanded?: boolean) =>
-    <button className="rail-tool" onClick={onClick} aria-expanded={expanded}><Icon name={icon} /><span className="rail-label">{label}</span>{extra}</button>;
+    <button className="rail-tool" onClick={onClick} aria-label={label} title={label} aria-expanded={expanded}><Icon name={icon} /><span className="rail-label">{label}</span>{extra}</button>;
   return <aside className="nav-rail" aria-label="Lab navigation">
-    <a className="rail-brand" href="#" onClick={event => { event.preventDefault(); onView('aquarium'); }}>
+    <a className="rail-brand" href="#" aria-label="Fishtank Sim aquarium" onClick={event => { event.preventDefault(); onView('aquarium'); }}>
       <span className="brand-mark"><img src="/favicon.svg" alt="" /></span>
       <span className="rail-label brand-words">fishtank<span className="brand-light"> sim</span><small>Genetics lab · 0.1</small></span>
     </a>
     <nav className="rail-section" aria-label="Lab views">
-      {VIEW_ITEMS.map(([value, label, icon]) => <button key={value} className={`rail-link ${view === value ? 'active' : ''}`} aria-current={view === value ? 'page' : undefined} onClick={() => onView(value)}>
+      {VIEW_ITEMS.map(([value, label, icon]) => <button key={value} aria-label={label} title={label} className={`rail-link ${view === value ? 'active' : ''}`} aria-current={view === value ? 'page' : undefined} onClick={() => onView(value)}>
         <Icon name={icon} /><span className="rail-label">{label}</span>
       </button>)}
     </nav>
@@ -44,7 +44,7 @@ export function NavRail({ view, onView, tanks, activeTankId, loadingTankId, onTa
           <CapacityBar used={tank.living} capacity={tank.capacity} />
         </span>
       </button>)}</nav>
-      <button className="rail-add" onClick={onHabitat}><Icon name="plus" size={16} /><span className="rail-label">Aquariums & expansion</span></button>
+      <button className="rail-add" aria-label="Aquariums & expansion" onClick={onHabitat}><Icon name="plus" size={16} /><span className="rail-label">Aquariums & expansion</span></button>
     </div> : null}
     <div className="rail-section rail-tools">
       <div className="rail-heading rail-label">Tools</div>
