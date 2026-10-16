@@ -17,8 +17,8 @@ export type GuideProgress = { version: 1; hidden: boolean; done: GuideStepId[] }
 export type GuideStep = { id: GuideStepId; title: string; detail: string; done: boolean };
 
 export const GUIDE_TEXT: Record<GuideStepId, { title: string; detail: string }> = {
-  select: { title: 'Meet your fish', detail: 'Click a swimming fish, or a card under Your collection, to open it in the inspector.' },
-  rename: { title: 'Name a fish', detail: 'Under Given name, type a new name and press Save. A name is only a label: the fish’s ID, genome and family links never change.' },
+  select: { title: 'Meet your fish', detail: 'Click a swimming fish, or a card in the Collection, to open it in the inspector.' },
+  rename: { title: 'Name a fish', detail: 'Under Given name, type a new name and press Rename. A name is only a label: the fish’s ID, genome and family links never change.' },
   feed: { title: 'Feed the tank', detail: 'Press ＋ Feed on the aquarium and watch which fish reach the pellets first. Food is free, and each tank’s auto-feeder keeps its fish fed.' },
   court: {
     title: 'Start a courtship',

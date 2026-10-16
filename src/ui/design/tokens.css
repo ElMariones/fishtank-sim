@@ -1,0 +1,184 @@
+/*
+ * Deepwater design tokens (FS-128). Every colour, size, radius, shadow and timing in the interface comes from here.
+ * The canvas renderer keeps its own palette; everything in the DOM uses these names.
+ */
+:root {
+  color-scheme: dark;
+
+  /* Ink: the water column, from the deepest background to the most raised surface. */
+  --ink-0: #02070b;
+  --ink-1: #050e14;
+  --ink-2: #081720;
+  --ink-3: #0c1f2a;
+  --ink-4: #112835;
+  --ink-5: #173342;
+  --ink-6: #204252;
+
+  /* Text. fg-2 and fg-3 keep at least 7:1 and 4.6:1 contrast on ink-2. */
+  --fg-1: #ecf7f5;
+  --fg-2: #b6cecc;
+  --fg-3: #88a5a5;
+  --fg-4: #5f7c7e;
+  --fg-on-accent: #04231e;
+
+  /* Hairlines. */
+  --line-1: rgb(160 225 225 / .07);
+  --line-2: rgb(160 225 225 / .13);
+  --line-3: rgb(170 240 228 / .24);
+  --line-4: rgb(170 240 228 / .4);
+
+  /* Accents: bioluminescence, koi, brass instruments, genes, open water, alarms, kelp, amber. */
+  --lume: #5ef0d2;
+  --lume-2: #2cc4a8;
+  --lume-3: #b6fff0;
+  --koi: #ff7d4d;
+  --koi-2: #e2582c;
+  --brass: #e9c376;
+  --brass-2: #b88f3e;
+  --brass-ink: #2a1c04;
+  --gene: #ab98ff;
+  --tide: #6ec9ff;
+  --rose: #ff6f8e;
+  --kelp: #5cd99e;
+  --amber: #f6b44e;
+  --female: #ff8fc8;
+  --male: #74c4ff;
+  /* Species and habitat accents: axolotls are orchid, decor and aquascaping are moss. Brass stays for money and trophies. */
+  --axolotl: #f0a6ff;
+  --moss: #b5d86a;
+  --moss-2: #86a944;
+  --moss-ink: #1a2406;
+
+  /* Tinted text that sits on a tone's soft fill. */
+  --lume-ink: #b6fff0;
+  --brass-text: #ffe7b5;
+  --amber-ink: #ffe3ad;
+  --rose-ink: #ffd1dc;
+  --gene-ink: #ddd4ff;
+  --koi-ink: #ffd8c6;
+  --kelp-ink: #c9f5de;
+  --tide-ink: #d0ecff;
+  --moss-ink-light: #e4f5bf;
+
+  /* Soft tints of the accents for fills and glows. */
+  --lume-a10: rgb(94 240 210 / .1);
+  --lume-a16: rgb(94 240 210 / .16);
+  --lume-a30: rgb(94 240 210 / .3);
+  --brass-a12: rgb(233 195 118 / .12);
+  --brass-a30: rgb(233 195 118 / .3);
+  --koi-a14: rgb(255 125 77 / .14);
+  --gene-a14: rgb(171 152 255 / .14);
+  --tide-a14: rgb(110 201 255 / .14);
+  --rose-a14: rgb(255 111 142 / .14);
+  --rose-a30: rgb(255 111 142 / .32);
+  --amber-a14: rgb(246 180 78 / .14);
+  --amber-a30: rgb(246 180 78 / .32);
+  --kelp-a14: rgb(92 217 158 / .14);
+  --axolotl-a14: rgb(240 166 255 / .14);
+  --moss-a12: rgb(181 216 106 / .12);
+  --moss-a30: rgb(181 216 106 / .32);
+
+  /* Typefaces: a soft natural-history serif for names, a precise sans for controls, a mono for IDs and alleles. */
+  --font-display: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --font-ui: 'Instrument Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+
+  /* Type scale (16 px root). Body copy never drops below 13 px; 11 px (the floor) is for eyebrows, caps labels and badges. */
+  --t-floor: 11px;
+  --t-2xs: .6875rem;
+  --t-xs: .8125rem;
+  --t-sm: .875rem;
+  --t-md: .9375rem;
+  --t-base: 1rem;
+  --t-lg: 1.0625rem;
+  --t-xl: 1.25rem;
+  --t-2xl: 1.5rem;
+  --t-3xl: 2rem;
+  --t-4xl: 2.75rem;
+  --t-5xl: 3.5rem;
+
+  /* Space: a 4 px rhythm. */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-7: 28px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+
+  /* Radii. */
+  --r-xs: 6px;
+  --r-sm: 9px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+  --r-pill: 999px;
+
+  /* Control heights. */
+  --control-sm: 32px;
+  --control-md: 38px;
+  --control-lg: 46px;
+
+  /* Depth. */
+  --sh-1: 0 1px 0 rgb(255 255 255 / .03) inset, 0 6px 16px -10px rgb(0 0 0 / .8);
+  --sh-2: 0 1px 0 rgb(255 255 255 / .04) inset, 0 18px 40px -20px rgb(0 0 0 / .85);
+  --sh-3: 0 1px 0 rgb(255 255 255 / .05) inset, 0 30px 70px -24px rgb(0 0 0 / .9), 0 0 0 1px var(--line-2);
+  --sh-lift: 0 1px 0 rgb(255 255 255 / .06) inset, 0 24px 48px -18px rgb(0 0 0 / .85), 0 0 0 1px var(--line-3);
+  --glow-lume: 0 0 0 1px rgb(94 240 210 / .35), 0 10px 30px -10px rgb(94 240 210 / .45);
+  --glow-brass: 0 0 0 1px rgb(233 195 118 / .4), 0 10px 30px -12px rgb(233 195 118 / .4);
+  --focus-ring: 0 0 0 2px var(--ink-1), 0 0 0 4px var(--lume);
+
+  /* Surfaces. Glass is translucent ink with a lit top edge. */
+  --glass: linear-gradient(180deg, rgb(22 52 66 / .62), rgb(10 28 37 / .7));
+  --glass-strong: linear-gradient(180deg, rgb(18 44 56 / .94), rgb(8 23 31 / .96));
+  --glass-blur: blur(16px) saturate(1.25);
+  --plate: radial-gradient(120% 90% at 50% 0%, rgb(94 240 210 / .09), transparent 62%), linear-gradient(180deg, #102a36, #091b24);
+
+  /* Motion. */
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --ease-in-out: cubic-bezier(.65, 0, .35, 1);
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 320ms;
+  --dur-4: 520ms;
+
+  /* Layers. */
+  --z-sticky: 15;
+  --z-rail: 20;
+  --z-top: 30;
+  --z-drawer: 60;
+  --z-dialog: 75;
+  --z-menu: 85;
+  --z-toast: 100;
+  --z-tooltip: 110;
+
+  /* Layout. */
+  --rail-w: 264px;
+  --rail-w-compact: 76px;
+  --topbar-h: 68px;
+  --inspector-w: 408px;
+  --content-max: 1680px;
+
+  /* Fills: accent buttons, tab indicators, bars and the tank's metal frame. */
+  --grad-lume: linear-gradient(135deg, #7ff6dd, var(--lume) 45%, #38d6b8);
+  --grad-lume-hover: linear-gradient(135deg, #a6fbe9, #74f4da 45%, #48e0c2);
+  --grad-brass: linear-gradient(135deg, #ffe4a8, var(--brass) 50%, #d6a957);
+  --grad-brass-hover: linear-gradient(135deg, #fff0cc, #f3d38f 50%, #e3b867);
+  --grad-moss: linear-gradient(135deg, #e4f5bf, var(--moss) 55%, var(--moss-2));
+  --grad-heading: linear-gradient(100deg, var(--fg-1) 30%, #a8f7e6 85%);
+  --bar-gene-from: #7a68d8; --bar-tide-from: #3b93c9; --bar-amber-from: #c4862c; --bar-rose-from: #c2425f;
+  --alert-ink: #2a0610;
+  --tip-bg: #e9f6f3; --tip-fg: #062019;
+  --frame-metal: linear-gradient(180deg, #1b3540 0%, #0b1c24 18%, #08151c 80%, #0e2029 100%);
+  --stand: linear-gradient(180deg, #0b1d26, #07141b);
+  --water-deep: #062029;
+  --plate-base: linear-gradient(180deg, #123542, #0a2029 70%, #0c2530);
+  --hero-base: linear-gradient(180deg, #123844, #08202a 65%, #0b2631);
+
+  /* Grain: a still noise texture that keeps large dark areas from banding. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}

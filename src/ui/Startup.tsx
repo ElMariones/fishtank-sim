@@ -16,5 +16,5 @@ export function Startup() {
     });
     return () => { cancelled = true; void loaded?.session?.close(); };
   }, []);
-  return initial ? <App initial={initial} /> : <main className="save-panel" role="status">Opening your aquarium and checking its save…</main>;
+  return initial ? <App initial={initial} /> : <div className="boot" role="status"><img src="/brand/mark.svg" alt="" width="84" height="84" /><b translate="no">Fishtank</b><span>Checking your save…</span></div>;
 }

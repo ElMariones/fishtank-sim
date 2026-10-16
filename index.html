@@ -2,11 +2,29 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#101e21" />
-    <meta name="description" content="An experimental aquarium for living fish, inherited traits, and extraordinary bloodlines." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#050e14" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="A living aquarium and genetics lab: breed koi and axolotls whose looks and behaviour come from inherited genomes." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Fishtank Sim · Genetics Lab</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..700,0..100&family=Instrument+Sans:wght@400..700&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+    <title>Fishtank · Genetics Lab</title>
+    <style>
+      /* Painted before the bundle loads: the splash is replaced when React mounts the app. */
+      html, body { margin: 0; background: #050e14; }
+      .boot { position: fixed; inset: 0; display: grid; place-items: center; align-content: center; gap: 18px; color: #84a2a2;
+        font: 500 13px/1.4 'Instrument Sans', system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase;
+        background: radial-gradient(60% 50% at 50% 42%, #0e3038 0%, #050e14 70%); }
+      .boot img { width: 84px; height: 84px; animation: boot-bob 2.4s ease-in-out infinite; filter: drop-shadow(0 12px 30px rgba(94, 240, 210, .25)); }
+      .boot b { font: 600 28px/1 Fraunces, Georgia, serif; letter-spacing: -.02em; text-transform: none; color: #eaf6f4; }
+      @keyframes boot-bob { 50% { transform: translateY(-6px) rotate(-3deg); } }
+      @media (prefers-reduced-motion: reduce) { .boot img { animation: none; } }
+    </style>
   </head>
-  <body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body>
+  <body>
+    <div id="root"><div class="boot" role="status"><img src="/brand/mark.svg" alt="" width="84" height="84" /><b translate="no">Fishtank</b><span>Filling the tanks…</span></div></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>

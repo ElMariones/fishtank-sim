@@ -1,0 +1,171 @@
+/* Deepwater inspector (FS-128): a specimen sheet. Hero plate, identity, vital tiles, then Overview / Genome / Family. */
+.inspector-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: var(--s-3); }
+.inspector-heading .eyebrow .mono { letter-spacing: .04em; color: var(--fg-2); }
+.inspector-heading-actions { display: inline-flex; align-items: center; gap: 2px; }
+.hero-portrait { --accent: var(--lume); position: relative; padding: 46px 10px 34px; margin: 0 0 var(--s-4); border-radius: var(--r-xl); overflow: hidden; isolation: isolate;
+  background: radial-gradient(70% 60% at 50% 48%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%), var(--hero-base);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .06), inset 0 -30px 40px -20px rgb(0 0 0 / .5), var(--sh-2); }
+.hero-portrait.species-axolotl { --accent: var(--axolotl); }
+.hero-portrait::before { content: ''; position: absolute; inset: 0; z-index: -1; background:
+  repeating-linear-gradient(100deg, transparent 0 22px, rgb(255 255 255 / .02) 22px 25px),
+  radial-gradient(40% 20% at 50% 100%, rgb(0 0 0 / .45), transparent 70%); }
+.hero-portrait::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 40%; z-index: -1; background: linear-gradient(180deg, rgb(182 255 240 / .06), transparent); }
+.hero-portrait .portrait { filter: drop-shadow(0 14px 16px rgb(0 0 0 / .45)); }
+.portrait.large { aspect-ratio: 600 / 330; }
+.hero-toggle { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 2; flex-wrap: nowrap; white-space: nowrap; width: max-content; background: rgb(2 10 14 / .6); backdrop-filter: blur(8px); }
+.hero-caption { position: absolute; left: 12px; right: 12px; bottom: 10px; text-align: center; font-size: var(--t-floor); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-3); }
+.fish-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.fish-title h2 { min-width: 0; font-size: 2.15rem; font-weight: 520; letter-spacing: -.025em; line-height: 1.05; overflow-wrap: anywhere; font-variation-settings: 'SOFT' 100, 'opsz' 110; }
+.fish-title h2:focus-visible { outline: 2px solid var(--lume); outline-offset: 4px; border-radius: 4px; }
+.fish-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0 12px; }
+.family-glance { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 12px; border-radius: var(--r-md); background: rgb(160 225 225 / .04); border: 1px solid var(--line-1);
+  font-size: var(--t-sm); color: var(--fg-2); line-height: 1.55; }
+.family-glance > .icon { margin-top: 2px; color: var(--gene); }
+.family-glance small { display: block; font-size: var(--t-2xs); color: var(--fg-3); }
+
+.vitals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: var(--s-4) 0; }
+.vital { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 12px; border-radius: var(--r-md); border: 1px solid var(--line-2); background: linear-gradient(180deg, rgb(22 52 66 / .5), rgb(10 28 37 / .5)); }
+.vital > span:last-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.vital small { font-size: var(--t-floor); color: var(--fg-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vital small:first-child { font-size: var(--t-floor); font-weight: 650; letter-spacing: .08em; text-transform: uppercase; overflow: visible; }
+.vital .ring { --size: 40px; }
+.vital b { font-size: var(--t-lg); font-weight: 650; color: var(--fg-1); line-height: 1.2; }
+.vital .bar { height: 4px; margin: 3px 0 1px; }
+.vital.brass { border-color: var(--brass-a30); background: linear-gradient(180deg, rgb(233 195 118 / .1), rgb(10 28 37 / .5)); } .vital.brass b { color: var(--brass-text); }
+.vital.gene { border-color: rgb(171 152 255 / .28); background: linear-gradient(180deg, rgb(171 152 255 / .09), rgb(10 28 37 / .5)); } .vital.gene b { color: var(--gene-ink); }
+
+.inspector-tabs { position: sticky; top: calc(-1 * var(--s-5)); z-index: 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; margin: var(--s-4) 0; padding: 4px; border-radius: var(--r-md);
+  border: 1px solid var(--line-2); background: rgb(3 12 17 / .92); backdrop-filter: blur(10px); }
+.inspector-tabs button { min-height: 36px; border: 0; border-radius: 9px; background: transparent; box-shadow: none; color: var(--fg-3); font-size: var(--t-xs); gap: 6px; }
+.inspector-tabs button:hover:not(.active) { color: var(--fg-1); background: rgb(160 225 225 / .05); }
+.inspector-tabs button.active { color: var(--fg-1); background: linear-gradient(180deg, rgb(48 96 112 / .9), rgb(28 62 76 / .9)); box-shadow: 0 1px 0 rgb(255 255 255 / .08) inset, 0 4px 12px -4px rgb(0 0 0 / .6); }
+.inspector-tabs button.active .icon { color: var(--lume); }
+.inspector-panel { animation: rise var(--dur-3) var(--ease-out) both; }
+.rename-form { display: flex; align-items: flex-end; gap: 8px; margin-bottom: var(--s-4); }
+.rename-form label { flex: 1; min-width: 10em; }
+.facts { display: grid; margin: 0 0 var(--s-4); border-radius: var(--r-md); border: 1px solid var(--line-2); overflow: hidden; }
+.facts > div { display: flex; justify-content: space-between; gap: 12px; padding: 9px 12px; font-size: var(--t-xs); }
+.facts > div + div { border-top: 1px solid var(--line-1); }
+.facts > div:nth-child(odd) { background: rgb(160 225 225 / .025); }
+.facts dt { color: var(--fg-3); }
+.facts dd { margin: 0; color: var(--fg-1); text-align: right; }
+.offer-details { margin: 0 0 var(--s-4); padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--brass-a30); background: var(--brass-a12); font-size: var(--t-xs); color: var(--fg-2); }
+.offer-details summary { color: var(--brass-text); font-weight: 600; }
+.offer-details ol { list-style: none; margin: 8px 0; padding: 0; }
+.offer-details li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid rgb(233 195 118 / .15); }
+.offer-details p { margin-top: 6px; line-height: 1.55; }
+.trait-block { margin: 0 0 var(--s-4); padding: var(--s-3) var(--s-4) var(--s-4); border-radius: var(--r-lg); border: 1px solid var(--line-2); background: rgb(160 225 225 / .025); }
+.block-title { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.block-title .icon { color: var(--lume); }
+.trait-block > .eyebrow { margin-bottom: 10px; }
+.trait { display: grid; grid-template-columns: minmax(6em, max-content) minmax(0, 1fr) 2.4em; gap: 12px; align-items: center; margin: 9px 0; font-size: var(--t-xs); color: var(--fg-2); }
+.trait > span:last-child { text-align: right; color: var(--fg-1); font-size: var(--t-xs); }
+.appearance-traits { display: grid; gap: 0; margin: 0; }
+.appearance-traits > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 7px 0; font-size: var(--t-xs); }
+.appearance-traits > div + div { border-top: 1px solid var(--line-1); }
+.appearance-traits dt { color: var(--fg-3); }
+.appearance-traits dd { margin: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; text-align: right; color: var(--fg-1); }
+.appearance-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 3px; font-size: var(--t-xs); }
+.appearance-list li { display: flex; flex-wrap: wrap; gap: 4px 6px; } .appearance-list span { color: var(--fg-3); } .appearance-list em { font-style: normal; color: var(--brass); }
+.axolotl-traits .trait-block > .eyebrow { color: var(--axolotl); }
+.fish-actions { display: grid; gap: 8px; margin-top: var(--s-5); padding-top: var(--s-4); border-top: 1px solid var(--line-2); }
+.fish-actions .select-trigger { width: 100%; }
+.fish-actions-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+
+/* ---- Genome ------------------------------------------------------------------------------------------------------ */
+.genome-fingerprint { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid rgb(171 152 255 / .28); background: var(--gene-a14); font-size: var(--t-xs); color: var(--fg-2); }
+.genome-fingerprint code { color: var(--gene-ink); font-weight: 600; letter-spacing: .04em; }
+.allele-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 12px 0; font-size: var(--t-2xs); color: var(--fg-3); }
+.allele-legend span { display: inline-flex; align-items: center; gap: 6px; } .allele-legend b { color: var(--gene); }
+.allele-dot { width: 9px; height: 9px; border-radius: 3px; } .allele-dot.m { background: var(--female); } .allele-dot.p { background: var(--male); }
+.help-details { margin: 0 0 var(--s-3); font-size: var(--t-xs); color: var(--fg-3); }
+.help-details summary { color: var(--fg-2); font-weight: 600; padding: 4px 0; }
+.chromosome { margin: 0 0 10px; padding: 8px 12px 10px; border-radius: var(--r-md); border: 1px solid var(--line-2); background: rgb(160 225 225 / .02); }
+.chromosome.absent { opacity: .55; }
+.chromosome h3 { display: flex; align-items: center; gap: 8px; margin: 2px 0 6px; font-family: var(--font-ui); font-size: var(--t-xs); font-weight: 650; color: var(--fg-1); letter-spacing: .02em; }
+.chromosome h3 small { margin-left: auto; font-weight: 500; color: var(--fg-3); font-size: var(--t-floor); }
+.chromosome-index { display: inline-grid; place-items: center; min-width: 26px; height: 20px; border-radius: 6px; font-size: var(--t-floor); color: var(--gene-ink); background: var(--gene-a14); }
+.locus { display: grid; grid-template-columns: minmax(0, 1fr) 2.8em 2.8em; gap: 6px; align-items: center; padding: 5px 0; font-size: var(--t-xs); color: var(--fg-2); }
+.locus + .locus { border-top: 1px solid var(--line-1); }
+.locus.appearance-locus { grid-template-columns: minmax(0, 1fr) minmax(4.6em, .7fr) minmax(4.6em, .7fr); }
+.locus code { display: block; text-align: center; padding: 3px 4px; border-radius: 6px; font-size: 12px; font-weight: 600; color: var(--fg-1); background: rgb(160 225 225 / .07); }
+.locus code:nth-of-type(1) { box-shadow: inset 2px 0 0 var(--female); background: rgb(255 143 200 / .07); }
+.locus code:nth-of-type(2) { box-shadow: inset 2px 0 0 var(--male); background: rgb(116 196 255 / .07); }
+.locus code small { display: block; font-family: var(--font-ui); font-size: var(--t-floor); font-weight: 500; color: var(--fg-3); overflow-wrap: anywhere; }
+.locus.mutated .locus-name { color: var(--gene); }
+.locus.absent code { opacity: .4; }
+.locus > span:first-child { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.locus > span:first-child > small { color: var(--fg-3); font-size: var(--t-floor); font-family: var(--font-mono); }
+.locus-name { position: relative; cursor: help; text-decoration: underline dotted rgb(182 206 204 / .4); text-underline-offset: 3px; border-radius: 3px; }
+.locus-name:focus-visible { outline: 2px solid var(--lume); outline-offset: 2px; }
+.locus-tip { display: none; position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; width: min(290px, 72vw); padding: 10px 12px; border-radius: var(--r-sm); background: var(--glass-strong); border: 1px solid var(--line-3);
+  box-shadow: var(--sh-3); color: var(--fg-2); font-size: var(--t-xs); line-height: 1.5; text-transform: none; letter-spacing: 0; font-weight: 400; white-space: normal; }
+.locus-tip strong { display: block; color: var(--fg-1); font-weight: 650; margin-bottom: 3px; }
+.locus-tip em { display: block; font-style: normal; color: var(--fg-3); margin-top: 6px; font-size: var(--t-2xs); }
+.locus-name:hover .locus-tip, .locus-name:focus .locus-tip { display: block; animation: pop var(--dur-1) var(--ease-out); }
+.marking-blocks, .mutation-origins { margin-top: var(--s-4); padding: var(--s-3) var(--s-4); border-radius: var(--r-lg); border: 1px solid var(--line-2); background: rgb(160 225 225 / .02); }
+.marking-blocks h3, .mutation-origins h3 { font-family: var(--font-ui); font-size: var(--t-xs); font-weight: 650; color: var(--fg-1); margin-bottom: 4px; }
+.marking-blocks ol, .mutation-origins ul, .mutation-notebook ol { list-style: none; margin: 0; padding: 0; }
+.marking-blocks li { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 7px 0; font-size: var(--t-xs); color: var(--fg-2); }
+.marking-blocks li + li, .mutation-origins li + li, .mutation-notebook li + li { border-top: 1px solid var(--line-1); }
+.marking-blocks li > span:last-child { font-size: var(--t-2xs); color: var(--fg-1); text-align: right; }
+.marking-blocks li small, .mutation-origins li small, .mutation-notebook li small { display: block; margin-top: 2px; font-size: var(--t-floor); color: var(--fg-3); overflow-wrap: anywhere; }
+.marking-blocks li.muted { opacity: .5; }
+.marking-swatch { width: 12px; height: 12px; border-radius: 50%; } .marking-swatch.warm { background: var(--koi); box-shadow: 0 0 8px var(--koi); } .marking-swatch.dark { background: var(--ink-2); box-shadow: 0 0 0 1px var(--fg-3); }
+.mutation-origins li, .mutation-notebook li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; padding: 7px 0; font-size: var(--t-xs); color: var(--fg-2); }
+.mutation-origins li > span:last-child, .mutation-notebook li > span:last-child { text-align: right; }
+.mutation-notebook { margin-top: 10px; font-size: var(--t-xs); color: var(--fg-2); }
+
+/* ---- Family ------------------------------------------------------------------------------------------------------ */
+.family-trail { display: grid; gap: 8px; margin-bottom: var(--s-3); padding: 10px 12px; border-radius: var(--r-md); border: 1px solid rgb(171 152 255 / .25); background: var(--gene-a14); }
+.family-trail ol { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0; padding: 0; font-size: var(--t-xs); color: var(--fg-2); }
+.family-trail li { display: flex; align-items: center; gap: 6px; }
+.family-trail li + li::before { content: '›'; color: var(--fg-3); }
+.family-trail li button { min-height: 28px; padding: 3px 8px; font-size: var(--t-xs); }
+.family-trail li[aria-current] { color: var(--fg-1); font-weight: 650; }
+.family-trail-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.family-trail-actions button { min-height: 32px; font-size: var(--t-xs); }
+.family-search { margin-bottom: 8px; }
+.family-results { margin-top: 8px; }
+.family-section { margin-top: var(--s-4); }
+.family-section-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin-bottom: 8px; }
+.family-section-heading h3 { font-size: var(--t-lg); }
+.family-section-heading small { font-size: var(--t-2xs); color: var(--fg-3); }
+.family-generation { position: relative; margin: 10px 0 14px; padding-left: 16px; }
+.family-generation::before { content: ''; position: absolute; left: 4px; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: linear-gradient(180deg, var(--gene), transparent); opacity: .5; }
+.family-generation h4 { margin: 0 0 8px; font-family: var(--font-ui); font-size: var(--t-xs); font-weight: 650; color: var(--fg-1); }
+.family-generation h4 small { display: block; margin-top: 2px; font-size: var(--t-floor); font-weight: 450; color: var(--fg-3); }
+.relative { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; align-items: center; justify-content: stretch; gap: 10px; width: 100%; margin-bottom: 6px;
+  padding: 6px 10px 6px 6px; text-align: left; border-radius: var(--r-md); background: var(--plate); border-color: var(--line-1); font-weight: 500; }
+.relative:hover:not(:disabled) { border-color: rgb(171 152 255 / .4); transform: translateX(2px); }
+.relative .portrait { width: 76px; }
+.relative strong { display: block; font-family: var(--font-display); font-size: var(--t-base); font-weight: 560; overflow-wrap: anywhere; }
+.relative small { display: block; margin-top: 3px; font-size: var(--t-floor); color: var(--fg-3); line-height: 1.45; }
+.relative small .sex-mark { vertical-align: -2px; } .relative small .sex-symbol { width: 16px; height: 16px; font-size: var(--t-floor); }
+.relative > span:last-child { color: var(--gene); }
+.relative-notes { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.relative-notes span { padding: 1px 7px; border-radius: var(--r-pill); font-size: var(--t-floor); color: var(--gene-ink); background: var(--gene-a14); }
+.family-self { position: relative; margin: var(--s-4) 0; padding: 12px 16px; border-radius: var(--r-md); text-align: center; font-family: var(--font-display); font-size: var(--t-lg); color: var(--fg-1);
+  background: linear-gradient(135deg, rgb(171 152 255 / .14), rgb(94 240 210 / .08)); border: 1px solid rgb(171 152 255 / .3); }
+.family-self small { display: block; margin-top: 2px; font-family: var(--font-ui); font-size: var(--t-2xs); color: var(--fg-3); }
+.family-repeat { margin: 2px 0 0; font-size: var(--t-2xs); color: var(--fg-3); line-height: 1.5; }
+.family-depth, .family-levels { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
+.family-depth button, .family-levels button { min-height: 32px; font-size: var(--t-xs); }
+.bloodline-section { margin-top: var(--s-5); padding: var(--s-3) var(--s-4); border-radius: var(--r-lg); border: 1px solid rgb(171 152 255 / .25); background: linear-gradient(180deg, rgb(171 152 255 / .07), transparent); }
+.bloodline-section h3 { font-size: var(--t-lg); margin: 4px 0 8px; }
+.bloodline-rows, .bloodline-registry { list-style: none; margin: 0; padding: 0; }
+.bloodline-rows li, .bloodline-registry li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; padding: 8px 0; font-size: var(--t-xs); color: var(--fg-2); }
+.bloodline-rows li + li, .bloodline-registry li + li { border-top: 1px solid var(--line-1); }
+.bloodline-rows li > span:last-child, .bloodline-registry li > span:last-child { text-align: right; }
+.bloodline-rows small, .bloodline-registry small { display: block; margin-top: 3px; font-size: var(--t-floor); color: var(--fg-3); overflow-wrap: anywhere; }
+.bloodline-registry .rename-form { grid-column: 1 / -1; }
+.bloodline-name { margin: 0 0 12px; max-width: 320px; }
+.inspector-empty { margin-top: var(--s-10); border-style: dashed; }
+/* Competition history inside the inspector. */
+.inspector .circuit-animal-honors { margin: 0 0 var(--s-2); }
+
+@media (max-width: 650px) {
+  .fish-title h2 { font-size: 1.8rem; }
+  .bloodline-rows li, .bloodline-registry li, .mutation-origins li { grid-template-columns: 1fr; }
+  .bloodline-rows li > span:last-child, .bloodline-registry li > span:last-child, .mutation-origins li > span:last-child { text-align: left; }
+}

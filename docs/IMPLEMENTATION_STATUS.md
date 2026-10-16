@@ -1,6 +1,24 @@
 # Implementation status
 
-**Updated:** 20 September 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
+**Updated:** 16 October 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
+
+## Deepwater UI redesign — FS-128, 16 October 2026 (user request)
+
+The interface was audited and rebuilt: [review](design/UI_REVIEW.md), [design system](design/DESIGN_SYSTEM.md). One
+token-based stylesheet set replaces the layered `styles.css`/`theme.css`/`calendar.css`; a new brand mark and three
+typefaces; an in-house kit of menus with submenus, custom selects, context menus, tooltips, popovers, dialogs, a toast
+stack with an activity log and a Ctrl K command palette; a new rail, top bar and calendar split button; a framed
+aquarium with a water-report HUD and a cabinet of controls; specimen-plate cards with a selection mode; a
+specimen-sheet inspector with vital tiles and chromosome cards; care gauges; dialog confirmations for every sale,
+rehoming, move, bloodline and aquarium purchase; keyboard shortcuts and view URLs. Renderer changes are visual only:
+matte river stones, a selection halo and name pill, and aeration bubble columns. Saves were not reset; no genome,
+phenotype, save or journal semantics changed.
+
+Evidence: 317 tests in 49 files, strict TypeScript and the production build pass; browser journeys at six widths, and
+two independent reviews whose findings were all fixed. See [testing](TESTING.md#fs-128-deepwater-ui-redesign).
+
+Limits: fonts come from Google Fonts (an offline first load uses system fallbacks). Fish and tank selection are not
+in the URL; only the view is. The kit is local to this app.
 
 ## Competition circuit and calendar — FS-122–127, 22 September 2026
 

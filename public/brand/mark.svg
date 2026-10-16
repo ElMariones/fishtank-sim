@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Fishtank">
+  <defs>
+    <radialGradient id="water" cx="38%" cy="30%" r="78%">
+      <stop offset="0" stop-color="#1c5a63"/>
+      <stop offset=".55" stop-color="#0b2b35"/>
+      <stop offset="1" stop-color="#03121a"/>
+    </radialGradient>
+    <linearGradient id="rim" x1="10" y1="6" x2="54" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#b6fff0"/>
+      <stop offset=".45" stop-color="#5ef0d2"/>
+      <stop offset="1" stop-color="#1b7f73"/>
+    </linearGradient>
+    <linearGradient id="koi" x1="12" y1="26" x2="56" y2="38" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff7ee"/>
+      <stop offset="1" stop-color="#f3e2d2"/>
+    </linearGradient>
+    <linearGradient id="red" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff8a55"/>
+      <stop offset="1" stop-color="#e2502a"/>
+    </linearGradient>
+    <clipPath id="lens"><circle cx="32" cy="32" r="27.5"/></clipPath>
+  </defs>
+  <circle cx="32" cy="32" r="28.5" fill="url(#water)"/>
+  <g clip-path="url(#lens)">
+    <path d="M4 44c8-3 14 2 22-1s14-6 22-3 10 4 14 2v26H4z" fill="#5ef0d2" opacity=".08"/>
+    <path d="M10 14c6 10 4 26-2 40M20 6c4 14 6 30 0 52M48 4c-2 14-6 34-2 58" stroke="#b6fff0" stroke-width="2.4" opacity=".07" fill="none"/>
+    <g transform="rotate(-16 32 33)">
+      <path d="M44 32c4-6 9-9 13-10-2 6-2 14 0 20-4-1-9-4-13-10z" fill="url(#red)" opacity=".95"/>
+      <path d="M26 25c3-5 8-5 11 1z" fill="#ff8a55" opacity=".9"/>
+      <path d="M12 33c0-6 10-10 20-8 6 1 10 4 13 7-3 3-7 6-13 7-10 2-20 0-20-6z" fill="url(#koi)"/>
+      <path d="M23 26c4-2 11-1 14 3-3 3-8 4-12 3-2-1-3-4-2-6zM38 31c2 0 5 0 6 1-1 2-4 3-6 3z" fill="url(#red)"/>
+      <path d="M22 38c0 5 4 7 7 6-2-2-4-4-5-6z" fill="#ffd9c4" opacity=".9"/>
+      <circle cx="16.5" cy="31.5" r="1.5" fill="#03121a"/>
+      <path d="M13 35c-2 1-4 3-5 5" stroke="#f3e2d2" stroke-width=".9" stroke-linecap="round" fill="none" opacity=".8"/>
+    </g>
+    <circle cx="17" cy="17" r="2.3" fill="none" stroke="#b6fff0" stroke-width="1.1" opacity=".75"/>
+    <circle cx="12.5" cy="11.5" r="1.3" fill="none" stroke="#b6fff0" stroke-width=".9" opacity=".55"/>
+    <path d="M14 20a20 20 0 0 1 16-12" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none" opacity=".22"/>
+  </g>
+  <circle cx="32" cy="32" r="28.5" fill="none" stroke="url(#rim)" stroke-width="2.6"/>
+</svg>

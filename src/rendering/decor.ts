@@ -81,7 +81,7 @@ const riverStones: Draw = p => {
   const bottom = 3 + Math.floor(rng() * 2);
   let cursor = -w * 0.62;
   for (let i = 0; i < bottom; i++) {
-    const rx = w * (0.14 + rng() * 0.1), ry = h * (0.17 + rng() * 0.1);
+    const rx = w * (0.14 + rng() * 0.1), ry = Math.min(h * (0.17 + rng() * 0.1), rx * (0.5 + rng() * 0.16));
     cursor += rx * (i ? 1.2 : 1);
     stones.push({ x: cursor, y: -ry * 0.9, rx, ry, tilt: (rng() - 0.5) * 0.3, l: 36 + rng() * 26, hue: hue + (rng() - 0.5) * 16 });
     cursor += rx * 0.75;
@@ -92,21 +92,45 @@ const riverStones: Draw = p => {
   const upper = 1 + Math.floor(rng() * 2);
   for (let i = 0; i < upper && i < bottom - 1; i++) {
     const left = stones[i + Math.floor(rng() * (bottom - 1 - i))], right = stones[stones.indexOf(left) + 1];
-    const rx = w * (0.12 + rng() * 0.08), ry = h * (0.14 + rng() * 0.08), rest = Math.min(left.y - left.ry * 0.55, right.y - right.ry * 0.55);
+    const rx = w * (0.12 + rng() * 0.08), ry = Math.min(h * (0.14 + rng() * 0.08), rx * (0.52 + rng() * 0.16)), rest = Math.min(left.y - left.ry * 0.55, right.y - right.ry * 0.55);
     stones.push({ x: (left.x + right.x) / 2 + (rng() - 0.5) * rx * 0.4, y: rest - ry * 0.55, rx, ry, tilt: (rng() - 0.5) * 0.4, l: 40 + rng() * 25, hue: hue + (rng() - 0.5) * 16 });
   }
   if (rng() < 0.6) {
     const top = stones.reduce((a, b) => (b.y - b.ry < a.y - a.ry ? b : a)), rx = top.rx * 0.7, ry = top.ry * 0.75;
     stones.push({ x: top.x + (rng() - 0.5) * rx * 0.3, y: top.y - top.ry * 0.8 - ry * 0.6, rx, ry, tilt: (rng() - 0.5) * 0.3, l: 44 + rng() * 22, hue: hue + (rng() - 0.5) * 16 });
   }
+  // Water-worn stones are flattened and slightly lopsided, with a matte surface: a broad soft light from above, a dark
+  // underside where they rest, mineral speckle and the odd quartz vein. No tight specular, so they never read as eggs.
   for (const s of stones) {
-    const g = ctx.createRadialGradient(s.x - s.rx * 0.4, s.y - s.ry * 0.5, s.rx * 0.08, s.x, s.y, Math.max(s.rx, s.ry) * 1.15);
-    g.addColorStop(0, hsl(s.hue, sat, Math.min(90, s.l + 26))); g.addColorStop(0.5, hsl(s.hue, sat, s.l)); g.addColorStop(1, hsl(s.hue, sat + 4, Math.max(6, s.l - 26)));
-    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(s.x, s.y, s.rx, s.ry, s.tilt, 0, TAU); ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,.22)'; ctx.lineWidth = 1; ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.ellipse(s.x, s.y, s.rx * 0.8, s.ry * 0.75, s.tilt, Math.PI * 1.1, Math.PI * 1.55); ctx.stroke();
-    if (rng() < 0.4) { ctx.strokeStyle = 'rgba(245,240,230,.35)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(s.x - s.rx * 0.7, s.y + s.ry * (rng() - 0.5) * 0.6); ctx.quadraticCurveTo(s.x, s.y - s.ry * 0.2, s.x + s.rx * 0.7, s.y + s.ry * (rng() - 0.5) * 0.6); ctx.stroke(); }
+    const outline: [number, number][] = [];
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * TAU, wobble = 1 + (rng() - 0.5) * 0.14, flat = Math.sin(a) > 0 ? 0.92 : 1;
+      outline.push([s.x + Math.cos(a + s.tilt) * s.rx * wobble, s.y + Math.sin(a + s.tilt) * s.ry * wobble * flat]);
+    }
+    const path = () => {
+      ctx.beginPath();
+      const mid = (i: number) => { const [x0, y0] = outline[i % 10], [x1, y1] = outline[(i + 1) % 10]; return [(x0 + x1) / 2, (y0 + y1) / 2] as const; };
+      const [sx, sy] = mid(9); ctx.moveTo(sx, sy);
+      for (let i = 0; i < 10; i++) { const [mx, my] = mid(i); ctx.quadraticCurveTo(outline[i][0], outline[i][1], mx, my); }
+      ctx.closePath();
+    };
+    const top = s.y - s.ry, bottom = s.y + s.ry, light = s.l - 4;
+    const g = ctx.createLinearGradient(s.x - s.rx * 0.3, top, s.x + s.rx * 0.2, bottom);
+    g.addColorStop(0, hsl(s.hue, sat, Math.min(78, light + 14))); g.addColorStop(0.45, hsl(s.hue, sat, light)); g.addColorStop(1, hsl(s.hue, sat + 3, Math.max(6, light - 20)));
+    path(); ctx.fillStyle = g; ctx.fill();
+    ctx.save(); path(); ctx.clip();
+    const soft = ctx.createRadialGradient(s.x - s.rx * 0.25, top + s.ry * 0.35, 0, s.x - s.rx * 0.25, top + s.ry * 0.35, s.rx * 0.9);
+    soft.addColorStop(0, 'rgba(255,250,240,.16)'); soft.addColorStop(1, 'rgba(255,250,240,0)');
+    ctx.fillStyle = soft; ctx.fillRect(s.x - s.rx, top, s.rx * 2, s.ry * 2);
+    const under = ctx.createLinearGradient(0, s.y, 0, bottom); under.addColorStop(0, 'rgba(0,0,0,0)'); under.addColorStop(1, 'rgba(0,0,0,.38)');
+    ctx.fillStyle = under; ctx.fillRect(s.x - s.rx, s.y, s.rx * 2, s.ry);
+    for (let i = 0, count = Math.round(s.rx * 0.9); i < count; i++) {
+      ctx.fillStyle = rng() < 0.5 ? 'rgba(20,18,16,.32)' : 'rgba(250,245,235,.22)';
+      ctx.beginPath(); ctx.arc(s.x + (rng() - 0.5) * s.rx * 1.8, s.y + (rng() - 0.5) * s.ry * 1.8, 0.4 + rng() * 0.9, 0, TAU); ctx.fill();
+    }
+    if (rng() < 0.35) { ctx.strokeStyle = 'rgba(245,240,230,.28)'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(s.x - s.rx, s.y + s.ry * (rng() - 0.5) * 0.8); ctx.quadraticCurveTo(s.x, s.y - s.ry * (0.1 + rng() * 0.3), s.x + s.rx, s.y + s.ry * (rng() - 0.5) * 0.8); ctx.stroke(); }
+    ctx.restore();
+    path(); ctx.strokeStyle = 'rgba(0,0,0,.26)'; ctx.lineWidth = 0.8; ctx.stroke();
   }
   mossTufts(p, stones.map(s => [s.x, s.y - s.ry * 0.85] as [number, number]), 0.25);
 };

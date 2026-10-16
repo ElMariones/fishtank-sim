@@ -2,7 +2,7 @@
 
 **A living aquarium and genetics sandbox.** Breed koi and axolotls whose looks and behavior come from inherited (synthetic) genomes. Every animal is drawn from its genes, every child keeps a permanent family record, and a rare trait can be followed across generations.
 
-![The Koi Garden: koi, two axolotls and a fresh clutch of fry swimming in a planted tank, with the selected fry's details in the inspector](docs/screenshots/aquarium.png)
+![The Koi Garden in the Deepwater interface: a framed planted aquarium with koi and river-stone cairns, the navigation rail with aquarium swatches, the calendar in the top bar, and the selected koi's specimen sheet in the inspector](docs/screenshots/aquarium.jpg)
 
 > **Version 0.1: a working research lab.** The core loop works: genome → development → appearance → breeding → lineage. The full care game and an online marketplace are designed but not built yet. See [implementation status](docs/IMPLEMENTATION_STATUS.md).
 
@@ -16,11 +16,12 @@
 - **Growth and care.** Eggs hatch into fry that grow toward their genetic adult size. Water quality, feeding, filters, aeration and temperature affect condition and growth.
 - **A small economy.** NPC buyers with different tastes, a credit ledger, an NPC shop for unrelated stock, extra aquariums, and a free koi rescue if you run out of options.
 - **Safe local saves.** Everything is stored in your browser with two automatic backups, export/import, and replayable command journals.
+- **A designed interface.** The Deepwater design system: a framed live aquarium with a water report, specimen-plate cards, a specimen-sheet inspector, menus and right-click actions, confirmation dialogs, toasts with an activity log, and a **Ctrl K** command palette with keyboard shortcuts (press **?** in the app). See the [design system](docs/design/DESIGN_SYSTEM.md).
 
 | | |
 |---|---|
-| ![Collection filtered to axolotls, with the inspector showing an albino-like axolotl's genome](docs/screenshots/collection-genome.png) | ![NPC shop listing axolotl founders and pigment morphs with prices and traits](docs/screenshots/shop.png) |
-| **Collection and genome inspector** | **NPC shop** with axolotl pigment morphs |
+| ![The collection as specimen-plate cards with search, species and sex filters, parent and sort menus](docs/screenshots/collection.jpg) | ![The NPC shop drawer listing koi founders and variants with prices and delivery aquarium](docs/screenshots/shop.jpg) |
+| **Collection** as specimen plates | **NPC shop** drawer |
 
 ## Tech stack
 
@@ -66,13 +67,13 @@ build does not include it, or PixiJS.
 
 1. **Meet your fish.** Click a swimming animal or a collection card to open it in the inspector: overview, genome and family.
 2. **Breed.** Open **Breeding**, pick a mother and father, choose a nursery and start a courtship.
-3. **Watch them grow.** Use **Day**, **Week**, or **Month** to advance 1, 7, or 30 game days. Eggs hatch after 3 game days and grow faster in well-kept water. Time stays put while you are away.
+3. **Watch them grow.** Press **Next day** in the top bar (or `.`), or open its menu to advance a week or a month. Eggs hatch after 3 game days and grow faster in well-kept water. Time stays put while you are away.
 4. **Follow the lineage.** Open **Family** on any child to walk up to six generations back or forward.
 5. **Manage the lab.** Sell to NPC buyers or rehome for free, buy new stock in the **NPC shop**, add aquariums and decorate them under **Habitat**.
 6. **Keep your world.** **Saves** exports, imports and restores backups.
 7. **Enter the circuit.** **Competitions** offers separate koi and axolotl shows from amateur to global. Register one or two animals, inspect NPC rivals, watch judging, negotiate purchases, and visit the **Trophy room** for lasting honors.
 
-A first-session guide above the aquarium walks through these steps. Limits: 60 animals per tank, 8 tanks, 480 living animals and 10,000 records including the archive.
+A first-session guide above the aquarium walks through these steps. **Ctrl K** searches every view, aquarium, action and animal. Limits: 60 animals per tank, 8 tanks, 480 living animals and 10,000 records including the archive.
 
 ## Project documents
 
@@ -82,6 +83,7 @@ A first-session guide above the aquarium walks through these steps. Limits: 60 a
 | [Genetics specification](docs/GENETICS.md) | Genome rules, loci, color and ornament expression, pedigree |
 | [Architecture](docs/ARCHITECTURE.md) | Source map, data model, command contracts, worker strategy |
 | [UX specification](docs/UX_SPEC.md) | Aquarium, inspector, breeding, family, market and recovery flows |
+| [UI review](docs/design/UI_REVIEW.md) and [design system](docs/design/DESIGN_SYSTEM.md) | The FS-128 audit and the Deepwater tokens, components and conventions |
 | [Competition circuit](docs/COMPETITIONS.md) and [visual design](docs/design/COMPETITION_UI.md) | Calendar, entry, exhibition, judging, NPC negotiation and lasting honors |
 | [Balance and experiments](docs/BALANCE.md) | Implemented constants and tuning experiments |
 | [Roadmap](docs/ROADMAP.md) and [backlog](docs/BACKLOG.md) | Milestones, task IDs and acceptance criteria |

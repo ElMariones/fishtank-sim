@@ -128,7 +128,7 @@ export function ShopPanel({ world, tank, day, readOnly, traitCache, onBuy, onBuy
         </div>
         <div className="shop-buy">
           <span>◈ {listing.price}</span>
-          <button className="primary" aria-label={`Buy ${listing.name} (${listing.id}) for ${listing.price} credits, deliver to ${destination.name}`} disabled={Boolean(reason)} onClick={purchase}>Buy for {destination.name}</button>
+          <button className="brass" aria-label={`Buy ${listing.name} (${listing.id}) for ${listing.price} credits, deliver to ${destination.name}`} disabled={Boolean(reason)} onClick={purchase}>Buy for {destination.name}</button>
           {reason ? <small>{reason}</small> : null}
         </div>
       </li>;

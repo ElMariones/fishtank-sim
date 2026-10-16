@@ -231,6 +231,18 @@ export function TankCanvas(props: Props) {
         const x = (i * 137.3 + Math.sin(time * 0.2 + i) * 10) % width, y = height - ((i * 53.7 + time * (3 + i % 3)) % height);
         ctx.fillStyle = 'rgba(220,245,240,.16)'; ctx.beginPath(); ctx.arc(x, y, 0.7 + i % 2, 0, Math.PI * 2); ctx.fill();
       }
+      // Air stones: one rising bubble column per aeration step (Gentle 1 … Maximum 4), so equipment is visible in the water.
+      const columns = Math.max(0, Math.min(4, Math.round((current.tank.water.aerationPerDay ?? 0) / 12)));
+      ctx.lineWidth = 0.8;
+      for (let c = 0; c < columns; c++) {
+        const bx = width * (c % 2 ? 0.962 - (c >> 1) * 0.022 : 0.038 + (c >> 1) * 0.022), base = height * 0.9, top = height * 0.05;
+        for (let i = 0; i < 12; i++) {
+          const seed = (i * 0.618 + c * 0.37) % 1, phase = (time * (0.24 + seed * 0.08) + seed) % 1, y = base - phase * (base - top);
+          const x = bx + Math.sin(time * 2.1 + i * 1.3 + c) * (1.5 + phase * 4.5), r = 0.7 + seed * 1.4 + phase * 0.9;
+          ctx.strokeStyle = `rgba(220,250,255,${(0.42 * (1 - phase * 0.55)).toFixed(3)})`;
+          ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+        }
+      }
       const food = pellets.current;
       if (food.length) {
         ctx.fillStyle = '#dab36b';
@@ -259,11 +271,21 @@ export function TankCanvas(props: Props) {
           const b = shown.phenotype.species === 'axolotl' && shown.phenotype.axolotl
             ? axolotlAnatomyFor(shown.phenotype.axolotl).bounds : anatomyFor(shown.phenotype).bounds;
           const length = pose.bodyLength;
+          // Selection: a soft glowing halo that breathes, and a name pill above the fish in the interface's typeface.
+          const breathe = 0.75 + Math.sin(time * 2.4) * 0.25;
           ctx.save(); ctx.scale(pose.flip < 0 ? -1 : 1, 1); ctx.rotate(pose.angle);
-          ctx.strokeStyle = '#89f0dc75'; ctx.lineWidth = 1; ctx.setLineDash([3, 6]);
-          ctx.beginPath(); ctx.ellipse((b.minX + b.maxX) / 2 * length, (b.minY + b.maxY) / 2 * length, (b.maxX - b.minX) / 2 * length * 1.06, (b.maxY - b.minY) / 2 * length * 1.12, 0, 0, Math.PI * 2); ctx.stroke();
+          const cx = (b.minX + b.maxX) / 2 * length, cy = (b.minY + b.maxY) / 2 * length, rx = (b.maxX - b.minX) / 2 * length * 1.1, ry = (b.maxY - b.minY) / 2 * length * 1.25 + 4;
+          ctx.shadowColor = 'rgba(94,240,210,.8)'; ctx.shadowBlur = 10 * breathe;
+          ctx.strokeStyle = `rgba(94,240,210,${0.35 + 0.3 * breathe})`; ctx.lineWidth = 1.4; ctx.setLineDash([2, 5]); ctx.lineDashOffset = -time * 8;
+          ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
           ctx.restore();
-          ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#89f0dc'; ctx.fillText(fish.name, 0, -Math.max(-b.minY, b.maxY) * length * 1.15 - 6);
+          const labelY = -Math.max(-b.minY, b.maxY) * length * 1.2 - 16;
+          ctx.font = '600 11.5px "Instrument Sans", system-ui, sans-serif';
+          const text = fish.name, tw = ctx.measureText(text).width, pw = tw + 18, ph = 20;
+          ctx.fillStyle = 'rgba(3,18,24,.78)'; ctx.strokeStyle = 'rgba(94,240,210,.55)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.roundRect(-pw / 2, labelY - ph / 2, pw, ph, ph / 2); ctx.fill(); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(-4, labelY + ph / 2); ctx.lineTo(0, labelY + ph / 2 + 5); ctx.lineTo(4, labelY + ph / 2); ctx.fillStyle = 'rgba(94,240,210,.55)'; ctx.fill();
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#d9fff6'; ctx.fillText(text, 0, labelY + 0.5); ctx.textBaseline = 'alphabetic';
         }
         ctx.scale(pose.flip, 1); ctx.rotate(pose.angle);
         drawFish(ctx, shown.phenotype, fish.birthSeed, pose.size, time, { tailPhase: phase.tail, finPhase: phase.fin, effort, grounded });

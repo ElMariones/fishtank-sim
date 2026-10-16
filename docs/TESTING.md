@@ -541,6 +541,34 @@ For a test report record task ID, source/model version, command or user journey,
 - **Drag performance follow-up (ADR-067):** before, every drag step invalidated the whole cached layer, and repainting backdrop, substrate grains and all solids took 85 ms (Iwagumi), 163 ms (Nature aquarium) and 20 ms (Sunken ruins) per step with a GPU flush, plus a full app re-render. After, a complete frame while dragging a solid takes 5.5, 8.3 and 4.1 ms. In the browser, opening the editor froze the tank (two canvas captures 1.5 s apart were identical), a mouse drag moved a stone pile to 40% with no long task over 50 ms and released cleanly, and applying Iwagumi (◈ 215) closed the editor, restored the LIVE badge and left ◈ 985. 225 tests pass.
 - **Limits:** frame-rate figures in the hidden browser pane were unreliable (requestAnimationFrame pauses), so no device timing is claimed; static layers are cached and only plants, light and water repaint per frame. Keyboard move/resize/flip/reshape shortcuts and reduced motion were not exercised in the pane.
 
+## FS-128 Deepwater UI redesign
+
+16 October 2026, Windows 11, in-app Chromium. `npx tsc --noEmit` passes; `npm test`: **317 tests in 49 files** pass;
+`npm run build` passes (CSS 161.84 kB, 31.78 kB gzip; main chunk 831.89 kB, 265.11 kB gzip); `scripts/check-docs.mjs`
+reports no broken links. No core, genome, save or journal code changed (guide and resume copy only).
+
+- **Layouts.** 1600, 1440, 1280, 1024, 768 and 375 px: no horizontal overflow (`scrollWidth` equals the viewport less the
+  stable scrollbar gutter). The rail folds to icons at 1440 px and becomes a strip below 900 px; credits stay visible at
+  every width. At 1024 px no rendered text is below 11 px; most text is 13–14 px (histogram: 42 elements at 11 px,
+  89 at 13, 38 at 14). The competitions view has no text under 11 px.
+- **Journeys.** Deep link `#/competitions`, rail navigation and browser Back; Ctrl K palette search and open; aquarium
+  menu with keyboard-opened submenu; card right-click menu (flips above when low on space) and Sell dialog; feed then
+  advance a week from the split-button menu (Day 0 → Day 7, calendar report, three activity entries); selection mode,
+  Move dialog with its destination menu above the dialog, confirm; aquascape editor locks the calendar and cancels;
+  Care settings through the custom select; shop, ledger and saves drawers; Genome and Family tabs; trophy room.
+- **Guide pointers.** `feed-button`, `rename-name`, `collection`, `planner-mother`, `planner-add-goal`, `workspace-panel`,
+  `shop-title` and `recovery-title` all exist and receive focus when shown.
+- **Layering and keyboard.** Escape in the palette over a drawer closes only the palette; `]` and `.` do nothing while a
+  drawer is open; Tab from a menu inside a dialog keeps focus in the dialog. No uncaught errors were recorded.
+- **Found while testing.** A Vite hot reload of `App.tsx` remounted the app and its mount-time autosave wrote the
+  page-load runtime over newer progress (the newer save survived in `backup1`). Autosave now skips the unchanged
+  loaded runtime.
+- **Limits.** The pane suspends animation timelines while hidden, so screenshots were taken with a test-only style that
+  finishes animations; real-time motion, reduced-motion and screen-reader output were not exercised end to end. Emulated
+  sizes above the pane's width sometimes captured into a corner, so those were checked through DOM geometry.
+- **Reviews.** An independent senior front-end review and a senior product-design review were run on the finished
+  change; every finding and its resolution is listed in the [UI review](design/UI_REVIEW.md#4-independent-review-of-the-redesign).
+
 ## FS-116 UI overhaul
 
 17 September 2026, Windows 11, Node 22.18.0, npm 10.9.3. `npm test`: 218 tests in 37 files pass; `npm run build` passes (CSS 83.95 kB, 18.32 kB gzip; main chunk 587.80 kB, 188.41 kB gzip). No core code changed.

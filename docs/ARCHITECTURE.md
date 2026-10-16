@@ -63,10 +63,13 @@ src/
     stage.ts        Stage phenotype cache per adult phenotype and quantized maturity
     tankLayout.ts   Shared tank pose transform and fish-shaped picking
   ui/
-    Shell.tsx       Navigation rail with aquarium cards and tools, and the glass tank status overlay (FS-116)
-    ShellParts.tsx  Animated numbers, stat pills, drawers, toasts, workspace tabs and capacity bars (FS-116)
-    Icon.tsx        Inline stroke icon set
-    theme.css       Lagoon theme: tokens, shell layout, glass surfaces, motion and responsive rail (FS-116)
+    Shell.tsx       Navigation rail with tank swatches and menus, top bar with calendar split button and activity, and the water-report HUD (FS-128)
+    ShellParts.tsx  Animated numbers, drawers, workspace tabs and capacity bars
+    FishCard.tsx    Specimen-plate collection card with favorite, selection and action menu (FS-128)
+    lifeText.ts     Life-stage and growth text shared by cards, inspector and dialogs
+    kit/            Menus and selects, context menus, tooltips, popovers, dialogs, toasts, activity log and command palette (FS-128)
+    Icon.tsx        Deepwater icon set: one 24 px grid, optional duotone fill
+    design/         Deepwater design system: tokens, base, kit, shell, aquarium, collection, inspector, panels, research (FS-128)
     App.tsx         Lab controls, command runtime, inspector, paginated collection, clutch filter and batch move/sale reviews
     Startup.tsx     Validated async loading before interactive controls
     SavePanel.tsx   Export, import review, retry and backup recovery
@@ -83,7 +86,7 @@ src/
     FishPortrait.tsx Shared procedural renderer at portrait scale, fitted or shared-scale framing
     VisualFixtureLab.tsx Deterministic fixture, anatomy and marking-resemblance comparison surface
     ResearchLab.tsx Blind resemblance study and ten-generation selection experiment
-    styles.css     Responsive theme and layout
+    competitions.css Competition circuit styles on the shared tokens
   main.tsx         React entry
 tests/
   core.test.ts     Genetics, pedigree, commands, saves, motion, FS-101 fixture pins

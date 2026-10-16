@@ -25,49 +25,33 @@ export function AnimatedNumber({ value, format = (n: number) => n.toLocaleString
   return <span className={`animated-number ${trend ?? ''}`}><span aria-hidden="true">{format(shown)}</span><span className="visually-hidden">{format(value)}</span></span>;
 }
 
-/** A compact live statistic for the top bar. */
-export function StatPill({ icon, label, value, tone = 'neutral', onClick, title }: { icon: IconName; label: string; value: ReactNode; tone?: 'neutral' | 'gold' | 'aqua' | 'coral' | 'violet'; onClick?: () => void; title?: string }) {
-  const body = <><span className="stat-icon"><Icon name={icon} size={16} /></span><span className="stat-text"><span className="stat-value">{value}</span><span className="stat-label">{label}</span></span></>;
-  return onClick
-    ? <button className={`stat-pill ${tone}`} onClick={onClick} title={title}>{body}</button>
-    : <div className={`stat-pill ${tone}`} title={title}>{body}</div>;
-}
-
 /** A right-hand slide-over sheet for tools such as the shop, buyers and saves. Escape or the backdrop closes it. */
-export function Drawer({ open, label, onClose, children, wide = false }: { open: boolean; label: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+export function Drawer({ open, label, onClose, children, wide = false, icon = 'layers', eyebrow }: { open: boolean; label: string; onClose: () => void; children: ReactNode; wide?: boolean; icon?: IconName; eyebrow?: string }) {
   const panel = useRef<HTMLDivElement>(null);
+  const [closing, setClosing] = useState(false);
+  const closeTimer = useRef(0);
   useEffect(() => {
     if (!open) return;
+    window.clearTimeout(closeTimer.current);
+    setClosing(false);
     const previous = document.activeElement as HTMLElement | null;
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape' && !document.querySelector('.menu, .dialog, .palette, .popover')) onClose(); };
     document.addEventListener('keydown', onKey);
     const focus = setTimeout(() => { if (!panel.current?.contains(document.activeElement)) panel.current?.focus(); }, 60);
     return () => { document.removeEventListener('keydown', onKey); clearTimeout(focus); previous?.focus?.(); };
   }, [open]);
   if (!open) return null;
-  return <div className="drawer-root">
-    <div className="drawer-backdrop" onClick={onClose} aria-hidden="true" />
+  const close = () => { setClosing(true); window.clearTimeout(closeTimer.current); closeTimer.current = window.setTimeout(() => { setClosing(false); onClose(); }, 180); };
+  return <div className={`drawer-root ${closing ? 'closing' : ''}`}>
+    <div className="drawer-backdrop" onClick={close} aria-hidden="true" />
     <div className={`drawer ${wide ? 'wide' : ''}`} role="dialog" aria-label={label} ref={panel} tabIndex={-1}>
-      <button className="drawer-close quiet" onClick={onClose} aria-label={`Close ${label}`}><Icon name="close" /></button>
+      <header className="drawer-header">
+        <span className="drawer-icon" aria-hidden="true"><Icon name={icon} size={18} /></span>
+        <div><span className="eyebrow">{eyebrow ?? 'Lab tool'}</span><strong>{label}</strong></div>
+        <button className="quiet icon-button drawer-close" onClick={close} aria-label={`Close ${label}`} data-tip="Close (Esc)"><Icon name="close" /></button>
+      </header>
       <div className="drawer-body">{children}</div>
     </div>
-  </div>;
-}
-
-/** The latest notice as a toast. The text stays in a polite live region, so screen readers hear every notice. */
-export function Toast({ message }: { message: string }) {
-  const [visible, setVisible] = useState(!!message), [seen, setSeen] = useState(message);
-  if (message !== seen) { setSeen(message); setVisible(!!message); }
-  useEffect(() => {
-    if (!message) return;
-    const hide = setTimeout(() => setVisible(false), Math.min(14000, 5000 + message.length * 45));
-    return () => clearTimeout(hide);
-  }, [message]);
-  return <div className="toast-region" role="status" aria-live="polite">
-    {message ? <div key={message} className={`toast ${visible ? 'shown' : 'hidden'}`}>
-      <span className="toast-icon"><Icon name="spark" size={16} /></span><p>{message}</p>
-      <button className="quiet toast-close" onClick={() => setVisible(false)} aria-label="Dismiss notice"><Icon name="close" size={14} /></button>
-    </div> : null}
   </div>;
 }
 

@@ -234,7 +234,7 @@ export function AquascapeDock({ world, tank, store, readOnly, onRun, onClose }: 
 
   return <section className="aquascape-dock" aria-label="Aquascape editor">
     <div className="dock-head">
-      <div className="eyebrow">AQUASCAPE · {tank.name.toUpperCase()}</div><h2>Design your aquarium</h2>
+      <div className="eyebrow">Aquascape · {tank.name}</div><h2>Design your aquarium</h2>
       <p>Drag pieces onto the glass or tap to add · pieces settle into the substrate · plants give cover, everything else is solid</p>
     </div>
     <div className="dock-tabs" role="tablist" aria-label="Aquascape catalog">

@@ -41,7 +41,7 @@ export async function loadSession(): Promise<LoadedSession> {
       // The calendar is player-controlled. Wall-clock absence must never age animals or expire shows.
       return { runtime: stored, session, blocked: false, readOnly: !lease.writable,
         warning: lease.writable ? '' : 'Read-only: another tab controls this world. Close it, then reload this tab to continue.',
-        resumeNotice: 'Your calendar is exactly where you left it. Use Day, Week or Month to advance.', absence: null };
+        resumeNotice: 'Your calendar is exactly where you left it. Press Next day, or open its menu for a week or a month.', absence: null };
     }
     if (slots.backup1 || slots.backup2) throw new Error('The current snapshot is missing. Review a recovery copy before saving.');
     const legacy = localStorage.getItem(SAVE_KEY);
