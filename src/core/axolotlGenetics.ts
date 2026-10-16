@@ -1,24 +1,40 @@
 import {
   AXOLOTL_CHROMOSOMES,
   AXOLOTL_DEFAULT_MUTATION_RATE,
+  AXOLOTL_DEV_BASELINE,
+  AXOLOTL_DEV_INDEX,
+  AXOLOTL_DEV_LOCI,
+  AXOLOTL_DEV_REGISTRY,
+  AXOLOTL_GENESIS_VERSION,
   AXOLOTL_GENOME_VERSION,
   AXOLOTL_LOCI,
   AXOLOTL_LOCUS_INDEX,
   AXOLOTL_LOCUS_REGISTRY,
+  AXOLOTL_V2_REGISTRY,
   axolotlLocusDefinition,
+  axolotlRegistryFor,
   type AxolotlAlleleDefinition,
+  type AxolotlGenomeVersion,
   type AxolotlLocus,
   type AxolotlLocusDefinition,
 } from './axolotlCatalog';
+import {
+  AXOLOTL_LOAD, AXOLOTL_SCALE, carriedNovel, channelEffects, combine, createNovel, defectsFor, developmentNoise, founderLoadPair, founderPotency, genesisProblem,
+  isNovel, NOVEL_SHARE, novelId, novelMap, transmitLoad, vigorFor,
+  type DominanceClass, type GenesisBlock, type GenesisTraits, type LoadCopies, type NovelAllele, type Resolved,
+} from './genesis';
 import { clamp, hash, random } from './random';
 
 export type AxolotlGenome = {
   species: 'axolotl';
-  version: typeof AXOLOTL_GENOME_VERSION;
+  /** Genome v1 (66 loci) or Genesis genome v2 (72 loci plus a development block). */
+  version: AxolotlGenomeVersion;
   /** Phased homolog inherited from the mother. */
   maternal: number[];
   /** Phased homolog inherited from the father. */
   paternal: number[];
+  /** Genome v2 only: development seed, genetic load and the open-ended alleles it carries. */
+  genesis?: GenesisBlock;
 };
 
 export type AxolotlMutation = {
@@ -121,6 +137,8 @@ export type AxolotlPhenotype = {
     cruiseSpeed: number;
     turning: number;
   };
+  /** Genome v2 only: Genesis development traits (fluorescence, frill, plume gills, extra digits, load, vigor…). */
+  genesis?: GenesisTraits;
 };
 
 export type AxolotlGenotypeDescriptor = {
@@ -162,11 +180,43 @@ const founderCopy = (rng: () => number): number[] =>
  * Creates one independent axolotl founder genome. The species-prefixed substreams ensure that using
  * the same world seed for koi and axolotls does not couple either species' genetic draw sequence.
  */
-export function axolotlFounderGenome(seed: number): AxolotlGenome {
+export function axolotlFounderGenome(seed: number, version: AxolotlGenomeVersion = AXOLOTL_GENOME_VERSION): AxolotlGenome {
   const maternal = founderCopy(random(hash(`axolotl:v1:founder:mother:${seed}`)));
   const paternal = founderCopy(random(hash(`axolotl:v1:founder:father:${seed}`)));
-  return { species: 'axolotl', version: AXOLOTL_GENOME_VERSION, maternal, paternal };
+  if (version === AXOLOTL_GENOME_VERSION) return { species: 'axolotl', version, maternal, paternal };
+  // Genome v2 keeps the v1 loci of the same seed and draws the Development chromosome and load from new streams.
+  const dev = random(hash(`axolotl:v2:founder:dev:${seed}`)), load = random(hash(`axolotl:v2:founder:load:${seed}`));
+  for (const copy of [maternal, paternal]) for (const entry of AXOLOTL_DEV_REGISTRY) copy.push(weighted(dev, entry.alleles.map(allele => allele.founderWeight)));
+  return { species: 'axolotl', version, maternal, paternal,
+    genesis: { dev: hash(`axolotl:v2:founder:devseed:${seed}`), load: founderLoadPair(load, AXOLOTL_LOAD), novel: [] } };
 }
+
+/** A genome v1 parent's latent load, read deterministically from its fingerprint when it parents a v2 child. */
+export function latentAxolotlLoad(genome: AxolotlGenome): LoadCopies {
+  if (genome.genesis) return genome.genesis.load;
+  const rng = random(hash(`axolotl:latent-load:${axolotlFingerprint(genome)}`));
+  return founderLoadPair(rng, AXOLOTL_LOAD);
+}
+
+/**
+ * Dominance class of each quantitative axolotl locus under Genesis (v2). Categorical and switch loci keep their own rules
+ * and never receive open-ended alleles. Life-history loci with real heterozygote advantage are overdominant.
+ */
+const AXOLOTL_OVER = new Set<string>(['axo_fertility', 'axo_longevity', 'axo_vigor']);
+const AXOLOTL_DOWN = new Set<string>(['axo_body_width', 'axo_eye_spacing', 'axo_translucency', 'axo_metabolism', 'axo_tail_wave', 'axo_trunk_flex', 'axo_jaw_depth']);
+const AXOLOTL_UP = new Set<string>([
+  'axo_body_length', 'axo_tail_length', 'axo_fin_height', 'axo_gill_branch_density', 'axo_gill_filament_length', 'axo_iridescence', 'axo_skin_luster',
+  'axo_melanophore_density', 'axo_xanthophore_density', 'axo_adult_size', 'axo_growth_rate', 'axo_boldness', 'axo_activity', 'axo_regeneration',
+  'axo_canalization', 'axo_pattern_contrast', 'axo_pink_flush', 'axo_gill_saturation', 'axo_feeding_drive',
+]);
+export function axolotlDominance(index: number): DominanceClass | null {
+  const entry = AXOLOTL_V2_REGISTRY[index];
+  if (!entry || entry.expression !== 'quantitative') return null;
+  const id = entry.id as string;
+  return AXOLOTL_OVER.has(id) ? 'over' : AXOLOTL_DOWN.has(id) ? 'down' : AXOLOTL_UP.has(id) ? 'up' : 'additive';
+}
+export const axolotlNovelEligible = (index: number) => axolotlDominance(index) !== null;
+const AXOLOTL_OVER_BONUS = 0.12;
 
 const crossoverProbability = (left: AxolotlLocusDefinition, right: AxolotlLocusDefinition): number =>
   clamp((right.positionCm - left.positionCm) / 100, 0, 0.45);
@@ -189,6 +239,7 @@ export function inheritAxolotl(
   seed: number,
   mutationRate = AXOLOTL_DEFAULT_MUTATION_RATE,
   trace?: AxolotlInheritanceTrace,
+  requested: AxolotlGenomeVersion = AXOLOTL_GENOME_VERSION,
 ): { genome: AxolotlGenome; mutations: AxolotlMutation[] } {
   validateAxolotlGenome(mother);
   validateAxolotlGenome(father);
@@ -197,6 +248,12 @@ export function inheritAxolotl(
     trace.maternal.length = 0;
     trace.paternal.length = 0;
   }
+  // A clutch never downgrades its parents: one genome v2 parent makes a genome v2 child.
+  const version: AxolotlGenomeVersion = Math.max(requested, mother.version, father.version) as AxolotlGenomeVersion;
+  const genesis = version === AXOLOTL_GENESIS_VERSION;
+  const pool = new Map<number, NovelAllele>([...novelMap(mother.genesis), ...novelMap(father.genesis)]);
+  const sides: Record<'maternal' | 'paternal', (0 | 1)[]> = { maternal: [], paternal: [] };
+  const novelRng = genesis ? random(hash(`axolotl:v2:novel-choice:${seed}`)) : null;
   const mutations: AxolotlMutation[] = [];
   const transmit = (
     parent: AxolotlGenome,
@@ -215,6 +272,7 @@ export function inheritAxolotl(
           if (rng() < crossoverProbability(previous, locus)) side = side === 0 ? 1 : 0;
         }
         trace?.[copy].push(side);
+        sides[copy].push(side);
         const source = side === 0 ? parent.maternal : parent.paternal;
         const from = source[locusIndex];
         const effectiveRate = mutationRate === AXOLOTL_DEFAULT_MUTATION_RATE
@@ -224,18 +282,54 @@ export function inheritAxolotl(
           gamete[locusIndex] = from;
           continue;
         }
-        const to = mutateAllele(rng, locus.alleles[from]);
+        const to = genesisMutation(rng, novelRng, locusIndex, from, locus, copy);
         gamete[locusIndex] = to;
         mutations.push({ locus: locusIndex, locusId, copy, from, to });
       }
     }
+    if (!genesis) return gamete;
+    // Genome v2: the Development chromosome, transmitted like the others from its own stream.
+    const devRng = random(hash(`axolotl:v2:birth:${copy}:${seed}`));
+    let side: 0 | 1 = devRng() < 0.5 ? 0 : 1;
+    AXOLOTL_DEV_REGISTRY.forEach((locus, offset) => {
+      const locusIndex = AXOLOTL_LOCI.length + offset;
+      if (offset > 0 && devRng() < crossoverProbability(AXOLOTL_DEV_REGISTRY[offset - 1], locus)) side = side === 0 ? 1 : 0;
+      trace?.[copy].push(side);
+      sides[copy].push(side);
+      const from = parent.version === AXOLOTL_GENESIS_VERSION ? (side === 0 ? parent.maternal : parent.paternal)[locusIndex] : AXOLOTL_DEV_BASELINE[offset];
+      if (devRng() >= clamp(mutationRate === AXOLOTL_DEFAULT_MUTATION_RATE ? mutationRate * locus.mutationMultiplier : mutationRate)) { gamete.push(from); return; }
+      const to = genesisMutation(devRng, novelRng, locusIndex, from, locus, copy);
+      gamete.push(to);
+      mutations.push({ locus: locusIndex, locusId: locus.id, copy, from, to });
+    });
     return gamete;
+  };
+  /** A catalog step, or under Genesis sometimes a new open-ended allele; a novel allele mutates into a derived one. */
+  const genesisMutation = (rng: () => number, choice: (() => number) | null, locusIndex: number, from: number, locus: AxolotlLocusDefinition, copy: 'maternal' | 'paternal'): number => {
+    if (isNovel(from)) {
+      const parentAllele = pool.get(from)!, pick = choice ?? rng;
+      if (pick() < 0.25) return clamp(Math.round((parentAllele.value + 1) * 2.5), 0, 5);
+      const created = createNovel(pick, novelId(seed, `ax${copy}`, locusIndex), locusIndex, from, { value: parentAllele.value, potency: parentAllele.potency, novel: parentAllele }, AXOLOTL_SCALE);
+      pool.set(created.id, created);
+      return created.id;
+    }
+    const to = mutateAllele(rng, locus.alleles[from]);
+    const dominance = axolotlDominance(locusIndex);
+    if (choice && dominance && choice() < NOVEL_SHARE) {
+      const created = createNovel(choice, novelId(seed, `ax${copy}`, locusIndex), locusIndex, from, { value: locus.alleles[from].effect, potency: founderPotency(dominance, from), novel: null }, AXOLOTL_SCALE);
+      pool.set(created.id, created);
+      return created.id;
+    }
+    return to;
   };
 
   const maternal = transmit(mother, 'maternal', random(hash(`axolotl:v1:birth:mother:${seed}`)));
   const paternal = transmit(father, 'paternal', random(hash(`axolotl:v1:birth:father:${seed}`)));
+  if (!genesis) return { genome: { species: 'axolotl', version: AXOLOTL_GENOME_VERSION, maternal, paternal }, mutations };
+  const loadRng = random(hash(`axolotl:v2:load:${seed}`));
+  const load = { maternal: transmitLoad(latentAxolotlLoad(mother), sides.maternal, AXOLOTL_LOAD, loadRng), paternal: transmitLoad(latentAxolotlLoad(father), sides.paternal, AXOLOTL_LOAD, loadRng) };
   return {
-    genome: { species: 'axolotl', version: AXOLOTL_GENOME_VERSION, maternal, paternal },
+    genome: { species: 'axolotl', version, maternal, paternal, genesis: { dev: hash(`axolotl:v2:dev:${seed}`), load, novel: carriedNovel(maternal, paternal, pool) } },
     mutations,
   };
 }
@@ -251,10 +345,40 @@ function alleleDefinitions(genome: AxolotlGenome, locus: AxolotlLocus): [Axolotl
   return [entry.alleles[a], entry.alleles[b]];
 }
 
-/** Mean quantitative effect in -1..1. */
+const resolvers = new WeakMap<AxolotlGenome, (index: number) => [Resolved, Resolved]>();
+/** Genome v2: each copy's value and potency at a locus, catalog or novel. */
+export function axolotlPair(genome: AxolotlGenome): (index: number) => [Resolved, Resolved] {
+  let resolver = resolvers.get(genome);
+  if (resolver) return resolver;
+  const pool = novelMap(genome.genesis);
+  const one = (index: number, allele: number): Resolved => {
+    const novel = isNovel(allele) ? pool.get(allele) ?? null : null;
+    if (novel) return { value: novel.value, potency: novel.potency, novel };
+    const entry = AXOLOTL_V2_REGISTRY[index];
+    return { value: entry.alleles[allele]?.effect ?? 0, potency: founderPotency(axolotlDominance(index) ?? 'additive', allele), novel: null };
+  };
+  resolver = index => [one(index, genome.maternal[index]), one(index, genome.paternal[index])];
+  resolvers.set(genome, resolver);
+  return resolver;
+}
+
+/** Quantitative effect at a locus index: the mean in genome v1, potency-weighted dominance in genome v2. */
+function qAt(genome: AxolotlGenome, index: number): number {
+  if (!genome.genesis) {
+    const entry = AXOLOTL_LOCUS_REGISTRY[index];
+    return clamp((entry.alleles[genome.maternal[index]].effect + entry.alleles[genome.paternal[index]].effect) / 2, -1, 1);
+  }
+  const [a, b] = axolotlPair(genome)(index);
+  return clamp(combine(a, b, axolotlDominance(index) ?? 'additive', AXOLOTL_OVER_BONUS), -1.25, 1.25);
+}
+
+/** Mean quantitative effect in -1..1 (genome v2: dominance-aware, slightly wider for open-ended alleles). */
 function q(genome: AxolotlGenome, locus: AxolotlLocus): number {
-  const [a, b] = alleleDefinitions(genome, locus);
-  return clamp((a.effect + b.effect) / 2, -1, 1);
+  if (!genome.genesis) {
+    const [a, b] = alleleDefinitions(genome, locus);
+    return clamp((a.effect + b.effect) / 2, -1, 1);
+  }
+  return qAt(genome, AXOLOTL_LOCUS_INDEX[locus]);
 }
 
 /** Quantitative effect mapped to 0..1. */
@@ -319,8 +443,115 @@ function unphasedPatternSeed(genome: AxolotlGenome): number {
   return hash(`axolotl:v1:phenotype:${canonical}`);
 }
 
+const genesisPhenotypes = new WeakMap<AxolotlGenome, AxolotlPhenotype>();
 /** Deterministic adult genetic potential. No age, water, feeding, or runtime state is read here. */
 export function expressAxolotl(genome: AxolotlGenome): AxolotlPhenotype {
+  if (!genome.genesis) return expressAxolotlBase(genome);
+  const cached = genesisPhenotypes.get(genome);
+  if (cached) return cached;
+  const phenotype = applyAxolotlGenesis(expressAxolotlBase(genome), genome);
+  genesisPhenotypes.set(genome, phenotype);
+  return phenotype;
+}
+
+const count = (ids: [number, number], test: (allele: number) => boolean) => Number(test(ids[0])) + Number(test(ids[1]));
+
+/**
+ * Axolotl development v2 (Genesis): the Development chromosome, novel side effects, developmental noise, genetic load
+ * and hybrid vigor, applied over the dominance-aware base phenotype.
+ */
+function applyAxolotlGenesis(base: AxolotlPhenotype, genome: AxolotlGenome): AxolotlPhenotype {
+  const block = genome.genesis!, at = (locus: typeof AXOLOTL_DEV_LOCI[number]) => AXOLOTL_DEV_INDEX[locus];
+  const ids = (index: number): [number, number] => [genome.maternal[index], genome.paternal[index]];
+  const unitAt = (index: number) => clamp((qAt(genome, index) + 1) / 2, 0, 1.1);
+  const p: AxolotlPhenotype = structuredClone(base), m = p.morphology, pig = p.pigmentation;
+  const canalization = clamp(unitAt(at('axo_canalization')));
+  const pair = axolotlPair(genome), effects = channelEffects(Array.from({ length: AXOLOTL_V2_REGISTRY.length }, (_, i) => pair(i)));
+  const e = (channel: keyof typeof effects) => effects[channel] ?? 0;
+  const noise = developmentNoise(block.dev), amplitude = 0.012 + 0.085 * (1 - canalization), jitter = () => 1 + amplitude * noise();
+
+  // Fluorescence is dominant: one copy glows, two glow brighter.
+  const fluorescentIds = ids(at('axo_fluorescence')), fluorescentCopies = count(fluorescentIds, allele => allele >= 4);
+  const glow = clamp((fluorescentCopies === 0 ? 0 : fluorescentCopies === 1 ? 0.6 : 0.92) + (fluorescentIds.includes(5) && fluorescentCopies ? 0.08 : 0) + Math.max(0, e('glow')) * 1.4);
+  // Frill program is dominant: a tall ruffled crest, or a sail with two copies.
+  const frillCopies = count(ids(at('axo_frill_program')), allele => allele >= 4);
+  const fins: GenesisTraits['fins'] = frillCopies === 0 ? 'standard' : frillCopies === 1 ? 'veil' : 'butterfly';
+  if (frillCopies) {
+    m.tail.finHeight *= frillCopies === 1 ? 1.55 : 1.95; m.tail.finReach = Math.min(0.98, m.tail.finReach + 0.2 * frillCopies); m.tail.height *= 1 + 0.08 * frillCopies;
+  }
+  // Plume gills are recessive: two copies grow huge feathery gills that take up more oxygen.
+  const plume = count(ids(at('axo_gill_program')), allele => allele >= 4) === 2;
+  let oxygenEfficiency = m.gills.oxygenEfficiency;
+  if (plume) {
+    m.gills.branchCount = Math.min(20, m.gills.branchCount + 5); m.gills.filamentLength *= 1.55; m.gills.stalkLength *= 1.2; oxygenEfficiency += 0.12;
+  }
+  // Extra digits are a threshold trait: liability from the digit program plus developmental noise.
+  const liability = unitAt(at('axo_digit_program')) + noise() * (0.06 + 0.1 * (1 - canalization));
+  const extraDigits = liability > 0.93 ? 2 : liability > 0.76 ? 1 : 0;
+  m.limbs.frontDigits += extraDigits; m.limbs.rearDigits += extraDigits;
+
+  // Developmental noise, narrowed by canalization.
+  m.body.length *= jitter(); m.body.width *= jitter(); m.head.width *= jitter(); m.tail.length *= jitter(); m.tail.height *= jitter();
+  m.gills.filamentLength *= jitter(); m.limbs.foreLength *= jitter(); m.limbs.hindLength *= jitter(); m.eyes.size *= jitter();
+  const asymmetry = amplitude * (0.5 + 0.5 * Math.abs(noise()));
+
+  // Novel side effects.
+  const hueShift = e('hue') * 60;
+  if (hueShift) {
+    pig.bodyColor = { ...pig.bodyColor, h: Math.round(((pig.bodyColor.h + hueShift) % 360 + 360) % 360 * 100) / 100 };
+    pig.gillColor = { ...pig.gillColor, h: Math.round(((pig.gillColor.h + hueShift * 0.6) % 360 + 360) % 360 * 100) / 100 };
+  }
+  pig.iridescence = clamp(pig.iridescence + e('sheen'));
+  let adultLengthCm = p.adultLengthCm * clamp(1 + e('size') * 0.5, 0.65, 1.35);
+  m.tail.finHeight *= clamp(1 + e('fins') * 0.8, 0.5, 1.6); m.tail.length *= clamp(1 + e('fins') * 0.3, 0.7, 1.3);
+  p.pattern.density = clamp(p.pattern.density + e('pattern') * 0.5);
+  p.bold = p.behavior.boldness = clamp(p.behavior.boldness + e('boldness'));
+  let metabolism = p.metabolism + e('metabolism') + 0.08 * glow;
+  let speed = p.speed * clamp(1 + e('speed'), 0.5, 1.5) / (1 + 0.15 * frillCopies);
+  let fertility = clamp(p.fertility + e('fertility') * 0.4, 0.1, 1), growth = Math.max(0.3, p.growth + e('growth'));
+  const regeneration = p.life.regeneration;
+
+  // Genetic load: homozygous recessives, milder with canalization; strong regeneration regrows missing digits.
+  const defects = defectsFor(block.load, AXOLOTL_LOAD, regeneration), severity = 1 - 0.35 * canalization;
+  let conditionCap = 1, subfertile = false, eyeCloud = 0, depigment = 0, finFray = 0, kink = 0;
+  for (const defect of defects) {
+    if (defect.rescued) continue;
+    switch (defect.kind) {
+      case 'dwarf': adultLengthCm *= 1 - 0.3 * severity; m.body.mass *= 1.06; break;
+      case 'spine': m.body.flex += 0.1 * severity; m.tail.wave = clamp(m.tail.wave + 0.14 * severity, -0.3, 0.3); speed *= 1 - 0.25 * severity; kink = 0.05 * severity; break;
+      case 'gill': m.gills.filamentLength *= 0.45; m.gills.branchCount = Math.max(3, m.gills.branchCount - 4); oxygenEfficiency -= 0.2 * severity; break;
+      case 'limb': m.limbs.frontDigits = Math.max(2, m.limbs.frontDigits - 2); m.limbs.rearDigits = Math.max(2, m.limbs.rearDigits - 2); finFray = Math.max(finFray, 0.3); break;
+      case 'eye': m.eyes.size *= 0.7; eyeCloud = Math.max(eyeCloud, 0.55 + 0.4 * severity); break;
+      case 'pigment': depigment = Math.max(depigment, 0.6 + 0.4 * severity); break;
+      case 'frail': conditionCap = Math.min(conditionCap, 0.6 + 0.14 * (1 - severity)); break;
+      case 'subfertile': subfertile = true; break;
+      default: break;
+    }
+  }
+  const viable = !defects.some(defect => defect.kind === 'lethal');
+  const vigorIds = pair(at('axo_vigor'));
+  const heterozygosity = axolotlHeterozygosity(genome), vigor = vigorFor(heterozygosity) + 0.04 * Math.abs(vigorIds[0].value - vigorIds[1].value);
+  growth *= vigor;
+  oxygenEfficiency = clamp(oxygenEfficiency, 0.4, 1.6);
+  const oxygen = metabolism * (adultLengthCm / 25) ** 2 / oxygenEfficiency;
+  m.gills.oxygenEfficiency = Math.round(oxygenEfficiency * 10000) / 10000;
+  m.adultLengthCm = p.adultLengthCm = Math.round(adultLengthCm * 1000) / 1000;
+  metabolism = Math.max(0.3, metabolism); fertility = clamp(fertility);
+  p.metabolism = p.life.metabolism = metabolism; p.oxygen = p.life.oxygenDemand = oxygen; p.fertility = p.life.fertility = fertility; p.growth = p.life.growthMultiplier = growth;
+  p.speed = p.behavior.cruiseSpeed = speed;
+  const maturityDays = Math.round(clamp(p.life.maturityMonths * 2.4 + (adultLengthCm - 24) / 3 - e('maturity') * 20, 14, 50));
+  const competitiveness = clamp(0.25 + 0.4 * p.behavior.boldness + 0.15 * p.behavior.activity + 0.35 * p.behavior.feedingDrive - 0.1 * frillCopies, 0.05, 1.3);
+  p.genesis = {
+    model: 1, fins, ghost: 0, glow, glowHue: (125 + e('hue') * 90 + 360) % 360, hueShift, sheen: clamp(e('sheen') + pig.iridescence * 0.3), canalization, asymmetry,
+    maturityDays, regeneration, vigor, heterozygosity, competitiveness, conditionCap,
+    clutchFactor: clamp((0.45 + 0.6 * fertility) * Math.min(1.05, vigor) * (subfertile ? 0.45 : 1), 0.15, 1), oxygenDemand: oxygen, viable, defects,
+    finFray, eyeCloud, depigment, kink, novelAlleles: block.novel.length, extraDigits, plume,
+  };
+  return p;
+}
+
+/** Genome v1 expression (and the dominance-aware base of genome v2). */
+function expressAxolotlBase(genome: AxolotlGenome): AxolotlPhenotype {
   validateAxolotlGenome(genome);
 
   const adultLengthCm = 16 + 17 * (
@@ -536,7 +767,7 @@ function carrierName(locus: AxolotlLocus): AxolotlGenotypeDescriptor['carrierFor
 /** Full locus-by-locus genotype inspection data for an axolotl. */
 export function describeAxolotlGenotype(genome: AxolotlGenome): AxolotlGenotypeDescriptor[] {
   validateAxolotlGenome(genome);
-  return AXOLOTL_LOCUS_REGISTRY.map((entry, index) => {
+  return axolotlRegistryFor(genome.version).map((entry, index) => {
     const maternal = genome.maternal[index], paternal = genome.paternal[index];
     const special = carrierName(entry.id);
     const severeCopies = Number(maternal >= 4) + Number(paternal >= 4);
@@ -547,8 +778,8 @@ export function describeAxolotlGenotype(genome: AxolotlGenome): AxolotlGenotypeD
       positionCm: entry.positionCm,
       maternal,
       paternal,
-      maternalAllele: entry.alleles[maternal].label,
-      paternalAllele: entry.alleles[paternal].label,
+      maternalAllele: isNovel(maternal) ? 'new allele' : entry.alleles[maternal].label,
+      paternalAllele: isNovel(paternal) ? 'new allele' : entry.alleles[paternal].label,
       zygosity: maternal === paternal ? 'homozygous' : 'heterozygous',
       carrierFor: special && severeCopies === 1 ? special : null,
       expressedRecessive: Boolean(special && severeCopies === 2),
@@ -604,11 +835,17 @@ export function describeAxolotlPhenotype(genome: AxolotlGenome): AxolotlPhenotyp
     { group: 'Pattern', trait: 'Pattern strength', value: p.pattern.modes[0] === 'plain' ? 'No marks' : `${pct(p.pattern.density)} coverage · ${pct(p.pattern.contrast)} contrast` },
     { group: 'Life', trait: 'Growth', value: `${p.life.growthMultiplier.toFixed(2)}× the typical rate` },
     { group: 'Life', trait: 'Longevity potential', value: `${p.life.longevityYears.toFixed(1)} years` },
-    { group: 'Life', trait: 'Maturity', value: `${p.life.maturityMonths.toFixed(1)} months`, note: 'Recorded only' },
-    { group: 'Life', trait: 'Regeneration potential', value: pct(p.life.regeneration), note: 'Recorded only' },
+    p.genesis
+      ? { group: 'Life', trait: 'Maturity', value: `ready to court ${p.genesis.maturityDays} days after hatching` }
+      : { group: 'Life', trait: 'Maturity', value: `${p.life.maturityMonths.toFixed(1)} months`, note: 'Recorded only' },
+    p.genesis
+      ? { group: 'Life', trait: 'Regeneration', value: `${pct(p.life.regeneration)} · faster recovery${p.life.regeneration >= 0.72 ? ', regrows digits' : ''}` }
+      : { group: 'Life', trait: 'Regeneration potential', value: pct(p.life.regeneration), note: 'Recorded only' },
     { group: 'Behavior', trait: 'Activity', value: pct(p.behavior.activity) },
     { group: 'Behavior', trait: 'Temperament', value: `bold ${Math.round(p.behavior.boldness * 100)} · social ${Math.round(p.behavior.sociability * 100)} · curious ${Math.round(p.behavior.curiosity * 100)}` },
-    { group: 'Behavior', trait: 'Feeding drive', value: pct(p.behavior.feedingDrive), note: 'Recorded only' },
+    p.genesis
+      ? { group: 'Behavior', trait: 'Feeding drive', value: `${pct(p.behavior.feedingDrive)} · wins ${pct(p.genesis.competitiveness / 1.3)} of contested food` }
+      : { group: 'Behavior', trait: 'Feeding drive', value: pct(p.behavior.feedingDrive), note: 'Recorded only' },
   ];
 }
 
@@ -621,23 +858,42 @@ export const AXOLOTL_MORPH_RARITY: Record<AxolotlPigmentMorph, 0 | 1 | 2 | 3> = 
 };
 export const AXOLOTL_MORPH_LABELS = MORPH_TEXT;
 
+const validated = new WeakSet<object>();
 export function axolotlGenomeProblem(value: unknown): string | null {
   if (!value || typeof value !== 'object') return 'Axolotl genome must be an object.';
+  if (validated.has(value)) return null;
   const genome = value as Partial<AxolotlGenome>;
   if (genome.species !== 'axolotl') return 'Axolotl genome has the wrong species tag.';
-  if (genome.version !== AXOLOTL_GENOME_VERSION) return `Unsupported axolotl genome version ${String(genome.version)}.`;
+  if (genome.version !== AXOLOTL_GENOME_VERSION && genome.version !== AXOLOTL_GENESIS_VERSION) return `Unsupported axolotl genome version ${String(genome.version)}.`;
   if (!Array.isArray(genome.maternal) || !Array.isArray(genome.paternal)) return 'Axolotl genome homologs must be arrays.';
-  if (genome.maternal.length !== AXOLOTL_LOCI.length || genome.paternal.length !== AXOLOTL_LOCI.length) {
-    return `Axolotl genome v1 requires ${AXOLOTL_LOCI.length} loci per homolog.`;
+  const registry = axolotlRegistryFor(genome.version);
+  if (genome.maternal.length !== registry.length || genome.paternal.length !== registry.length) {
+    return `Axolotl genome v${genome.version} requires ${registry.length} loci per homolog.`;
   }
-  for (let index = 0; index < AXOLOTL_LOCI.length; index++) {
-    const entry = AXOLOTL_LOCUS_REGISTRY[index];
+  if ((genome.version === AXOLOTL_GENESIS_VERSION) !== Boolean(genome.genesis)) return 'Only axolotl genome v2 carries a development block.';
+  const novel = new Map((genome.genesis?.novel ?? []).map(entry => [entry.id, entry]));
+  if (genome.genesis) {
+    const problem = genesisProblem(genome.genesis, AXOLOTL_LOAD, registry.length, axolotlNovelEligible);
+    if (problem) return problem;
+  }
+  for (let index = 0; index < registry.length; index++) {
+    const entry = registry[index];
     for (const [copy, allele] of [['maternal', genome.maternal[index]], ['paternal', genome.paternal[index]]] as const) {
+      if (genome.genesis && isNovel(allele)) {
+        if (novel.get(allele)?.locus !== index) return `Undefined novel allele at ${entry.id} (${copy}).`;
+        continue;
+      }
       if (!Number.isInteger(allele) || allele < 0 || allele >= entry.alleles.length) {
         return `Invalid axolotl allele at ${entry.id} (${copy}).`;
       }
     }
   }
+  if (genome.genesis) {
+    const carried = new Set([...genome.maternal, ...genome.paternal]);
+    if (genome.genesis.novel.some(entry => !carried.has(entry.id))) return 'An axolotl genome lists a novel allele it does not carry.';
+  }
+  // Genomes are immutable once validated, so repeated checks on the same object are skipped.
+  validated.add(value);
   return null;
 }
 
@@ -650,10 +906,11 @@ export const isAxolotlGenome = (value: unknown): value is AxolotlGenome => axolo
 
 export function axolotlFingerprint(genome: AxolotlGenome): string {
   validateAxolotlGenome(genome);
+  if (genome.genesis) return `AX2-${hash(`ax2:${genome.maternal.join(',')}|${genome.paternal.join(',')}|d${genome.genesis.dev}`).toString(16).padStart(8, '0').toUpperCase()}`;
   return `AX1-${hash(`ax1:${genome.maternal.join(',')}|${genome.paternal.join(',')}`).toString(16).padStart(8, '0').toUpperCase()}`;
 }
 
 export function axolotlHeterozygosity(genome: AxolotlGenome): number {
   validateAxolotlGenome(genome);
-  return genome.maternal.filter((allele, index) => allele !== genome.paternal[index]).length / AXOLOTL_LOCI.length;
+  return genome.maternal.filter((allele, index) => allele !== genome.paternal[index]).length / genome.maternal.length;
 }

@@ -2,14 +2,16 @@ import { competitionSchedule, createCompetitionRun, eligibility, initialCircuit,
 import { savedDecorationsSchema, tankStyleSchema } from './tankSchema';
 import { piecePrice, styleCost, styleOf } from './aquascape';
 import { TANK_PRICE, TANK_UPGRADE_PRICE, decorationsOf, validateLayout, legacyDecorations, type Decoration, type TankStyle } from './tankManagement';
-import { GENOME_VERSION, MUTATION_RATE, type GenomeVersion } from './catalog';
-import { CLUTCH_SIZES, clutchId, courtingClutchOf, idleBreeding, pairingBlockers, reservedPlaces, type ClutchSize } from './breeding';
+import { GENOME_VERSION, MUTATION_RATE, RESEARCH_GENOME_VERSION, type GenomeVersion } from './catalog';
+import { CLUTCH_SIZES, clutchId, courtingClutchOf, idleBreeding, pairingBlockers, reservedPlaces, withGenesisRecords, type ClutchSize } from './breeding';
+import { initialAtlas, MAX_SEQUENCED, observeFamily, SEQUENCE_COST } from './atlas';
+import { NOVEL_ID_MIN } from './genesis';
 import {
   AERATION_TIERS, applyCareSettings, applyWaterChange, CARE_RATES, careCost, defaultCare, FILTER_TIERS, RATION_KEYS, THERMOSTAT_RANGE,
   waterChangeCost, type WaterChangePercent,
 } from './care';
 import { defaultMarket, openingLedger, planSales, recordEntry, saleDetail, type PriceModel } from './economy';
-import { initialShop } from './shop';
+import { initialShop, shopModelFor } from './shop';
 import { initialAxolotlShop } from './axolotlShop';
 import { defaultRelief, RELIEF_COOLDOWN_DAYS, reliefStatus } from './recovery';
 import { express, founderGenome, inherit } from './genetics';
@@ -45,7 +47,7 @@ export const STOCK_PRICE = 250;
  * bloodlines (FS-604); v13 adds explicit species identity and independent axolotl genetics; v14 adds the persistent
  * axolotl shop.
  */
-export const WORLD_VERSION = 15;
+export const WORLD_VERSION = 16;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -60,8 +62,8 @@ function founder(world: World, name: string, sex: Fish['sex'], timestamp: string
 }
 
 /** Axolotl founder stream is namespaced independently so adding the species never perturbs historical koi seeds. */
-function axolotlFounder(world: World, name: string, sex: Fish['sex'], timestamp: string): Fish {
-  const birthSeed = hash(`${world.seed}:axolotl-founder:${world.nextId}`), genome = axolotlFounderGenome(birthSeed);
+function axolotlFounder(world: World, name: string, sex: Fish['sex'], timestamp: string, version: 1 | 2 = 1): Fish {
+  const birthSeed = hash(`${world.seed}:axolotl-founder:${world.nextId}`), genome = axolotlFounderGenome(birthSeed, version);
   return { id: id(world.nextId), name, sex, species: 'axolotl', genome, birthSeed,
     generation: 0, parents: null, bornAt: iso(timestamp), tankId: world.tanks[0].id, status: 'living', mutations: [], life: adultLife(genome), breeding: idleBreeding(), origins: [] };
 }
@@ -71,13 +73,17 @@ function newTank(id: string, name: string, planted: boolean): Tank {
   return { id, name, capacity: TANK_CAPACITY, planted, water, care: defaultCare(water), decorations: planted ? legacyDecorations() : [] };
 }
 
-/** New worlds use the current genome. Research fixtures pass genome version 1 to reproduce the frozen FS-101 founders. */
-export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = GENOME_VERSION): World {
-  const world: World = { version: 15, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
+/**
+ * The live game passes GENOME_VERSION (Genesis) and gets a discovery-mode Genome Atlas. Research harnesses and fixtures
+ * default to RESEARCH_GENOME_VERSION (or pass genome version 1 to reproduce the frozen FS-101 founders) with a
+ * transparent scientist-mode atlas, so their recorded pacing stays valid.
+ */
+export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = RESEARCH_GENOME_VERSION): World {
+  const world: World = { version: 16, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
-  ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed), naming: NAMING_MODEL, relief: defaultRelief(), bloodlines: [], nextBloodlineId: 1,
-    axolotlShop: initialAxolotlShop(seed), circuit: initialCircuit() };
+  ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed, 0, shopModelFor(genomeVersion)), naming: NAMING_MODEL, relief: defaultRelief(), bloodlines: [], nextBloodlineId: 1,
+    axolotlShop: initialAxolotlShop(seed, 0, genomeVersion >= 4 ? 2 : 1), circuit: initialCircuit(), alleles: [], atlas: initialAtlas(genomeVersion >= 4 ? 'discovery' : 'scientist') };
   ['Haru', 'Sumi', 'Kohaku', 'Yuki', 'Akira', 'Momo'].forEach((name, i) => {
     world.fish.push(founder(world, name, i % 2 === 0 ? 'F' : 'M', timestamp, genomeVersion)); world.nextId++;
   });
@@ -117,7 +123,10 @@ export type Command =
   | { type: 'move-batch'; fishIds: string[]; tankId: string }
   | { type: 'claim-relief'; tankId: string; timestamp: string; genomeVersion: GenomeVersion }
   | { type: 'register-bloodline'; name: string; foundationIds: string[]; timestamp: string }
-  | { type: 'rename-bloodline'; bloodlineId: string; name: string };
+  | { type: 'rename-bloodline'; bloodlineId: string; name: string }
+  | { type: 'name-allele'; alleleId: number; name: string }
+  | { type: 'sequence-fish'; fishId: string }
+  | { type: 'set-atlas-mode'; mode: 'discovery' | 'scientist' };
 
 const fishIdSchema = z.string().regex(/^FSH-\d{6}$/);
 /** Price model 1 sales predate species-aware axolotl offers; both stay valid so every recorded sale replays. */
@@ -127,7 +136,8 @@ const tankIdSchema = z.string().max(50);
  * Commands recorded before FS-113 carry no genomeVersion. They must replay exactly as the genome v1 reducer produced
  * them, or stored snapshots would stop agreeing with their journals; the app sends the current version explicitly.
  */
-const genomeVersionSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]).optional();
+const requiredGenomeVersion = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]);
+const genomeVersionSchema = requiredGenomeVersion.optional();
 export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('enter-competition'), eventId: z.string().max(100), fishIds: z.array(fishIdSchema).min(1).max(2) }).strict(),
   z.object({ type: z.literal('judge-competition') }).strict(),
@@ -158,13 +168,16 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('pair'), motherId: fishIdSchema, fatherId: fishIdSchema, nurseryId: tankIdSchema,
     size: z.union([z.literal(CLUTCH_SIZES[0]), z.literal(CLUTCH_SIZES[1]), z.literal(CLUTCH_SIZES[2]), z.literal(CLUTCH_SIZES[3]), z.literal(CLUTCH_SIZES[4])]),
-    timestamp: z.string().datetime(), genomeVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    timestamp: z.string().datetime(), genomeVersion: requiredGenomeVersion,
   }).strict(),
   z.object({ type: z.literal('cancel-clutch'), clutchId: z.string().regex(/^CL-\d{6}$/) }).strict(),
   z.object({ type: z.literal('move-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING), tankId: tankIdSchema }).strict(),
-  z.object({ type: z.literal('claim-relief'), tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]) }).strict(),
+  z.object({ type: z.literal('claim-relief'), tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: requiredGenomeVersion }).strict(),
   z.object({ type: z.literal('register-bloodline'), name: z.string().max(64), foundationIds: z.array(fishIdSchema).min(1).max(MAX_FOUNDATION), timestamp: z.string().datetime() }).strict(),
   z.object({ type: z.literal('rename-bloodline'), bloodlineId: z.string().regex(/^BL-\d{6}$/), name: z.string().max(64) }).strict(),
+  z.object({ type: z.literal('name-allele'), alleleId: z.number().int().min(NOVEL_ID_MIN).max(NOVEL_ID_MIN + 2_000_000_000), name: z.string().max(64) }).strict(),
+  z.object({ type: z.literal('sequence-fish'), fishId: fishIdSchema }).strict(),
+  z.object({ type: z.literal('set-atlas-mode'), mode: z.enum(['discovery', 'scientist']) }).strict(),
 ]);
 
 /** Validate before mutation; rejected commands leave the original world untouched. */
@@ -300,20 +313,31 @@ export function applyCommand(world: World, command: Command): World {
       space(command.tankId, offspring);
       // A pre-FS-113 command could only name genome v1 parents, which then produced genome v1 children.
       // A command without a version keeps what its parents allow; genome v3 parents never existed before FS-601.
+      // Axolotl clutches read the koi genome version as their generation of rules: 4 (Genesis) breeds axolotl genome v2,
+      // and commands recorded before Genesis replay as genome v1.
       const version = mother.species === 'koi'
         ? command.genomeVersion ?? (((mother.genome as Genome).version === 1 && (father.genome as Genome).version === 1) ? 1 : Math.max(2, (mother.genome as Genome).version, (father.genome as Genome).version) as GenomeVersion)
-        : GENOME_VERSION;
-      const taken = takenNames(next);
+        : (command.genomeVersion ?? 3) >= 4 || mother.genome.genesis || father.genome.genesis ? 4 : 3;
+      const genesis = version === 4, taken = takenNames(next), born: Fish[] = [], lethal: number[] = [];
       for (let i = 0; i < offspring; i++) {
-        const birthSeed = hash(`${world.seed}:birth:${next.nextId}:${mother.id}:${father.id}`);
+        // Genesis eggs are seeded by their place in the cross, so a non-viable egg never repeats its genome.
+        const birthSeed = hash(`${world.seed}:birth:${next.nextId}:${mother.id}:${father.id}${genesis ? `:egg:${i}` : ''}`);
         const trace = emptyTrace(), result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, version, trace);
+        const development = genesis ? express(result.genome).genesis : undefined;
+        if (development && !development.viable) { lethal.push(...development.defects.filter(d => d.kind === 'lethal').map(d => d.site)); continue; }
         const sex: Fish['sex'] = hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M';
         const name = newFishName(`${next.seed}:fish:${next.nextId}`, { sex, genome: result.genome }, taken);
-        next.fish.push({ id: id(next.nextId), name, sex, species: mother.species,
+        const child: Fish = { id: id(next.nextId), name, sex, species: mother.species,
           ...result, birthSeed, generation: Math.max(mother.generation, father.generation) + 1,
           parents: [mother.id, father.id], bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', life: eggLife(), breeding: idleBreeding(),
-          origins: childOrigins(id(next.nextId), mother, father, trace, result.mutations) });
+          origins: childOrigins(id(next.nextId), mother, father, trace, result.mutations) };
+        next.fish.push(child); born.push(child);
         next.nextId++;
+      }
+      if (genesis) {
+        // The lab shortcut images its embryos at once, so the atlas learns from the cross immediately.
+        const recorded = withGenesisRecords(next, born, mother.species, lethal);
+        next.alleles = recorded.alleles; next.atlas = observeFamily(recorded.atlas, mother, father, born).atlas;
       }
       break;
     }
@@ -339,7 +363,7 @@ export function applyCommand(world: World, command: Command): World {
       room(1);
       const species = command.species ?? 'koi';
       const fish = species === 'axolotl'
-        ? axolotlFounder(next, '', next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp)
+        ? axolotlFounder(next, '', next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp, (command.genomeVersion ?? 3) >= 4 ? 2 : 1)
         : founder(next, '', next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp, command.genomeVersion ?? 1);
       fish.name = newFishName(`${next.seed}:fish:${next.nextId}`, fish, takenNames(next));
       fish.tankId = command.tankId;
@@ -467,7 +491,8 @@ export function applyCommand(world: World, command: Command): World {
         throw new Error(`Genome v${Math.max((mother.genome as Genome).version, (father.genome as Genome).version)} parents cannot produce a genome v${command.genomeVersion} clutch.`);
       next.clutches.push({
         id: clutchId(next.nextClutchId), motherId: mother.id, fatherId: father.id, tankId: mother.tankId, nurseryId: command.nurseryId,
-        species: mother.species, size: command.size, genomeVersion: mother.species === 'koi' ? command.genomeVersion : GENOME_VERSION, pairedAt: iso(command.timestamp), stage: 'courting', days: 0, progress: 0,
+        species: mother.species, size: command.size, genomeVersion: mother.species === 'koi' ? command.genomeVersion : command.genomeVersion >= 4 || mother.genome.genesis || father.genome.genesis ? 4 : 3,
+        pairedAt: iso(command.timestamp), stage: 'courting', days: 0, progress: 0,
         blockers: [], spawnedDay: null, firstFishId: null,
       });
       next.nextClutchId++;
@@ -534,6 +559,30 @@ export function applyCommand(world: World, command: Command): World {
       if (!name || name.length > 32) throw new Error('Name the bloodline with 1 to 32 characters.');
       if (next.bloodlines.some(entry => entry.id !== line.id && entry.name.toLocaleLowerCase('en') === name.toLocaleLowerCase('en'))) throw new Error(`A bloodline named ${name} is already registered.`);
       line.name = name;
+      break;
+    }
+    case 'name-allele': {
+      // Open-ended alleles start named after the fish where they arose; the player may give them any name.
+      const record = next.alleles.find(entry => entry.id === command.alleleId);
+      if (!record) throw new Error('That allele is not in this world\'s registry.');
+      const name = command.name.trim();
+      if (!name || name.length > 32) throw new Error('Name the allele with 1 to 32 characters.');
+      record.name = name; record.named = true;
+      break;
+    }
+    case 'sequence-fish': {
+      // Sequencing reveals a fish's genotype in discovery mode and doubles what its clutches teach the atlas.
+      const fish = getFish(command.fishId);
+      if (next.atlas.sequenced.includes(fish.id)) throw new Error(`${fish.name} is already sequenced.`);
+      if (next.atlas.sequenced.length >= MAX_SEQUENCED) throw new Error(`The atlas holds up to ${MAX_SEQUENCED} sequenced animals.`);
+      afford(SEQUENCE_COST, `Sequencing ${fish.name}`);
+      next.atlas.sequenced.push(fish.id);
+      next.ledger = recordEntry(next.ledger, 'research', -SEQUENCE_COST, 1, `Sequenced ${fish.name}`);
+      break;
+    }
+    case 'set-atlas-mode': {
+      if (next.atlas.mode === command.mode) throw new Error(`The atlas is already in ${command.mode} mode.`);
+      next.atlas.mode = command.mode;
       break;
     }
   }

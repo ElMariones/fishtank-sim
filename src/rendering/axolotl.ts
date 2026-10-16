@@ -12,6 +12,43 @@ import {
   type AxolotlVec,
 } from '../core/axolotlAnatomy';
 import { axolotlPose, type AxolotlMotion } from '../core/axolotlPose';
+import type { GenesisTraits } from '../core/genesis';
+
+/** Genesis (axolotl genome v2) traits ride on the phenotype; plain shapes and genome v1 animals have none. */
+const genesisOf = (input: AxolotlShapeInput): GenesisTraits | undefined => (input as { genesis?: GenesisTraits }).genesis;
+
+/** A ruffled crest edge above the dorsal membrane: frilled crests once, sail crests taller and wavier. */
+function drawFrill(ctx: CanvasRenderingContext2D, g: GenesisTraits, fin: readonly AxolotlVec[], at: (v: AxolotlVec) => [number, number], l: number, p: AxolotlShape, time: number) {
+  if (g.fins === 'standard' || fin.length < 3) return;
+  const lift = g.fins === 'veil' ? 0.035 : 0.07, waves = g.fins === 'veil' ? 2.6 : 1.7;
+  const edge = fin.filter(v => v.y < -0.01);
+  if (edge.length < 3) return;
+  ctx.save();
+  ctx.globalAlpha = 0.26 + (1 - p.translucency) * 0.14;
+  ctx.fillStyle = p.secondaryColor; ctx.strokeStyle = p.accentColor; ctx.lineWidth = Math.max(0.4, l * 0.0025);
+  ctx.beginPath(); ctx.moveTo(...at(edge[0]));
+  edge.forEach((v, i) => {
+    const t = i / (edge.length - 1), ruffle = Math.sin(t * Math.PI * 2 * waves * 4 + time * 1.4) * 0.35 + 0.65;
+    ctx.lineTo(...at({ x: v.x, y: v.y - lift * Math.sin(t * Math.PI) * ruffle }));
+  });
+  for (let i = edge.length - 1; i >= 0; i--) ctx.lineTo(...at(edge[i]));
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+/** Fluorescence: an added green-to-hue glow over the skin and gills that reads in any lighting. */
+function drawFluorescence(ctx: CanvasRenderingContext2D, g: GenesisTraits, a: AxolotlAnatomy, l: number, time: number, seed: number) {
+  if (g.glow <= 0.01) return;
+  const pulse = 0.78 + 0.22 * Math.sin(time * 1.1 + seed % 13);
+  // An elliptical halo around the body, so the light has no corners.
+  const cx = (a.bounds.minX + a.bounds.maxX) / 2 * l, cy = (a.bounds.minY + a.bounds.maxY) / 2 * l;
+  const rx = (a.bounds.maxX - a.bounds.minX) * l * 0.5, ry = Math.max(1, (a.bounds.maxY - a.bounds.minY) * l * 0.5);
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.translate(cx, cy); ctx.scale(1, ry / rx);
+  const light = ctx.createRadialGradient(0, 0, rx * 0.05, 0, 0, rx);
+  light.addColorStop(0, `hsla(${g.glowHue.toFixed(0)}, 95%, 62%, ${0.45 * g.glow * pulse})`); light.addColorStop(0.6, `hsla(${g.glowHue.toFixed(0)}, 95%, 55%, ${0.18 * g.glow * pulse})`); light.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = light; ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
 
 /** Optional live locomotion. Portraits can omit it and use deterministic idle motion from `time`. */
 export type AxolotlSwimMotion = AxolotlMotion;
@@ -200,12 +237,16 @@ export function drawAxolotl(
   motion?: AxolotlSwimMotion,
   detail: Detail = FULL_DETAIL,
 ) {
-  const a = axolotlAnatomyFor(input), p = a.shape;
+  const a = axolotlAnatomyFor(input), p = a.shape, genesis = genesisOf(input);
   const safeSize = clamp(Math.abs(finite(size, 1)), 0.01, 10000);
   const l = safeSize * p.length;
   const safeTime = finite(time, 0);
   const pose = axolotlPose(a, safeTime, seed, motion);
-  const at = (v: AxolotlVec): [number, number] => { const q = pose.point(v); return [q.x * l, q.y * l]; };
+  // Genesis spine defects bend the trunk; genome v1 animals keep the exact pose mapping.
+  const kink = genesis?.kink ?? 0;
+  const at = kink
+    ? (v: AxolotlVec): [number, number] => { const q = pose.point(v); return [q.x * l, (q.y - kink * Math.exp(-(((v.x - 0.25) / 0.35) ** 2))) * l]; }
+    : (v: AxolotlVec): [number, number] => { const q = pose.point(v); return [q.x * l, q.y * l]; };
 
   ctx.save();
   ctx.lineJoin = 'round';
@@ -225,6 +266,7 @@ export function drawAxolotl(
   ctx.lineWidth = Math.max(0.35, l * 0.003);
   polygon(ctx, a.dorsalFin, at); ctx.fill(); ctx.stroke();
   polygon(ctx, a.ventralFin, at); ctx.fill(); ctx.stroke();
+  if (genesis) drawFrill(ctx, genesis, a.dorsalFin, at, l, p, safeTime);
   ctx.globalAlpha = 0.13 + p.skinLuster * 0.12;
   ctx.strokeStyle = '#e7ead8'; ctx.lineWidth = Math.max(0.35,l*0.002);
   ctx.beginPath(); ctx.moveTo(...at(a.dorsalFin[0]));
@@ -263,6 +305,16 @@ export function drawAxolotl(
     }
   }
   if (detail.sparkle) drawIridophores(ctx, p, seed, safeTime, l, at);
+  if (genesis && genesis.depigment > 0) {
+    const blotch = random(hash(`axolotl-depigment:${seed}`));
+    ctx.fillStyle = '#f6efe4';
+    for (let i = 0; i < 6; i++) {
+      const [px, py] = at({ x: -0.45 + blotch() * 1.3, y: (blotch() - 0.5) * 0.14 });
+      ctx.globalAlpha = 0.22 + 0.35 * genesis.depigment * blotch();
+      ctx.beginPath(); ctx.ellipse(px, py, l * (0.025 + blotch() * 0.04), l * (0.014 + blotch() * 0.02), blotch() * 3, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
   if (detail.finRays && p.texture > 0.05) {
     ctx.globalAlpha = 0.05 + p.texture * 0.09;
     ctx.strokeStyle = p.accentColor;
@@ -293,6 +345,7 @@ export function drawAxolotl(
   ctx.fillStyle = p.eyeColor; ctx.beginPath(); ctx.arc(eyeX, eyeY, eyeR, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#0b090a'; ctx.beginPath(); ctx.arc(eyeX - eyeR * 0.08, eyeY, a.eye.pupilRadius * l, 0, Math.PI * 2); ctx.fill();
   ctx.globalAlpha = 0.7; ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(eyeX - eyeR * 0.28, eyeY - eyeR * 0.3, eyeR * 0.2, 0, Math.PI * 2); ctx.fill();
+  if (genesis && genesis.eyeCloud > 0) { ctx.globalAlpha = 0.6 * genesis.eyeCloud; ctx.fillStyle = '#ecefea'; ctx.beginPath(); ctx.arc(eyeX, eyeY, eyeR, 0, Math.PI * 2); ctx.fill(); }
   ctx.globalAlpha = 0.62 + p.melanin * 0.28;
   ctx.strokeStyle = p.accentColor;
   ctx.lineWidth = Math.max(0.55, l * 0.006);
@@ -302,5 +355,6 @@ export function drawAxolotl(
   const nose = at({ x: a.mouth.start.x + 0.026, y: -0.025 });
   ctx.globalAlpha = 0.48; ctx.fillStyle = p.accentColor;
   ctx.beginPath(); ctx.ellipse(nose[0], nose[1], l*0.007, l*0.004, -0.3, 0, Math.PI*2); ctx.fill();
+  if (genesis) drawFluorescence(ctx, genesis, a, l, safeTime, seed);
   ctx.restore();
 }

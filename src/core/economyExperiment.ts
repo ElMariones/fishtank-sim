@@ -1,5 +1,5 @@
 import { courtingClutchOf, pairingBlockers, reservedPlaces } from './breeding';
-import { GENOME_VERSION } from './catalog';
+import { RESEARCH_GENOME_VERSION as GENOME_VERSION } from './catalog';
 import { isEgg, lifeStage } from './development';
 import { BUYERS, offersFor, saleTraits, type TraitCache } from './economy';
 import { advanceWorld } from './habitat';

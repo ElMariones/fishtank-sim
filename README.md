@@ -8,7 +8,9 @@
 
 ## Features
 
-- **Heritable genetics.** Koi genomes carry up to 66 loci on 11 synthetic chromosomes (body shape, color, patterns, fins, structure and behavior), with phased chromosomes, crossover and mutation. Axolotls have their own separate 66-locus genome covering limbs, gills, pigment morphs, patterns and temperament.
+- **Genesis genetics.** Alleles have dominance, a development chromosome adds epistatic switches (ghost pigment, veil fins, glow, fluorescence, plume gills, extra digits), every animal carries hidden recessive load that inbreeding exposes, outcrossing restores hybrid vigor, and mutations can create brand-new alleles named after the fish they arose in. Behavior and life history decide food competition, maturity, clutch size and recovery.
+- **Genome Atlas.** In discovery mode you work out what each locus does by breeding: segregating clutches identify traits and their inheritance, recombination maps them, and sequencing reveals a genotype and its hidden load.
+- **Heritable genetics.** Koi genomes carry up to 72 loci on 12 synthetic chromosomes (body shape, color, patterns, fins, structure and behavior), with phased chromosomes, crossover and mutation. Axolotls have their own separate 72-locus genome covering limbs, gills, pigment morphs, patterns and temperament.
 - **Two species, one tank.** Koi and axolotls share aquariums, water and care, but each species only breeds with its own kind.
 - **Breeding.** Pair two healthy adults that share a tank. Courtship takes a few game days, reserves places in a nursery tank, pauses with a reason if something goes wrong, and ends in a tracked clutch of eggs. An optional fast mode skips courtship for quicker experiments.
 - **Offspring prediction.** Exact single-locus odds and sampled adult-trait ranges before you breed, plus breeding goals that rank candidates for up to four traits.

@@ -367,7 +367,8 @@ describe('axolotl life, behavior, and inspection contracts', () => {
     expect(isAxolotlGenome(null)).toBe(false);
     expect(isAxolotlGenome({})).toBe(false);
     expect(axolotlGenomeProblem({ ...genome, species: 'koi' })).toContain('wrong species');
-    expect(axolotlGenomeProblem({ ...genome, version: 2 })).toContain('Unsupported');
+    expect(axolotlGenomeProblem({ ...genome, version: 3 })).toContain('Unsupported');
+    expect(axolotlGenomeProblem({ ...genome, version: 2 })).toContain('72 loci');
     expect(axolotlGenomeProblem({ ...genome, maternal: genome.maternal.slice(1) })).toContain('66 loci');
     expect(axolotlGenomeProblem({ ...genome, maternal: genome.maternal.map((a, i) => i === 3 ? 9 : a) })).toContain('Invalid axolotl allele');
     expect(axolotlGenomeProblem({ ...genome, paternal: genome.paternal.map((a, i) => i === 4 ? 1.5 : a) })).toContain('Invalid axolotl allele');

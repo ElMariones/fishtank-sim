@@ -52,6 +52,10 @@ import { FamilyView } from './FamilyView';
 import { FishPortrait, type PortraitView } from './FishPortrait';
 import { FishCard } from './FishCard';
 import { AxolotlGenomeView, AxolotlTraitPanel } from './AxolotlGenetics';
+import { GenesisPanel } from './GenesisPanel';
+import { GenomeAtlas } from './GenomeAtlas';
+import { atlasProgress, genotypeVisible, locusStage } from '../core/atlas';
+import { DOMINANCE_LABELS, isNovel } from '../core/genesis';
 import { isAxolotlGenome } from '../core/axolotlGenetics';
 import { LocusTip } from './LocusTip';
 import { KOI_EXPRESSION_NOTES, KOI_LOCUS_NOTES } from '../core/locusNotes';
@@ -69,6 +73,7 @@ import './design/collection.css';
 import './design/inspector.css';
 import './design/panels.css';
 import './design/research.css';
+import './design/genesis.css';
 import './competitions.css';
 
 const ResearchLab = lazy(() => import('./ResearchLab').then(module => ({ default: module.ResearchLab })));
@@ -82,10 +87,10 @@ const descriptorLabel = new Map(GOAL_DESCRIPTORS.map(descriptor => [descriptor.k
 const RAIL_KEY = 'fishtank:rail-compact';
 type SexFilter = 'all' | Fish['sex'];
 type SpeciesFilter = 'all' | Fish['species'];
-type View = 'aquarium' | 'fixtures' | 'research' | 'competitions' | 'trophies';
+type View = 'aquarium' | 'fixtures' | 'research' | 'competitions' | 'trophies' | 'atlas';
 type Workspace = 'collection' | 'breeding' | 'care' | 'habitat';
 const WORKSPACES: Workspace[] = ['collection', 'breeding', 'care', 'habitat'];
-const VIEW_TITLES: Record<View, string> = { aquarium: '', research: 'Research studies', competitions: 'Competition circuit', trophies: 'Trophy room', fixtures: 'Visual fixtures' };
+const VIEW_TITLES: Record<View, string> = { aquarium: '', research: 'Research studies', competitions: 'Competition circuit', trophies: 'Trophy room', fixtures: 'Visual fixtures', atlas: 'Genome Atlas' };
 
 function readPreferences(world: World) {
   let raw: string | null = null;
@@ -93,7 +98,7 @@ function readPreferences(world: World) {
   return decodePreferences(raw, new Set(world.fish.map(f => f.id)));
 }
 function readFlag(key: string) { try { return localStorage.getItem(key) === '1'; } catch { return false; } }
-const VIEWS: View[] = ['aquarium', 'competitions', 'trophies', 'research', 'fixtures'];
+const VIEWS: View[] = ['aquarium', 'atlas', 'competitions', 'trophies', 'research', 'fixtures'];
 const viewFromHash = (): View => { const hash = location.hash.replace(/^#\/?/, '') as View; return VIEWS.includes(hash) ? hash : 'aquarium'; };
 const typing = (target: EventTarget | null) => target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
 
@@ -247,6 +252,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   }, [fish, world]);
   const koiGenome = fish && fish.species === 'koi' && !isAxolotlGenome(fish.genome) ? fish.genome : null;
   const appearanceRows = useMemo(() => koiGenome ? describeAppearance(koiGenome) : [], [koiGenome]);
+  const alleleNames = useMemo(() => new Map(world.alleles.map(record => [record.id, record.name])), [world.alleles]);
   // One kinship cache per session keeps computed pairs as the world grows; recorded parents never change (FS-405).
   const [kinshipCache] = useState(() => createKinshipCache());
   const pedigree = useMemo(() => { kinshipCache.sync(world.fish); return kinshipCache; }, [kinshipCache, world.fish]);
@@ -365,7 +371,10 @@ export function App({ initial }: { initial: LoadedSession }) {
       setAbsence(summary);
       const born = next.world.fish.length - start.world.fish.length;
       dayRef.current = Math.floor(next.tick / TICKS_PER_GAME_DAY);
-      setNotice(`${calendarLabel(dayRef.current)}. ${days} day${days === 1 ? '' : 's'} simulated${born ? ` · ${born} new eggs` : ''}. Growth, hatching, courtship and care updated in every aquarium.`, 'success');
+      // Genesis: eggs that never developed, and what the Genome Atlas learned from hatched clutches.
+      const failed = next.world.clutches.filter(clutch => clutch.outcome && !start.world.clutches.some(old => old.id === clutch.id && old.outcome)).reduce((sum, clutch) => sum + clutch.outcome!.nonviable, 0);
+      const learned = (['koi', 'axolotl'] as const).reduce((sum, species) => { const a = atlasProgress(next.world, species), b = atlasProgress(start.world, species); return sum + a.identified - b.identified + a.characterized - b.characterized + a.mapped - b.mapped; }, 0);
+      setNotice(`${calendarLabel(dayRef.current)}. ${days} day${days === 1 ? '' : 's'} simulated${born ? ` · ${born} new eggs` : ''}${failed ? ` · ${failed} egg${failed === 1 ? '' : 's'} never developed (lethal recessives)` : ''}${learned ? ` · the Genome Atlas made ${learned} discover${learned === 1 ? 'y' : 'ies'}` : ''}. Growth, hatching, courtship and care updated in every aquarium.`, failed ? 'warn' : 'success');
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Could not advance the calendar.', 'warn');
     } finally {
@@ -456,11 +465,15 @@ export function App({ initial }: { initial: LoadedSession }) {
   function breed() {
     const pairText = ` Showing this clutch of ${fishName(motherId)} × ${fishName(fatherId)}${goal ? `, ranked by ${descriptorLabel.get(goal.descriptor)?.toLowerCase()}` : ''}.`;
     const timestamp = new Date().toISOString(), destination = world.tanks.find(t => t.id === fastTankId) ?? tank;
+    const before = world.fish.length;
     const next = run({ type: 'breed', motherId, fatherId, tankId: destination.id, timestamp, genomeVersion: GENOME_VERSION, count: fastCount },
       `${fastCount} egg${fastCount === 1 ? '' : 's'} laid in ${destination.name}. They hatch in ${INCUBATION_DAYS} game days and grow fastest in good water; each inherited one recombined copy from each parent.${pairText}`);
     if (next) {
+      const born = next.fish.length - before;
+      if (born < fastCount) setNotice(`${born} of ${fastCount} embryos developed in ${destination.name}. ${fastCount - born} carried a lethal recessive on both copies and never developed: the parents share hidden load. They are recorded in the Genome Atlas’s defect notebook.`, born ? 'warn' : 'warn');
+      if (!born) return;
       if (destination.id !== tank.id) setTankId(destination.id);
-      setSelectedId(next.fish[next.fish.length - fastCount].id); setShowArchived(false); setQuery('');
+      setSelectedId(next.fish[before].id); setShowArchived(false); setQuery('');
       setCohortKey(`${motherId}×${fatherId}`); setBirthKey(timestamp); setFavoritesOnly(false); setSexFilter('all');
     }
   }
@@ -628,6 +641,7 @@ export function App({ initial }: { initial: LoadedSession }) {
     { id: 'v-aquarium', label: 'Aquarium', group: 'Go to', icon: 'tank', run: () => setView('aquarium') },
     { id: 'v-competitions', label: 'Competition circuit', group: 'Go to', icon: 'trophy', run: () => setView('competitions') },
     { id: 'v-trophies', label: 'Trophy room', group: 'Go to', icon: 'medal', run: () => setView('trophies') },
+    { id: 'v-atlas', label: 'Genome Atlas', group: 'Go to', icon: 'dna', run: () => setView('atlas') },
     { id: 'v-research', label: 'Research studies', group: 'Go to', icon: 'flask', run: () => setView('research') },
     { id: 'v-fixtures', label: 'Visual fixtures', group: 'Go to', icon: 'grid', run: () => setView('fixtures') },
     { id: 'w-collection', label: 'Collection', group: 'Go to', icon: 'grid', shortcut: '1', run: () => goWorkspace('collection') },
@@ -662,7 +676,7 @@ export function App({ initial }: { initial: LoadedSession }) {
     const key = event.key;
     if (performance.now() - goPrefix.current < 900) {
       goPrefix.current = 0;
-      const target = ({ a: 'aquarium', c: 'competitions', t: 'trophies', r: 'research' } as Record<string, View>)[key.toLowerCase()];
+      const target = ({ a: 'aquarium', c: 'competitions', t: 'trophies', r: 'research', l: 'atlas' } as Record<string, View>)[key.toLowerCase()];
       if (target) { event.preventDefault(); setView(target); return; }
     }
     if (key === 'g') { goPrefix.current = performance.now(); return; }
@@ -708,7 +722,8 @@ export function App({ initial }: { initial: LoadedSession }) {
       <Drawer open={showSaves} label="Saves" icon="save" eyebrow="Your world" onClose={() => openDrawer(null)}><SavePanel runtime={runtime} session={initial.session} blocked={blocked} readOnly={initial.readOnly} onBusy={value => { saveBusy.current = value; }} onSaved={() => { setBlocked(false); setSaveError(''); }} /></Drawer>
       <Drawer open={showMarket} label="Buyers and ledger" icon="coins" eyebrow="Economy" onClose={() => openDrawer(null)}><MarketPanel world={world} readOnly={initial.readOnly} traitCache={traitCache} onClaimRelief={claimRelief} onClose={() => openDrawer(null)} /></Drawer>
       <Drawer open={showShop && view === 'aquarium'} label="NPC shop" icon="shop" eyebrow="New bloodlines" wide onClose={() => openDrawer(null)}><ShopPanel world={world} tank={tank} day={gameDay} readOnly={initial.readOnly} traitCache={traitCache} onBuy={buyListing} onBuyAxolotl={buyAxolotlListing} onClose={() => openDrawer(null)} onRecovery={openRecovery} /></Drawer>
-      {view === 'competitions' ? <div className="view-frame" key="competitions"><Competitions world={world} readOnly={initial.readOnly || blocked || advancing} onCommand={command => run(command, 'Competition record updated.') !== null} /></div>
+      {view === 'atlas' ? <div className="view-frame" key="atlas"><GenomeAtlas world={world} readOnly={initial.readOnly || blocked} onRun={run} onInspect={id => { setView('aquarium'); select(id, true); }} /></div>
+        : view === 'competitions' ? <div className="view-frame" key="competitions"><Competitions world={world} readOnly={initial.readOnly || blocked || advancing} onCommand={command => run(command, 'Competition record updated.') !== null} /></div>
         : view === 'trophies' ? <div className="view-frame" key="trophies"><TrophyRoom world={world} onInspect={id => { setView('aquarium'); select(id, true); }} /></div>
         : view === 'fixtures' ? <div className="view-frame" key="fixtures"><Suspense fallback={<p className="loading-card" role="status">Loading visual fixtures…</p>}><VisualFixtureLab onClose={() => setView('aquarium')} /></Suspense></div>
         : view === 'research' ? <div className="view-frame" key="research"><Suspense fallback={<p className="loading-card" role="status">Loading research…</p>}><ResearchLab onClose={() => setView('aquarium')} /></Suspense></div>
@@ -784,7 +799,7 @@ export function App({ initial }: { initial: LoadedSession }) {
             </div>
           </header>
           {breedingOpen || workspace === 'breeding' ? <div id="breeding-options" className="breeding-options">
-            <BreedingPlanner fish={world.fish} tanks={world.tanks} goal={goal} motherId={motherId} fatherId={fatherId} onMother={setMotherId} onFather={setFatherId}
+            <BreedingPlanner world={world} fish={world.fish} tanks={world.tanks} goal={goal} motherId={motherId} fatherId={fatherId} onMother={setMotherId} onFather={setFatherId}
               onGoal={(next: BreedingGoal | null) => setPreferences(current => ({ ...current, goal: next, sort: next ? 'goal' : current.sort === 'goal' ? 'newest' : current.sort }))} />
             {!fastBreeding ? <>
               <NormalBreeding world={world} motherId={motherId} fatherId={fatherId} nurseryId={nurseryId} size={clutchSize} readOnly={initial.readOnly}
@@ -935,9 +950,10 @@ export function App({ initial }: { initial: LoadedSession }) {
             <div className="trait-block"><div className="block-title"><Icon name="sparkles" size={15} /><span className="eyebrow">Inherited tendencies</span></div>
               {([['Sociability', p.social], ['Boldness', p.bold], ['Activity', p.activity], ['Curiosity', p.curious]] as const).map(([name, value]) => <div className="trait" key={name} role="meter" aria-label={name} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value * 100)}>
                 <span>{name}</span><span className="bar gene"><span style={{ width: `${Math.round(value * 100)}%` }} /></span><span className="mono">{Math.round(value * 100)}</span></div>)}</div>
-            {fish.species === 'axolotl' ? <AxolotlTraitPanel fish={fish} /> : koiGenome ? <>
+            <GenesisPanel world={world} fish={fish} readOnly={initial.readOnly || blocked} onRun={run} />
+            {fish.species === 'axolotl' ? <AxolotlTraitPanel fish={fish} genotypeKnown={genotypeVisible(world, fish)} /> : koiGenome ? <>
               <div className="trait-block appearance-block"><div className="block-title"><Icon name="brush" size={15} /><span className="eyebrow">Appearance · genome v{koiGenome.version}</span></div>{koiGenome.version === 1 ? <p className="help-copy">Genome v1 fish carry no Color or Ornament chromosomes and keep the classic look. Their offspring carry both chromosomes, where a new mutation can appear.</p> : null}<dl className="appearance-traits">{appearanceRows.map(row => <div key={row.trait}><dt>{row.trait}</dt><dd>{row.value}{row.rarity ? <span className={`rarity ${row.rarity.replace(' ', '-')}`}>{row.rarity}</span> : null}</dd></div>)}</dl>{appearanceRows.some(row => row.rarity) ? <p className="help-copy">Rarity describes founder stock, not your aquarium or any global population.</p> : null}</div>
-              <div className="trait-block appearance-block structure-block"><div className="block-title"><Icon name="layers" size={15} /><span className="eyebrow">Structure · genome v{koiGenome.version}</span></div>{koiGenome.version < 3 ? <p className="help-copy">Genome v{koiGenome.version} fish carry no Structure chromosome and keep a standard tail, dorsal fin and two barbels. Their offspring carry it, where a rare structural mutation can appear.</p> : null}<dl className="appearance-traits">{describeStructure(koiGenome).map(row => <div key={row.trait}><dt>{row.trait}</dt><dd>{row.value}{row.carrier ? <span className="rarity carrier">hidden copy</span> : null}</dd></div>)}</dl></div>
+              <div className="trait-block appearance-block structure-block"><div className="block-title"><Icon name="layers" size={15} /><span className="eyebrow">Structure · genome v{koiGenome.version}</span></div>{koiGenome.version < 3 ? <p className="help-copy">Genome v{koiGenome.version} fish carry no Structure chromosome and keep a standard tail, dorsal fin and two barbels. Their offspring carry it, where a rare structural mutation can appear.</p> : null}<dl className="appearance-traits">{describeStructure(koiGenome).map(row => <div key={row.trait}><dt>{row.trait}</dt><dd>{row.value}{row.carrier && genotypeVisible(world, fish) ? <span className="rarity carrier">hidden copy</span> : null}</dd></div>)}</dl></div>
             </> : null}
             {fish.status === 'living' ? <div className="fish-actions">
               <button className="primary" disabled={isEgg(fish.life)} onClick={() => setAsParent(fish)}><Icon name="heart" size={16} />Select as {fish.sex === 'F' ? 'mother' : 'father'}</button>
@@ -949,17 +965,24 @@ export function App({ initial }: { initial: LoadedSession }) {
               </div>
             </div> : <p className="archive-note">{fish.status === 'rehomed' ? 'This fish was rehomed outside your aquarium.' : 'This fish was sold to an NPC buyer.'} Its genome and family links are preserved.</p>}
           </div> : null}
-          {tab === 'Genome' && fish.species === 'axolotl' ? <div className="genome-view inspector-panel"><div className="genome-fingerprint"><span>Axolotl genome checksum</span><code>{fingerprint(fish.genome)}</code></div><AxolotlGenomeView fish={fish} />{notebook ? <MutationOrigins fish={fish} notebook={notebook} onSelect={id => select(id, true)} /> : null}</div> : null}
+          {tab === 'Genome' && fish.species === 'axolotl' ? <div className="genome-view inspector-panel"><div className="genome-fingerprint"><span>Axolotl genome checksum</span><code>{fingerprint(fish.genome)}</code></div><AxolotlGenomeView fish={fish} world={world} />{notebook ? <MutationOrigins fish={fish} notebook={notebook} onSelect={id => select(id, true)} /> : null}</div> : null}
           {tab === 'Genome' && fish.species === 'koi' ? <div className="genome-view inspector-panel">
             <div className="genome-fingerprint"><span>Genome checksum</span><code>{fingerprint(fish.genome)}</code></div>
             <div className="allele-legend"><span><i className="allele-dot m" />Copy from mother</span><span><i className="allele-dot p" />Copy from father</span><span><b>*</b> new mutation</span><span><b>◆</b> inherited mutation</span></div>
-            <details className="help-details"><summary>How to read this genome</summary><p className="help-copy">Two phased copies per locus. A0–A5 are allele IDs. Most blend; A5/A5 at the metallic switch expresses strong metallic color. Chromosomes 09–10 (genome v2) hold color and ornament, with named categorical alleles and additive intensity levels. Classic dominates body, accent and eye colors; variants need two nonclassic copies. One motif copy shows faintly, and different motifs mix. Smooth scales dominate variants. Chromosome 11 (genome v3) holds structure: a paired fan or crown tail, a reduced or missing dorsal fin and other barbel counts each need two variant copies, and additive levels shape them. Hidden copies can still pass to offspring.</p></details>
+            {world.atlas.mode === 'discovery' ? <p className="help-copy atlas-note"><Icon name="search" size={13} /> Discovery mode: unidentified loci show as numbers and {genotypeVisible(world, fish) ? 'this sequenced animal’s alleles are shown without meaning until the Atlas works them out' : 'alleles stay hidden until you sequence this animal'}. Open the Genome Atlas to see what you have learned.</p> : null}
+            <details className="help-details"><summary>How to read this genome</summary><p className="help-copy">Two phased copies per locus. A0–A5 are allele IDs; N marks a new open-ended allele that arose in this world. Genome v4 (Genesis) reads quantitative loci by dominance (each allele has a potency, so a strong copy can hide a weak one) and adds chromosome 12, Development: a pigment cascade that can silence every color, a dominant veil fin program, canalization, photophore glow, maturity timing and regeneration. Most blend; A5/A5 at the metallic switch expresses strong metallic color. Chromosomes 09–10 (genome v2) hold color and ornament, with named categorical alleles and additive intensity levels. Classic dominates body, accent and eye colors; variants need two nonclassic copies. One motif copy shows faintly, and different motifs mix. Smooth scales dominate variants. Chromosome 11 (genome v3) holds structure: a paired fan or crown tail, a reduced or missing dorsal fin and other barbel counts each need two variant copies, and additive levels shape them. Hidden copies can still pass to offspring.</p></details>
             {CHROMOSOMES.map((chromosome, chromosomeIndex) => {
               const absent = chromosomeIndex * 6 >= fish.genome.maternal.length;
               return <div className={`chromosome ${absent ? 'absent' : ''}`} key={chromosome}><h3><span className="chromosome-index mono">{String(chromosomeIndex + 1).padStart(2, '0')}</span>{chromosome}{absent ? <small>not carried by genome v{fish.genome.version}</small> : null}</h3>{LOCUS_REGISTRY.slice(chromosomeIndex * 6, chromosomeIndex * 6 + 6).map(entry => {
                 const i = entry.index, locus = entry.id, mutation = fish.mutations.some(m => m.locus === i), inherited = !mutation && fish.origins.some(o => o.locus === i);
                 const carried = i < fish.genome.maternal.length, baseline = `Not carried by genome v${fish.genome.version}; reads as ${alleleLabel(locus, entry.baseline ?? 0)}`;
-                return <div className={`locus ${i >= 48 ? 'appearance-locus' : ''} ${mutation ? 'mutated' : ''} ${carried ? '' : 'absent'}`} key={locus}><span><LocusTip label={label(locus)} description={KOI_LOCUS_NOTES[locus]} inheritance={KOI_EXPRESSION_NOTES[entry.expression]}>{mutation ? ' *' : inherited ? ' ◆' : ''}</LocusTip></span>{carried ? <><code className="allele m" title="Copy inherited from mother">A{fish.genome.maternal[i]}{i >= 48 ? <small>{alleleLabel(locus, fish.genome.maternal[i])}</small> : null}</code><code className="allele p" title="Copy inherited from father">A{fish.genome.paternal[i]}{i >= 48 ? <small>{alleleLabel(locus, fish.genome.paternal[i])}</small> : null}</code></> : <><code title={baseline}>—</code><code title={baseline}>—</code></>}</div>;
+                const stage = locusStage(world, 'koi', i), seen = genotypeVisible(world, fish);
+                const name = stage >= 1 ? label(locus) : `Locus ${chromosomeIndex + 1}.${i % 6 + 1}`;
+                const description = stage >= 1 ? KOI_LOCUS_NOTES[locus] : 'Not identified yet. Breed parents that carry different alleles here; the Genome Atlas collects the evidence.';
+                const inheritance = stage >= 2 ? `${KOI_EXPRESSION_NOTES[entry.expression]}${entry.dominance && fish.genome.genesis ? ` Genesis: ${DOMINANCE_LABELS[entry.dominance]}.` : ''}` : 'How its two copies combine is not worked out yet.';
+                const allele = (value: number, copy: 'm' | 'p') => !seen ? <code className={`allele ${copy} hidden`} title="Sequence this animal to read its alleles">??</code>
+                  : <code className={`allele ${copy}`} title={`Copy inherited from ${copy === 'm' ? 'mother' : 'father'}`}>{isNovel(value) ? 'N' : `A${value}`}{isNovel(value) ? <small>{alleleNames.get(value) ?? 'new allele'}</small> : i >= 48 && stage >= 2 ? <small>{alleleLabel(locus, value)}</small> : null}</code>;
+                return <div className={`locus ${i >= 48 ? 'appearance-locus' : ''} ${mutation ? 'mutated' : ''} ${carried ? '' : 'absent'} ${stage ? '' : 'unknown'}`} key={locus}><span><LocusTip label={name} description={description} inheritance={inheritance}>{mutation ? ' *' : inherited ? ' ◆' : ''}</LocusTip></span>{carried ? <>{allele(fish.genome.maternal[i], 'm')}{allele(fish.genome.paternal[i], 'p')}</> : <><code title={baseline}>—</code><code title={baseline}>—</code></>}</div>;
               })}</div>;
             })}
             <p className="help-copy">No global rarity is measured in this offline lab.</p>{notebook ? <MutationOrigins fish={fish} notebook={notebook} onSelect={id => select(id, true)} /> : null}<div className="marking-blocks"><h3>Inherited marking blocks</h3><p className="help-copy">Each pair of neighbouring Pigments or Pattern loci on one chromosome copy places one marking. Siblings that inherit the same copy share it; a crossover or mutation inside the pair moves it.</p><ol>{p.markings.map((anchor, index) => {

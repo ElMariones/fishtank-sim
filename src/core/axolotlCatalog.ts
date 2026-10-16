@@ -7,6 +7,9 @@
  */
 
 export const AXOLOTL_GENOME_VERSION = 1 as const;
+/** Axolotl genome v2 (Genesis) appends the Development chromosome and a development block; see AXOLOTL_DEV_LOCI. */
+export const AXOLOTL_GENESIS_VERSION = 2 as const;
+export type AxolotlGenomeVersion = typeof AXOLOTL_GENOME_VERSION | typeof AXOLOTL_GENESIS_VERSION;
 export const AXOLOTL_ALLELE_COUNT = 6;
 export const AXOLOTL_DEFAULT_MUTATION_RATE = 0.0015;
 
@@ -284,7 +287,7 @@ export const AXOLOTL_LOCUS_NOTES: Record<AxolotlLocus, string> = {
   axo_pattern_symmetry: 'How closely the two flanks mirror each other.',
   axo_adult_size: 'Major size locus: 55% of adult length potential, about 16 to 33 cm.',
   axo_growth_rate: 'How fast the animal approaches its adult size.',
-  axo_maturity_timing: 'Recorded maturity age, 8 to 18 months. Not simulated yet: axolotls mature on the shared lab schedule.',
+  axo_maturity_timing: 'Maturity age. In genome v2 it sets how many days after hatching an axolotl may court; genome v1 animals mature on the shared schedule.',
   axo_longevity: 'Lifespan potential, about 8 to 18 game years.',
   axo_metabolism: 'Food and oxygen use. Higher metabolism eats more of the tank food pool.',
   axo_fertility: 'Courtship readiness and how quickly a pair completes courtship.',
@@ -292,8 +295,50 @@ export const AXOLOTL_LOCUS_NOTES: Record<AxolotlLocus, string> = {
   axo_boldness: 'Willingness to leave cover and approach food first.',
   axo_sociability: 'Tendency to stay near tankmates.',
   axo_curiosity: 'Interest in its surroundings; also tightens turns.',
-  axo_feeding_drive: 'Recorded appetite. Not simulated yet: feeding uses metabolism.',
-  axo_regeneration: 'Recorded regeneration potential. Not simulated yet: animals are never injured.',
+  axo_feeding_drive: 'Appetite. In genome v2 it decides how much of scarce food an axolotl wins against its tankmates.',
+  axo_regeneration: 'Regeneration. In genome v2 it speeds recovery of condition, and strong regeneration regrows missing digits.',
+};
+
+// ── Axolotl genome v2 (Genesis): the Development chromosome ──────────────────────────────────────────────────────────
+
+/**
+ * Six loci appended by axolotl genome v2. Genome v1 animals read the baselines below, so their offspring look standard
+ * here unless a mutation or a v2 partner brings a variant.
+ */
+export const AXOLOTL_DEV_LOCI = [
+  'axo_canalization', 'axo_fluorescence', 'axo_frill_program', 'axo_gill_program', 'axo_digit_program', 'axo_vigor',
+] as const;
+export type AxolotlDevLocus = typeof AXOLOTL_DEV_LOCI[number];
+export type AxolotlAnyLocus = AxolotlLocus | AxolotlDevLocus;
+export const AXOLOTL_DEV_BASELINE: readonly number[] = [3, 0, 0, 0, 1, 2];
+export const AXOLOTL_DEV_CHROMOSOME: AxolotlChromosomeDefinition & { loci: readonly AxolotlAnyLocus[] } = { id: 'AX-DEV', label: 'Development', loci: AXOLOTL_DEV_LOCI as unknown as readonly AxolotlLocus[] };
+const devDefinition = (id: AxolotlDevLocus, offset: number, label: string, expression: AxolotlExpressionKind, alleles: readonly AxolotlAlleleDefinition[]): AxolotlLocusDefinition =>
+  ({ id: id as unknown as AxolotlLocus, label, chromosomeId: 'AX-DEV', chromosomeLabel: 'Development', positionCm: POSITIONS[offset], expression, mutationMultiplier: expression === 'quantitative' ? 1 : 0.75, alleles });
+const DEV_RARE: Weights = [0.5, 0.3, 0.15, 0.042, 0.006, 0.002];
+export const AXOLOTL_DEV_REGISTRY: readonly AxolotlLocusDefinition[] = [
+  devDefinition('axo_canalization', 0, 'Canalization', 'quantitative', quantitativeAlleles(BALANCED)),
+  devDefinition('axo_fluorescence', 1, 'Fluorescence', 'categorical', namedAlleles(['dark', 'dark', 'dark', 'dark', 'fluorescent', 'bright fluorescent'], [0, 0, 0, 0, 0.6, 1], DEV_RARE)),
+  devDefinition('axo_frill_program', 2, 'Frill program', 'categorical', namedAlleles(['standard', 'standard', 'standard', 'standard', 'frill', 'frill (strong)'], [0, 0, 0, 0, 1, 1], [0.42, 0.3, 0.18, 0.07, 0.025, 0.005])),
+  devDefinition('axo_gill_program', 3, 'Gill program', 'categorical', namedAlleles(['standard', 'standard', 'standard', 'standard', 'plume', 'plume (full)'], [0, 0, 0, 0, 1, 1], [0.4, 0.28, 0.17, 0.08, 0.055, 0.015])),
+  devDefinition('axo_digit_program', 4, 'Digit program', 'quantitative', quantitativeAlleles(RARE_HIGH)),
+  devDefinition('axo_vigor', 5, 'Vigor', 'quantitative', quantitativeAlleles(BALANCED)),
+];
+/** Every v2 locus in genome order: the 66 v1 loci, then the Development chromosome. */
+export const AXOLOTL_V2_REGISTRY: readonly AxolotlLocusDefinition[] = [...AXOLOTL_LOCUS_REGISTRY, ...AXOLOTL_DEV_REGISTRY];
+export const AXOLOTL_V2_LOCI_COUNT = AXOLOTL_V2_REGISTRY.length;
+export const axolotlRegistryFor = (version: AxolotlGenomeVersion) => version === AXOLOTL_GENESIS_VERSION ? AXOLOTL_V2_REGISTRY : AXOLOTL_LOCUS_REGISTRY;
+export const AXOLOTL_DEV_INDEX = Object.fromEntries(AXOLOTL_DEV_LOCI.map((id, offset) => [id, AXOLOTL_LOCI.length + offset])) as Record<AxolotlDevLocus, number>;
+/** A label for any v1 or v2 locus index. */
+export const axolotlLabelAt = (index: number) => AXOLOTL_V2_REGISTRY[index]?.label ?? `Locus ${index}`;
+export const axolotlAlleleLabelAt = (index: number, allele: number) => allele >= 1000 ? 'new allele' : AXOLOTL_V2_REGISTRY[index]?.alleles[allele]?.label ?? `A${allele}`;
+
+export const AXOLOTL_DEV_NOTES: Record<AxolotlDevLocus, string> = {
+  axo_canalization: 'Developmental stability. Low levels add noise and asymmetry and let genetic defects show more strongly.',
+  axo_fluorescence: 'A synthetic fluorescent marker. One copy is enough to glow green (dominant); two glow brighter.',
+  axo_frill_program: 'Fin crest program. One frill copy gives a tall, ruffled crest (dominant); two give a sail. Large crests swim slower.',
+  axo_gill_program: 'Gill program. Two plume copies give huge feathery gills with more branches and better oxygen uptake (recessive).',
+  axo_digit_program: 'Threshold trait: when these copies plus developmental noise pass a threshold, extra digits grow on every foot.',
+  axo_vigor: 'Overdominant: two different copies give a vigor bonus to growth and fertility.',
 };
 
 export const AXOLOTL_EXPRESSION_NOTES: Record<AxolotlExpressionKind, string> = {

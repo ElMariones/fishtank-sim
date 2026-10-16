@@ -1,6 +1,6 @@
 import { pairingBlockers, reservedPlaces } from './breeding';
 import { careSettings } from './care';
-import { GENOME_VERSION } from './catalog';
+import { RESEARCH_GENOME_VERSION as GENOME_VERSION } from './catalog';
 import { ADULT_FROM, isEgg } from './development';
 import { metabolicPotential } from './genetics';
 import { advanceWorld } from './habitat';

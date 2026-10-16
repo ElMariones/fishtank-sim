@@ -13,7 +13,9 @@ import type { AxolotlListing, AxolotlListingCategory, AxolotlShopState, AxolotlS
  * the koi delivery rhythm, and everything derives from the world seed and the listing number. Its own seed namespace
  * means adding it never changes a koi listing.
  */
-export const AXOLOTL_SHOP_MODEL = 1;
+/** Model 1 delivers axolotl genome v1; model 2 (Genesis) delivers genome v2. */
+export const AXOLOTL_SHOP_MODEL = 2;
+const axolotlVersionFor = (model: AxolotlShopState['model']) => (model === 2 ? 2 : 1) as 1 | 2;
 export const AXOLOTL_SHOP_SIZE = 4;
 export const AXOLOTL_SWITCHES = ['axo_leucistic_switch', 'axo_albinism_switch', 'axo_melanoid_switch'] as const satisfies readonly AxolotlSwitch[];
 const SWITCH_MORPH: Record<AxolotlSwitch, AxolotlPigmentMorph> = {
@@ -48,10 +50,10 @@ const withAlleles = (genome: AxolotlGenome, locus: AxolotlSwitch, maternal: numb
 };
 
 /** `taken` holds names already in use; the listing's generated name is added to it. */
-export function makeAxolotlListing(seed: number, n: number, day: number, taken = new Set<string>()): AxolotlListing {
+export function makeAxolotlListing(seed: number, n: number, day: number, taken = new Set<string>(), version: 1 | 2 = 1): AxolotlListing {
   const key = `${seed}:axolotl-shop:${n}`, roll = hash(`${key}:category`) % 100;
   let category: AxolotlListingCategory = roll < 45 ? 'founder' : roll < 80 ? 'morph' : 'carrier';
-  let birthSeed = hash(`${key}:0`), genome = axolotlFounderGenome(birthSeed), carries: AxolotlListing['carries'] = null;
+  let birthSeed = hash(`${key}:0`), genome = axolotlFounderGenome(birthSeed, version), carries: AxolotlListing['carries'] = null;
   const severe = () => 4 + hash(`${key}:severity`) % 2;
   if (category === 'morph') {
     // Half of morph listings are a recessive morph bred to show; the rest are color morphs found in founder stock.
@@ -66,7 +68,7 @@ export function makeAxolotlListing(seed: number, n: number, day: number, taken =
       let found = false;
       for (let attempt = 0; attempt < MORPH_ATTEMPTS && !found; attempt++) {
         birthSeed = hash(`${key}:${attempt}`);
-        genome = axolotlFounderGenome(birthSeed);
+        genome = axolotlFounderGenome(birthSeed, version);
         found = AXOLOTL_MORPH_RARITY[expressAxolotl(genome).pigmentation.morph] > 0;
       }
       if (!found) category = 'founder';
@@ -88,11 +90,11 @@ export function makeAxolotlListing(seed: number, n: number, day: number, taken =
   };
 }
 
-export function initialAxolotlShop(seed: number, day = 0): AxolotlShopState {
+export function initialAxolotlShop(seed: number, day = 0, model: AxolotlShopState['model'] = 1): AxolotlShopState {
   const taken = new Set<string>();
   return {
-    model: AXOLOTL_SHOP_MODEL, nextListing: AXOLOTL_SHOP_SIZE + 1, refreshedDay: day,
-    listings: Array.from({ length: AXOLOTL_SHOP_SIZE }, (_, i) => makeAxolotlListing(seed, i + 1, day, taken)),
+    model, nextListing: AXOLOTL_SHOP_SIZE + 1, refreshedDay: day,
+    listings: Array.from({ length: AXOLOTL_SHOP_SIZE }, (_, i) => makeAxolotlListing(seed, i + 1, day, taken, axolotlVersionFor(model))),
   };
 }
 
@@ -104,13 +106,14 @@ export function refreshAxolotlShop(world: World, day: number): World {
   let nextListing = shop.nextListing;
   if (due && listings.length < AXOLOTL_SHOP_SIZE) {
     const taken = takenNames(world);
-    while (listings.length < AXOLOTL_SHOP_SIZE) listings.push(makeAxolotlListing(world.seed, nextListing++, day, taken));
+    while (listings.length < AXOLOTL_SHOP_SIZE) listings.push(makeAxolotlListing(world.seed, nextListing++, day, taken, axolotlVersionFor(shop.model)));
   }
   return { ...world, axolotlShop: { ...shop, nextListing, refreshedDay: due ? day : shop.refreshedDay, listings } };
 }
 
 /** Why a stored listing is inconsistent, or null. Prices, notes of hidden copies and categories must match the genome. */
-export function axolotlListingProblem(listing: AxolotlListing): string | null {
+export function axolotlListingProblem(listing: AxolotlListing, model: AxolotlShopState['model'] = 2): string | null {
+  if (listing.genome.version > axolotlVersionFor(model)) return 'An axolotl listing genome is newer than its shop.';
   const morph = expressAxolotl(listing.genome).pigmentation.morph;
   if (listing.category === 'morph' && !AXOLOTL_MORPH_RARITY[morph]) return 'An axolotl morph listing shows no morph.';
   if (listing.price !== axolotlListingPrice(listing.category, listing.genome)) return 'An axolotl listing price does not match its stock.';

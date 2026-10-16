@@ -1,5 +1,5 @@
 import { BREEDING_CONDITION, clutchMembers, MS_PER_GAME_DAY, pairingBlockers, reservedPlaces } from './breeding';
-import { GENOME_VERSION } from './catalog';
+import { RESEARCH_GENOME_VERSION as GENOME_VERSION } from './catalog';
 import { isEgg, lifeStage } from './development';
 import { metabolicPotential } from './genetics';
 import { createKinshipCache } from './pedigree';

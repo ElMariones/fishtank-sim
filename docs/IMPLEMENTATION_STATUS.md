@@ -2,6 +2,59 @@
 
 **Updated:** 16 October 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
 
+## Genesis genetics — FS-129, 16 October 2026 (user request, not committed yet)
+
+Implements recommendations 1–4 of the [revamp report](REVAMP_REPORT.md): a dominance-based genetic architecture with
+epistasis, pleiotropy, trade-offs and developmental noise; genetic load with inbreeding depression, purging and
+heterosis; open-ended alleles named after the fish they arose in; and a discovery-mode Genome Atlas. It also makes
+behavior and life-history genes decide outcomes. World v16; koi genome v4; axolotl genome v2; development v6; renderer v8.
+
+- **Architecture** (`genesis.ts`, `koiGenesis.ts`, axolotl v2 in `axolotlGenetics.ts`). Each allele has a value and a
+  potency; a genotype expresses the potency-weighted mean (dominance per locus: additive, higher-dominant,
+  lower-dominant or overdominant). Koi chromosome 12 (Development): epistatic pigment cascade (two null/weak copies
+  silence every color: ghost or faded), dominant veil fin program (veil, butterfly), canalization, semi-recessive
+  photophore glow, maturity timing, regeneration. Axolotl chromosome 12: dominant fluorescence, dominant frill/sail
+  crest, recessive plume gills, a threshold trait for extra digits, canalization and overdominant vigor. Trade-offs: long
+  fins cost speed, oxygen and food competition; glow costs metabolism; long life slows growth. A development seed per
+  genome adds noise and asymmetry that canalization narrows.
+- **Genetic load.** 40 load sites per species (lethal, frail, subfertile, dwarf, spine, fins, eye, pigment; axolotl gill
+  and limb), ~1.6 per founder copy, never homozygous in founders. Sites travel with the homolog at their anchor locus.
+  Homozygous sites express: lethal eggs never develop (recorded on the clutch), others change condition, fertility, size
+  and appearance. Strong regeneration regrows fin and digit defects. Vigor (0.8–1.11) follows genome-wide
+  heterozygosity, so inbred lines lose it and outcrosses restore it. Genome v1–v3 parents contribute a deterministic
+  latent load read from their fingerprint.
+- **Open-ended alleles.** 42% of mutations at quantitative loci create a new allele with its own value (slightly beyond
+  the catalog), potency and 0–2 pleiotropic side effects (hue, glow, sheen, size, speed, metabolism, boldness,
+  fertility, maturity, growth, pattern, fins). IDs derive from the birth seed; definitions travel in each genome. The
+  world's `alleles` registry names each after the fish it arose in; `name-allele` renames it.
+- **Behavior and life history now decide things** (Genesis animals): maturity gates courtship; fertility, vigor and load
+  set clutch size; boldness, activity and appetite set each animal's share of scarce food; shy animals feel crowding
+  more (cover helps); sociable animals alone lose condition; regeneration speeds recovery; longevity resists decline;
+  boldness, activity, novelties and defects change show scores; temperament and visible defects change NPC offers.
+- **Genome Atlas** (`atlas.ts`, `GenomeAtlas.tsx`). New worlds start in discovery mode: loci show as numbers and alleles
+  as ?? until learned. Hatched clutches add evidence where a parent is heterozygous (8 offspring per parent per clutch;
+  intercrosses count more), identifying a trait at 16 and its inheritance at 48; adjacent double heterozygotes tally
+  recombination, and a characterized locus with 40 informative meioses is mapped. `sequence-fish` (◈ 60, ledger
+  reason `research`) reveals genotype and hidden load and doubles a parent's evidence. Exact single-locus odds and
+  pair load risk need known loci and sequenced parents. Defect notebook and allele registry live in the Atlas. Existing
+  worlds migrate in scientist mode.
+- **Visuals** (`rendering/genesis.ts`): translucent veil and butterfly fins around a denser core with ray filaments,
+  ghost and faded skin, photophore rows and fluorescent halos, hue-shifted accents and sheen from new alleles, frilled and
+  sail crests, plume gills, extra or missing digits, bent spines, eroded fins, clouded eyes and pigment wash. Visual
+  fixtures gain a Genesis board. Older genomes keep their exact draw-op stream.
+- **Compatibility.** Live play (new worlds, breeding, rescue, shop model 3, axolotl shop model 2, competition rivals in
+  Genesis worlds) uses Genesis; worlds v1–v15 migrate unchanged and rebase onto Genesis stock. Research harnesses and
+  default fixtures keep genome v3 (`RESEARCH_GENOME_VERSION`), so recorded pacing evidence stays valid.
+
+Evidence: 331 tests in 50 files, strict TypeScript and the production build pass. Browser journey on an isolated port
+(fresh storage): fast breeding with Genesis eggs, sequencing, a 26-day calendar advance, reload passing replay
+validation, Atlas progress, new-allele naming, inspector panel, mobile Atlas layout. See
+[testing](TESTING.md#fs-129-genesis-genetics).
+
+Limits: balance values (load density, novel share, atlas thresholds, food competition) are first tunings, not
+playtested. Animals still never die outside lethal eggs. The atlas learns from true genotypes the simulation knows;
+there is no player-driven hypothesis test UI yet. Linkage tallies are recorded for unidentified loci too.
+
 ## Deepwater UI redesign — FS-128 DONE, pushed `54bbe12`, 16 October 2026 (user request)
 
 The interface was audited and rebuilt: [review](design/UI_REVIEW.md), [design system](design/DESIGN_SYSTEM.md). One

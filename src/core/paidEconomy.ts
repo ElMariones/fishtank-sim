@@ -1,6 +1,6 @@
 import { clutchMembers, courtingClutchOf, pairingBlockers, reservedPlaces } from './breeding';
 import { AERATION_TIERS, careSettings, FILTER_TIERS } from './care';
-import { GENOME_VERSION } from './catalog';
+import { RESEARCH_GENOME_VERSION as GENOME_VERSION } from './catalog';
 import { isEgg, lifeStage } from './development';
 import { BUYERS, ledgerBalance, offersFor, planSales, saleTraits, type TraitCache } from './economy';
 import { advanceWorld } from './habitat';

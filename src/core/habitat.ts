@@ -4,8 +4,8 @@ import { advanceRelief } from './recovery';
 import { refreshShop } from './shop';
 import { refreshAxolotlShop } from './axolotlShop';
 import { CARE_RATES, closeCareDay, integrateTank, type CareLoad } from './care';
-import { developDay, environmentFor, nutritionFactor, type Environment } from './development';
-import { metabolicPotential } from './genetics';
+import { CONDITION_RESPONSE, developDay, environmentFor, nutritionFactor, type ConditionRates, type Environment } from './development';
+import { express, metabolicPotential } from './genetics';
 import type { Fish, Tank, WaterState, World } from './types';
 import { TICKS_PER_GAME_DAY, WATER_RATES, waterSteps } from './water';
 
@@ -62,11 +62,62 @@ function integrateTanks(world: World, fromTick: number, toTick: number): World {
   return { ...world, tanks: world.tanks.map(tank => integrateTank(tank, loads.get(tank.id) ?? emptyLoad(), fromTick, toTick)) };
 }
 
+/**
+ * Temperament and life history in the tank (Genesis animals only; every other animal uses the tank environment as is).
+ * - **Food competition.** When the tank was underfed, bold, active and hungry animals win a larger share of the food and
+ *   shy or long-finned ones a smaller share, so the same ration feeds them differently.
+ * - **Stress.** Shy animals feel crowding more; planted cover softens it.
+ * - **Company.** Sociable animals without one of their own species lose a little condition.
+ * - **Constitution.** Frail load caps condition; regeneration speeds recovery; long-lived animals resist decline.
+ */
+export type ResidentContext = { fed: number; meanCompetitiveness: number; planted: boolean; companions: Map<string, number> };
+
+export function residentContexts(world: Pick<World, 'fish' | 'tanks'>): Map<string, ResidentContext> {
+  const contexts = new Map<string, ResidentContext & { total: number; count: number }>();
+  for (const tank of world.tanks) contexts.set(tank.id, { fed: tank.care.fed, meanCompetitiveness: 0.6, planted: tank.planted, companions: new Map(), total: 0, count: 0 });
+  for (const member of world.fish) {
+    if (member.status !== 'living' || member.life.lengthCm === 0) continue;
+    const context = contexts.get(member.tankId);
+    if (!context) continue;
+    context.total += member.genome.genesis ? express(member.genome).genesis?.competitiveness ?? 0.6 : 0.6; context.count++;
+    context.companions.set(member.species, (context.companions.get(member.species) ?? 0) + 1);
+  }
+  for (const context of contexts.values()) if (context.count) context.meanCompetitiveness = context.total / context.count;
+  return contexts;
+}
+
+export function residentEnvironment(member: Fish, environment: Environment, context: ResidentContext | undefined): { environment: Environment; rates?: ConditionRates; limits: string[] } {
+  if (!member.genome.genesis || !context || member.life.lengthCm === 0) return { environment, limits: [] };
+  const p = express(member.genome), genesis = p.genesis!;
+  const limits: string[] = [];
+  let nutrition = environment.nutrition;
+  if (context.fed < 1) {
+    const share = Math.min(1, context.fed * genesis.competitiveness / Math.max(0.05, context.meanCompetitiveness));
+    nutrition = nutritionFactor(share);
+    if (nutrition < environment.nutrition - 0.02) limits.push('outcompeted for food');
+  }
+  const shyness = 1 - p.bold, cover = context.planted ? 0.7 : 1;
+  const crowding = 1 - (1 - environment.crowding) * (0.6 + 0.8 * shyness) * cover;
+  const companions = (context.companions.get(member.species) ?? 1) - 1;
+  const company = p.social > 0.6 && companions === 0 ? 0.92 : 1;
+  if (company < 1) limits.push('lonely');
+  if (crowding < environment.crowding - 0.02) limits.push('stressed by crowding');
+  const overall = Math.min(genesis.conditionCap, Math.min(environment.oxygen, environment.ammonia, environment.temperature) * Math.max(0, crowding) * nutrition * company);
+  if (genesis.conditionCap < 1 && overall >= genesis.conditionCap - 1e-9) limits.push('frail constitution');
+  const hardiness = Math.min(1, Math.max(0, (p.longevity - 8) / 24));
+  return {
+    environment: { ...environment, nutrition, crowding: Math.max(0, crowding), overall },
+    rates: { up: CONDITION_RESPONSE * (0.7 + 0.8 * genesis.regeneration), down: CONDITION_RESPONSE * (1.15 - 0.35 * hardiness) },
+    limits,
+  };
+}
+
 /** One game day for every living fish, under its tank's environment at the day boundary, after closing the feeding day. */
 function developResidents(world: World): { world: World; environments: Map<string, Environment> } {
   const tanks = world.tanks.map(tank => ({ ...tank, care: closeCareDay(tank.care) }));
   const loads = tankLoads(world.fish);
   const environments = new Map(tanks.map(tank => [tank.id, tankEnvironment(tank, loads.get(tank.id) ?? emptyLoad())]));
+  const contexts = residentContexts({ fish: world.fish, tanks });
   return {
     environments,
     world: {
@@ -74,7 +125,9 @@ function developResidents(world: World): { world: World; environments: Map<strin
       tanks,
       fish: world.fish.map(member => {
         const environment = member.status === 'living' ? environments.get(member.tankId) : undefined;
-        return environment ? { ...member, life: developDay(member.life, metabolicPotential(member.genome), environment) } : member;
+        if (!environment) return member;
+        const own = residentEnvironment(member, environment, contexts.get(member.tankId));
+        return { ...member, life: developDay(member.life, metabolicPotential(member.genome), own.environment, own.rates) };
       }),
     },
   };

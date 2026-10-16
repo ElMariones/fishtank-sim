@@ -67,7 +67,7 @@ describe('FS-504 koi rescue', () => {
     refused(cramped, claim('tank-1'), 'free places');
     expect(reliefDestination(cramped, 1)).toBe('tank-2');
     refused(lonely, claim('tank-9'), 'Tank not found');
-    refused(lonely, { ...claim(), genomeVersion: 4 } as unknown as Command, 'Invalid');
+    refused(lonely, { ...claim(), genomeVersion: 5 } as unknown as Command, 'Invalid');
   });
 
   it('counts the wait down at game-day boundaries and replays exactly', () => {
@@ -112,7 +112,7 @@ describe('FS-504 koi rescue', () => {
     stored.world = asV8(stored.world);
     stored.checkpoint.world = asV8(stored.checkpoint.world);
     const decoded = decodeRuntime(JSON.stringify(stored));
-    expect([decoded.world, decoded.events.length]).toEqual([runtime.world, 0]);
+    expect([decoded.world, decoded.events.length]).toEqual([({ ...runtime.world, shop: { ...runtime.world.shop, model: 3 as const }, axolotlShop: { ...runtime.world.axolotlShop, model: 2 as const } }), 0]);
     expect(decodeRuntime(JSON.stringify(decoded))).toEqual(decoded);
     stored.world.tanks[1].decorations[0].x = 0.5;
     expect(() => decodeRuntime(JSON.stringify(stored))).toThrow('replay');

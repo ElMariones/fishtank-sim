@@ -5,6 +5,7 @@ import { markingPosition, placeMarkings, type PlacedMarking } from '../core/patt
 import { clamp, hash, random } from '../core/random';
 import type { AccentColor, BaseColor, DotColor, IrisColor, Phenotype } from '../core/types';
 import { drawAxolotl } from './axolotl';
+import { drawEyeCloud, drawFray, drawGenesisSkin, drawPhotophores, drawVeilStreamers, kinkAt, shiftHue, towardRoot, veilEdge, VEIL_ALPHA, VEIL_CORE } from './genesis';
 import { FULL_DETAIL, type Detail } from './lod';
 
 const placedMarkings = new WeakMap<Phenotype, { seed: number; markings: PlacedMarking[] }>();
@@ -50,6 +51,9 @@ function paletteFor(p: Phenotype): Palette {
     dots: a.dots[0] === 'rainbow' ? RAINBOW.map(css) : a.dots.map(name => css(DOTS[name as Exclude<DotColor, 'rainbow'>])),
     iris: a.iris[0] === 'natural' ? [`hsl(${p.iris} 55% 62%)`] : a.iris.map(name => css(IRIS[name as Exclude<IrisColor, 'natural'>])),
   };
+  // Genesis: open-ended hue alleles rotate the accent (and tint the base) color.
+  const shift = p.genesis?.hueShift ?? 0;
+  if (shift) { palette.accent = shiftHue(palette.accent, shift); palette.base = shiftHue(palette.base, shift * 0.25); }
   palettes.set(p, palette);
   return palette;
 }
@@ -146,13 +150,16 @@ export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: numb
   const pectoral = motion
     ? { ...a.pectoral, control: { x: a.pectoral.control.x + Math.cos(motion.finPhase) * 0.02, y: a.pectoral.control.y - (1 - Math.sin(motion.finPhase)) * 0.35 * p.pectoral } }
     : a.pectoral;
-  const at = (v: Vec, dy = 0): [number, number] => [v.x * l, (v.y + dy) * l];
+  // Genesis spine defects bend every drawn point with the body; older genomes get exactly the straight mapping.
+  const bent = p.genesis?.kink ? p.genesis : undefined;
+  const at = bent ? (v: Vec, dy = 0): [number, number] => [v.x * l, (v.y + dy + kinkAt(bent, v.x)) * l] : (v: Vec, dy = 0): [number, number] => [v.x * l, (v.y + dy) * l];
   const palette = paletteFor(p), ornament = ornamentFor(p, seed, a);
-  const orange = palette.accent, base = palette.base;
+  const orange = palette.accent, base = palette.base, genesis = p.genesis;
   ctx.save();
   ctx.lineWidth = 0.7;
   ctx.strokeStyle = '#d7e5dd60';
   ctx.fillStyle = p.finPigment > 0.55 ? orange : '#c5ded8aa';
+  if (genesis && genesis.fins !== 'standard') drawVeilStreamers(ctx, genesis, tailLobes(a), at, l, wave, p.finPigment > 0.55 ? orange : '#d8ece6', time);
   // Caudal fin rooted inside the peduncle; rays are clipped to the fin. Every lobe of a paired or crown tail joins one path.
   const c = a.caudal, lobes = tailLobes(a), tailEnd = tailBox(a).x1;
   const caudal = new Path2D();
@@ -163,8 +170,22 @@ export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: numb
     caudal.lineTo(...at(tip(lobe.lowerTip), wave));
     caudal.bezierCurveTo(...at(tip(lobe.lowerOuter), wave), ...at(lobe.lowerInner), ...at(lobe.root));
   }
-  ctx.fill(caudal); ctx.stroke(caudal);
+  if (genesis && genesis.fins !== 'standard') {
+    // Veil and butterfly fins: a translucent flowing outer fin around a denser core.
+    ctx.save(); ctx.globalAlpha = VEIL_ALPHA[genesis.fins]; ctx.fill(caudal); ctx.restore();
+    const core = new Path2D();
+    for (const lobe of lobes) {
+      const near = towardRoot(lobe.root, VEIL_CORE[genesis.fins]);
+      core.moveTo(...at(lobe.root));
+      core.bezierCurveTo(...at(near(lobe.upperInner)), ...at(near(tip(lobe.upperOuter)), wave * 0.6), ...at(near(tip(lobe.upperTip)), wave * 0.6));
+      core.lineTo(...at(near(lobe.notch), wave * 0.6));
+      core.lineTo(...at(near(tip(lobe.lowerTip)), wave * 0.6));
+      core.bezierCurveTo(...at(near(tip(lobe.lowerOuter)), wave * 0.6), ...at(near(lobe.lowerInner)), ...at(lobe.root));
+    }
+    ctx.fill(core); ctx.stroke(caudal);
+  } else { ctx.fill(caudal); ctx.stroke(caudal); }
   ctx.save(); ctx.clip(caudal);
+  if (genesis) veilEdge(ctx, genesis, c.root.x * l, tailEnd * l, caudal);
   if (ornament) {
     ctx.save();
     ctx.save(); ctx.scale(l, l);
@@ -188,12 +209,18 @@ export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: numb
   }
   if (detail.finRays) for (const ray of lobes.flatMap(lobe => lobe.rays)) { ctx.beginPath(); ctx.moveTo(...at(ray.start)); ctx.quadraticCurveTo(...at(ray.control, wave * 0.5), ...at(tip(ray.end), wave)); ctx.stroke(); }
   ctx.restore();
+  if (genesis && genesis.finFray > 0) for (const lobe of lobes) drawFray(ctx, genesis, [tip(lobe.upperTip), lobe.notch, tip(lobe.lowerTip)].map(v => ({ x: v.x, y: v.y + wave })), (v, dy = 0) => at(v, dy), l, seed);
   // Dorsal and pectoral fins sit behind the body with roots inside the outline.
   for (const [fin, isDorsal] of [[dorsal, true], [pectoral, false]] as const) {
     if (!fin) continue;
     const path = new Path2D();
     path.moveTo(...at(fin.start)); path.quadraticCurveTo(...at(fin.control), ...at(fin.end)); path.closePath();
-    ctx.fill(path); ctx.stroke(path);
+    if (genesis && genesis.fins !== 'standard') {
+      ctx.save(); ctx.globalAlpha = VEIL_ALPHA[genesis.fins]; ctx.fill(path); ctx.restore();
+      const near = towardRoot({ x: (fin.start.x + fin.end.x) / 2, y: (fin.start.y + fin.end.y) / 2 }, VEIL_CORE[genesis.fins]), core = new Path2D();
+      core.moveTo(...at(fin.start)); core.quadraticCurveTo(...at(near(fin.control)), ...at(fin.end)); core.closePath();
+      ctx.fill(core); ctx.stroke(path);
+    } else { ctx.fill(path); ctx.stroke(path); }
     if (!ornament || !isDorsal) continue;
     ctx.save(); ctx.clip(path);
     ctx.save(); ctx.scale(l, l); paint(ctx, ornament.dorsal); ctx.restore();
@@ -257,6 +284,7 @@ export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: numb
     for (let i = 0; i < p.speckle * 55; i++) { ctx.beginPath(); ctx.arc((speckle() - 0.5) * l, (speckle() - 0.5) * h, l * 0.008, 0, Math.PI * 2); ctx.fill(); }
   }
   ctx.globalAlpha = 1;
+  if (genesis) drawGenesisSkin(ctx, genesis, a, (v, dy = 0) => at(v, dy), l, h, seed);
   const shine = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
   shine.addColorStop(0, `rgba(255,255,255,${0.22 + p.metallic * 0.4})`); shine.addColorStop(0.42, '#ffffff00'); shine.addColorStop(1, '#092a344f');
   ctx.fillStyle = shine; ctx.fillRect(-l, -h, l * 2, h * 2);
@@ -271,10 +299,12 @@ export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: numb
   if (palette.iris[1]) { ctx.fillStyle = palette.iris[1]; ctx.beginPath(); ctx.arc(eyeX, eyeY, eyeRadius * 0.62, 0, Math.PI * 2); ctx.fill(); }
   ctx.fillStyle = '#101c1b'; ctx.beginPath(); ctx.arc(eyeX - eyeRadius * 0.12, eyeY, pupilRadius * l, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(eyeX - eyeRadius * 0.22, eyeY - eyeRadius * 0.22, eyeRadius * 0.2, 0, Math.PI * 2); ctx.fill();
+  if (genesis) drawEyeCloud(ctx, genesis, eyeX, eyeY, eyeRadius);
   ctx.strokeStyle = '#46564c90';
   ctx.beginPath(); ctx.moveTo(...at(a.mouth.tip)); ctx.lineTo(...at(a.mouth.corner)); ctx.stroke();
   ctx.strokeStyle = '#e0dbc3aa';
   for (const barbel of a.barbels) { ctx.beginPath(); ctx.moveTo(...at(barbel.start)); ctx.quadraticCurveTo(...at(barbel.control), ...at(barbel.end)); ctx.stroke(); }
+  if (genesis) drawPhotophores(ctx, genesis, a, (v, dy = 0) => at(v, dy), l, seed, time);
   ctx.restore();
 }
 

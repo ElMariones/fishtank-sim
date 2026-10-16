@@ -84,7 +84,8 @@ describe('FS-503 aquarium expansion and decoration placement', () => {
     const raw = JSON.parse(JSON.stringify(runtime));
     for (const world of [raw.world, raw.checkpoint.world]) { world.version = 7; world.tanks.forEach((t: { decorations?: unknown }) => { delete t.decorations; }); }
     const migrated = decodeRuntime(JSON.stringify(raw));
-    expect(migrated.world).toEqual(runtime.world);
+    // The rebase moves an older world to Genesis stock (koi shop model 3, axolotl shop model 2).
+    expect(migrated.world).toEqual({ ...runtime.world, shop: { ...runtime.world.shop, model: 3 as const }, axolotlShop: { ...runtime.world.axolotlShop, model: 2 as const } });
     expect(migrated.world.tanks[1].decorations).toEqual(legacyDecorations());
     expect(migrated.events).toEqual([]);
     expect(decodeRuntime(JSON.stringify(migrated))).toEqual(migrated);

@@ -1,6 +1,7 @@
 import type { AbsenceSummary } from '../core/absence';
 import { createRuntime, importRuntime, type Runtime } from '../core/runtime';
 import { SAVE_KEY } from '../core/save';
+import { GENOME_VERSION } from '../core/catalog';
 import { createWorld } from '../core/world';
 import { commitSnapshot, openDatabase, readSlots, type SaveRecord } from './database';
 import { acquireWriterLease, type WriterLease } from './writerLease';
@@ -30,7 +31,7 @@ export async function loadSession(): Promise<LoadedSession> {
   const worldId = crypto.randomUUID();
   let session: SaveSession | null = null;
   let lease: WriterLease | null = null;
-  let fallback = createRuntime(createWorld(new Date().toISOString()), worldId);
+  let fallback = createRuntime(createWorld(new Date().toISOString(), undefined, GENOME_VERSION), worldId);
   try {
     lease = await acquireWriterLease();
     const database = await openDatabase();

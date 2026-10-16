@@ -9,6 +9,22 @@ import {
   type VisualDescriptorKey, type VisualFixtureSubject,
 } from '../core/visualFixtures';
 import { EggPortrait, PhenotypePortrait } from './FishPortrait';
+import { GENESIS_AXOLOTL_FIXTURES, GENESIS_FOUNDER_SAMPLE, GENESIS_KOI_FIXTURES, type GenesisFixture } from '../core/genesisFixtures';
+
+/** Renderer v8: a Genesis fixture with what development made of its chosen alleles and load. */
+function GenesisCard({ fixture }: { fixture: GenesisFixture }) {
+  const g = fixture.phenotype.genesis!;
+  const facts = [g.fins !== 'standard' ? (fixture.species === 'koi' ? g.fins : g.fins === 'veil' ? 'frilled crest' : 'sail crest') : null, g.ghost ? `ghost ${Math.round(g.ghost * 100)}%` : null,
+    g.glow ? `glow ${Math.round(g.glow * 100)}%` : null, g.plume ? 'plume gills' : null, g.extraDigits ? `+${g.extraDigits} digits` : null, g.hueShift ? `hue ${Math.round(g.hueShift)}°` : null,
+    ...g.defects.map(defect => `${defect.label}${defect.rescued ? ' (regrown)' : ''}`), `canalization ${Math.round(g.canalization * 100)}%`].filter(Boolean);
+  return <article className="fixture-card appearance-card">
+    <div className="fixture-card-heading"><span>{fixture.id}</span><code>{fixture.species}</code></div>
+    <PhenotypePortrait phenotype={fixture.phenotype} seed={fixture.birthSeed} label={`${fixture.label}, Genesis fixture`} />
+    <h3>{fixture.label}</h3>
+    <p className="help-copy">{fixture.note}</p>
+    <ul className="appearance-list">{facts.map(fact => <li key={fact as string}><strong>{fact}</strong></li>)}</ul>
+  </article>;
+}
 
 const REVEAL_DAYS = [0, 3, 6, 9, 12, 16, 30];
 const REVEAL_FIXTURE = VISUAL_FIXTURE_REPORT.appearance.find(fixture => fixture.id === 'appearance-rosettes') ?? VISUAL_FIXTURE_REPORT.appearance[0];
@@ -101,6 +117,12 @@ export function VisualFixtureLab({ onClose }: { onClose: () => void }) {
       <span><strong>6</strong> founders</span><span><strong>2 × 20</strong> offspring cohorts</span><span><strong>{sweep.invalid.length} / {sweep.samples}</strong> anatomy failures</span><span><strong>{displayPercent(patternStudy.inherited.siblingSeparation)}</strong> sibling marking separation</span>
     </div>
     <p className="fixture-note framing-note" role="status">{framing === 'shared' ? 'Shared scale: portraits in each board use one pixel scale, so longer bodies look longer.' : 'Fit each fish: every portrait fills its frame. Use shared scale to compare body size.'}</p>
+
+    <section className="fixture-section" aria-labelledby="genesis-fixtures-title">
+      <div className="fixture-section-heading"><div><div className="eyebrow">GENESIS · KOI GENOME V4 · AXOLOTL GENOME V2 · RENDERER V8</div><h2 id="genesis-fixtures-title">Genesis variants</h2></div><p>Each card starts from a founder and sets chosen development alleles, a homozygous load site or one open-ended allele. Older genomes never draw these layers.</p></div>
+      <div className="fixture-grid appearance">{[...GENESIS_KOI_FIXTURES, ...GENESIS_AXOLOTL_FIXTURES].map(fixture => <GenesisCard key={fixture.id} fixture={fixture} />)}</div>
+      <div className="fixture-grid appearance">{GENESIS_FOUNDER_SAMPLE.map(fixture => <GenesisCard key={fixture.id} fixture={fixture} />)}</div>
+    </section>
 
     <section className="fixture-section" aria-labelledby="founder-fixtures-title">
       <div className="fixture-section-heading"><div><div className="eyebrow">BASE POPULATION</div><h2 id="founder-fixtures-title">Six founder anchors</h2></div><p>World seed {r.worldSeed} · fixed timestamp {r.timestamp}</p></div>

@@ -4,9 +4,15 @@ import type { AppearanceLocus } from './catalog';
 import type { VisualDescriptorKey } from './descriptors';
 import type { AxolotlGenome, AxolotlPhenotype } from './axolotlGenetics';
 import type { AxolotlLocus } from './axolotlCatalog';
+import type { GenesisBlock, GenesisTraits } from './genesis';
+import type { AlleleRecord, AtlasState } from './atlas';
 
-/** Genome v1 holds 48 loci per copy; genome v2 appends the 12 Color and Ornament loci (60); genome v3 the 6 Structure loci (66). */
-export type Genome = { version: 1 | 2 | 3; maternal: number[]; paternal: number[] };
+/**
+ * Genome v1 holds 48 loci per copy; genome v2 appends the 12 Color and Ornament loci (60); genome v3 the 6 Structure loci
+ * (66); genome v4 (Genesis) the 6 Development loci (72) plus a development block: development seed, genetic load and the
+ * definitions of any open-ended alleles it carries. Only genome v4 has `genesis`.
+ */
+export type Genome = { version: 1 | 2 | 3 | 4; maternal: number[]; paternal: number[]; genesis?: GenesisBlock };
 /** Species is explicit on persistent animals/clutches; koi keeps its historic genome byte shape while axolotls own a separate registry. */
 export type Species = 'koi' | 'axolotl';
 export type CreatureGenome = Genome | AxolotlGenome;
@@ -51,7 +57,7 @@ export type Clutch = {
   tankId: string;
   /** Tank that receives the eggs and holds the reservation until spawning. */
   nurseryId: string;
-  size: number; genomeVersion: 1 | 2 | 3;
+  size: number; genomeVersion: 1 | 2 | 3 | 4;
   /** Timestamp of the pairing command; eggs add completed deterministic game-day boundaries to it. */
   pairedAt: string;
   stage: ClutchStage;
@@ -64,6 +70,11 @@ export type Clutch = {
   /** Value of `days` when the eggs were laid. */
   spawnedDay: number | null;
   firstFishId: string | null;
+  /**
+   * Genesis clutches (world v16) record what spawning produced: fertility, vigor and load decide how many of the reserved
+   * eggs are laid, and eggs homozygous for a lethal recessive never develop. Members are `laid` consecutive IDs.
+   */
+  outcome?: { laid: number; nonviable: number; causes: string[] };
 };
 /** Water model v1 state for one tank (FS-301). Units are explicit; values are game approximations, not care advice. */
 export type WaterState = {
@@ -101,7 +112,7 @@ export type Tank = { id: string; name: string; capacity: number; planted: boolea
 export type BuyerId = 'petShop' | 'longFin' | 'pondKeeper' | 'miniature' | 'colorCollector';
 /** Economy model v1 NPC demand (FS-501): how many more fish each buyer will take; it recovers at game-day boundaries. */
 export type MarketState = { model: 1; demand: Record<BuyerId, number> };
-export type LedgerReason = 'sale' | 'stock' | 'equipment' | 'waterChange' | 'rehome' | 'competitionEntry' | 'competitionPrize' | 'competitionPurchase';
+export type LedgerReason = 'sale' | 'stock' | 'equipment' | 'waterChange' | 'rehome' | 'competitionEntry' | 'competitionPrize' | 'competitionPurchase' | 'research';
 /** One credit change: `amount` is signed, `fish` counts the fish involved, `detail` is short readable text. */
 export type LedgerEntry = { seq: number; reason: LedgerReason; amount: number; fish: number; detail: string };
 /** Credits always equal `opening` plus every total; only the latest entries are kept. */
@@ -116,7 +127,7 @@ export type Listing = {
   /** For documented carriers: the appearance locus and the variant allele carried as one hidden copy. */
   carries: { locus: AppearanceLocus; allele: number } | null;
 };
-export type ShopState = { model: 1 | 2; nextListing: number; refreshedDay: number; listings: Listing[] };
+export type ShopState = { model: 1 | 2 | 3; nextListing: number; refreshedDay: number; listings: Listing[] };
 export type AxolotlListingCategory = 'founder' | 'morph' | 'carrier';
 export type AxolotlSwitch = 'axo_leucistic_switch' | 'axo_albinism_switch' | 'axo_melanoid_switch';
 /** An axolotl shop specimen (world v14): like a koi listing, fixed from arrival until it is bought or leaves. */
@@ -126,7 +137,7 @@ export type AxolotlListing = {
   /** For documented carriers: the recessive pigment switch and the severe allele carried as one hidden copy. */
   carries: { locus: AxolotlSwitch; allele: number } | null;
 };
-export type AxolotlShopState = { model: 1; nextListing: number; refreshedDay: number; listings: AxolotlListing[] };
+export type AxolotlShopState = { model: 1 | 2; nextListing: number; refreshedDay: number; listings: AxolotlListing[] };
 /** How new fish are named: 1 numbered ("Fry 12"), 2 generated from name parts (ADR-055), 3 parts true to the fish's traits (ADR-056). */
 export type NamingModel = 1 | 2 | 3;
 /** A bloodline's standard (FS-604), taken from its foundation fish when it was registered and never changed after. */
@@ -150,13 +161,17 @@ export type ReliefState = { model: 1; claims: number; cooldownDays: number };
  * Older saves migrate with defaults.
  */
 export type World = {
-  version: 15; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
+  version: 16; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
   market: MarketState; ledger: Ledger; shop: ShopState; naming: NamingModel; relief: ReliefState;
   /** Registered bloodlines and the next registry number (world v12). */
   bloodlines: Bloodline[]; nextBloodlineId: number;
   /** Persistent axolotl stock (world v14), separate from the koi shop so koi deliveries never change. */
   axolotlShop: AxolotlShopState;
   circuit: CompetitionState;
+  /** Named open-ended alleles (world v16): one record per allele that arose in this world. */
+  alleles: AlleleRecord[];
+  /** Genome Atlas (world v16): what the player has discovered about each species' loci. */
+  atlas: AtlasState;
 };
 /**
  * Development v2 inherited marking anchor, derived from one phased two-locus haplotype block.
@@ -207,4 +222,6 @@ export type Phenotype = {
   markings: MarkingAnchor[];
   appearance: Appearance;
   structure: Structure;
+  /** Genesis development (koi genome v4, axolotl genome v2). Absent for every older genome, which keeps its exact look. */
+  genesis?: GenesisTraits;
 };

@@ -30,14 +30,16 @@ export const FOUNDER_RESALE_CAP = 150;
 export const HEALTHY_CONDITION = 0.7;
 export const BREEDER_BONUS = { perGeneration: 6, max: 30 } as const;
 export const STAGE_FACTOR: Record<LifeStage, number> = { egg: 0, fry: 0.25, juvenile: 0.6, adult: 1, elderly: 0.8 };
-export const LEDGER_REASONS = ['sale', 'stock', 'equipment', 'waterChange', 'rehome', 'competitionEntry', 'competitionPrize', 'competitionPurchase'] as const satisfies readonly LedgerReason[];
-export const LEDGER_LABELS: Record<LedgerReason, string> = { sale: 'Sales', stock: 'Unrelated stock', equipment: 'Equipment', waterChange: 'Water changes', rehome: 'Rehoming', competitionEntry: 'Competition entry', competitionPrize: 'Competition prizes', competitionPurchase: 'Competition purchases' };
+export const LEDGER_REASONS = ['sale', 'stock', 'equipment', 'waterChange', 'rehome', 'competitionEntry', 'competitionPrize', 'competitionPurchase', 'research'] as const satisfies readonly LedgerReason[];
+export const LEDGER_LABELS: Record<LedgerReason, string> = { sale: 'Sales', stock: 'Unrelated stock', equipment: 'Equipment', waterChange: 'Water changes', rehome: 'Rehoming', competitionEntry: 'Competition entry', competitionPrize: 'Competition prizes', competitionPurchase: 'Competition purchases', research: 'Research (sequencing)' };
 
 /** Traits buyers read. They depend only on the genome, so a cache keyed by fish ID stays valid. */
 export type SaleTraits = {
   tail: number; adultLengthCm: number; longevityYears: number; metabolism: number; rarity: 0 | 1 | 2 | 3;
   /** Axolotls only: tail length normalized within the species, 0-1, for price model 2. */
   axolotlTail?: number;
+  /** Genesis animals only: what buyers see of temperament and genetic load. */
+  genesis?: { temperament: number; visibleDefects: number };
 };
 export type TraitCache = Map<string, SaleTraits>;
 
@@ -99,7 +101,7 @@ export function saleTraits(fish: Fish, cache?: TraitCache): SaleTraits {
   if (cached) return cached;
   if (isAxolotlGenome(fish.genome)) {
     const p = expressAxolotl(fish.genome);
-    const traits: SaleTraits = {
+    const plain: SaleTraits = {
       tail: p.morphology.tail.length,
       adultLengthCm: p.adultLengthCm,
       longevityYears: p.longevity,
@@ -107,12 +109,14 @@ export function saleTraits(fish: Fish, cache?: TraitCache): SaleTraits {
       rarity: AXOLOTL_MORPH_RARITY[p.pigmentation.morph],
       axolotlTail: clamp((p.morphology.tail.length - 0.42) / 0.42),
     };
+    const traits = p.genesis ? genesisSaleTraits(express(fish.genome), plain) : plain;
     cache?.set(fish.id, traits);
     return traits;
   }
   const potential = metabolicPotential(fish.genome);
   const rarity = describeAppearance(fish.genome).reduce<0 | 1 | 2 | 3>((best, row) => row.rarity ? Math.max(best, RARITY_RANK[row.rarity]) as 0 | 1 | 2 | 3 : best, 0);
-  const traits: SaleTraits = { tail: GOAL_BY_KEY.get('tail')!.value(express(fish.genome)), adultLengthCm: potential.adultLengthCm, longevityYears: potential.longevityYears, metabolism: potential.metabolism, rarity };
+  const phenotype = express(fish.genome);
+  const traits = genesisSaleTraits(phenotype, { tail: GOAL_BY_KEY.get('tail')!.value(phenotype), adultLengthCm: potential.adultLengthCm, longevityYears: potential.longevityYears, metabolism: potential.metabolism, rarity });
   cache?.set(fish.id, traits);
   return traits;
 }
@@ -120,6 +124,19 @@ export function saleTraits(fish: Fish, cache?: TraitCache): SaleTraits {
 export type OfferTerm = { label: string; amount: number };
 /** `amount` is the sum of `terms`. */
 export type Offer = { buyer: BuyerId; buyerName: string; amount: number; terms: OfferTerm[] };
+
+/**
+ * Genesis buyers (any price model): visible novelties (glow, ghost pigment, veil fins, several new alleles) count as rare
+ * colors for the color collector; lively, sociable animals sell a little better; visible defects sell for much less.
+ */
+function genesisSaleTraits(p: ReturnType<typeof express>, base: SaleTraits): SaleTraits {
+  const g = p.genesis;
+  if (!g) return base;
+  const special = g.glow >= 0.5 || g.ghost >= 0.6 || g.fins !== 'standard' || g.plume || (g.extraDigits ?? 0) > 0;
+  const rarity = Math.max(base.rarity, special ? 2 : 0, g.novelAlleles >= 2 ? 1 : 0) as SaleTraits['rarity'];
+  const visibleDefects = g.defects.filter(d => !d.rescued && d.kind !== 'lethal' && d.kind !== 'frail' && d.kind !== 'subfertile').length;
+  return { ...base, rarity, genesis: { temperament: (p.bold + p.activity + p.social) / 3, visibleDefects } };
+}
 
 function offerFrom(buyer: Buyer, fish: Fish, stage: LifeStage, traits: SaleTraits, demand: number, model: PriceModel): Offer | null {
   if (stage === 'egg' || (stage === 'fry' && !buyer.takesFry) || demand < 1) return null;
@@ -135,6 +152,10 @@ function offerFrom(buyer: Buyer, fish: Fish, stage: LifeStage, traits: SaleTrait
   };
   if (buyer.weight) step(`Trait interest ${percent(interest)}`, value + buyer.weight * interest);
   if (buyer.weight && fish.parents) step(`Bred here, generation ${fish.generation}`, value + Math.min(BREEDER_BONUS.max, BREEDER_BONUS.perGeneration * fish.generation));
+  if (traits.genesis) {
+    step(`Temperament ${percent(traits.genesis.temperament)} lively`, value * (0.88 + 0.24 * traits.genesis.temperament));
+    if (traits.genesis.visibleDefects) step(`${traits.genesis.visibleDefects} visible defect${traits.genesis.visibleDefects === 1 ? '' : 's'}`, value * Math.max(0.3, 1 - 0.3 * traits.genesis.visibleDefects));
+  }
   step(`${STAGE_TEXT[stage]}, ${percent(STAGE_FACTOR[stage])} of the adult price`, value * STAGE_FACTOR[stage]);
   step(`Condition ${percent(fish.life.condition)}`, value * Math.min(1, fish.life.condition / HEALTHY_CONDITION));
   step(`Wants ${Math.floor(demand)} more of ${buyer.capacity}`, value * (0.5 + 0.5 * demand / buyer.capacity));
@@ -219,7 +240,7 @@ export function recoverDemand(world: World): World {
   return { ...world, market: { ...world.market, demand: Object.fromEntries(BUYERS.map(buyer => [buyer.id, Math.min(buyer.capacity, demand[buyer.id] + buyer.recovery)])) as Record<BuyerId, number> } };
 }
 
-export const openingLedger = (credits: number): Ledger => ({ model: 1, opening: credits, next: 1, totals: { sale: 0, stock: 0, equipment: 0, waterChange: 0, rehome: 0, competitionEntry: 0, competitionPrize: 0, competitionPurchase: 0 }, entries: [] });
+export const openingLedger = (credits: number): Ledger => ({ model: 1, opening: credits, next: 1, totals: { sale: 0, stock: 0, equipment: 0, waterChange: 0, rehome: 0, competitionEntry: 0, competitionPrize: 0, competitionPurchase: 0, research: 0 }, entries: [] });
 
 export function recordEntry(ledger: Ledger, reason: LedgerReason, amount: number, fish: number, detail: string): Ledger {
   return {

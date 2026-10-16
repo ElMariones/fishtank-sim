@@ -215,7 +215,8 @@ export function sanitizeAxolotlShape(input: Partial<AxolotlShape>): AxolotlShape
     gillSpread: unit(input.gillSpread ?? d.gillSpread, d.gillSpread),
     gillThickness: unit(input.gillThickness ?? d.gillThickness, d.gillThickness),
     gillStalkCount: integer(input.gillStalkCount ?? d.gillStalkCount, d.gillStalkCount, 2, 5),
-    gillBranchCount: integer(input.gillBranchCount ?? d.gillBranchCount, d.gillBranchCount, 4, 15),
+    // Genesis plume gills reach 20 branches; genome v1 never exceeds 15.
+    gillBranchCount: integer(input.gillBranchCount ?? d.gillBranchCount, d.gillBranchCount, 4, 20),
     gillFrondDensity: unit(input.gillFrondDensity ?? d.gillFrondDensity, d.gillFrondDensity),
     gillFilamentLength: unit(input.gillFilamentLength ?? d.gillFilamentLength, d.gillFilamentLength),
     eyeSize: unit(input.eyeSize ?? d.eyeSize, d.eyeSize),

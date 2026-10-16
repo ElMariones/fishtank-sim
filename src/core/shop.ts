@@ -13,12 +13,14 @@ import type { Fish, Listing, ListingCategory, ShopState, World } from './types';
  * SHOP_REFRESH_DAYS, to refill SHOP_SIZE places, and each leaves after SHOP_LISTING_DAYS unless bought. Everything
  * derives from the world seed and the listing number, so replay and every split of time agree.
  */
-export const SHOP_MODEL = 2;
+export const SHOP_MODEL = 3;
 /**
  * Shop model 1 delivered genome v2 specimens; model 2 (FS-601) delivers genome v3. A world keeps the model its journal
  * was recorded under until the runtime rebases it, so replayed deliveries always match the saved ones.
  */
-export const LISTING_GENOME: Record<ShopState['model'], GenomeVersion> = { 1: 2, 2: 3 };
+export const LISTING_GENOME: Record<ShopState['model'], GenomeVersion> = { 1: 2, 2: 3, 3: 4 };
+/** Shop model for a new world: Genesis worlds sell genome v4 stock; research worlds keep the genome v3 shop. */
+export const shopModelFor = (genomeVersion: GenomeVersion): ShopState['model'] => genomeVersion >= 4 ? 3 : 2;
 export const SHOP_SIZE = 6;
 export const SHOP_REFRESH_DAYS = 3;
 export const SHOP_LISTING_DAYS = 9;

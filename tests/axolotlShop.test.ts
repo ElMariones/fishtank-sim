@@ -112,7 +112,7 @@ describe('axolotl shop stock (world v14)', () => {
     stored.world = asV13(stored.world);
     stored.checkpoint.world = asV13(stored.checkpoint.world);
     const decoded = decodeRuntime(JSON.stringify(stored));
-    expect(decoded.world).toEqual(runtime.world);
+    expect(decoded.world).toEqual({ ...runtime.world, shop: { ...runtime.world.shop, model: 3 as const }, axolotlShop: { ...runtime.world.axolotlShop, model: 2 as const } });
     expect(decoded.events).toEqual([]);
     expect(decodeRuntime(JSON.stringify(decoded))).toEqual(decoded);
   });

@@ -1,6 +1,6 @@
 import { ancestryContributions, standardSimilarity } from './bloodlines';
 import { BREEDING_CONDITION, clutchMembers, courtingClutchOf, MS_PER_GAME_DAY, pairingBlockers, reservedPlaces } from './breeding';
-import { GENOME_VERSION } from './catalog';
+import { RESEARCH_GENOME_VERSION as GENOME_VERSION } from './catalog';
 import { isEgg, lifeStage } from './development';
 import { founderGenome, inherit, metabolicPotential } from './genetics';
 import { originId, parseOriginId } from './origins';

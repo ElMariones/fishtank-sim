@@ -72,6 +72,12 @@ export const KOI_LOCUS_NOTES: Record<GenomeLocus, string> = {
   dorsal_form: 'Dorsal fin form. A reduced or missing dorsal needs two variant copies.',
   barbel_count: 'Number of barbels: two by default; none, four or six need variant copies on both homologs.',
   fin_ray_density: 'How many rays stiffen the fins.',
+  pigment_cascade: 'Master switch of the pigment cells. Two null or weak copies silence every color locus, leaving a pale ghost that still carries its hidden colors.',
+  fin_program: 'Fin growth program. One veil copy gives long flowing fins (dominant); two give butterfly fins. Long fins cost speed and oxygen.',
+  canalization: 'Developmental stability. Low levels add noise and asymmetry and let genetic defects show more strongly.',
+  glow: 'Photophores along the flank. One photophore copy glows faintly; two glow strongly. Glowing costs a little metabolism.',
+  maturity_timing: 'How many days after hatching a fish becomes ready to court. Large fish mature later.',
+  regeneration: 'Healing. Speeds recovery of condition, and strong regeneration regrows eroded fins.',
 };
 
 export const KOI_EXPRESSION_NOTES: Record<Expression, string> = {
@@ -83,4 +89,7 @@ export const KOI_EXPRESSION_NOTES: Record<Expression, string> = {
   overlay: 'Overlay: each copy draws its own motif; one copy is faint.',
   'structural-recessive': 'Structural recessive: two variant copies are needed to change the form.',
   'barbel-series': 'Recessive series: one standard copy keeps two barbels.',
+  'cascade-recessive': 'Epistatic recessive: two null or weak copies switch off every color locus at once.',
+  'dominant-program': 'Dominant program: one variant copy changes the form; two copies change it further.',
+  'semi-recessive': 'Semi-recessive: one copy shows faintly, two copies fully.',
 };

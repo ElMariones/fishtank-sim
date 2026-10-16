@@ -14,6 +14,26 @@ Axolotl meiosis is species-local and deterministic. Each chromosome starts on on
 
 Only two severe alleles (A4–A5) at a recessive switch change the animal; milder switch alleles (A1–A3) are recorded and inherited but have no visible effect in this model. Maturity timing, feeding drive and regeneration are inherited and displayed as recorded values; the lab does not simulate them yet (FS-119). Axolotl shop morphs and carriers are ordinary founders with one switch set by the shop, not a separate genetic mechanism.
 
+### Genesis: koi genome v4 and axolotl genome v2 (implemented, FS-129)
+
+- **Dominance.** Each allele has a value (koi levels 0–5, axolotl effects −1…1) and a potency. Catalog potency follows
+  the locus class: additive (1), higher-dominant (0.3 + 0.14 × allele), lower-dominant (1 − 0.14 × allele) or
+  overdominant (additive plus a bonus for two different values). A genotype expresses the potency-weighted mean.
+  Categorical loci keep their named rules.
+- **Development chromosome (12).** Koi: `pigment_cascade` (two null/weak copies silence all color: ghost 1.0 or faded
+  0.62), `fin_program` (one ≥A4 copy veil, two butterfly), `canalization`, `glow` (one copy faint, two strong),
+  `maturity_timing`, `regeneration`. Axolotl: `axo_canalization`, `axo_fluorescence` (dominant), `axo_frill_program`
+  (dominant), `axo_gill_program` (recessive plume), `axo_digit_program` (threshold with noise), `axo_vigor` (overdominant).
+- **Noise.** `genesis.dev` seeds per-trait jitter of amplitude 0.012 + 0.085 × (1 − canalization).
+- **Load.** 40 sites per species, each anchored to a locus; transmitted with the homolog chosen at that anchor; 3% chance of
+  a new site per gamete; expressed only when homozygous; founders are never homozygous. Vigor = 0.8 + 0.25 ×
+  min(1.25, heterozygosity / 0.6).
+- **Open-ended alleles.** At an eligible (quantitative) locus, 42% of mutations create a new allele: value = parent ±
+  (0.35–1.6 koi levels or 0.08–0.42 axolotl effect), potency = parent × 0.55–1.5 (0.12–1.6), 0–2 side effects of up to
+  ±0.28. A new allele that mutates again reverts to the nearest catalog allele 25% of the time, otherwise derives a new one.
+- **Inheritance helpers.** Novel choices, load and the development chromosome use their own random streams, so the first
+  66 loci of a genome v4 birth draw exactly as genome v3 for the same seed.
+
 ## 1. Representation and actual combinatorics
 
 A fish is diploid. Each locus has two copies; chromosomes retain phase, meaning which alleles lie together on one homolog. Lab v1 uses eight synthetic chromosomes of six ordered loci each, 48 total. Each allele is an integer ID A0–A5.

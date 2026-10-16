@@ -52,11 +52,11 @@ describe('FS-601 locus registry', () => {
   it('defines every locus in stable order with valid founder weights, labels, baselines and mutation targets', () => {
     expect(LOCUS_REGISTRY.map(entry => entry.id)).toEqual([...GENOME_LOCI]);
     expect(LOCUS_REGISTRY.map(entry => entry.index)).toEqual(GENOME_LOCI.map((_, i) => i));
-    expect(CHROMOSOMES).toHaveLength(11);
+    expect(CHROMOSOMES).toHaveLength(12);
     expect(lociFor(1)).toHaveLength(48); expect(lociFor(2)).toHaveLength(60); expect(lociFor(3)).toHaveLength(66);
     for (const entry of LOCUS_REGISTRY) {
       expect(entry.chromosomeName).toBe(CHROMOSOMES[entry.chromosome - 1]);
-      expect(entry.sinceGenome).toBe(entry.index < 48 ? 1 : entry.index < 60 ? 2 : 3);
+      expect(entry.sinceGenome).toBe(entry.index < 48 ? 1 : entry.index < 60 ? 2 : entry.index < 66 ? 3 : 4);
       expect(close(entry.alleles.reduce((sum, allele) => sum + allele.founderWeight, 0), 1)).toBe(true);
       expect(entry.alleles.map(allele => allele.id)).toEqual(entry.alleles.map((_, i) => i));
       if (entry.sinceGenome === 1) expect(entry.baseline).toBeNull();
@@ -73,7 +73,7 @@ describe('FS-601 locus registry', () => {
       const entry = LOCUS_REGISTRY[48 + i];
       expect([entry.alleles.map(a => a.founderWeight), entry.baseline]).toEqual([[...APPEARANCE_FOUNDER_WEIGHTS[locus]], APPEARANCE_BASELINE[i]]);
     });
-    const structural = LOCUS_REGISTRY.slice(60);
+    const structural = LOCUS_REGISTRY.slice(60, 66);
     expect(structural.map(entry => entry.id)).toEqual([...STRUCTURE_LOCI]);
     expect(structural.map(entry => entry.baseline)).toEqual([...STRUCTURE_BASELINE]);
     expect(structural.filter(entry => entry.mutationRate === STRUCTURAL_MUTATION_RATE).map(entry => entry.id)).toEqual(['tail_topology', 'dorsal_form', 'barbel_count']);
@@ -198,11 +198,11 @@ describe('FS-601 locus registry', () => {
     const rebased = decodeRuntime(JSON.stringify(stored));
     expect(rebased.world.fish).toEqual(runtime.world.fish);
     expect(rebased.world.fish.every(fish => fish.genome.version === 2)).toBe(true);
-    expect([rebased.world.shop.model, rebased.world.shop.listings]).toEqual([2, runtime.world.shop.listings]);
+    expect([rebased.world.shop.model, rebased.world.shop.listings]).toEqual([3, runtime.world.shop.listings]);
     expect(rebased.events).toHaveLength(0);
     const later = advanceRuntime(rebased, rebased.tick + 12 * TICKS_PER_GAME_DAY);
-    expect(later.world.shop.listings.some(listing => listing.genome.version === 3)).toBe(true);
-    expect(later.world.shop.listings.every(listing => listing.genome.version === LISTING_GENOME[2] || runtime.world.shop.listings.some(old => old.id === listing.id))).toBe(true);
+    expect(later.world.shop.listings.some(listing => listing.genome.version === 4)).toBe(true);
+    expect(later.world.shop.listings.every(listing => listing.genome.version === LISTING_GENOME[3] || runtime.world.shop.listings.some(old => old.id === listing.id))).toBe(true);
     expect(decodeRuntime(JSON.stringify(later))).toEqual(later);
     // Old parents breed genome v3 children that carry the structure baseline and express standard anatomy.
     const bred = applyCommand(later.world, { type: 'breed', motherId: 'FSH-000003', fatherId: 'FSH-000004', tankId: 'tank-1', timestamp: NOW, genomeVersion: 3 });

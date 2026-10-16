@@ -3,6 +3,7 @@ import { advanceWorld, type DayReport } from './habitat';
 import { NAMING_MODEL } from './names';
 import { decodeSave } from './save';
 import { initialShop, SHOP_MODEL } from './shop';
+import { AXOLOTL_SHOP_MODEL } from './axolotlShop';
 import { TICKS_PER_GAME_DAY } from './water';
 import { applyCommand, commandSchema, WORLD_VERSION, type Command } from './world';
 import type { World } from './types';
@@ -122,7 +123,7 @@ export function decodeRuntime(raw: string): Runtime {
     // is omitted only while proving an old snapshot against its replay. Current v13 snapshots compare it normally.
     // World v14 adds the axolotl shop. An older snapshot has none to prove, so its replayed stock is left out.
     if (sourceVersion < 7) {
-      const records = { ...recordsOnly(candidate), circuit: null };
+      const records = { ...recordsOnly(candidate), circuit: null, alleles: null, atlas: null };
       return JSON.stringify(sourceVersion < 13 ? withoutSpecies(records) : records);
     }
     const named = staleNames ? withoutNamesWorld(candidate) : candidate;
@@ -132,7 +133,9 @@ export function decodeRuntime(raw: string): Runtime {
     const originated = sourceVersion < 11 ? withoutOrigins(decorated) : decorated;
     const speciated = sourceVersion < 13 ? withoutSpecies(originated) : originated;
     const stocked = sourceVersion < 14 ? { ...speciated, axolotlShop: null } : speciated;
-    return JSON.stringify(sourceVersion < 15 ? { ...stocked, circuit: null } : stocked);
+    const circuited = sourceVersion < 15 ? { ...stocked, circuit: null } : stocked;
+    // World v16 adds the allele registry and the Genome Atlas; an older snapshot has neither to prove.
+    return JSON.stringify(sourceVersion < 16 ? { ...circuited, alleles: null, atlas: null } : circuited);
   };
   if (comparable(decodeSave(JSON.stringify(replayed.world))) !== comparable(world)) throw mismatch;
   const simulation = parsed.simulation ?? { version: 1 as const, tankTicks: Object.fromEntries(world.tanks.map(tank => [tank.id, parsed.tick])) };
@@ -151,6 +154,8 @@ export function decodeRuntime(raw: string): Runtime {
     world.naming = NAMING_MODEL;
     // Listings already in the shop keep their genomes; deliveries after the rebase use genome v3 (FS-601).
     world.shop = { ...world.shop, model: SHOP_MODEL };
+    // Genesis: from the rebase on, the axolotl counter delivers genome v2 stock too.
+    world.axolotlShop = { ...world.axolotlShop, model: AXOLOTL_SHOP_MODEL };
     return { ...replayed, world, tick: parsed.tick, simulation, checkpoint: { world, tick: parsed.tick, revision: parsed.revision }, events: [] };
   }
   return { ...replayed, world, tick: parsed.tick, simulation };
@@ -201,6 +206,8 @@ export function importRuntime(raw: string, legacyWorldId: string): Runtime {
   const parsed: unknown = JSON.parse(raw);
   if (parsed && typeof parsed === 'object' && 'schemaVersion' in parsed) return decodeRuntime(raw);
   // A bare save has no journal to replay, so it moves to the current naming and shop models at once.
-  const world = decodeSave(raw);
-  return createRuntime({ ...world, naming: NAMING_MODEL, shop: { ...world.shop, model: SHOP_MODEL } }, legacyWorldId);
+  const world = decodeSave(raw), source = Number((parsed as { version?: unknown } | null)?.version);
+  // A Genesis-era (v16) bare world keeps the shop models it chose; older worlds move to Genesis stock.
+  if (source >= WORLD_VERSION) return createRuntime({ ...world, naming: NAMING_MODEL }, legacyWorldId);
+  return createRuntime({ ...world, naming: NAMING_MODEL, shop: { ...world.shop, model: SHOP_MODEL }, axolotlShop: { ...world.axolotlShop, model: AXOLOTL_SHOP_MODEL } }, legacyWorldId);
 }

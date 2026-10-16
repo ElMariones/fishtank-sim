@@ -24,23 +24,36 @@ export const ALL_LOCI = [...LOCI, ...APPEARANCE_LOCI] as const;
  * shape modifiers. Genome v1 and v2 fish do not carry it and always express the standard structure.
  */
 export const STRUCTURE_LOCI = ['tail_topology', 'lobe_balance', 'topology_spread', 'dorsal_form', 'barbel_count', 'fin_ray_density'] as const;
+/**
+ * Genome v4 (Genesis) appends chromosome 12 (Development): an epistatic pigment cascade that can silence every color locus,
+ * a dominant fin program (veil and butterfly fins), developmental canalization (how much noise and asymmetry a fish shows),
+ * a semi-recessive photophore glow, maturity timing and regeneration. Older genomes read the baselines in the registry.
+ */
+export const DEVELOPMENT_LOCI = ['pigment_cascade', 'fin_program', 'canalization', 'glow', 'maturity_timing', 'regeneration'] as const;
 /** Every locus of the current genome version, in stable order. */
-export const GENOME_LOCI = [...ALL_LOCI, ...STRUCTURE_LOCI] as const;
+export const GENOME_LOCI = [...ALL_LOCI, ...STRUCTURE_LOCI, ...DEVELOPMENT_LOCI] as const;
 
 export type Locus = typeof LOCI[number];
 export type AppearanceLocus = typeof APPEARANCE_LOCI[number];
 export type StructureLocus = typeof STRUCTURE_LOCI[number];
+export type DevelopmentLocus = typeof DEVELOPMENT_LOCI[number];
 export type GenomeLocus = typeof GENOME_LOCI[number];
-export const CHROMOSOMES = ['Body', 'Face', 'Fins', 'Pigments', 'Pattern', 'Life history', 'Behavior', 'Regulation', 'Color', 'Ornament', 'Structure'];
-export type GenomeVersion = 1 | 2 | 3;
-export const GENOME_VERSIONS = [1, 2, 3] as const satisfies readonly GenomeVersion[];
-export const GENOME_VERSION: GenomeVersion = 3;
+export const CHROMOSOMES = ['Body', 'Face', 'Fins', 'Pigments', 'Pattern', 'Life history', 'Behavior', 'Regulation', 'Color', 'Ornament', 'Structure', 'Development'];
+export type GenomeVersion = 1 | 2 | 3 | 4;
+export const GENOME_VERSIONS = [1, 2, 3, 4] as const satisfies readonly GenomeVersion[];
+/** The genome the live game breeds and sells (Genesis, genome v4). */
+export const GENOME_VERSION: GenomeVersion = 4;
+/**
+ * The genome research harnesses and frozen scenarios use. Their recorded pacing, prices and fixtures were measured on
+ * genome v3 rules, so they keep it; the live game passes GENOME_VERSION explicitly.
+ */
+export const RESEARCH_GENOME_VERSION: GenomeVersion = 3;
 /** Loci carried by each genome version. */
-export const LOCI_PER_GENOME: Record<GenomeVersion, number> = { 1: 48, 2: 60, 3: 66 };
+export const LOCI_PER_GENOME: Record<GenomeVersion, number> = { 1: 48, 2: 60, 3: 66, 4: 72 };
 export const ALLELE_COUNT = 6;
 export const MUTATION_RATE = 0.003; // Per transmitted copy, NOT per offspring.
 export const CROSSOVER_RATE = 0.12; // Switch probability at each adjacent boundary.
 export const FOUNDER_WEIGHTS = [0.1, 0.22, 0.32, 0.24, 0.1, 0.02];
 /** Appearance pipeline versions. Lab records do not store per-fish model versions yet (see ADR-018). */
-export const MODEL_VERSIONS = { genome: 3, development: 5, anatomy: 3, renderer: 7 } as const;
+export const MODEL_VERSIONS = { genome: 4, development: 6, anatomy: 3, renderer: 8 } as const;
 export const label = (name: string) => name.replaceAll('_', ' ').replace(/^./, c => c.toUpperCase());

@@ -51,7 +51,12 @@ export function competitionScores(fish: Fish, event: CompetitionEvent): Competit
     : 52 + 24 * p.symmetry + 14 * p.metallic + 10 * p.spread;
   const pattern = a ? 48 + 28 * a.pattern.contrast + 16 * a.pattern.density + 8 * (1 - Math.abs(a.pattern.scale - style))
     : 48 + 28 * p.appearance.contrast + 16 * p.appearance.density + 8 * (1 - Math.abs(p.patternScale - style));
-  return { presentation: round(clamp(presentation, 0, 100)), pattern: round(clamp(pattern, 0, 100)), condition: round(fish.life.condition * 100) };
+  // Genesis animals: bold, active animals present themselves; visible defects cost points; novelties catch the judges' eye.
+  const g = p.genesis, bold = a ? a.bold : p.bold, activity = a ? a.activity : p.activity;
+  const visible = g ? g.defects.filter(d => !d.rescued && !['lethal', 'frail', 'subfertile'].includes(d.kind)).length : 0;
+  const presence = g ? 10 * (bold - 0.5) + 6 * (activity - 0.5) - 7 * visible + (g.fins !== 'standard' ? 4 : 0) : 0;
+  const novelty = g ? 6 * g.glow + 5 * g.ghost + Math.min(6, 2 * g.novelAlleles) - 4 * g.depigment : 0;
+  return { presentation: round(clamp(presentation + presence, 0, 100)), pattern: round(clamp(pattern + novelty, 0, 100)), condition: round(fish.life.condition * 100) };
 }
 const totalOf = (scores: CompetitionParticipant['scores']) => round((scores.presentation + scores.pattern + scores.condition) / 3);
 const praise = ['A beautifully composed exhibit', 'A memorable presence in the glass', 'A specimen with unmistakable character', 'A wonderfully assured entry', 'An elegant expression of its lineage', 'A compelling individual', 'A striking moment in this year’s show', 'An exhibit the panel will remember'];
@@ -63,12 +68,13 @@ function commentFor(fish: Fish, event: CompetitionEvent, scores: CompetitionPart
   return `${pick(praise, rng)}. ${ordered[0][0].toUpperCase() + ordered[0].slice(1)} led at ${scores[ordered[0]].toFixed(1)}; ${ordered[2]} scored ${scores[ordered[2]].toFixed(1)}. ${pick(critique, rng)} ${finishes[Math.min(rank - 1, 3)]}`;
 }
 /** NPC entrants are real, stable genome snapshots; higher tiers select stronger candidates rather than inflating scores. */
-export function competitionNpc(seed: number, event: CompetitionEvent, fishId: string): Fish {
+export function competitionNpc(seed: number, event: CompetitionEvent, fishId: string, genesis = false): Fish {
   const level = COMPETITION_TIERS.indexOf(event.tier);
   let best: Fish | undefined, bestScore = -1;
   for (let attempt = 0; attempt <= level * 3; attempt++) {
     const birthSeed = hash(`${seed}:${event.id}:${fishId}:candidate:${attempt}`);
-    const genome = event.species === 'koi' ? founderGenome(birthSeed, 3) : axolotlFounderGenome(birthSeed);
+    // Genesis worlds (shop model 3) field Genesis rivals; older worlds keep the rivals their journals recorded.
+    const genome = event.species === 'koi' ? founderGenome(birthSeed, genesis ? 4 : 3) : axolotlFounderGenome(birthSeed, genesis ? 2 : 1);
     const sex = birthSeed % 2 ? 'F' : 'M';
     const fish: Fish = { id: fishId, name: newFishName(`${event.id}:${fishId}:${attempt}`, { sex, genome }, new Set()), sex, species: event.species, genome, birthSeed,
       generation: 0, parents: null, bornAt: '2026-01-01T00:00:00.000Z', tankId: 'competition', status: 'living', mutations: [], origins: [], life: adultLife(genome), breeding: { model: 1, cooldownDays: 0 } };
@@ -82,7 +88,7 @@ export function createCompetitionRun(world: World, event: CompetitionEvent, entr
   const fish = [...entrants.map(member => structuredClone(member))];
   for (let index = 0; index < 8; index++) {
     if (world.nextId > 999999) throw new Error('Animal identifiers exhausted. Export your world.');
-    fish.push(competitionNpc(world.seed, event, `FSH-${String(world.nextId++).padStart(6, '0')}`));
+    fish.push(competitionNpc(world.seed, event, `FSH-${String(world.nextId++).padStart(6, '0')}`, world.shop.model >= 3));
   }
   const participants: CompetitionParticipant[] = fish.map((member, index) => {
     const scores = competitionScores(member, event), total = totalOf(scores);

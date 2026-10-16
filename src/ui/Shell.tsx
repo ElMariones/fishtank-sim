@@ -8,12 +8,12 @@ import { MenuButton, useContextMenu, type MenuEntry } from './kit/Menu';
 import { Popover } from './kit/Overlay';
 import { AnimatedNumber, CapacityBar } from './ShellParts';
 
-export type LabView = 'aquarium' | 'research' | 'fixtures' | 'competitions' | 'trophies';
+export type LabView = 'aquarium' | 'research' | 'fixtures' | 'competitions' | 'trophies' | 'atlas';
 export type TankSummary = { id: string; name: string; capacity: number; living: number; eggs: number; tone: 'good' | 'warn' | 'alert'; style: TankStyle };
 export type TankAction = 'open' | 'aquascape' | 'care' | 'habitat';
 
 const PRIMARY: [LabView, string, IconName, string][] = [
-  ['aquarium', 'Aquarium', 'tank', 'G then A'], ['competitions', 'Competitions', 'trophy', 'G then C'], ['trophies', 'Trophy room', 'medal', 'G then T'],
+  ['aquarium', 'Aquarium', 'tank', 'G then A'], ['atlas', 'Genome Atlas', 'dna', 'G then L'], ['competitions', 'Competitions', 'trophy', 'G then C'], ['trophies', 'Trophy room', 'medal', 'G then T'],
 ];
 const RESEARCH: [LabView, string, IconName][] = [['research', 'Research studies', 'flask'], ['fixtures', 'Visual fixtures', 'grid']];
 const TONE_TEXT = { good: 'Water good', warn: 'Needs care', alert: 'Urgent care' } as const;

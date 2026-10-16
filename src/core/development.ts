@@ -1,5 +1,5 @@
-import { metabolicPotential } from './genetics';
-import type { Genome, LifeState, WaterState } from './types';
+import { express, metabolicPotential } from './genetics';
+import type { CreatureGenome, Genome, LifeState, WaterState } from './types';
 import { WATER_THRESHOLDS } from './water';
 
 /**
@@ -31,7 +31,9 @@ export type LifeStage = 'egg' | 'fry' | 'juvenile' | 'adult' | 'elderly';
 export type Potential = ReturnType<typeof metabolicPotential>;
 
 export const eggLife = (): LifeState => ({ model: 1, ageDays: 0, lengthCm: 0, condition: 1 });
-export const adultLife = (genome: Genome): LifeState => ({ model: 1, ageDays: STOCK_AGE_DAYS, lengthCm: metabolicPotential(genome).adultLengthCm, condition: 1 });
+/** Genesis animals mature on their own schedule (days after hatching); every other genome matures by size alone. */
+export const maturityAge = (genome: CreatureGenome) => { if (!genome.genesis) return 0; const days = express(genome).genesis?.maturityDays; return days === undefined ? 0 : INCUBATION_DAYS + days; };
+export const adultLife = (genome: Genome | CreatureGenome): LifeState => ({ model: 1, ageDays: Math.max(STOCK_AGE_DAYS, maturityAge(genome)), lengthCm: metabolicPotential(genome).adultLengthCm, condition: 1 });
 export const isEgg = (life: LifeState) => life.lengthCm === 0;
 export const daysToHatch = (life: LifeState) => isEgg(life) ? Math.max(0, INCUBATION_DAYS - life.ageDays) : 0;
 
@@ -94,10 +96,18 @@ export function environmentLimits(environment: Environment): string[] {
   return factors.filter(([, factor]) => factor < 1).sort((a, b) => a[1] - b[1]).map(([name]) => name);
 }
 
+/**
+ * How fast condition moves for one animal (Genesis): regeneration speeds recovery and long-lived constitutions resist decline.
+ * Every other animal uses CONDITION_RESPONSE both ways.
+ */
+export type ConditionRates = { up: number; down: number };
+export const STANDARD_RATES: ConditionRates = { up: CONDITION_RESPONSE, down: CONDITION_RESPONSE };
+
 /** One game day. Length never decreases and never exceeds the genetic adult length; eggs hatch on schedule. */
-export function developDay(life: LifeState, potential: Pick<Potential, 'adultLengthCm' | 'growth'>, environment: Environment): LifeState {
+export function developDay(life: LifeState, potential: Pick<Potential, 'adultLengthCm' | 'growth'>, environment: Environment, rates: ConditionRates = STANDARD_RATES): LifeState {
   const ageDays = life.ageDays + 1;
-  const condition = life.condition + (environment.overall - life.condition) * CONDITION_RESPONSE;
+  const response = rates === STANDARD_RATES ? CONDITION_RESPONSE : environment.overall >= life.condition ? rates.up : rates.down;
+  const condition = life.condition + (environment.overall - life.condition) * response;
   if (isEgg(life)) return { model: 1, ageDays, lengthCm: ageDays >= INCUBATION_DAYS ? HATCH_LENGTH_CM : 0, condition };
   const adult = potential.adultLengthCm, length = life.lengthCm;
   const growth = GROWTH_PER_DAY * potential.growth * environment.growth * condition * length * (1 - length / adult);

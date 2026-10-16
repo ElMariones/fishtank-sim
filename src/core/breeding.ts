@@ -1,6 +1,7 @@
+import { MAX_ALLELE_RECORDS, newAlleleRecords, observeFamily, recordLethal } from './atlas';
 import { MUTATION_RATE } from './catalog';
-import { ADULT_FROM, eggLife, isEgg, lifeStage } from './development';
-import { inherit, metabolicPotential } from './genetics';
+import { ADULT_FROM, eggLife, isEgg, lifeStage, maturityAge } from './development';
+import { express, inherit, metabolicPotential } from './genetics';
 import { newFishName, takenNames } from './names';
 import { childOrigins, emptyTrace } from './origins';
 import { clamp, hash } from './random';
@@ -49,11 +50,25 @@ export const reservedPlaces = (world: Pick<World, 'clutches'>, nurseryId?: strin
 export const courtingClutchOf = (world: Pick<World, 'clutches'>, id: string) =>
   world.clutches.find(clutch => clutch.stage === 'courting' && (clutch.motherId === id || clutch.fatherId === id));
 
-/** The tracked eggs a clutch laid: consecutive IDs from its first fish. */
+/** The tracked eggs a clutch laid: consecutive IDs from its first fish (a Genesis clutch records how many). */
 export function clutchMembers(world: Pick<World, 'fish'>, clutch: Clutch): Fish[] {
   if (!clutch.firstFishId) return [];
-  const first = fishNumber(clutch.firstFishId);
-  return world.fish.filter(member => { const n = fishNumber(member.id); return n >= first && n < first + clutch.size; });
+  const first = fishNumber(clutch.firstFishId), laid = clutch.outcome?.laid ?? clutch.size;
+  return world.fish.filter(member => { const n = fishNumber(member.id); return n >= first && n < first + laid; });
+}
+
+/**
+ * Genesis clutch size: the reserved places, scaled by both parents' fertility, vigor and load (a legacy parent counts by
+ * its fertility alone). At least one egg is always laid.
+ */
+export function eggsLaid(mother: Fish, father: Fish, reserved: number): number {
+  const factor = (fish: Fish) => express(fish.genome).genesis?.clutchFactor ?? (0.45 + 0.6 * metabolicPotential(fish.genome).fertility);
+  return Math.max(1, Math.min(reserved, Math.round(reserved * (factor(mother) + factor(father)) / 2)));
+}
+
+/** Days until a Genesis animal may court, or 0 once it is old enough (and always 0 for older genomes). */
+export function daysToMaturity(fish: Fish): number {
+  return Math.max(0, maturityAge(fish.genome) - fish.life.ageDays);
 }
 
 /** Hard eligibility for starting courtship. An empty list means the pairing can be committed. */
@@ -76,12 +91,17 @@ export function pairingBlockers(world: World, request: PairRequest, limits: Popu
   }];
 
   for (const parent of [mother, father]) {
-    const potential = metabolicPotential(parent.genome), stage = lifeStage(parent.life, potential);
+    const potential = metabolicPotential(parent.genome), stage = lifeStage(parent.life, potential), waiting = daysToMaturity(parent);
     if (stage !== 'adult' && stage !== 'elderly') blockers.push({
       code: 'immature', fishId: parent.id,
       message: stage === 'egg' ? `${parent.name} is still an egg.`
         : `${parent.name} is a ${stage} at ${parent.life.lengthCm.toFixed(1)} of ${potential.adultLengthCm.toFixed(0)} cm; fish court from ${Math.ceil(potential.adultLengthCm * ADULT_FROM)} cm.`,
       fix: 'Wait for it to grow; good care speeds growth.',
+    });
+    else if (waiting > 0) blockers.push({
+      code: 'immature', fishId: parent.id,
+      message: `${parent.name} is grown but not yet mature: its maturity timing makes it ready to court in ${plural(waiting, 'game day')}.`,
+      fix: 'Wait, or select for earlier maturity.',
     });
     if (parent.life.condition < BREEDING_CONDITION) blockers.push({
       code: 'condition', fishId: parent.id, message: `${parent.name}'s condition is ${pct(parent.life.condition)}; courtship needs ${pct(BREEDING_CONDITION)}.`,
@@ -172,7 +192,13 @@ export function advanceClutches(world: World): World {
   for (let i = 0; i < next.clutches.length; i++) {
     const clutch = next.clutches[i], days = clutch.days + 1;
     if (clutch.stage === 'incubating') {
-      next.clutches[i] = { ...clutch, days, stage: clutchMembers(next, clutch).some(member => member.status === 'living' && isEgg(member.life)) ? 'incubating' : 'hatched' };
+      const members = clutchMembers(next, clutch), hatched = !members.some(member => member.status === 'living' && isEgg(member.life));
+      next.clutches[i] = { ...clutch, days, stage: hatched ? 'hatched' : 'incubating' };
+      // Genesis worlds learn from every hatched clutch (Genome Atlas).
+      if (hatched && next.atlas) {
+        const mother = next.fish.find(member => member.id === clutch.motherId), father = next.fish.find(member => member.id === clutch.fatherId);
+        if (mother && father) next = { ...next, atlas: observeFamily(next.atlas, mother, father, members.filter(member => member.status === 'living')).atlas };
+      }
       continue;
     }
     if (clutch.stage !== 'courting') continue;
@@ -188,21 +214,46 @@ export function advanceClutches(world: World): World {
       continue;
     }
     const bornAt = new Date(Date.parse(clutch.pairedAt) + days * MS_PER_GAME_DAY).toISOString(), eggs: Fish[] = [], taken = takenNames(next);
-    let nextId = next.nextId;
-    for (let k = 0; k < clutch.size; k++, nextId++) {
-      const birthSeed = hash(`${next.seed}:spawn:${clutch.id}:${nextId}`);
+    const genesis = clutch.genomeVersion === 4, attempts = genesis ? eggsLaid(mother, father, clutch.size) : clutch.size;
+    const causes = new Set<string>(), lethalSites: number[] = [];
+    let nextId = next.nextId, nonviable = 0;
+    for (let k = 0; k < attempts; k++) {
+      // Genesis eggs are seeded by their place in the clutch, so a non-viable egg never repeats its genome.
+      const birthSeed = genesis ? hash(`${next.seed}:spawn:${clutch.id}:egg:${k}`) : hash(`${next.seed}:spawn:${clutch.id}:${nextId}`);
       const trace = emptyTrace(), result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, clutch.genomeVersion, trace), sex: Fish['sex'] = hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M';
+      const development = genesis ? express(result.genome).genesis : undefined;
+      if (development && !development.viable) {
+        nonviable++;
+        for (const defect of development.defects) if (defect.kind === 'lethal') { causes.add(`${defect.code} ${defect.label}`); lethalSites.push(defect.site); }
+        continue;
+      }
       eggs.push({
         id: fishId(nextId), name: newFishName(`${next.seed}:fish:${nextId}`, { sex, genome: result.genome }, taken), sex, species: clutch.species, ...result, birthSeed,
         generation: Math.max(mother.generation, father.generation) + 1, parents: [mother.id, father.id], bornAt, tankId: nursery.id,
         status: 'living', life: eggLife(), breeding: idleBreeding(), origins: childOrigins(fishId(nextId), mother, father, trace, result.mutations),
       });
+      nextId++;
     }
     const rested = next.fish.map(member => member.id === mother.id || member.id === father.id ? { ...member, breeding: { model: 1 as const, cooldownDays: COOLDOWN_DAYS[member.sex] } } : member);
     next = { ...next, nextId, fish: [...rested, ...eggs] };
-    next.clutches[i] = { ...clutch, days, progress, blockers: [], stage: 'incubating', spawnedDay: days, firstFishId: eggs[0].id };
+    if (genesis) next = withGenesisRecords(next, eggs, clutch.species, lethalSites);
+    next.clutches[i] = {
+      ...clutch, days, progress, blockers: [], stage: eggs.length ? 'incubating' : 'hatched', spawnedDay: days, firstFishId: eggs[0]?.id ?? null,
+      ...(genesis ? { outcome: { laid: eggs.length, nonviable, causes: [...causes].sort() } } : {}),
+    };
   }
   return next;
+}
+
+/** Name records for new open-ended alleles and lethal defects seen as failed eggs (Genesis, world v16). */
+export function withGenesisRecords(world: World, newborn: readonly Fish[], species: Fish['species'], lethalSites: readonly number[]): World {
+  let alleles = world.alleles;
+  if (alleles) {
+    const known = new Set(alleles.map(record => record.id)), added = newborn.flatMap(fish => newAlleleRecords(fish, known));
+    if (added.length) alleles = [...alleles, ...added].slice(0, MAX_ALLELE_RECORDS);
+  }
+  const atlas = world.atlas && lethalSites.length ? recordLethal(world.atlas, species, lethalSites) : world.atlas;
+  return { ...world, alleles, atlas };
 }
 
 /** One-line breeding readiness for the inspector and pickers. */
@@ -215,6 +266,8 @@ export function breedingStatus(world: World, fish: Fish): string {
   }
   const potential = metabolicPotential(fish.genome), stage = lifeStage(fish.life, potential);
   if (stage !== 'adult' && stage !== 'elderly') return stage === 'egg' ? 'Egg' : `Not yet adult (${stage})`;
+  const waiting = daysToMaturity(fish);
+  if (waiting > 0) return `Grown, matures in ${plural(waiting, 'game day')}`;
   if (fish.breeding.cooldownDays > 0) return `Resting · can court in ${plural(fish.breeding.cooldownDays, 'game day')}`;
   if (fish.life.condition < BREEDING_CONDITION) return `Condition too low to court (${pct(fish.life.condition)})`;
   return 'Ready to court';

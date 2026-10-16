@@ -26,7 +26,7 @@ describe('FS-502 shop stock', () => {
   it('lists fixed founders, visible variants and documented carriers, each priced above any resale', () => {
     const world = createWorld(NOW);
     expect(ids(world)).toEqual(['LS-000001', 'LS-000002', 'LS-000003', 'LS-000004', 'LS-000005', 'LS-000006']);
-    expect(world.shop).toEqual(initialShop(world.seed));
+    expect(world.shop).toEqual(initialShop(world.seed, 0, 2));
     expect(createWorld('2027-01-01T00:00:00.000Z').shop).toEqual(world.shop);
     expect(LISTING_PRICES.founder).toBe(STOCK_PRICE);
 
@@ -109,7 +109,7 @@ describe('FS-502 shop stock', () => {
   it('migrates world v6 saves with a first delivery and rebases older runtimes', () => {
     const world = applyCommand(createWorld(NOW), buy(createWorld(NOW).shop.listings[1]));
     const migrated = decodeSave(JSON.stringify(asV6(world)));
-    expect(migrated.shop).toEqual(initialShop(world.seed));
+    expect(migrated.shop).toEqual(initialShop(world.seed, 0, 2));
     expect(Object.keys(migrated)).toEqual(Object.keys(decodeSave(JSON.stringify(world))));
 
     let runtime = createRuntime(createWorld(NOW), 'fs502-legacy');

@@ -1,5 +1,37 @@
 # Testing and verification
 
+## FS-129 Genesis genetics
+
+16 October 2026, Windows 11, Node via the checkout's npm scripts.
+
+- `npx vitest run`: **331 tests in 50 files pass** (317 before, plus `tests/genesis.test.ts` with 14 tests).
+- `npx tsc --noEmit -p .` and `npm run build`: pass.
+- `tests/genesis.test.ts` covers: genome v4 keeps the first 66 loci of a seed; founders never express load; dominance
+  (a higher-dominant heterozygote sits >70% of the way to the high homozygote, a lower-dominant one <30%); the pigment
+  cascade segregates 21–29% ghosts from carrier × carrier over 2,000 births and masks color; fin program dominance and its
+  speed, oxygen and food costs; developmental noise narrowed by canalization; load transmitted with its anchor homolog
+  (100% linkage in 2,000 traced births) and 21–29% affected from carrier × carrier; novel alleles pure, valid, canonical
+  and inherited with their definitions; every Genesis fixture valid and drawable; axolotl v2 programs and version rules;
+  maturity, clutch size and food competition; a normal-breeding Genesis clutch with outcome, atlas evidence, sequencing
+  and a decodeRuntime round-trip; a fast-bred world with new alleles and a rename round-tripping through replay; atlas
+  pacing (one clutch maps nothing and characterizes nothing); exact load risk only for sequenced pairs.
+- Existing suites were updated only where a fact changed: the 12th chromosome, world v16, the `research` ledger total,
+  the Genesis rebase moving older worlds to shop model 3 and axolotl shop model 2, genome version 4 now being valid, and
+  research shops in v3 worlds staying model 2.
+- Exploratory probe (not kept as a test): 2,000 genome v4 founders gave 0.75% ghosts, 7% veil, 0.2% butterfly, 4.5% glow,
+  0 founder defects; 1,000 axolotl v2 founders 1.6% fluorescent, 3.5% frilled, 0.4% plume, 1.7% extra digits. Eight
+  generations of unselected sib mating took heterozygosity from 0.65 to 0.15, vigor from 1.07 to 0.86, and produced
+  lethal eggs from generation 2 and a fixed defect by generation 7.
+- Browser (in-app, isolated port 5195 with fresh storage, so no existing save was touched): new world in discovery
+  mode; inspector Genesis panel; Atlas view; fast breeding of 2 × 20 Genesis eggs; sequencing Haru (◈ 60, hidden carrier
+  sites listed, genotype shown as raw alleles on unidentified loci); 26 day advances; reload restoring day 26 with no
+  save warning; Atlas at 23/72 identified, 0 characterized, 6 new alleles named after their first carriers; renaming
+  one; the 375 px Atlas has no horizontal overflow. The Visual fixtures Genesis board was reviewed for every variant;
+  veil fins, fin erosion and spine defects were made more legible after the first review.
+- Defect found and fixed during verification: novel-allele side effects were stored in creation order but decoded in
+  schema order, so a save carrying one failed replay validation. Effects are now written in canonical channel order and
+  the round-trip is tested. Also fixed: axolotl Genesis traits were missing from the shared phenotype.
+
 ## Competition circuit and calendar
 
 22 September 2026, FS-122–127:

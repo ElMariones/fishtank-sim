@@ -7,14 +7,19 @@ import { FishPortrait } from './FishPortrait';
 import { OffspringPrediction } from './OffspringPrediction';
 import { AxolotlOffspringPrediction } from './AxolotlOffspringPrediction';
 import { AXOLOTL_MORPH_LABELS, expressAxolotl, isAxolotlGenome } from '../core/axolotlGenetics';
-import type { Species } from '../core/types';
+import type { Species, World } from '../core/types';
+import { genotypeVisible, locusStage } from '../core/atlas';
+import { daysToMaturity } from '../core/breeding';
+import { loadRisk } from '../core/genesisView';
 
 const groups = [...new Set(GOAL_DESCRIPTORS.map(d => d.group))];
 const percent = (n: number) => `${Math.round(n * 100)}%`;
 type Props = { fish: Fish[]; tanks: Tank[]; goal: BreedingGoal | null; onGoal: (goal: BreedingGoal | null) => void;
-  motherId: string; fatherId: string; onMother: (id: string) => void; onFather: (id: string) => void };
+  motherId: string; fatherId: string; onMother: (id: string) => void; onFather: (id: string) => void;
+  /** Genome Atlas state: in discovery mode genotype odds need sequenced parents and characterized loci. */
+  world?: Pick<World, 'atlas' | 'alleles'> };
 
-export function BreedingPlanner({ fish, tanks, goal, onGoal, motherId, fatherId, onMother, onFather }: Props) {
+export function BreedingPlanner({ fish, tanks, goal, onGoal, motherId, fatherId, onMother, onFather, world }: Props) {
   const [scope, setScope] = useState('all');
   const [query, setQuery] = useState('');
   const selectedMother = fish.find(f => f.id === motherId), selectedFather = fish.find(f => f.id === fatherId);
@@ -66,12 +71,22 @@ export function BreedingPlanner({ fish, tanks, goal, onGoal, motherId, fatherId,
       {species === 'koi' && goal && leader ? <button className="quiet" onClick={() => choose(leader.id)}>Choose {leader.name} · {match(leader)} match</button> : <p className="help-copy">{available.length ? species === 'koi' ? 'Choose a goal to rank these candidates.' : 'Choose any same-species parent; the pair preview appears below.' : `No eligible ${species === 'koi' ? 'koi' : 'axolotl'} of this sex in this filter.`}</p>}
       </div>;
     })}</div>
-    {species === 'koi' && selectedMother?.species === 'koi' && selectedFather?.species === 'koi' && traits.some(t => GOAL_BY_KEY.get(t.descriptor)?.locus) ? <div className="planner-odds"><strong>What this pair can pass on</strong>{traits.map(t => {
+    {selectedMother && selectedFather && selectedMother.species === selectedFather.species && (selectedMother.genome.genesis || selectedFather.genome.genesis) ? (() => {
+      const risk = world ? loadRisk(world, selectedMother, selectedFather) : null, waits = [selectedMother, selectedFather].filter(parent => daysToMaturity(parent) > 0);
+      return <div className="planner-odds genesis-pair"><strong>Genesis pair check</strong>
+        {waits.length ? <p>{waits.map(parent => `${parent.name} matures in ${daysToMaturity(parent)} game days`).join(' · ')}. Normal courtship waits; fast breeding does not.</p> : <p>Both parents are mature.</p>}
+        {risk ? <p>Genetic load: <b>{percent(risk.risk)}</b> of eggs expected to express a defect{risk.lethal ? <>, <b>{percent(risk.lethal)}</b> never to develop</> : null}.{risk.sites.length ? ` Shared recessives: ${risk.sites.join(', ')}.` : ' The parents share no recessive.'}</p>
+          : <p>Genetic load risk unknown: sequence both parents to compute it exactly. Related parents share more hidden recessives; check pedigree F.</p>}
+      </div>;
+    })() : null}
+    {species === 'koi' && selectedMother?.species === 'koi' && selectedFather?.species === 'koi' && traits.some(t => GOAL_BY_KEY.get(t.descriptor)?.locus) && (!world || (genotypeVisible(world, selectedMother) && genotypeVisible(world, selectedFather))) ? <div className="planner-odds"><strong>What this pair can pass on</strong>{traits.map(t => {
       const odds = targetCopyOdds(selectedMother, selectedFather, t.descriptor);
       return odds ? <p key={t.descriptor}>{GOAL_BY_KEY.get(t.descriptor)?.label}: <b>{percent(odds.atLeastOne)}</b> at least one copy · <b>{percent(odds.both)}</b> two copies</p> : null;
     })}<small>Exact single-locus copy odds before mutation. Dominance, blends and other genes determine the visible result; these are not combined-trait probabilities.</small></div> : null}
     {species === 'koi' && selectedMother?.species === 'koi' && selectedFather?.species === 'koi' && !isAxolotlGenome(selectedMother.genome) && !isAxolotlGenome(selectedFather.genome)
-      ? <OffspringPrediction mother={selectedMother.genome} father={selectedFather.genome} goals={traits.map(t => t.descriptor)} /> : null}
+      ? <OffspringPrediction mother={selectedMother.genome} father={selectedFather.genome} goals={traits.map(t => t.descriptor)}
+        knownLocus={world ? (index => locusStage(world, 'koi', index) >= 2) : undefined}
+        genotypesKnown={!world || (genotypeVisible(world, selectedMother) && genotypeVisible(world, selectedFather))} /> : null}
     {species === 'axolotl' && selectedMother?.species === 'axolotl' && selectedFather?.species === 'axolotl'
       ? <AxolotlOffspringPrediction mother={selectedMother.genome} father={selectedFather.genome} /> : null}
     <p className="help-copy">{species === 'koi' ? 'Match ranks expressed adult traits, not offspring odds. Target copies reveal hidden carriers; a blend can match both colors. Combined goals average their scores. Leaders are ranked individually; review the pair’s pedigree F below.' : 'Axolotls use their own genome and linkage map. Koi breeding goals and koi allele odds are never applied to them; review the axolotl-specific offspring ranges for this pair instead.'} Filtering keeps your selected parents.</p>

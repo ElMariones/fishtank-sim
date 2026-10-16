@@ -4,7 +4,10 @@ import { decorationsOf, validateLayout } from './tankManagement';
 import { z } from 'zod';
 import { BLOCKER_CODES, CLUTCH_SIZES, CLUTCH_STAGES, idleBreeding, reservedPlaces } from './breeding';
 import { defaultCare, RATION_KEYS, THERMOSTAT_RANGE } from './care';
-import { ALL_LOCI, APPEARANCE_LOCI, GENOME_LOCI, LOCI } from './catalog';
+import { ALL_LOCI, APPEARANCE_LOCI, GENOME_LOCI, LOCI, LOCI_PER_GENOME } from './catalog';
+import { ATLAS_LOCI, initialAtlas, MAX_ALLELE_RECORDS, MAX_SEQUENCED } from './atlas';
+import { CHANNELS, MAX_LOAD_PER_COPY, MAX_NOVEL_PER_GENOME, NOVEL_ID_MIN } from './genesis';
+import { AXOLOTL_V2_LOCI_COUNT } from './axolotlCatalog';
 import { genomeProblem } from './registry';
 import { MAX_ORIGINS_PER_FISH, ORIGIN_ID_PATTERN, originProblem, reconstructOrigins } from './origins';
 import { MAX_BLOODLINES, MAX_FOUNDATION, MAX_SIGNATURE_ORIGINS } from './bloodlines';
@@ -23,18 +26,34 @@ import { defaultWater, WATER_LIMITS } from './water';
 import { MAX_LIVING, MAX_RECORDS, MAX_TANKS } from './world';
 
 const alleles = (count: number) => z.array(z.number().int().min(0).max(5)).length(count);
+const NOVEL_MAX = NOVEL_ID_MIN + 2_000_000_000;
+/** Genesis homologs may carry open-ended allele IDs; the registry checks each against the genome's own definitions. */
+const genesisAlleles = (count: number) => z.array(z.number().int().min(0).max(NOVEL_MAX)).length(count);
+const genesisBlock = z.object({
+  dev: z.number().int().min(0).max(4294967295),
+  load: z.object({ maternal: z.array(z.number().int().min(1).max(64)).max(MAX_LOAD_PER_COPY), paternal: z.array(z.number().int().min(1).max(64)).max(MAX_LOAD_PER_COPY) }).strict(),
+  novel: z.array(z.object({
+    id: z.number().int().min(NOVEL_ID_MIN).max(NOVEL_MAX), locus: z.number().int().min(0).max(80), parent: z.number().int().min(0).max(NOVEL_MAX),
+    value: z.number().min(-10).max(10), potency: z.number().min(0.01).max(2),
+    effects: z.object(Object.fromEntries(CHANNELS.map(channel => [channel, z.number().min(-1).max(1).optional()])) as Record<typeof CHANNELS[number], z.ZodOptional<z.ZodNumber>>).strict(),
+  }).strict()).max(MAX_NOVEL_PER_GENOME),
+}).strict();
 const fishIdSchema = z.string().regex(/^FSH-\d{6}$/);
 /** Genome v1 records stay valid unchanged; genome v2 records carry the appended Color and Ornament loci. */
 const genome = z.discriminatedUnion('version', [
   z.object({ version: z.literal(1), maternal: alleles(LOCI.length), paternal: alleles(LOCI.length) }),
   z.object({ version: z.literal(2), maternal: alleles(ALL_LOCI.length), paternal: alleles(ALL_LOCI.length) }),
   // Genome v3 (FS-601) appends the Structure chromosome; the registry also rejects alleles a structure locus does not support.
-  z.object({ version: z.literal(3), maternal: alleles(GENOME_LOCI.length), paternal: alleles(GENOME_LOCI.length) }),
+  z.object({ version: z.literal(3), maternal: alleles(LOCI_PER_GENOME[3]), paternal: alleles(LOCI_PER_GENOME[3]) }),
+  // Genome v4 (Genesis) appends the Development chromosome and a development block (world v16).
+  z.object({ version: z.literal(4), maternal: genesisAlleles(LOCI_PER_GENOME[4]), paternal: genesisAlleles(LOCI_PER_GENOME[4]), genesis: genesisBlock }).strict(),
 ]).superRefine((value, context) => { const problem = genomeProblem(value); if (problem) context.addIssue({ code: 'custom', message: problem }); });
 /** Axolotl genomes have an independent discriminator and locus registry; keep this branch first so Zod never strips it as an extra koi key. */
-const axolotlGenome = z.object({
-  species: z.literal('axolotl'), version: z.literal(1), maternal: alleles(AXOLOTL_LOCI.length), paternal: alleles(AXOLOTL_LOCI.length),
-}).strict().superRefine((value, context) => { const problem = axolotlGenomeProblem(value); if (problem) context.addIssue({ code: 'custom', message: problem }); });
+const axolotlGenome = z.union([
+  z.object({ species: z.literal('axolotl'), version: z.literal(1), maternal: alleles(AXOLOTL_LOCI.length), paternal: alleles(AXOLOTL_LOCI.length) }).strict(),
+  // Axolotl genome v2 (Genesis, world v16).
+  z.object({ species: z.literal('axolotl'), version: z.literal(2), maternal: genesisAlleles(AXOLOTL_V2_LOCI_COUNT), paternal: genesisAlleles(AXOLOTL_V2_LOCI_COUNT), genesis: genesisBlock }).strict(),
+]).superRefine((value, context) => { const problem = axolotlGenomeProblem(value); if (problem) context.addIssue({ code: 'custom', message: problem }); });
 const creatureGenome = z.union([axolotlGenome, genome]);
 const bounded = ([minimum, maximum]: readonly [number, number]) => z.number().min(minimum).max(maximum);
 /** Water model v1 state, carried by every world v2+ tank. */
@@ -66,6 +85,11 @@ const clutch = z.object({
   spawnedDay: z.number().int().min(0).max(10_000_000).nullable(), firstFishId: fishIdSchema.nullable(),
 }).strict();
 const clutchV13 = clutch.extend({ species: z.enum(['koi', 'axolotl']) }).strict();
+/** World v16 clutches may be Genesis clutches (genome v4) that record what spawning produced. */
+const clutchV16 = clutchV13.extend({
+  genomeVersion: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+  outcome: z.object({ laid: z.number().int().min(0).max(CLUTCH_SIZES[CLUTCH_SIZES.length - 1]), nonviable: z.number().int().min(0).max(CLUTCH_SIZES[CLUTCH_SIZES.length - 1]), causes: z.array(z.string().max(60)).max(16) }).strict().optional(),
+}).strict();
 /** NPC demand and the credit ledger, world v6 (FS-501). */
 const demand = (id: keyof typeof BUYER_BY_ID) => z.number().min(0).max(BUYER_BY_ID[id].capacity);
 const market = z.object({
@@ -75,7 +99,7 @@ const market = z.object({
 const credits = z.number().int().min(-1e12).max(1e12);
 const ledger = z.object({
   model: z.literal(1), opening: z.number().int().min(0).max(1e9), next: z.number().int().positive(),
-  totals: z.object({ sale: credits, stock: credits, equipment: credits, waterChange: credits, rehome: credits, competitionEntry: credits.default(0), competitionPrize: credits.default(0), competitionPurchase: credits.default(0) }).strict(),
+  totals: z.object({ sale: credits, stock: credits, equipment: credits, waterChange: credits, rehome: credits, competitionEntry: credits.default(0), competitionPrize: credits.default(0), competitionPurchase: credits.default(0), research: credits.optional() }).strict(),
   entries: z.array(z.object({
     seq: z.number().int().positive(), reason: z.enum(LEDGER_REASONS), amount: z.number().int().min(-1e9).max(1e9),
     fish: z.number().int().min(0).max(MAX_LIVING), detail: z.string().max(120),
@@ -90,6 +114,8 @@ const listing = z.object({
 const shop = z.object({
   model: z.union([z.literal(1), z.literal(2)]), nextListing: z.number().int().positive(), refreshedDay: z.number().int().min(0).max(1e12), listings: z.array(listing).max(SHOP_SIZE),
 }).strict();
+/** World v16 shops may run model 3, which delivers genome v4 stock. */
+const shopV16 = shop.extend({ model: z.union([z.literal(1), z.literal(2), z.literal(3)]) }).strict();
 /** Persistent axolotl stock, world v14. */
 const axolotlListing = z.object({
   id: z.string().regex(/^AX-\d{6,16}$/), category: z.enum(['founder', 'morph', 'carrier']), name: z.string().min(1).max(32), sex: z.enum(['F', 'M']),
@@ -99,6 +125,7 @@ const axolotlListing = z.object({
 const axolotlShop = z.object({
   model: z.literal(1), nextListing: z.number().int().positive(), refreshedDay: z.number().int().min(0).max(1e12), listings: z.array(axolotlListing).max(AXOLOTL_SHOP_SIZE),
 }).strict();
+const axolotlShopV16 = axolotlShop.extend({ model: z.union([z.literal(1), z.literal(2)]) }).strict();
 const tank = { id: z.string().max(50), name: z.string().min(1).max(32), capacity: z.number().int().min(1).max(60), planted: z.boolean() };
 const header = { seed: z.number().int().min(0).max(4294967295), nextId: z.number().int().positive(), credits: z.number().int().nonnegative().max(1e9) };
 const fishRecord = {
@@ -153,8 +180,26 @@ const event = z.object({ id: z.string().max(100), name: z.string().max(100), cit
 const score = z.number().min(0).max(100);
 const competitionRun = z.object({ event, participants: z.array(z.object({ fish: competitionFish, owner: z.string().min(1).max(60), isPlayer: z.boolean(), scores: z.object({ presentation: score, pattern: score, condition: score }).strict(), total: score, rank: z.number().int().min(1).max(10), comment: z.string().max(1000), askingPrice: z.number().int().positive().max(100000), negotiation: z.object({ attempts: z.number().int().min(0).max(3), counter: z.number().int().positive().max(100000).nullable(), status: z.enum(['open', 'declined', 'purchased']) }).strict() }).strict()).min(9).max(10), phase: z.enum(['exhibition', 'results']), enteredDay: z.number().int().min(0).max(10000000) }).strict();
 const circuit = z.object({ model: z.literal(1), day: z.number().int().min(0).max(10000000), active: competitionRun.nullable(), history: z.array(competitionRun).max(MAX_COMPETITION_HISTORY) }).strict();
-const currentLedger = ledger.extend({ totals: z.object({ sale: credits, stock: credits, equipment: credits, waterChange: credits, rehome: credits, competitionEntry: credits, competitionPrize: credits, competitionPurchase: credits }).strict() });
+const currentLedger = ledger.extend({ totals: z.object({ sale: credits, stock: credits, equipment: credits, waterChange: credits, rehome: credits, competitionEntry: credits, competitionPrize: credits, competitionPurchase: credits, research: credits.optional() }).strict() });
+/** World v16 adds research (sequencing) to the ledger. */
+const ledgerV16 = ledger.extend({ totals: z.object({ sale: credits, stock: credits, equipment: credits, waterChange: credits, rehome: credits, competitionEntry: credits, competitionPrize: credits, competitionPurchase: credits, research: credits }).strict() });
+const mutationV16 = mutationV13.extend({ from: z.number().int().min(0).max(NOVEL_MAX), to: z.number().int().min(0).max(NOVEL_MAX) }).strict();
+const fishV16 = z.object({ ...fishRecordV13, mutations: z.array(mutationV16).max(Math.max(GENOME_LOCI.length, AXOLOTL_V2_LOCI_COUNT) * 2), status: z.enum(['living', 'sold', 'rehomed']), life, breeding, origins }).strict();
+const competitionRunV16 = competitionRun.extend({ participants: z.array(competitionRun.shape.participants.element.extend({ fish: fishV16 }).strict()).min(9).max(10) }).strict();
+const circuitV16 = circuit.extend({ active: competitionRunV16.nullable(), history: z.array(competitionRunV16).max(MAX_COMPETITION_HISTORY) }).strict();
+const atlasSpecies = z.object({
+  evidence: z.array(z.number().min(0).max(1e9)).length(ATLAS_LOCI), stage: z.array(z.number().int().min(0).max(3)).length(ATLAS_LOCI),
+  links: z.record(z.string().regex(/^\d{1,2}-\d{1,2}$/), z.tuple([z.number().int().min(0), z.number().int().min(0)])), defects: z.array(z.number().int().min(1).max(64)).max(64),
+}).strict();
+const atlas = z.object({ model: z.literal(1), mode: z.enum(['discovery', 'scientist']), koi: atlasSpecies, axolotl: atlasSpecies, sequenced: z.array(fishIdSchema).max(MAX_SEQUENCED) }).strict();
+const alleleRecords = z.array(z.object({
+  id: z.number().int().min(NOVEL_ID_MIN).max(NOVEL_MAX), species: z.enum(['koi', 'axolotl']), locus: z.number().int().min(0).max(80), origin: fishIdSchema,
+  name: z.string().trim().min(1).max(32), named: z.boolean(),
+}).strict()).max(MAX_ALLELE_RECORDS);
 const schema = z.discriminatedUnion('version', [
+  // World v16 (Genesis): genome v4 and axolotl genome v2 records, clutch outcomes, research spending, named alleles and the Genome Atlas.
+  z.object({ ...worldV13, version: z.literal(16), fish: z.array(fishV16).max(MAX_RECORDS), clutches: z.array(clutchV16).max(MAX_RECORDS), ledger: ledgerV16, shop: shopV16,
+    axolotlShop: axolotlShopV16, circuit: circuitV16, alleles: alleleRecords, atlas }),
   z.object({ ...worldV13, version: z.literal(15), ledger: currentLedger, axolotlShop, circuit }),
   // World v14 appends the persistent axolotl shop after the bloodline registry.
   z.object({ ...worldV13, version: z.literal(14), axolotlShop }),
@@ -209,11 +254,17 @@ export function decodeSave(raw: string): World {
   if (raw.length > 12_000_000) throw new Error('Save is too large for this lab.');
   const parsed = schema.parse(JSON.parse(raw));
   let world: World;
-  if (parsed.version === 15) world = parsed as World;
-  else if (parsed.version === 14) world = { ...parsed, version: 15, circuit: initialCircuit() } as World;
+  // Worlds v1–v15 predate Genesis: research spending opens at zero, the allele registry is empty and the atlas opens in
+  // scientist mode, so an existing world keeps showing every locus it always showed.
+  const genesisFields = (old: Omit<World, 'version' | 'alleles' | 'atlas'>): World => ({
+    ...old, version: 16, ledger: { ...old.ledger, totals: { ...old.ledger.totals, research: 0 } }, alleles: [], atlas: initialAtlas('scientist'),
+  } as World);
+  if (parsed.version === 16) world = parsed as unknown as World;
+  else if (parsed.version === 15) world = genesisFields(parsed as unknown as World);
+  else if (parsed.version === 14) world = genesisFields({ ...parsed, circuit: initialCircuit() } as unknown as World);
   // Worlds v1–v13 predate the axolotl shop: it opens with a day-0 delivery, appended last. When the runtime rebases an
   // older world it keeps the stock the world's own replay delivered instead.
-  else if (parsed.version === 13) world = { ...parsed, version: 15, axolotlShop: initialAxolotlShop(parsed.seed), circuit: initialCircuit() } as World;
+  else if (parsed.version === 13) world = genesisFields({ ...parsed, axolotlShop: initialAxolotlShop(parsed.seed), circuit: initialCircuit() } as unknown as World);
   else {
     // Build the historical v12 logical shape first. It is deliberately local/structural because each old schema lacks
     // different fields; validation above has already proven every input member before this migration runs.
@@ -227,15 +278,15 @@ export function decodeSave(raw: string): World {
     else if (parsed.version === 9) { legacy = { ...parsed, version: 12 }; needsOrigins = true; }
     else if (parsed.version === 8) { legacy = { ...parsed, version: 12, relief: defaultRelief() }; needsOrigins = true; }
     else if (parsed.version === 7) { legacy = { ...parsed, version: 12, relief: defaultRelief() }; needsOrigins = true; }
-    else if (parsed.version === 6) { legacy = { ...parsed, version: 12, shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() }; needsOrigins = true; }
-    else if (parsed.version === 5) { legacy = { ...parsed, version: 12, market: defaultMarket(), ledger: openingLedger(parsed.credits), shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() }; needsOrigins = true; }
+    else if (parsed.version === 6) { legacy = { ...parsed, version: 12, shop: initialShop(parsed.seed, 0, 2), naming: NAMING_MODEL, relief: defaultRelief() }; needsOrigins = true; }
+    else if (parsed.version === 5) { legacy = { ...parsed, version: 12, market: defaultMarket(), ledger: openingLedger(parsed.credits), shop: initialShop(parsed.seed, 0, 2), naming: NAMING_MODEL, relief: defaultRelief() }; needsOrigins = true; }
     else {
       const watered: Omit<Tank, 'care'>[] = parsed.version === 1 ? parsed.tanks.map(entry => ({ ...entry, water: defaultWater() })) : parsed.tanks;
       const cared: Tank[] = parsed.version === 4 ? parsed.tanks : watered.map(entry => ({ ...entry, care: defaultCare(entry.water) }));
       const lived = parsed.version === 3 || parsed.version === 4 ? parsed.fish : parsed.fish.map(member => ({ ...member, life: adultLife(member.genome) }));
       legacy = { version: 12, seed: parsed.seed, nextId: parsed.nextId, credits: parsed.credits, nextClutchId: 1, tanks: cared,
         fish: lived.map(member => ({ ...member, breeding: idleBreeding() })), clutches: [], market: defaultMarket(), ledger: openingLedger(parsed.credits),
-        shop: initialShop(parsed.seed), naming: NAMING_MODEL, relief: defaultRelief() };
+        shop: initialShop(parsed.seed, 0, 2), naming: NAMING_MODEL, relief: defaultRelief() };
       needsOrigins = true;
     }
     const oldFish = (legacy.fish as Omit<Fish, 'species'>[]).map(member => {
@@ -246,13 +297,13 @@ export function decodeSave(raw: string): World {
     });
     const oldClutches = ((legacy.clutches ?? []) as Omit<World['clutches'][number], 'species'>[]).map(entry => ({ ...entry, species: 'koi' as const }));
     const withOrigins = needsOrigins ? reconstructOrigins(oldFish as Omit<Fish, 'origins'>[]).fish : oldFish as Fish[];
-    world = {
-      ...(legacy as Omit<World, 'version' | 'fish' | 'clutches' | 'bloodlines' | 'nextBloodlineId' | 'axolotlShop' | 'circuit'>), version: 15,
+    world = genesisFields({
+      ...(legacy as unknown as Omit<World, 'version' | 'fish' | 'clutches' | 'bloodlines' | 'nextBloodlineId' | 'axolotlShop' | 'circuit' | 'alleles' | 'atlas'>),
       fish: withOrigins, clutches: oldClutches,
       bloodlines: (legacy.bloodlines as World['bloodlines'] | undefined) ?? [],
       nextBloodlineId: (legacy.nextBloodlineId as number | undefined) ?? 1,
       axolotlShop: initialAxolotlShop(legacy.seed as number), circuit: initialCircuit(),
-    };
+    });
   }
   world.tanks = world.tanks.map(tank => ({ ...tank, decorations: decorationsOf(tank) }));
   for (const tank of world.tanks) {
@@ -298,9 +349,11 @@ export function decodeSave(raw: string): World {
         courtingNurseries.add(entry.nurseryId); courtingParents.add(entry.motherId); courtingParents.add(entry.fatherId);
       }
     } else {
-      if (entry.firstFishId === null || entry.spawnedDay === null || entry.progress !== 1) throw new Error('A laid clutch is missing its eggs.');
-      const first = Number(entry.firstFishId.slice(4));
-      for (let n = first; n < first + entry.size; n++) {
+      const laid = entry.outcome?.laid ?? entry.size;
+      if (entry.outcome && (entry.genomeVersion !== 4 || laid + entry.outcome.nonviable > entry.size)) throw new Error('Invalid clutch outcome.');
+      if (entry.spawnedDay === null || entry.progress !== 1 || (laid > 0) !== (entry.firstFishId !== null)) throw new Error('A laid clutch is missing its eggs.');
+      const first = entry.firstFishId === null ? 0 : Number(entry.firstFishId.slice(4));
+      for (let n = first; n < first + laid; n++) {
         const egg = ids.get(`FSH-${String(n).padStart(6, '0')}`);
         if (!egg || egg.parents?.[0] !== entry.motherId || egg.parents?.[1] !== entry.fatherId) throw new Error('Clutch eggs do not match their record.');
       }
@@ -342,11 +395,18 @@ export function decodeSave(raw: string): World {
     const sequence = Number(entry.id.slice(3));
     if (listingIds.has(entry.id) || !Number.isSafeInteger(sequence) || sequence < 1 || sequence >= world.axolotlShop.nextListing
       || entry.expiresDay <= world.axolotlShop.refreshedDay) throw new Error('Invalid axolotl shop listing.');
-    const problem = axolotlListingProblem(entry);
+    const problem = axolotlListingProblem(entry, world.axolotlShop.model);
     if (problem) throw new Error(problem);
     listingIds.add(entry.id);
   }
   validateCircuit(world);
+  const alleleIds = new Set<number>();
+  for (const record of world.alleles) {
+    const origin = ids.get(record.origin);
+    if (alleleIds.has(record.id) || !origin || origin.species !== record.species || !origin.mutations.some(m => m.to === record.id && m.locus === record.locus)) throw new Error('Invalid allele record.');
+    alleleIds.add(record.id);
+  }
+  if (new Set(world.atlas.sequenced).size !== world.atlas.sequenced.length || world.atlas.sequenced.some(id => !ids.has(id))) throw new Error('Invalid sequencing record.');
   return world;
 }
 

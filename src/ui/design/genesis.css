@@ -1,0 +1,55 @@
+/* Genesis: inspector development panel, discovery-mode genome masking and the Genome Atlas view. Deepwater tokens only. */
+
+.genesis-block { border-color: var(--gene-a14); background: linear-gradient(180deg, rgb(178 140 255 / .05), rgb(160 225 225 / .02)); }
+.genesis-block.legacy { opacity: .85; }
+.genesis-block h4 { margin: var(--s-3) 0 6px; font-family: var(--font-ui); font-size: var(--t-xs); font-weight: 650; color: var(--fg-1); letter-spacing: .02em; }
+.genesis-features { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 var(--s-3); padding: 0; list-style: none; }
+.genesis-features li { padding: 3px 9px; border-radius: var(--r-pill); font-size: var(--t-floor); font-weight: 600; color: var(--gene-ink); background: var(--gene-a14); }
+.genesis-life dd small, .defect-list small, .allele-list small { display: block; margin-top: 1px; font-size: var(--t-floor); color: var(--fg-3); }
+.genesis-load, .genesis-alleles { margin-top: var(--s-2); padding-top: var(--s-2); border-top: 1px solid var(--line-1); }
+.defect-list, .allele-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.defect-list li { padding: 7px 10px; border-radius: var(--r-md); border: 1px solid var(--rose-a30); background: var(--rose-a14); font-size: var(--t-xs); color: var(--fg-1); }
+.defect-list li.rescued { border-color: var(--kelp-a14); background: var(--kelp-a14); }
+.allele-list li { padding: 7px 10px; border-radius: var(--r-md); border: 1px solid var(--line-2); background: rgb(160 225 225 / .03); font-size: var(--t-xs); color: var(--fg-1); }
+.allele-list b small { display: inline; font-weight: 500; }
+.allele-list .link-button { margin-top: 4px; font-size: var(--t-floor); }
+.allele-rename { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.allele-rename input { flex: 1 1 10em; min-width: 0; }
+.sequence-button { margin-top: 6px; }
+.atlas-note { display: flex; gap: 6px; align-items: flex-start; padding: 6px 10px; border-radius: var(--r-md); background: var(--gene-a14); color: var(--gene-ink); }
+
+.locus.unknown .locus-name { color: var(--fg-3); font-style: italic; }
+.locus code.hidden { color: var(--fg-4); letter-spacing: .1em; }
+
+.atlas-view { display: grid; gap: var(--s-5); max-width: var(--content-max); margin: 0 auto; padding: var(--s-5) var(--s-4) var(--s-8); }
+.atlas-header { display: flex; flex-wrap: wrap; gap: var(--s-4); align-items: flex-end; justify-content: space-between; }
+.atlas-header h2 { margin: 4px 0 8px; font-family: var(--font-display); font-size: var(--t-2xl); color: var(--fg-1); }
+.atlas-header .help-copy { max-width: 72ch; }
+.atlas-controls { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+.atlas-progress { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: var(--s-3); }
+.atlas-stat { display: grid; gap: 4px; padding: var(--s-3); border-radius: var(--r-lg); border: 1px solid var(--line-2); background: rgb(160 225 225 / .03); }
+.atlas-stat small { color: var(--fg-3); font-size: var(--t-floor); }
+.atlas-stat b { font-size: var(--t-lg); color: var(--fg-1); }
+.atlas-chromosomes { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr)); gap: var(--s-3); }
+.atlas-chromosome { padding: var(--s-3); border-radius: var(--r-lg); border: 1px solid var(--line-2); background: rgb(160 225 225 / .02); }
+.atlas-chromosome h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: var(--t-xs); font-weight: 650; color: var(--fg-1); }
+.atlas-chromosome ol { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.atlas-locus { display: grid; grid-template-columns: 10px minmax(0, 1fr) minmax(6.5rem, .7fr); gap: 8px; align-items: start; font-size: var(--t-xs); color: var(--fg-1); }
+.atlas-locus + .atlas-locus { padding-top: 6px; border-top: 1px solid var(--line-1); }
+.atlas-locus-name small { display: block; color: var(--fg-3); font-size: var(--t-floor); }
+.atlas-locus-name small.dominance { color: var(--gene-ink); }
+.atlas-locus.stage-0 .atlas-locus-name { color: var(--fg-3); font-style: italic; }
+.atlas-evidence { display: grid; gap: 3px; }
+.atlas-evidence small { color: var(--fg-3); font-size: var(--t-floor); }
+.atlas-evidence .linkage { color: var(--tide-ink); }
+.stage-dot { width: 10px; height: 10px; margin-top: 3px; border-radius: 50%; border: 1px solid var(--line-3); background: transparent; }
+.stage-1 .stage-dot { background: var(--tide-a14); border-color: var(--tide); }
+.stage-2 .stage-dot { background: var(--gene-a14); border-color: var(--gene); }
+.stage-3 .stage-dot { background: var(--gene); border-color: var(--gene); box-shadow: 0 0 8px var(--gene-a14); }
+.atlas-defects, .atlas-alleles { padding: var(--s-4); border-radius: var(--r-lg); border: 1px solid var(--line-2); background: rgb(160 225 225 / .02); }
+.atlas-defects h3, .atlas-alleles h3 { margin: 0 0 var(--s-3); font-size: var(--t-sm); color: var(--fg-1); }
+.atlas-alleles .allele-list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr)); }
+@media (max-width: 600px) {
+  .atlas-locus { grid-template-columns: 10px minmax(0, 1fr); }
+  .atlas-evidence { grid-column: 2; }
+}
