@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { anatomyFor } from '../core/anatomy';
 import { axolotlAnatomyFor } from '../core/axolotlAnatomy';
+import { goldfishAnatomyFor } from '../core/goldfishAnatomy';
 import { hash, random } from '../core/random';
 import type { Fish, Tank } from '../core/types';
 import { drawEgg, drawFish } from '../rendering/fish';
@@ -260,15 +261,17 @@ export function TankCanvas(props: Props) {
         facings.current.set(actor.id, facing);
         const effort = Math.min(1, Math.hypot(shown.vx, shown.vy) / Math.max(actor.phenotype.speed, 1e-6));
         const phase = phases.current.get(actor.id) ?? { tail: hash(actor.id) % 628 / 100, fin: hash(`${actor.id}:fin`) % 628 / 100 };
-        const axolotl = actor.phenotype.species === 'axolotl';
+        const axolotl = actor.phenotype.species === 'axolotl', goldfish = actor.phenotype.species === 'goldfish';
         const grounded = axolotl ? Math.max(0, Math.min(1, (shown.y - 0.78) / 0.06)) : 0;
-        phase.tail = (phase.tail + dt * playing * (axolotl ? 1.2 + 3 * effort : 3 + 5 * effort + 2 * actor.phenotype.activity)) % PHASE_WRAP;
-        phase.fin = (phase.fin + dt * playing * (axolotl ? 0.4 + effort * 4 : 2.5 + 2 * actor.phenotype.activity)) % PHASE_WRAP;
+        // Goldfish beat slower than koi and scull with their pectorals; long fins flow behind the stroke.
+        phase.tail = (phase.tail + dt * playing * (axolotl ? 1.2 + 3 * effort : goldfish ? 2 + 3.5 * effort + 1.2 * actor.phenotype.activity : 3 + 5 * effort + 2 * actor.phenotype.activity)) % PHASE_WRAP;
+        phase.fin = (phase.fin + dt * playing * (axolotl ? 0.4 + effort * 4 : goldfish ? 3.5 + 2 * actor.phenotype.activity : 2.5 + 2 * actor.phenotype.activity)) % PHASE_WRAP;
         phases.current.set(actor.id, phase);
         const growth = visualGrowth(fish.life.lengthCm, actor.phenotype.adultLengthCm), pose = fishPose(shown, width, height, growth, facing);
         ctx.save(); ctx.translate(pose.x, pose.y);
         if (actor.id === current.selectedId) {
-          const b = shown.phenotype.species === 'axolotl' && shown.phenotype.axolotl
+          const b = shown.phenotype.species === 'goldfish' && shown.phenotype.goldfish ? goldfishAnatomyFor(shown.phenotype.goldfish).bounds
+            : shown.phenotype.species === 'axolotl' && shown.phenotype.axolotl
             ? axolotlAnatomyFor(shown.phenotype.axolotl).bounds : anatomyFor(shown.phenotype).bounds;
           const length = pose.bodyLength;
           // Selection: a soft glowing halo that breathes, and a name pill above the fish in the interface's typeface.

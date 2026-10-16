@@ -1,5 +1,4 @@
 import { measureDescriptors, VISUAL_DESCRIPTORS, type VisualDescriptorKey } from './descriptors';
-import { isAxolotlGenome } from './axolotlGenetics';
 import { express } from './genetics';
 import type { Bloodline, BloodlineStandard, Fish, World } from './types';
 
@@ -28,7 +27,7 @@ const normalizedName = (name: string) => name.trim().toLocaleLowerCase('en');
 
 /** Descriptor means, the most common structure and origins every foundation fish carries. */
 export function captureStandard(foundation: readonly Fish[]): BloodlineStandard {
-  if (foundation.some(fish => fish.species === 'axolotl' || isAxolotlGenome(fish.genome))) {
+  if (foundation.some(fish => fish.species === 'axolotl' || fish.species === 'goldfish' || 'species' in fish.genome)) {
     throw new Error('Only koi can found a koi bloodline.');
   }
   const descriptors = Object.fromEntries(VISUAL_DESCRIPTORS.map(({ key }) => [key, 0])) as Record<VisualDescriptorKey, number>;
@@ -62,7 +61,7 @@ export function registrationProblem(world: Pick<World, 'fish' | 'bloodlines'>, n
   if (foundationIds.some(id => !byId.has(id))) return 'A foundation fish has no record in this aquarium.';
   if (foundationIds.some(id => {
     const fish = byId.get(id)!;
-    return fish.species === 'axolotl' || isAxolotlGenome(fish.genome);
+    return fish.species === 'axolotl' || fish.species === 'goldfish' || 'species' in fish.genome;
   })) return 'Only koi can found a koi bloodline.';
   if (foundationIds.some(id => byId.get(id)!.life.lengthCm === 0)) return 'Eggs cannot found a bloodline. Wait until they hatch.';
   return null;
@@ -86,7 +85,7 @@ export type Similarity = { overall: number; descriptors: number; structure: numb
 
 /** Standard similarity of a fish, 0–1, with each component. Uses the adult genetic phenotype, never current size or care. */
 export function standardSimilarity(fish: Pick<Fish, 'genome' | 'origins'>, standard: BloodlineStandard): Similarity {
-  if (isAxolotlGenome(fish.genome)) {
+  if ('species' in fish.genome) {
     return { overall: 0, descriptors: 0, structure: 0, origins: standard.signatureOrigins.length ? 0 : null };
   }
   const p = express(fish.genome), measured = measureDescriptors(p);

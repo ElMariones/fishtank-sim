@@ -79,6 +79,7 @@ export function loadRisk(world: Pick<World, 'atlas'>, mother: Fish, father: Fish
 export const FINS_TEXT: Record<Species, Record<'standard' | 'veil' | 'butterfly', string>> = {
   koi: { standard: 'Standard fins', veil: 'Veil fins (one dominant copy)', butterfly: 'Butterfly fins (two copies)' },
   axolotl: { standard: 'Standard crest', veil: 'Frilled crest (one dominant copy)', butterfly: 'Sail crest (two copies)' },
+  goldfish: { standard: 'Standard-length fins', veil: 'Long fins (one dominant copy)', butterfly: 'Veil-length fins (two copies)' },
 };
 
 

@@ -10,6 +10,22 @@ import {
 } from '../core/visualFixtures';
 import { EggPortrait, PhenotypePortrait } from './FishPortrait';
 import { GENESIS_AXOLOTL_FIXTURES, GENESIS_FOUNDER_SAMPLE, GENESIS_KOI_FIXTURES, type GenesisFixture } from '../core/genesisFixtures';
+import { express } from '../core/genetics';
+import { goldfishFounderGenome, goldfishTailText, type GoldfishVariety } from '../core/goldfishGenetics';
+import { VARIETY_TEMPLATES, withGoldfishAlleles } from '../core/goldfishShop';
+import { hash } from '../core/random';
+
+/** Goldfish v1 board: each breed standard applied to one founder background, plus a few unselected founders. */
+const GOLDFISH_BOARD = (() => {
+  const clean = { gf_eye_program: [0, 0], gf_bubble_program: [0, 0], gf_pompon: [0, 0], gf_pearlscale: [1, 1], gf_hood_a: [1, 1], gf_hood_b: [1, 1],
+    gf_dorsal_loss_a: [0, 0], gf_dorsal_loss_b: [0, 0], gf_color_break: [4, 4], gf_albino: [0, 0], gf_swim_bladder: [4, 4] } as const;
+  const bred = (Object.keys(VARIETY_TEMPLATES) as GoldfishVariety[]).map((variety, i) => {
+    const seed = hash(`goldfish-board:${variety}`), genome = withGoldfishAlleles(goldfishFounderGenome(seed), { ...clean, ...VARIETY_TEMPLATES[variety] } as never);
+    return { id: `GF-${String(i + 1).padStart(2, '0')}`, seed, phenotype: express(genome) };
+  });
+  const founders = Array.from({ length: 6 }, (_, i) => { const seed = hash(`goldfish-board:founder:${i}`); return { id: `GF-F${i + 1}`, seed, phenotype: express(goldfishFounderGenome(seed)) }; });
+  return [...bred, ...founders];
+})();
 
 /** Renderer v8: a Genesis fixture with what development made of its chosen alleles and load. */
 function GenesisCard({ fixture }: { fixture: GenesisFixture }) {
@@ -122,6 +138,16 @@ export function VisualFixtureLab({ onClose }: { onClose: () => void }) {
       <div className="fixture-section-heading"><div><div className="eyebrow">GENESIS · KOI GENOME V4 · AXOLOTL GENOME V2 · RENDERER V8</div><h2 id="genesis-fixtures-title">Genesis variants</h2></div><p>Each card starts from a founder and sets chosen development alleles, a homozygous load site or one open-ended allele. Older genomes never draw these layers.</p></div>
       <div className="fixture-grid appearance">{[...GENESIS_KOI_FIXTURES, ...GENESIS_AXOLOTL_FIXTURES].map(fixture => <GenesisCard key={fixture.id} fixture={fixture} />)}</div>
       <div className="fixture-grid appearance">{GENESIS_FOUNDER_SAMPLE.map(fixture => <GenesisCard key={fixture.id} fixture={fixture} />)}</div>
+    </section>
+
+    <section className="fixture-section" aria-labelledby="goldfish-fixtures-title">
+      <div className="fixture-section-heading"><div><div className="eyebrow">GOLDFISH · GENOME V1 · ANATOMY V1</div><h2 id="goldfish-fixtures-title">Goldfish varieties</h2></div><p>Each breed standard applied to one founder background, then six unselected domestic founders. Names come from the fish’s own phenotype.</p></div>
+      <div className="fixture-grid appearance">{GOLDFISH_BOARD.map(({ id, seed, phenotype }) => { const gf = phenotype.goldfish!; return <article className="fixture-card appearance-card" key={id}>
+        <div className="fixture-card-heading"><span>{id}</span><code>goldfish</code></div>
+        <PhenotypePortrait phenotype={phenotype} seed={seed} label={`${gf.variety.name}, goldfish fixture`} />
+        <h3>{gf.variety.name}</h3>
+        <p className="help-copy">{goldfishTailText(gf)} · {gf.scales.type} scales · {gf.adultLengthCm.toFixed(1)} cm · {Math.round(gf.variety.standard * 100)}% of standard</p>
+      </article>; })}</div>
     </section>
 
     <section className="fixture-section" aria-labelledby="founder-fixtures-title">

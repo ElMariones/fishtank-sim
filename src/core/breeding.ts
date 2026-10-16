@@ -1,3 +1,4 @@
+import { SPECIES_INFO } from './species';
 import { MAX_ALLELE_RECORDS, newAlleleRecords, observeFamily, recordLethal } from './atlas';
 import { MUTATION_RATE } from './catalog';
 import { ADULT_FROM, eggLife, isEgg, lifeStage, maturityAge } from './development';
@@ -86,8 +87,8 @@ export function pairingBlockers(world: World, request: PairRequest, limits: Popu
   if (request.motherId === request.fatherId) blockers.push({ code: 'role', message: 'A fish cannot pair with itself.', fix: 'Choose a female and a male.' });
   if (blockers.length || !mother || !father) return blockers;
   if (mother.species !== father.species) return [{
-    code: 'species', message: `${mother.name} is ${mother.species === 'koi' ? 'a koi' : 'an axolotl'} and ${father.name} is ${father.species === 'koi' ? 'a koi' : 'an axolotl'}; only members of the same species can breed.`,
-    fix: `Choose a ${mother.species === 'koi' ? 'koi' : 'axolotl'} partner.`,
+    code: 'species', message: `${mother.name} is ${SPECIES_INFO[mother.species].a} and ${father.name} is ${SPECIES_INFO[father.species].a}; only members of the same species can breed.`,
+    fix: `Choose ${SPECIES_INFO[mother.species].a} partner.`,
   }];
 
   for (const parent of [mother, father]) {
@@ -291,7 +292,7 @@ export function fastBreedingBlockers(world: World, request: FastBreedRequest, li
     else if (isEgg(parent.life)) blockers.push({ code: 'immature', fishId: id, message: `${parent.name} is still an egg.`, fix: 'Wait until it hatches.' });
   }
   if (mother && father && mother.species !== father.species) blockers.push({
-    code: 'species', message: `${mother.name} and ${father.name} are different species; only members of the same species can breed.`, fix: 'Choose two koi or two axolotls.',
+    code: 'species', message: `${mother.name} and ${father.name} are different species; only members of the same species can breed.`, fix: 'Choose two animals of the same species.',
   });
   const tank = world.tanks.find(t => t.id === request.tankId);
   if (!tank) blockers.push({ code: 'nursery-missing', message: 'Choose where the offspring will spawn.', fix: 'Pick one of your tanks.' });

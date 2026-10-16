@@ -45,6 +45,8 @@
   --male: #74c4ff;
   /* Species and habitat accents: axolotls are orchid, decor and aquascaping are moss. Brass stays for money and trophies. */
   --axolotl: #f0a6ff;
+  /* Goldfish are lantern orange. */
+  --goldfish: #ffab5c;
   --moss: #b5d86a;
   --moss-2: #86a944;
   --moss-ink: #1a2406;
@@ -75,6 +77,7 @@
   --amber-a30: rgb(246 180 78 / .32);
   --kelp-a14: rgb(92 217 158 / .14);
   --axolotl-a14: rgb(240 166 255 / .14);
+  --goldfish-a14: rgb(255 171 92 / .14);
   --moss-a12: rgb(181 216 106 / .12);
   --moss-a30: rgb(181 216 106 / .32);
 

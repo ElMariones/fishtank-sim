@@ -54,7 +54,7 @@ export function toggleFavorite(preferences: LabPreferences, fishId: string): Lab
 export function goalValue(fish: Fish, goal: BreedingGoal): number {
   // Breeding goals are presently koi-defined. Axolotls sort neutrally rather than being assigned fake koi appearance
   // scores through the compatibility phenotype used by shared simulation code.
-  if (fish.species === 'axolotl') return 0.5;
+  if (fish.species !== 'koi') return 0.5;
   const traits = [goal, ...(goal.secondary ?? [])];
   const phenotype = express(fish.genome);
   const match = traits.reduce((sum, trait) => {

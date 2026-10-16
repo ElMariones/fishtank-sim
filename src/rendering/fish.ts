@@ -5,6 +5,7 @@ import { markingPosition, placeMarkings, type PlacedMarking } from '../core/patt
 import { clamp, hash, random } from '../core/random';
 import type { AccentColor, BaseColor, DotColor, IrisColor, Phenotype } from '../core/types';
 import { drawAxolotl } from './axolotl';
+import { drawGoldfish } from './goldfish';
 import { drawEyeCloud, drawFray, drawGenesisSkin, drawPhotophores, drawVeilStreamers, kinkAt, shiftHue, towardRoot, veilEdge, VEIL_ALPHA, VEIL_CORE } from './genesis';
 import { FULL_DETAIL, type Detail } from './lod';
 
@@ -134,6 +135,10 @@ export type SwimMotion = { tailPhase: number; finPhase: number; effort: number; 
  * supported reduction is the one a cached flipbook frame forces (see `lod.ts`).
  */
 export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: number, size: number, time = 0, motion?: SwimMotion, detail: Detail = FULL_DETAIL) {
+  if (p.species === 'goldfish' && p.goldfish) {
+    drawGoldfish(ctx, p.goldfish, seed, size, time, motion ? { tailPhase: motion.tailPhase, finPhase: motion.finPhase, effort: motion.effort } : undefined, detail);
+    return;
+  }
   if (p.species === 'axolotl' && p.axolotl) {
     drawAxolotl(ctx, p.axolotl, seed, size, time, motion ? { tailPhase: motion.tailPhase, limbPhase: motion.finPhase, effort: motion.effort, grounded: motion.grounded } : undefined, detail);
     return;

@@ -12,6 +12,10 @@ import {
   axolotlFingerprint, axolotlHeterozygosity, expressAxolotl, inheritAxolotl, isAxolotlGenome,
   type AxolotlGenome, type AxolotlPhenotype,
 } from './axolotlGenetics';
+import {
+  expressGoldfish, goldfishFingerprint, goldfishHeterozygosity, inheritGoldfish, isGoldfishGenome, type GoldfishGenome, type GoldfishPhenotype,
+} from './goldfishGenetics';
+import { GOLDFISH_DEFAULT_MUTATION_RATE } from './goldfishCatalog';
 import type { CreatureGenome, Genome, Mutation, Phenotype } from './types';
 import {
   carriedNovel, createNovel, founderLoadPair, isNovel, KOI_LOAD, KOI_SCALE, NOVEL_SHARE, novelId, novelMap, transmitLoad, type LoadCopies, type NovelAllele,
@@ -74,8 +78,16 @@ const LOCUS_BLOCKS = [LOCUS_REGISTRY.slice(0, LOCI.length), LOCUS_REGISTRY.slice
  */
 export function inherit(mother: Genome, father: Genome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace): { genome: Genome; mutations: Mutation[] };
 export function inherit(mother: AxolotlGenome, father: AxolotlGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace): { genome: AxolotlGenome; mutations: Mutation[] };
+export function inherit(mother: GoldfishGenome, father: GoldfishGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace): { genome: GoldfishGenome; mutations: Mutation[] };
 export function inherit(mother: CreatureGenome, father: CreatureGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace): { genome: CreatureGenome; mutations: Mutation[] };
 export function inherit(mother: CreatureGenome, father: CreatureGenome, seed: number, mutationRate = MUTATION_RATE, requested?: GenomeVersion, trace?: InheritanceTrace): { genome: CreatureGenome; mutations: Mutation[] } {
+  const motherGoldfish = isGoldfishGenome(mother), fatherGoldfish = isGoldfishGenome(father);
+  if (motherGoldfish !== fatherGoldfish) throw new Error('Different species cannot produce offspring.');
+  if (motherGoldfish && fatherGoldfish) {
+    // Goldfish are Genesis-native: the requested koi genome version does not apply, and their own baseline rate does.
+    const result = inheritGoldfish(mother, father, seed, mutationRate === MUTATION_RATE ? GOLDFISH_DEFAULT_MUTATION_RATE : mutationRate, trace);
+    return { genome: result.genome, mutations: result.mutations };
+  }
   // Without an explicit version a child takes genome v3 rules, or its parents' newer version (a clutch never downgrades).
   const version: GenomeVersion = requested ?? (Math.max(RESEARCH_GENOME_VERSION, (mother as Genome).genesis || (father as Genome).genesis ? 4 : 0, isAxolotlGenome(mother) ? 0 : (mother as Genome).version, isAxolotlGenome(father) ? 0 : (father as Genome).version) as GenomeVersion);
   const motherAxolotl = isAxolotlGenome(mother), fatherAxolotl = isAxolotlGenome(father);
@@ -181,6 +193,34 @@ function axolotlCompatibilityPhenotype(axolotl: AxolotlPhenotype): Phenotype {
   };
 }
 
+/**
+ * Goldfish read through the shared phenotype for motion, life, care and the compatibility surfaces; the renderer, names,
+ * shows and buyers read the independent goldfish phenotype in `goldfish`.
+ */
+function goldfishCompatibilityPhenotype(goldfish: GoldfishPhenotype): Phenotype {
+  const b = goldfish.body, c = goldfish.color, t = goldfish.tail;
+  return {
+    species: 'goldfish', goldfish,
+    length: b.length, depth: b.depth, taper: 0.1, curve: 0, head: 0.2 + goldfish.head.hood * 0.06, snout: goldfish.head.snout * 0.05,
+    eye: goldfish.eyes.size, eyePosition: 0.3, iris: goldfish.eyes.iris.h, pupil: 0.55, mouth: goldfish.head.mouth * 0.05, barbel: 0,
+    tail: 0.3 * goldfish.fins.length, spread: t.spread, fork: t.fork, dorsal: goldfish.fins.dorsal === 'full' ? goldfish.fins.dorsalHeight : 0,
+    pectoral: 0.12 * goldfish.fins.length, finPigment: goldfish.color.finTint,
+    red: clamp(1 - Math.abs(c.body.h - 10) / 40) * (1 - c.whiteShare), yellow: clamp((c.body.h - 20) / 30), black: c.darkAmount, white: c.whiteShare,
+    metallic: goldfish.scales.reflectivity, translucency: goldfish.scales.type === 'metallic' ? 0 : 0.2,
+    frequency: 3 + Math.round(goldfish.pattern.coverage * 10), patternScale: goldfish.pattern.scale, warp: 0,
+    symmetry: goldfish.pattern.symmetry, edge: goldfish.pattern.edge, speckle: goldfish.scales.sparkle,
+    adultLengthCm: goldfish.adultLengthCm, growth: goldfish.growth, longevity: goldfish.longevity,
+    metabolism: goldfish.metabolism, oxygen: goldfish.oxygen, fertility: goldfish.fertility,
+    speed: goldfish.speed, turning: goldfish.turning, activity: goldfish.activity, social: goldfish.social,
+    bold: goldfish.bold, curious: goldfish.curious,
+    markings: [],
+    // Compatibility-only neutral koi surfaces. Species-specific UI and rendering never read these as goldfish loci.
+    appearance: { base: ['classic'], accent: ['classic'], dots: ['ink'], iris: ['natural'], shimmer: goldfish.scales.reflectivity, scales: 'smooth', patches: 0, motifs: [], density: goldfish.pattern.coverage, motifScale: goldfish.pattern.scale, contrast: 0.5, reach: 0, finMotifs: [] },
+    structure: { tail: 'standard', lobeBalance: 1, spread: 0, dorsal: 'normal', barbels: 0, rays: 1 },
+    genesis: goldfish.genesis,
+  };
+}
+
 const genesisCache = new WeakMap<object, Phenotype>();
 
 /**
@@ -192,7 +232,8 @@ export function express(genome: CreatureGenome): Phenotype {
   if ((genome as Genome).genesis) {
     const cached = genesisCache.get(genome);
     if (cached) return cached;
-    const phenotype = isAxolotlGenome(genome) ? axolotlCompatibilityPhenotype(expressAxolotl(genome)) : expressKoiGenesis(genome as Genome, koiCore);
+    const phenotype = isGoldfishGenome(genome) ? goldfishCompatibilityPhenotype(expressGoldfish(genome))
+      : isAxolotlGenome(genome) ? axolotlCompatibilityPhenotype(expressAxolotl(genome)) : expressKoiGenesis(genome as Genome, koiCore);
     genesisCache.set(genome, phenotype);
     return phenotype;
   }
@@ -274,6 +315,7 @@ export function metabolicPotential(genome: CreatureGenome): { adultLengthCm: num
 }
 
 export function fingerprint(genome: CreatureGenome): string {
+  if (isGoldfishGenome(genome)) return goldfishFingerprint(genome);
   if (isAxolotlGenome(genome)) return axolotlFingerprint(genome);
   const tail = genome.genesis ? `|d${genome.genesis.dev}` : '';
   return hash(`g${genome.version}:${genome.maternal.join(',')}|${genome.paternal.join(',')}${tail}`).toString(16).padStart(8, '0').toUpperCase();
@@ -281,6 +323,7 @@ export function fingerprint(genome: CreatureGenome): string {
 
 /** Share of carried loci that are heterozygous; genome v1 fish are assayed over their 48 loci. */
 export function heterozygosity(genome: CreatureGenome): number {
+  if (isGoldfishGenome(genome)) return goldfishHeterozygosity(genome);
   if (isAxolotlGenome(genome)) return axolotlHeterozygosity(genome);
   if (genome.genesis) return koiGenesisHeterozygosity(genome);
   return genome.maternal.filter((allele, i) => allele !== genome.paternal[i]).length / genome.maternal.length;

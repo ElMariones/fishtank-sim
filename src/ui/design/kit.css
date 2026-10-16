@@ -147,6 +147,7 @@ html.has-modal { overflow: hidden; }
 .chip.brass { border-color: var(--brass-a30); background: var(--brass-a12); color: var(--brass-text); } .chip.brass .icon { color: var(--brass); }
 .chip.gene { border-color: rgb(171 152 255 / .35); background: var(--gene-a14); color: var(--gene-ink); }
 .chip.axolotl { border-color: rgb(240 166 255 / .35); background: var(--axolotl-a14); color: var(--axolotl); } .chip.axolotl .icon { color: var(--axolotl); }
+.chip.goldfish { border-color: rgb(255 171 92 / .35); background: var(--goldfish-a14); color: var(--goldfish); } .chip.goldfish .icon { color: var(--goldfish); }
 .chip.moss { border-color: var(--moss-a30); background: var(--moss-a12); color: var(--moss-ink-light); } .chip.moss .icon { color: var(--moss); }
 .chip.koi .icon { color: var(--koi); }
 .chip.koi { border-color: rgb(255 125 77 / .35); background: var(--koi-a14); color: var(--koi-ink); }

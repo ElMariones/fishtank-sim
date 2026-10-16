@@ -1,6 +1,44 @@
 # Implementation status
 
-**Updated:** 16 October 2026 · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
+**Updated:** 16 October 2026 (FS-130 goldfish) · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
+
+## Goldfish — FS-130 implemented, not yet committed, 16 October 2026 (user request)
+
+Goldfish are the third species, in world v17. Research, design and founder statistics are in the
+[FS-130 report](research/FS-130-GOLDFISH.md).
+
+- **Genome** (`goldfishCatalog.ts`, `goldfishGenetics.ts`). Goldfish genome v1: 72 loci on 12 chromosomes, Genesis-native
+  (every goldfish has a development block: dev seed, genetic load from its own 40-site catalog, open-ended alleles). Loci
+  anchored to real goldfish genetics: recessive twin tail (chdA E127X), an lrp2-like eye allelic series whose telescope
+  and celestial alleles fail to complement (two telescope copies, two celestial copies, or a game-only "skygazer"),
+  incompletely dominant transparent scales (metallic, nacreous, matte), dominant long fins (kcnk5b), and polygenic dorsal
+  loss with a parent-of-origin effect (the mother's copy weighs 60%). Also hoods (two-locus threshold), bubble sacs,
+  pompons, curled gills, pearl scales, albino/blue/chocolate recessives, lavender dilution and six patterns.
+- **Development.** Each fish is classified into one of 22 named varieties (common, comet, shubunkin, tamasaba, wakin,
+  fantail, ryukin, veiltail, tosakin, oranda, lionhead, ranchu, egg fish, telescope, butterfly telescope, black moor,
+  celestial eye, skygazer, bubble eye, pearlscale, crown pearlscale, pompon) with a color name and a standard score. Fry
+  hatch bronze and break to their adult color on a genetic day (8–38 days); some never break. Hoods, telescope eyes and
+  bubble sacs grow in with the body.
+- **Trade-offs.** Round bodies with a weak swim bladder float head-down (drawn and picked tilted, slower, condition capped
+  at 78%, lower offers and show scores). Protruding eyes, bubble sacs and full-face hoods limit vision and food
+  competition. Twin tails and long fins add drag; curled gills cost oxygen.
+- **Rendering** (`goldfishAnatomy.ts`, `rendering/goldfish.ts`). Egg-to-torpedo bodies, single/tri/twin/four-lobed tails
+  with flowing lag, butterfly and veil tails, dorsal remnants, raspberry hoods, telescope/celestial/bubble eyes, pompons,
+  metallic/nacreous/matte scales, pearl domes, sparkle scales and every pattern. Picking, portraits, the selection halo
+  and the sprite cache use goldfish geometry. Goldfish forage nose-down and hover.
+- **Gameflow.** A third NPC shop counter (founders ◈ 220, varieties ◈ 290–490, carriers ◈ 320); goldfish buyers (the pond
+  keeper takes only hardy single tails); courtship and fast breeding; a pair preview with exact recessive odds for
+  sequenced parents and a sampled variety mix; six goldfish shows per window judged on the variety standard; a goldfish
+  Genome Atlas tab; goldfish names; species filters, chips and inspector panels; a Visual fixtures goldfish board.
+- **Compatibility.** World v17 appends `goldfishShop` and `atlas.goldfish`; v1–v16 worlds migrate with an empty goldfish
+  atlas and a day-0 delivery, and a runtime rebase keeps the stock its own replay delivered. Koi and axolotl genomes,
+  stock, shows, names and prices are unchanged; competition schedules gain goldfish events keyed by their own IDs.
+
+Evidence: 358 tests in 52 files and the production build pass; in-app browser journey on an isolated port. See
+[testing](TESTING.md#fs-130-goldfish).
+
+Limits: balance values are first tunings. Bloodlines and breeding goals stay koi-only. Temperature, deshing and
+spawning tubercles are not modelled. The goldfish catalog, expression and names must now stay frozen for saves (see ADR-077).
 
 ## Genesis genetics — FS-129 DONE, pushed `27af3f8`, 16 October 2026 (user request)
 

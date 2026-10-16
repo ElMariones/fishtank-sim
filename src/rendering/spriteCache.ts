@@ -1,5 +1,6 @@
 import { anatomyFor } from '../core/anatomy';
 import { axolotlAnatomyFor } from '../core/axolotlAnatomy';
+import { goldfishAnatomyFor } from '../core/goldfishAnatomy';
 import type { Phenotype } from '../core/types';
 import { drawFish, type SwimMotion } from './fish';
 import { SPRITE_DETAIL, effortBucket, effortOf, groundedBucket, groundedOf, phaseBucket, phaseOf, sizeBucket, sizeOf } from './lod';
@@ -119,8 +120,8 @@ export class FishSpriteCache {
 export function rasterizeFish(p: Phenotype, seed: number, key: FrameKey): Frame | null {
   // `sizeOf` is already in device pixels: the frame is rasterized at the density it will be drawn at.
   const size = sizeOf(key.size);
-  const bounds = p.species === 'axolotl' && p.axolotl ? axolotlAnatomyFor(p.axolotl).bounds : anatomyFor(p).bounds;
-  const bodyLength = size * p.length;
+  const bounds = p.species === 'goldfish' && p.goldfish ? goldfishAnatomyFor(p.goldfish).bounds : p.species === 'axolotl' && p.axolotl ? axolotlAnatomyFor(p.axolotl).bounds : anatomyFor(p).bounds;
+  const bodyLength = size * (p.goldfish ? p.goldfish.body.length : p.length);
   const pad = bodyLength * PADDING;
   const offsetX = bounds.minX * bodyLength - pad, offsetY = bounds.minY * bodyLength - pad;
   const width = Math.ceil((bounds.maxX - bounds.minX) * bodyLength + pad * 2);

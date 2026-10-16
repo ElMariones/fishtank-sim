@@ -30,11 +30,11 @@ export const traitValue = (fish: Fish, goal: GoalTrait) => {
   const descriptor = GOAL_BY_KEY.get(goal.descriptor);
   // The current goal catalog is a koi catalog. Shared behavior values can still be read on axolotls, but koi shape/color
   // descriptors and loci must never be projected onto the independent axolotl genome.
-  if (!descriptor || (fish.species === 'axolotl' && descriptor.group !== 'Behavior')) return 0;
+  if (!descriptor || (fish.species !== 'koi' && descriptor.group !== 'Behavior')) return 0;
   return descriptor.value(express(fish.genome));
 };
 export function carrierCopies(fish: Fish, key: string): number | null {
-  if (fish.species === 'axolotl') return null;
+  if (fish.species !== 'koi') return null;
   const d = GOAL_BY_KEY.get(key);
   return d?.locus === undefined ? null : appearanceAlleles(fish.genome, d.locus).filter(a => a === d.allele).length;
 }

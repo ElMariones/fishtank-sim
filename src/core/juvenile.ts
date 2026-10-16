@@ -2,6 +2,7 @@ import { ADULT_FROM, developDay, eggLife, environmentFor, INCUBATION_DAYS, isEgg
 import { metabolicPotential } from './genetics';
 import { clamp } from './random';
 import type { Genome, LifeState, Motif, Phenotype } from './types';
+import type { GoldfishColor, GoldfishPhenotype } from './goldfishGenetics';
 import { defaultWater } from './water';
 
 /**
@@ -24,7 +25,8 @@ export const JUVENILE_HEAD_LIMIT = 0.5;
 /** Scale textures appear once pigment is half revealed. */
 export const SCALE_REVEAL = 0.5;
 
-export type Maturity = { body: number; pigment: number };
+/** `color` is the goldfish color break, 0 bronze juvenile … 1 adult color; absent for other species (treated as 1). */
+export type Maturity = { body: number; pigment: number; color?: number };
 export const ADULT_MATURITY: Maturity = { body: 1, pigment: 1 };
 
 const smooth = (t: number) => { const x = clamp(t); return x * x * (3 - 2 * x); };
@@ -39,11 +41,55 @@ export function appearanceMaturity(life: LifeState, adultLengthCm: number): Matu
   };
 }
 
+/** Days over which a goldfish's bronze juvenile color gives way to its adult color once the break starts. */
+export const COLOR_BREAK_DAYS = 6;
+/**
+ * Goldfish maturity adds the color break: fry and juveniles are wild bronze, and from their genetic break day (days after
+ * hatching) the dark pigment recedes over COLOR_BREAK_DAYS. Fish that never break stay bronze, as wild goldfish do.
+ */
+export function goldfishMaturity(life: LifeState, p: GoldfishPhenotype): Maturity {
+  const base = appearanceMaturity(life, p.adultLengthCm);
+  if (isEgg(life)) return { ...base, color: 0 };
+  const color = p.color.broken ? quantize(smooth((life.ageDays - INCUBATION_DAYS - p.color.breakDay) / COLOR_BREAK_DAYS)) : 1;
+  return { ...base, color };
+}
+
+const mixColor = (a: GoldfishColor, b: GoldfishColor, t: number): GoldfishColor => {
+  const dh = ((b.h - a.h + 540) % 360) - 180;
+  return { h: Math.round((((a.h + dh * t) % 360) + 360) % 360 * 100) / 100, s: a.s + (b.s - a.s) * t, l: a.l + (b.l - a.l) * t };
+};
+
+/**
+ * Goldfish stage appearance: a slimmer, shorter-finned fry; hoods grow in late (they keep growing through adulthood in
+ * real fish); telescope eyes and bubble sacs develop with the body; color is bronze until the break, then the adult color.
+ */
+function stageGoldfish(gf: GoldfishPhenotype, body: number, pigment: number, color: number): GoldfishPhenotype {
+  const toward = (ratio: number, adult: number) => adult * (ratio + (1 - ratio) * body);
+  const k = color, c = gf.color;
+  return {
+    ...gf,
+    body: { ...gf.body, depth: toward(0.78, gf.body.depth), roundness: toward(0.55, gf.body.roundness), arch: toward(0.4, gf.body.arch), length: toward(1.06, gf.body.length) },
+    head: { ...gf.head, hood: gf.head.hood * body ** 2, pompon: gf.head.pompon * body },
+    eyes: { ...gf.eyes, size: toward(1.45, gf.eyes.size), protrusion: gf.eyes.protrusion * body, bubble: gf.eyes.bubble * body ** 1.5 },
+    fins: { ...gf.fins, length: toward(0.55, gf.fins.length), dorsalHeight: toward(0.6, gf.fins.dorsalHeight) },
+    tail: { ...gf.tail, spread: toward(0.7, gf.tail.spread) },
+    scales: { ...gf.scales, pearl: gf.scales.pearl * body, reflectivity: gf.scales.reflectivity * (0.35 + 0.65 * pigment), sparkle: gf.scales.sparkle * pigment },
+    color: {
+      ...c,
+      body: mixColor(c.bronze, c.body, k), fin: mixColor(c.bronze, c.fin, k),
+      darkAmount: (c.albino ? 0 : 0.55) * (1 - k) + c.darkAmount * k, whiteShare: c.whiteShare * k, nacreBlue: c.nacreBlue * pigment,
+      bronzeShare: 1 - k,
+    },
+    pattern: { ...gf.pattern, coverage: gf.pattern.coverage * k },
+  };
+}
+
 /** The appearance a fish shows at a maturity. Full maturity returns the adult phenotype itself; nothing genetic changes. */
 export function stagePhenotype(p: Phenotype, maturity: Maturity): Phenotype {
-  const b = clamp(maturity.body), g = clamp(maturity.pigment), h = HATCHLING_PROPORTIONS;
-  if (b === 1 && g === 1) return p;
+  const b = clamp(maturity.body), g = clamp(maturity.pigment), h = HATCHLING_PROPORTIONS, k = clamp(maturity.color ?? 1);
+  if (b === 1 && g === 1 && k === 1) return p;
   const toward = (ratio: number, adult: number) => adult * (ratio + (1 - ratio) * b);
+  if (p.species === 'goldfish' && p.goldfish) return { ...p, goldfish: stageGoldfish(p.goldfish, b, g, k), depth: toward(0.78, p.depth) };
   if (p.species === 'axolotl' && p.axolotl) {
     const ax = p.axolotl, m = ax.morphology, pigment = ax.pigmentation;
     // Axolotl juveniles keep the species' recognizable broad head/external gills while their tail and limbs approach

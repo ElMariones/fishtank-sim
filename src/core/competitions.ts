@@ -1,4 +1,7 @@
 import { axolotlFounderGenome } from './axolotlGenetics';
+import { goldfishFounderGenome } from './goldfishGenetics';
+import { goldfishShowGenome } from './goldfishShop';
+import { SPECIES_INFO } from './species';
 import { adultLife, lifeStage } from './development';
 import { express, founderGenome, metabolicPotential } from './genetics';
 import { newFishName } from './names';
@@ -25,7 +28,8 @@ const pick = <T>(values: readonly T[], rng: () => number) => values[Math.floor(r
 /** Twelve 30-day exhibition windows per 360-day show year; each event is annual and cannot be entered twice. */
 export function competitionSchedule(seed: number, day: number): CompetitionEvent[] {
   const window = Math.floor(day / 30), year = Math.floor(day / CALENDAR_YEAR_DAYS) + 1;
-  return COMPETITION_TIERS.flatMap((tier, level) => (['koi', 'axolotl'] as const).map(species => {
+  // Goldfish shows (world v17) join the calendar; each event's draws are keyed by its own ID, so koi and axolotl shows are unchanged.
+  return COMPETITION_TIERS.flatMap((tier, level) => (['koi', 'axolotl', 'goldfish'] as const).map(species => {
     const id = `SHOW-${window}-${tier}-${species}`, rng = random(hash(`${seed}:circuit:1:${id}`));
     return { id, name: `${pick(titles, rng)} ${pick(suffixes, rng)}`, city: pick(cities, rng), venue: pick(venues, rng), tier, species, year,
       opensDay: window * 30, closesDay: (window + 1) * 30, fee: fees[level], prizes: [fees[level] * 5, fees[level] * 3, fees[level] * 2] as [number, number, number], theme: Math.floor(rng() * 4) };
@@ -37,7 +41,7 @@ export function calendarLabel(day: number): string {
 }
 export function eligibility(fish: Fish, event: CompetitionEvent): string | null {
   if (fish.status !== 'living') return 'Only living residents can enter.';
-  if (fish.species !== event.species) return `This is a ${event.species === 'koi' ? 'koi' : 'axolotl'} competition.`;
+  if (fish.species !== event.species) return `This is a ${SPECIES_INFO[event.species].one} competition.`;
   if (!['adult', 'elderly'].includes(lifeStage(fish.life, metabolicPotential(fish.genome)))) return 'Adults only — let this animal grow.';
   if (fish.life.condition < 0.7) return 'Needs at least 70% condition.';
   return null;
@@ -47,6 +51,18 @@ const round = (value: number) => Math.round(value * 10) / 10;
 export function competitionScores(fish: Fish, event: CompetitionEvent): CompetitionParticipant['scores'] {
   const p = express(fish.genome), a = p.axolotl;
   const style = random(hash(`${event.id}:judges`))();
+  if (p.goldfish) {
+    // Goldfish are judged against their own variety's standard, fin carriage and color richness; no rarity enters.
+    const gf = p.goldfish, g = gf.genesis, c = gf.color;
+    const finQuality = clamp(gf.fins.rays * 0.6 + 0.4 * clamp(gf.fins.length / 1.6)) * (1 - g.finFray);
+    const presentation = 48 + 26 * gf.variety.standard + 12 * gf.pattern.symmetry + 10 * finQuality - (gf.health.buoyancy ? 14 : 0);
+    const richness = c.broken ? clamp(c.body.s * (1 - c.whiteShare * 0.4) + 0.4 * Math.abs(c.whiteShare - 0.5) + 0.3 * c.darkAmount * (c.whiteShare > 0.2 ? 1 : 0.5)) : 0.25;
+    const pattern = 46 + 26 * richness + 12 * gf.pattern.edge + 8 * (1 - Math.abs(gf.pattern.scale * 3 - style)) + 6 * gf.scales.reflectivity;
+    const visible = g.defects.filter(d => !d.rescued && !['lethal', 'frail', 'subfertile'].includes(d.kind)).length;
+    const presence = 10 * (gf.bold - 0.5) + 6 * (gf.activity - 0.5) - 7 * visible;
+    const novelty = Math.min(6, 2 * g.novelAlleles) - 4 * g.depigment;
+    return { presentation: round(clamp(presentation + presence, 0, 100)), pattern: round(clamp(pattern + novelty, 0, 100)), condition: round(fish.life.condition * 100) };
+  }
   const presentation = a ? 52 + 24 * a.pattern.symmetry + 14 * a.pigmentation.skinLuster + 10 * clamp(a.morphology.gills.filamentLength / 1.5)
     : 52 + 24 * p.symmetry + 14 * p.metallic + 10 * p.spread;
   const pattern = a ? 48 + 28 * a.pattern.contrast + 16 * a.pattern.density + 8 * (1 - Math.abs(a.pattern.scale - style))
@@ -74,7 +90,9 @@ export function competitionNpc(seed: number, event: CompetitionEvent, fishId: st
   for (let attempt = 0; attempt <= level * 3; attempt++) {
     const birthSeed = hash(`${seed}:${event.id}:${fishId}:candidate:${attempt}`);
     // Genesis worlds (shop model 3) field Genesis rivals; older worlds keep the rivals their journals recorded.
-    const genome = event.species === 'koi' ? founderGenome(birthSeed, genesis ? 4 : 3) : axolotlFounderGenome(birthSeed, genesis ? 2 : 1);
+    // Goldfish rivals are always goldfish genome v1; from the entry tier up they are show-bred to a variety.
+    const genome = event.species === 'koi' ? founderGenome(birthSeed, genesis ? 4 : 3) : event.species === 'goldfish' ? (level ? goldfishShowGenome(birthSeed) : goldfishFounderGenome(birthSeed))
+      : axolotlFounderGenome(birthSeed, genesis ? 2 : 1);
     const sex = birthSeed % 2 ? 'F' : 'M';
     const fish: Fish = { id: fishId, name: newFishName(`${event.id}:${fishId}:${attempt}`, { sex, genome }, new Set()), sex, species: event.species, genome, birthSeed,
       generation: 0, parents: null, bornAt: '2026-01-01T00:00:00.000Z', tankId: 'competition', status: 'living', mutations: [], origins: [], life: adultLife(genome), breeding: { model: 1, cooldownDays: 0 } };
@@ -119,7 +137,7 @@ export function validateCircuit(world: World): void {
     if (players.length < 1 || players.length > 2 || run.participants.length !== players.length + 8) throw new Error('Invalid competition field.');
     for (const [index, participant] of run.participants.entries()) {
       const fish = participant.fish, owned = world.fish.find(member => member.id === fish.id), scores = competitionScores(fish, event);
-      if (localIds.has(fish.id) || Number(fish.id.slice(4)) >= world.nextId || eligibility(fish, event) || (fish.species === 'axolotl') !== ('species' in fish.genome)) throw new Error('Invalid competition participant.');
+      if (localIds.has(fish.id) || Number(fish.id.slice(4)) >= world.nextId || eligibility(fish, event) || (fish.species !== 'koi') !== ('species' in fish.genome)) throw new Error('Invalid competition participant.');
       localIds.add(fish.id);
       if (participant.rank !== index + 1 || JSON.stringify(scores) !== JSON.stringify(participant.scores) || participant.total !== totalOf(scores)
         || participant.comment !== commentFor(fish, event, scores, participant.rank) || participant.askingPrice !== Math.round(240 + participant.total * 3 + COMPETITION_TIERS.indexOf(event.tier) * 100)) throw new Error('Invalid competition scores.');

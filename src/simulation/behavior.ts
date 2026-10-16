@@ -144,7 +144,8 @@ export function stepBehavior(world: BehaviorWorld): BehaviorWorld {
         if (best < EAT_RADIUS) { eaten.add(nearest); hunger = Math.max(0, hunger - PELLET_MEAL); meals++; }
       }
     } else if (state === 'forage') {
-      seek(actor.x + Math.cos(time * 0.4 + actor.phase) * 0.2, actor.species === 'axolotl' ? 0.85 : BOTTOM_Y - 0.04, 0.025);
+      // Goldfish root along the substrate, nose down, more than koi do.
+      seek(actor.x + Math.cos(time * 0.4 + actor.phase) * 0.2, actor.species === 'axolotl' ? 0.85 : actor.species === 'goldfish' ? BOTTOM_Y - 0.015 : BOTTOM_Y - 0.04, 0.025);
       speedScale = 0.75;
     } else if (state === 'hide') {
       const cover = (world.footprints?.some(f => f.kind === 'cover') ? world.footprints.filter(f => f.kind === 'cover') : coverPoints(world.planted)).reduce((a, b) => Math.hypot(a.x - actor.x, a.y - actor.y) <= Math.hypot(b.x - actor.x, b.y - actor.y) ? a : b);
@@ -167,6 +168,12 @@ export function stepBehavior(world: BehaviorWorld): BehaviorWorld {
         speedScale *= 0.24 + p.activity * 0.22 + push * 0.28;
         ax -= actor.vx * (0.25 + (1 - push) * 0.5);
       } else speedScale *= 0.78;
+    }
+    if (actor.species === 'goldfish') {
+      // Fancy goldfish hover and scull rather than cruise; a weak swim bladder floats the fish toward the surface.
+      if (state === 'cruise') speedScale *= 0.7 + 0.3 * Math.sin(time * 0.5 + actor.phase) ** 2;
+      const buoyancy = p.goldfish?.health.buoyancy ?? 0;
+      if (buoyancy) ay -= buoyancy * 0.05 * (state === 'eat' ? 0.3 : 1);
     }
     for (const other of nearby) {
       if (other.id === actor.id) continue;

@@ -1,5 +1,36 @@
 # Testing and verification
 
+## FS-130 goldfish
+
+16 October 2026, Windows 11, Node via the checkout's npm scripts.
+
+- `npx vitest run`: **358 tests in 52 files pass** (331 before, plus `tests/goldfishGenetics.test.ts` with 15 tests and
+  `tests/goldfishIntegration.test.ts` with 12). `npx tsc --noEmit` and `npm run build` pass (the existing >500 kB chunk
+  warning remains).
+- Existing suites changed only where a fact changed: the competition schedule now has 18 events per window (koi, axolotl
+  and goldfish × six tiers) and a migrated world is v17.
+- What the new tests prove is listed in the [FS-130 report](research/FS-130-GOLDFISH.md#3-verification).
+- Browser (in-app, isolated port 5176 with fresh storage; the user's own save on 5173 was not opened):
+  - The Visual fixtures goldfish board was reviewed as a contact sheet of all 22 portraits, three rounds. Fixed after
+    review: a boxy rear with a hard edge at the peduncle (tail bases now span the peduncle; smoother egg taper), leg-like
+    paired fins, an over-tall dorsal on long-finned fish, greenish irises from circular hue averaging (the darker iris
+    allele is now dominant), a heavy scale net, oversized calico spots, invisible pompons on pale fish.
+  - Goldfish shop counter: listings, portraits and details; bought a lionhead and an egg fish, then (after a reset) a
+    white tamasaba and a black moor; toasts, ledger and credits updated.
+  - Inspector: goldfish chip, variety, standard, hood, tail, color break day and hidden copies (unknown until sequenced).
+    Fixed: the pattern row showed a calico allele masked by metallic scales in discovery mode; it is now a hidden copy.
+  - Breeding: species switch, pair preview (an F1 of a single tail and a black moor showed no telescope eyes and about
+    41% twin tails from a hidden carrier), fast breeding of 20 eggs, and normal courtship with a 20-place reservation.
+  - Calendar: a week showed hatched fry; a month later 19 of 20 eggs had become juveniles, most colored, a few still
+    bronze. Fixed: patterned fry (a redcap) skipped the bronze juvenile; every fish is now bronze until half its break.
+  - Reload restored day 30 with no save warning. Genome Atlas goldfish tab showed evidence and linkage tallies.
+  - Competitions: six goldfish shows; entered two goldfish in the amateur show (field of goldfish rivals, "Black moor ·
+    86% of standard"), judged, both placed; reload passed validation with the show in history.
+  - 375 px collection: the four species filters wrap onto two lines, no horizontal overflow. No console errors.
+- Observed and recorded, not a defect in shipped code: after the goldfish name vocabulary was edited mid-session, the
+  throwaway QA save failed replay validation and the app kept it intact in recovery mode. Goldfish names and genetics are
+  now part of the replay contract (ADR-077).
+
 ## FS-129 Genesis genetics
 
 16 October 2026, Windows 11, Node via the checkout's npm scripts.

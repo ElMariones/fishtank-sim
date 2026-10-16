@@ -5,6 +5,8 @@ import { DOMINANCE_LABELS, loadCatalog, isNovel, type DominanceClass } from './g
 import { koiResolver } from './koiGenesis';
 import { LOCUS_REGISTRY } from './registry';
 import type { AxolotlGenome } from './axolotlGenetics';
+import { GOLDFISH_LOCUS_REGISTRY } from './goldfishCatalog';
+import { goldfishDominance, goldfishPair, type GoldfishGenome } from './goldfishGenetics';
 import type { Fish, Genome, Species, World } from './types';
 
 /**
@@ -27,7 +29,8 @@ export type AtlasSpecies = {
   /** Load site IDs seen expressed (defect notebook). */
   defects: number[];
 };
-export type AtlasState = { model: 1; mode: AtlasMode; koi: AtlasSpecies; axolotl: AtlasSpecies; sequenced: string[] };
+/** World v17 adds the goldfish atlas; older worlds gain it empty. */
+export type AtlasState = { model: 1; mode: AtlasMode; koi: AtlasSpecies; axolotl: AtlasSpecies; goldfish: AtlasSpecies; sequenced: string[] };
 /** A named open-ended allele. Its value and effects live in every genome that carries it; this holds the name. */
 export type AlleleRecord = { id: number; species: Species; locus: number; origin: string; name: string; named: boolean };
 
@@ -43,8 +46,8 @@ export const MAX_SEQUENCED = 600;
 export const MAX_ALLELE_RECORDS = 4000;
 export const STAGE_LABELS = ['Unidentified', 'Trait identified', 'Inheritance known', 'Mapped'] as const;
 
-const emptySpecies = (): AtlasSpecies => ({ evidence: Array(ATLAS_LOCI).fill(0), stage: Array(ATLAS_LOCI).fill(0), links: {}, defects: [] });
-export const initialAtlas = (mode: AtlasMode): AtlasState => ({ model: 1, mode, koi: emptySpecies(), axolotl: emptySpecies(), sequenced: [] });
+export const emptySpecies = (): AtlasSpecies => ({ evidence: Array(ATLAS_LOCI).fill(0), stage: Array(ATLAS_LOCI).fill(0), links: {}, defects: [] });
+export const initialAtlas = (mode: AtlasMode): AtlasState => ({ model: 1, mode, koi: emptySpecies(), axolotl: emptySpecies(), sequenced: [], goldfish: emptySpecies() });
 
 export type AtlasLocus = {
   index: number; id: string; label: string; chromosome: number; chromosomeLabel: string; position: number;
@@ -66,11 +69,24 @@ export const AXOLOTL_ATLAS: readonly AtlasLocus[] = AXOLOTL_V2_REGISTRY.map((ent
   index, id: entry.id, label: entry.label, chromosome: AXOLOTL_CHROMOSOME_IDS.indexOf(entry.chromosomeId) + 1, chromosomeLabel: entry.chromosomeLabel,
   position: index % 6, dominance: axolotlDominance(index), categorical: axolotlDominance(index) === null, visibility: AXOLOTL_VISIBILITY[entry.chromosomeId] ?? 0.6,
 }));
-export const atlasLoci = (species: Species) => species === 'koi' ? KOI_ATLAS : AXOLOTL_ATLAS;
+const GOLDFISH_VISIBILITY: Record<string, number> = {
+  'GF-BODY': 0.75, 'GF-HEAD': 0.8, 'GF-EYE': 1, 'GF-FIN': 0.9, 'GF-TAIL': 1, 'GF-SCALE': 0.9, 'GF-PIG': 1, 'GF-CHANGE': 0.9, 'GF-PATTERN': 0.9,
+  'GF-ORN': 0.9, 'GF-LIFE': 0.35, 'GF-BEH': 0.4,
+};
+const GOLDFISH_CHROMOSOME_IDS = ['GF-BODY', 'GF-HEAD', 'GF-EYE', 'GF-FIN', 'GF-TAIL', 'GF-SCALE', 'GF-PIG', 'GF-CHANGE', 'GF-PATTERN', 'GF-ORN', 'GF-LIFE', 'GF-BEH'];
+export const GOLDFISH_ATLAS: readonly AtlasLocus[] = GOLDFISH_LOCUS_REGISTRY.map((entry, index) => ({
+  index, id: entry.id, label: entry.label, chromosome: GOLDFISH_CHROMOSOME_IDS.indexOf(entry.chromosomeId) + 1, chromosomeLabel: entry.chromosomeLabel,
+  position: index % 6, dominance: goldfishDominance(index), categorical: goldfishDominance(index) === null, visibility: GOLDFISH_VISIBILITY[entry.chromosomeId] ?? 0.6,
+}));
+export const atlasLoci = (species: Species) => species === 'koi' ? KOI_ATLAS : species === 'axolotl' ? AXOLOTL_ATLAS : GOLDFISH_ATLAS;
 
 /** How a genome's two copies at one locus read for the atlas: comparable values, or categorical identities. */
 function values(fish: Fish): (index: number) => [number, number] | null {
   const genome = fish.genome;
+  if (fish.species === 'goldfish') {
+    const goldfish = genome as GoldfishGenome, pair = goldfishPair(goldfish);
+    return index => index < goldfish.maternal.length ? pair(index).map(r => r.value) as [number, number] : null;
+  }
   if (fish.species === 'axolotl') {
     const axolotl = genome as AxolotlGenome;
     if (axolotl.genesis) { const pair = axolotlPair(axolotl); return index => index < axolotl.maternal.length ? pair(index).map(r => r.value) as [number, number] : null; }

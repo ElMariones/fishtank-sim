@@ -234,6 +234,7 @@
 .shop-listing strong { font-family: var(--font-display); font-size: var(--t-lg); font-weight: 560; color: var(--fg-1); }
 .shop-listing small { display: block; margin-top: 3px; font-size: var(--t-2xs); color: var(--fg-3); line-height: 1.5; }
 .shop-listing.axolotl-listing { border-color: rgb(255 159 195 / .25); }
+.shop-listing.goldfish-listing { border-color: rgb(255 171 92 / .25); }
 .shop-buy { display: grid; justify-items: end; gap: 6px; text-align: right; }
 .shop-buy > span { font-family: var(--font-mono); font-size: var(--t-lg); font-weight: 600; color: var(--brass); }
 .shop-buy button { min-height: 34px; font-size: var(--t-xs); }

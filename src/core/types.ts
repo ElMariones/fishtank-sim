@@ -4,6 +4,8 @@ import type { AppearanceLocus } from './catalog';
 import type { VisualDescriptorKey } from './descriptors';
 import type { AxolotlGenome, AxolotlPhenotype } from './axolotlGenetics';
 import type { AxolotlLocus } from './axolotlCatalog';
+import type { GoldfishGenome, GoldfishPhenotype } from './goldfishGenetics';
+import type { GoldfishRecessive } from './goldfishCatalog';
 import type { GenesisBlock, GenesisTraits } from './genesis';
 import type { AlleleRecord, AtlasState } from './atlas';
 
@@ -13,9 +15,13 @@ import type { AlleleRecord, AtlasState } from './atlas';
  * definitions of any open-ended alleles it carries. Only genome v4 has `genesis`.
  */
 export type Genome = { version: 1 | 2 | 3 | 4; maternal: number[]; paternal: number[]; genesis?: GenesisBlock };
-/** Species is explicit on persistent animals/clutches; koi keeps its historic genome byte shape while axolotls own a separate registry. */
-export type Species = 'koi' | 'axolotl';
-export type CreatureGenome = Genome | AxolotlGenome;
+/**
+ * Species is explicit on persistent animals/clutches; koi keeps its historic genome byte shape while axolotls (world v13)
+ * and goldfish (world v17) each own a separate registry.
+ */
+export type Species = 'koi' | 'axolotl' | 'goldfish';
+export const SPECIES: readonly Species[] = ['koi', 'axolotl', 'goldfish'];
+export type CreatureGenome = Genome | AxolotlGenome | GoldfishGenome;
 export type Mutation = {
   locus: number; copy: 'maternal' | 'paternal'; from: number; to: number;
   /** World v13 axolotl mutations persist their species-local stable locus ID; koi mutations intentionally omit it. */
@@ -138,6 +144,15 @@ export type AxolotlListing = {
   carries: { locus: AxolotlSwitch; allele: number } | null;
 };
 export type AxolotlShopState = { model: 1 | 2; nextListing: number; refreshedDay: number; listings: AxolotlListing[] };
+export type GoldfishListingCategory = 'founder' | 'variety' | 'carrier';
+/** A goldfish shop specimen (world v17): fixed from arrival until it is bought or leaves. */
+export type GoldfishListing = {
+  id: string; category: GoldfishListingCategory; name: string; sex: 'F' | 'M'; genome: GoldfishGenome; birthSeed: number; price: number;
+  expiresDay: number; note: string;
+  /** For documented carriers: the recessive locus carried as one hidden copy, and the variant allele. */
+  carries: { locus: GoldfishRecessive; allele: number } | null;
+};
+export type GoldfishShopState = { model: 1; nextListing: number; refreshedDay: number; listings: GoldfishListing[] };
 /** How new fish are named: 1 numbered ("Fry 12"), 2 generated from name parts (ADR-055), 3 parts true to the fish's traits (ADR-056). */
 export type NamingModel = 1 | 2 | 3;
 /** A bloodline's standard (FS-604), taken from its foundation fish when it was registered and never changed after. */
@@ -157,11 +172,11 @@ export type ReliefState = { model: 1; claims: number; cooldownDays: number };
  * v8 persisted decoration transforms (FS-503). World v9 adds the koi rescue (FS-504). World v10 (FS-601) accepts genome v3
  * records and shop model 2, which delivers genome v3 stock. World v11 (FS-603) adds mutation origins to every fish;
  * world v12 (FS-604) adds the bloodline registry. World v13 adds explicit species identity and the independent axolotl genome;
- * world v14 adds the persistent axolotl shop.
+ * world v14 adds the persistent axolotl shop. World v17 adds goldfish: a third species with its own genome, shop and atlas.
  * Older saves migrate with defaults.
  */
 export type World = {
-  version: 16; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
+  version: 17; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
   market: MarketState; ledger: Ledger; shop: ShopState; naming: NamingModel; relief: ReliefState;
   /** Registered bloodlines and the next registry number (world v12). */
   bloodlines: Bloodline[]; nextBloodlineId: number;
@@ -172,6 +187,8 @@ export type World = {
   alleles: AlleleRecord[];
   /** Genome Atlas (world v16): what the player has discovered about each species' loci. */
   atlas: AtlasState;
+  /** Persistent goldfish stock (world v17), a third counter beside the koi and axolotl shops. */
+  goldfishShop: GoldfishShopState;
 };
 /**
  * Development v2 inherited marking anchor, derived from one phased two-locus haplotype block.
@@ -210,8 +227,11 @@ export type BarbelCount = 0 | 2 | 4 | 6;
  */
 export type Structure = { tail: TailTopology; lobeBalance: number; spread: number; dorsal: DorsalForm; barbels: BarbelCount; rays: number };
 export type Phenotype = {
-  /** Absent means the historic koi phenotype. Axolotls carry their independent expressed phenotype alongside shared motion/life projections. */
-  species?: 'axolotl'; axolotl?: AxolotlPhenotype;
+  /**
+   * Absent means the historic koi phenotype. Axolotls and goldfish carry their independent expressed phenotype alongside
+   * shared motion/life projections.
+   */
+  species?: 'axolotl' | 'goldfish'; axolotl?: AxolotlPhenotype; goldfish?: GoldfishPhenotype;
   length: number; depth: number; taper: number; curve: number; head: number; snout: number;
   eye: number; eyePosition: number; iris: number; pupil: number; mouth: number; barbel: number;
   tail: number; spread: number; fork: number; dorsal: number; pectoral: number; finPigment: number;

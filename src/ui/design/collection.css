@@ -39,6 +39,7 @@
   transition: transform var(--dur-3) var(--ease-out), box-shadow var(--dur-3) var(--ease-out), border-color var(--dur-2);
   animation: rise var(--dur-4) var(--ease-out) both; animation-delay: calc(var(--stagger, 0) * 22ms); }
 .fish-card.species-axolotl { --accent: var(--axolotl); }
+.fish-card.species-goldfish { --accent: var(--goldfish); }
 .fish-card:hover { transform: translateY(-4px); border-color: var(--line-3); box-shadow: var(--sh-lift); }
 .fish-card.selected { border-color: rgb(94 240 210 / .65); box-shadow: 0 0 0 1px rgb(94 240 210 / .35), 0 18px 40px -20px rgb(94 240 210 / .55); }
 .fish-card.selected::after { content: ''; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1px rgb(94 240 210 / .25); }

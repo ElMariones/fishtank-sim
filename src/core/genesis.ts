@@ -97,6 +97,8 @@ export type NovelScale = { min: number; max: number; step: [number, number]; eff
 /** Koi alleles are levels 0–5; axolotl alleles are effects −1…1. Novel values may exceed the catalog by a little. */
 export const KOI_SCALE: NovelScale = { min: -0.75, max: 5.9, step: [0.35, 1.6], effect: 0.28 };
 export const AXOLOTL_SCALE: NovelScale = { min: -1.35, max: 1.35, step: [0.08, 0.42], effect: 0.28 };
+/** Goldfish quantitative alleles share the axolotl −1…1 effect scale. */
+export const GOLDFISH_SCALE: NovelScale = AXOLOTL_SCALE;
 
 /** A deterministic novel allele ID for one mutation event. */
 export const novelId = (seed: number, copy: string, locus: number) => NOVEL_ID_MIN + hash(`genesis:novel:${seed}:${copy}:${locus}`) % NOVEL_ID_SPAN;
@@ -139,7 +141,7 @@ export const DEFECT_TEXT: Record<DefectKind, string> = {
   fins: 'Ragged, shortened fins. Strong regeneration regrows them.',
   eye: 'Small, clouded eyes.',
   pigment: 'Pale, washed-out blotches across the skin.',
-  gill: 'Stunted external gills and poorer oxygen uptake.',
+  gill: 'Stunted or deformed gills and poorer oxygen uptake.',
   limb: 'Missing digits. Strong regeneration regrows them.',
 };
 const site = (id: number, kind: DefectKind, anchor: number, weight: number, label: string): LoadSite =>
@@ -180,7 +182,10 @@ const AXOLOTL_KINDS: readonly DefectKind[] = KOI_KINDS.map((kind, i) => kind ===
 export const KOI_LOAD: readonly LoadSite[] = catalogFor(KOI_KINDS, 'koi-load');
 /** Axolotl load sites, anchored across the 72-locus axolotl genome v2. */
 export const AXOLOTL_LOAD: readonly LoadSite[] = catalogFor(AXOLOTL_KINDS, 'axolotl-load');
-export const loadCatalog = (species: 'koi' | 'axolotl') => species === 'koi' ? KOI_LOAD : AXOLOTL_LOAD;
+/** Goldfish load (world v17): curled-gill and eye defects replace some dwarf and eye sites, fin erosion stays. */
+const GOLDFISH_KINDS: readonly DefectKind[] = KOI_KINDS.map((kind, i) => kind === 'dwarf' && i > 20 ? 'gill' : kind === 'pigment' && i > 30 ? 'eye' : kind);
+export const GOLDFISH_LOAD: readonly LoadSite[] = catalogFor(GOLDFISH_KINDS, 'goldfish-load');
+export const loadCatalog = (species: 'koi' | 'axolotl' | 'goldfish') => species === 'koi' ? KOI_LOAD : species === 'axolotl' ? AXOLOTL_LOAD : GOLDFISH_LOAD;
 
 /**
  * About 1.6 hidden recessives per founder chromosome copy (a few founders carry none, a few carry four). A founder never

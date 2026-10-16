@@ -5,7 +5,10 @@ import { z } from 'zod';
 import { BLOCKER_CODES, CLUTCH_SIZES, CLUTCH_STAGES, idleBreeding, reservedPlaces } from './breeding';
 import { defaultCare, RATION_KEYS, THERMOSTAT_RANGE } from './care';
 import { ALL_LOCI, APPEARANCE_LOCI, GENOME_LOCI, LOCI, LOCI_PER_GENOME } from './catalog';
-import { ATLAS_LOCI, initialAtlas, MAX_ALLELE_RECORDS, MAX_SEQUENCED } from './atlas';
+import { ATLAS_LOCI, emptySpecies, initialAtlas, MAX_ALLELE_RECORDS, MAX_SEQUENCED } from './atlas';
+import { GOLDFISH_LOCI_COUNT, GOLDFISH_RECESSIVES } from './goldfishCatalog';
+import { goldfishGenomeProblem, isGoldfishGenome } from './goldfishGenetics';
+import { GOLDFISH_SHOP_SIZE, goldfishListingProblem, initialGoldfishShop } from './goldfishShop';
 import { CHANNELS, MAX_LOAD_PER_COPY, MAX_NOVEL_PER_GENOME, NOVEL_ID_MIN } from './genesis';
 import { AXOLOTL_V2_LOCI_COUNT } from './axolotlCatalog';
 import { genomeProblem } from './registry';
@@ -55,6 +58,11 @@ const axolotlGenome = z.union([
   z.object({ species: z.literal('axolotl'), version: z.literal(2), maternal: genesisAlleles(AXOLOTL_V2_LOCI_COUNT), paternal: genesisAlleles(AXOLOTL_V2_LOCI_COUNT), genesis: genesisBlock }).strict(),
 ]).superRefine((value, context) => { const problem = axolotlGenomeProblem(value); if (problem) context.addIssue({ code: 'custom', message: problem }); });
 const creatureGenome = z.union([axolotlGenome, genome]);
+/** Goldfish genome v1 (world v17): Genesis-native, with its own discriminator and locus registry. */
+const goldfishGenome = z.object({
+  species: z.literal('goldfish'), version: z.literal(1), maternal: genesisAlleles(GOLDFISH_LOCI_COUNT), paternal: genesisAlleles(GOLDFISH_LOCI_COUNT), genesis: genesisBlock,
+}).strict().superRefine((value, context) => { const problem = goldfishGenomeProblem(value); if (problem) context.addIssue({ code: 'custom', message: problem }); });
+const creatureGenomeV17 = z.union([goldfishGenome, axolotlGenome, genome]);
 const bounded = ([minimum, maximum]: readonly [number, number]) => z.number().min(minimum).max(maximum);
 /** Water model v1 state, carried by every world v2+ tank. */
 const water = z.object({
@@ -192,11 +200,32 @@ const atlasSpecies = z.object({
   links: z.record(z.string().regex(/^\d{1,2}-\d{1,2}$/), z.tuple([z.number().int().min(0), z.number().int().min(0)])), defects: z.array(z.number().int().min(1).max(64)).max(64),
 }).strict();
 const atlas = z.object({ model: z.literal(1), mode: z.enum(['discovery', 'scientist']), koi: atlasSpecies, axolotl: atlasSpecies, sequenced: z.array(fishIdSchema).max(MAX_SEQUENCED) }).strict();
+const atlasV17 = atlas.extend({ goldfish: atlasSpecies }).strict();
 const alleleRecords = z.array(z.object({
   id: z.number().int().min(NOVEL_ID_MIN).max(NOVEL_MAX), species: z.enum(['koi', 'axolotl']), locus: z.number().int().min(0).max(80), origin: fishIdSchema,
   name: z.string().trim().min(1).max(32), named: z.boolean(),
 }).strict()).max(MAX_ALLELE_RECORDS);
+// ── World v17: goldfish ──
+const SPECIES_V17 = z.enum(['koi', 'axolotl', 'goldfish']);
+const mutationV17 = mutationV16.extend({ locus: z.number().int().min(0).max(Math.max(GENOME_LOCI.length, AXOLOTL_V2_LOCI_COUNT, GOLDFISH_LOCI_COUNT) - 1) }).strict();
+const fishV17 = z.object({ ...fishRecordV13, species: SPECIES_V17, genome: creatureGenomeV17, mutations: z.array(mutationV17).max(Math.max(GENOME_LOCI.length, AXOLOTL_V2_LOCI_COUNT, GOLDFISH_LOCI_COUNT) * 2), status: z.enum(['living', 'sold', 'rehomed']), life, breeding, origins }).strict();
+const clutchV17 = clutchV16.extend({ species: SPECIES_V17 }).strict();
+const eventV17 = event.extend({ species: SPECIES_V17 }).strict();
+const competitionRunV17 = competitionRun.extend({ event: eventV17, participants: z.array(competitionRun.shape.participants.element.extend({ fish: fishV17 }).strict()).min(9).max(10) }).strict();
+const circuitV17 = circuit.extend({ active: competitionRunV17.nullable(), history: z.array(competitionRunV17).max(MAX_COMPETITION_HISTORY) }).strict();
+const alleleRecordsV17 = z.array(alleleRecords.element.extend({ species: SPECIES_V17 }).strict()).max(MAX_ALLELE_RECORDS);
+const goldfishListing = z.object({
+  id: z.string().regex(/^GF-\d{6,16}$/), category: z.enum(['founder', 'variety', 'carrier']), name: z.string().min(1).max(32), sex: z.enum(['F', 'M']),
+  genome: goldfishGenome, birthSeed: z.number().int().min(0).max(4294967295), price: z.number().int().positive().max(1e6), expiresDay: z.number().int().min(0).max(1e12),
+  note: z.string().max(120), carries: z.object({ locus: z.enum(Object.keys(GOLDFISH_RECESSIVES) as [keyof typeof GOLDFISH_RECESSIVES, ...(keyof typeof GOLDFISH_RECESSIVES)[]]), allele: z.number().int().min(3).max(5) }).strict().nullable(),
+}).strict();
+const goldfishShop = z.object({
+  model: z.literal(1), nextListing: z.number().int().positive(), refreshedDay: z.number().int().min(0).max(1e12), listings: z.array(goldfishListing).max(GOLDFISH_SHOP_SIZE),
+}).strict();
 const schema = z.discriminatedUnion('version', [
+  // World v17 adds goldfish: a third species, its own shop counter (appended last) and its own atlas.
+  z.object({ ...worldV13, version: z.literal(17), fish: z.array(fishV17).max(MAX_RECORDS), clutches: z.array(clutchV17).max(MAX_RECORDS), ledger: ledgerV16, shop: shopV16,
+    axolotlShop: axolotlShopV16, circuit: circuitV17, alleles: alleleRecordsV17, atlas: atlasV17, goldfishShop }),
   // World v16 (Genesis): genome v4 and axolotl genome v2 records, clutch outcomes, research spending, named alleles and the Genome Atlas.
   z.object({ ...worldV13, version: z.literal(16), fish: z.array(fishV16).max(MAX_RECORDS), clutches: z.array(clutchV16).max(MAX_RECORDS), ledger: ledgerV16, shop: shopV16,
     axolotlShop: axolotlShopV16, circuit: circuitV16, alleles: alleleRecords, atlas }),
@@ -254,12 +283,16 @@ export function decodeSave(raw: string): World {
   if (raw.length > 12_000_000) throw new Error('Save is too large for this lab.');
   const parsed = schema.parse(JSON.parse(raw));
   let world: World;
+  // Worlds v1–v16 predate goldfish: the goldfish atlas opens empty and the goldfish counter opens with a day-0 delivery,
+  // appended last. When the runtime rebases an older world it keeps the stock the world's own replay delivered instead.
+  const goldfishFields = (old: World): World => ({ ...old, version: 17, atlas: { ...old.atlas, goldfish: emptySpecies() }, goldfishShop: initialGoldfishShop(old.seed) });
   // Worlds v1–v15 predate Genesis: research spending opens at zero, the allele registry is empty and the atlas opens in
   // scientist mode, so an existing world keeps showing every locus it always showed.
   const genesisFields = (old: Omit<World, 'version' | 'alleles' | 'atlas'>): World => ({
     ...old, version: 16, ledger: { ...old.ledger, totals: { ...old.ledger.totals, research: 0 } }, alleles: [], atlas: initialAtlas('scientist'),
-  } as World);
-  if (parsed.version === 16) world = parsed as unknown as World;
+  } as unknown as World);
+  if (parsed.version === 17) world = parsed as unknown as World;
+  else if (parsed.version === 16) world = parsed as unknown as World;
   else if (parsed.version === 15) world = genesisFields(parsed as unknown as World);
   else if (parsed.version === 14) world = genesisFields({ ...parsed, circuit: initialCircuit() } as unknown as World);
   // Worlds v1–v13 predate the axolotl shop: it opens with a day-0 delivery, appended last. When the runtime rebases an
@@ -305,6 +338,7 @@ export function decodeSave(raw: string): World {
       axolotlShop: initialAxolotlShop(legacy.seed as number), circuit: initialCircuit(),
     });
   }
+  if (parsed.version < 17) world = goldfishFields({ ...world, version: 16 } as unknown as World);
   world.tanks = world.tanks.map(tank => ({ ...tank, decorations: decorationsOf(tank) }));
   for (const tank of world.tanks) {
     validateLayout(decorationsOf(tank));
@@ -315,7 +349,7 @@ export function decodeSave(raw: string): World {
   if (ids.size !== world.fish.length || tanks.size !== world.tanks.length) throw new Error('Duplicate records in save.');
   for (const member of world.fish) {
     if (!tanks.has(member.tankId) || Number(member.id.slice(4)) >= world.nextId) throw new Error('Invalid record reference.');
-    if ((member.species === 'axolotl') !== isAxolotlGenome(member.genome)) throw new Error('Species does not match its genome.');
+    if ((member.species === 'axolotl') !== isAxolotlGenome(member.genome) || (member.species === 'goldfish') !== isGoldfishGenome(member.genome)) throw new Error('Species does not match its genome.');
     if (member.mutations.some(mutation => mutation.locus >= member.genome.maternal.length)) throw new Error('Mutation record is outside the genome.');
     for (const mutation of member.mutations) {
       if (member.species === 'axolotl') {
@@ -326,6 +360,7 @@ export function decodeSave(raw: string): World {
         mutation.locusId ??= expected;
       }
       if (member.species === 'koi' && mutation.locusId !== undefined) throw new Error('Koi mutation record cannot carry an axolotl locus ID.');
+      if (member.species === 'goldfish' && mutation.locusId !== undefined) throw new Error('Goldfish mutation record cannot carry an axolotl locus ID.');
     }
     const originIssue = originProblem(member, ids);
     if (originIssue) throw new Error(originIssue);
@@ -396,6 +431,14 @@ export function decodeSave(raw: string): World {
     if (listingIds.has(entry.id) || !Number.isSafeInteger(sequence) || sequence < 1 || sequence >= world.axolotlShop.nextListing
       || entry.expiresDay <= world.axolotlShop.refreshedDay) throw new Error('Invalid axolotl shop listing.');
     const problem = axolotlListingProblem(entry, world.axolotlShop.model);
+    if (problem) throw new Error(problem);
+    listingIds.add(entry.id);
+  }
+  for (const entry of world.goldfishShop.listings) {
+    const sequence = Number(entry.id.slice(3));
+    if (listingIds.has(entry.id) || !Number.isSafeInteger(sequence) || sequence < 1 || sequence >= world.goldfishShop.nextListing
+      || entry.expiresDay <= world.goldfishShop.refreshedDay) throw new Error('Invalid goldfish shop listing.');
+    const problem = goldfishListingProblem(entry);
     if (problem) throw new Error(problem);
     listingIds.add(entry.id);
   }

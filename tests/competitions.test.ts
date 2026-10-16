@@ -17,7 +17,7 @@ function rejection(world: World, command: Command, message?: string) { const bef
 describe('calendar competition circuit', () => {
   it('generates stable species/tier fields and renews editions at calendar windows and years', () => {
     const events = competitionSchedule(123, 0);
-    expect(events).toHaveLength(12); expect(new Set(events.map(e => e.id)).size).toBe(12);
+    expect(events).toHaveLength(18); expect(new Set(events.map(e => e.id)).size).toBe(18);
     expect(competitionSchedule(123, 29)).toEqual(events);
     expect(competitionSchedule(123, 30)).not.toEqual(events);
     expect(competitionSchedule(124, 0)).not.toEqual(events);
@@ -119,7 +119,7 @@ describe('calendar competition circuit', () => {
     const raw = JSON.parse(JSON.stringify(runtime));
     for (const world of [raw.world, raw.checkpoint.world]) { world.version = 14; delete world.circuit; for (const key of ['competitionEntry', 'competitionPrize', 'competitionPurchase']) delete world.ledger.totals[key]; }
     const restored = decodeRuntime(JSON.stringify(raw));
-    expect(restored.world.fish).toEqual(runtime.world.fish); expect(restored.world.credits).toBe(runtime.world.credits); expect(restored.world.version).toBe(16);
+    expect(restored.world.fish).toEqual(runtime.world.fish); expect(restored.world.credits).toBe(runtime.world.credits); expect(restored.world.version).toBe(17);
     expect(restored.world.circuit.day).toBe(37); expect(restored.tick).toBe(runtime.tick);
     expect(decodeRuntime(JSON.stringify(restored))).toEqual(restored);
   });

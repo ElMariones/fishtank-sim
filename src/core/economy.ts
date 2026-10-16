@@ -1,5 +1,6 @@
 import { describeAppearance } from './appearance';
 import { AXOLOTL_MORPH_RARITY, expressAxolotl, isAxolotlGenome } from './axolotlGenetics';
+import { expressGoldfish, isGoldfishGenome } from './goldfishGenetics';
 import { GOAL_BY_KEY } from './breedingGoals';
 import { isEgg, lifeStage, type LifeStage } from './development';
 import { express, metabolicPotential } from './genetics';
@@ -38,6 +39,8 @@ export type SaleTraits = {
   tail: number; adultLengthCm: number; longevityYears: number; metabolism: number; rarity: 0 | 1 | 2 | 3;
   /** Axolotls only: tail length normalized within the species, 0-1, for price model 2. */
   axolotlTail?: number;
+  /** Goldfish only (any price model; no journal predates them): what goldfish buyers look for. */
+  goldfish?: { finScore: number; hardy: boolean; buoyancy: boolean };
   /** Genesis animals only: what buyers see of temperament and genetic load. */
   genesis?: { temperament: number; visibleDefects: number };
 };
@@ -92,6 +95,32 @@ function axolotlInterest(buyer: Buyer, traits: SaleTraits): number | null {
   }
 }
 
+/** Goldfish adults at or below this length interest the miniature keeper. */
+export const GOLDFISH_MINIATURE_CM = 13;
+/** Single-tailed goldfish at or above this length interest the pond keeper. */
+export const GOLDFISH_POND_CM = 16;
+/**
+ * Goldfish buyers. The pond keeper takes only hardy single-tailed goldfish (commons, comets, shubunkins), as real pond
+ * keepers do: twin tails, protruding eyes and bubble sacs do not survive a pond. The long-fin collector wants long fins,
+ * butterfly and veil tails; the miniature keeper the smallest fancies; the color collector rare varieties and colors.
+ */
+export const GOLDFISH_WANTS: Record<BuyerId, string> = {
+  petShop: 'any healthy hatched goldfish',
+  longFin: 'goldfish with long fins, a butterfly spread or a veil tail',
+  pondKeeper: `hardy single-tailed goldfish of ${GOLDFISH_POND_CM} cm or more`,
+  miniature: `goldfish adults of ${GOLDFISH_MINIATURE_CM} cm or less`,
+  colorCollector: 'an uncommon or rare goldfish variety or color',
+};
+function goldfishInterest(buyer: Buyer, traits: SaleTraits): number | null {
+  const g = traits.goldfish!;
+  switch (buyer.id) {
+    case 'longFin': return g.finScore > 0.2 ? clamp(g.finScore) : null;
+    case 'pondKeeper': return g.hardy && traits.adultLengthCm >= GOLDFISH_POND_CM ? clamp(0.7 * (traits.adultLengthCm - GOLDFISH_POND_CM) / 14 + 0.3 * (1.6 - traits.metabolism)) : null;
+    case 'miniature': return traits.adultLengthCm <= GOLDFISH_MINIATURE_CM ? clamp((GOLDFISH_MINIATURE_CM + 2 - traits.adultLengthCm) / 6) : null;
+    default: return buyer.interest(traits);
+  }
+}
+
 const RARITY_RANK = { uncommon: 1, rare: 2, 'very rare': 3 } as const;
 const STAGE_TEXT: Record<LifeStage, string> = { egg: 'Egg', fry: 'Fry', juvenile: 'Juvenile', adult: 'Adult', elderly: 'Elderly' };
 const percent = (value: number) => `${Math.round(value * 100)}%`;
@@ -99,6 +128,19 @@ const percent = (value: number) => `${Math.round(value * 100)}%`;
 export function saleTraits(fish: Fish, cache?: TraitCache): SaleTraits {
   const cached = cache?.get(fish.id);
   if (cached) return cached;
+  if (isGoldfishGenome(fish.genome)) {
+    const p = expressGoldfish(fish.genome);
+    const finScore = 0.32 * p.fins.long + 0.3 * Number(p.tail.butterfly) + 0.22 * Number(p.tail.veil) + 0.2 * clamp((p.fins.length - 1) / 1.2);
+    const hardy = p.tail.kind === 'single' && p.eyes.kind === 'normal' && !p.eyes.bubble && !p.health.buoyancy;
+    const plain: SaleTraits = {
+      tail: 0.3 * p.fins.length, adultLengthCm: p.adultLengthCm, longevityYears: p.longevity, metabolism: p.metabolism, rarity: p.variety.rarity,
+      goldfish: { finScore: Math.round(finScore * 1000) / 1000, hardy, buoyancy: p.health.buoyancy > 0 },
+    };
+    // Long fins already sell to the long-fin collector, so Genesis' veil rarity does not also make them a color prize.
+    const traits = { ...genesisSaleTraits(express(fish.genome), plain), rarity: plain.rarity };
+    cache?.set(fish.id, traits);
+    return traits;
+  }
   if (isAxolotlGenome(fish.genome)) {
     const p = expressAxolotl(fish.genome);
     const plain: SaleTraits = {
@@ -140,7 +182,8 @@ function genesisSaleTraits(p: ReturnType<typeof express>, base: SaleTraits): Sal
 
 function offerFrom(buyer: Buyer, fish: Fish, stage: LifeStage, traits: SaleTraits, demand: number, model: PriceModel): Offer | null {
   if (stage === 'egg' || (stage === 'fry' && !buyer.takesFry) || demand < 1) return null;
-  const interest = model >= 2 && traits.axolotlTail !== undefined ? axolotlInterest(buyer, traits) : buyer.interest(traits);
+  const interest = traits.goldfish ? goldfishInterest(buyer, traits)
+    : model >= 2 && traits.axolotlTail !== undefined ? axolotlInterest(buyer, traits) : buyer.interest(traits);
   if (interest === null) return null;
   // Each step rounds the running price and records the change, so the terms always add up to the offer.
   const terms: OfferTerm[] = [{ label: 'Base price', amount: buyer.base }];
@@ -155,6 +198,7 @@ function offerFrom(buyer: Buyer, fish: Fish, stage: LifeStage, traits: SaleTrait
   if (traits.genesis) {
     step(`Temperament ${percent(traits.genesis.temperament)} lively`, value * (0.88 + 0.24 * traits.genesis.temperament));
     if (traits.genesis.visibleDefects) step(`${traits.genesis.visibleDefects} visible defect${traits.genesis.visibleDefects === 1 ? '' : 's'}`, value * Math.max(0.3, 1 - 0.3 * traits.genesis.visibleDefects));
+    if (traits.goldfish?.buoyancy) step('Floats head-down (weak swim bladder)', value * 0.6);
   }
   step(`${STAGE_TEXT[stage]}, ${percent(STAGE_FACTOR[stage])} of the adult price`, value * STAGE_FACTOR[stage]);
   step(`Condition ${percent(fish.life.condition)}`, value * Math.min(1, fish.life.condition / HEALTHY_CONDITION));

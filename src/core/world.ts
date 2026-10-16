@@ -13,6 +13,8 @@ import {
 import { defaultMarket, openingLedger, planSales, recordEntry, saleDetail, type PriceModel } from './economy';
 import { initialShop, shopModelFor } from './shop';
 import { initialAxolotlShop } from './axolotlShop';
+import { initialGoldfishShop } from './goldfishShop';
+import { goldfishFounderGenome } from './goldfishGenetics';
 import { defaultRelief, RELIEF_COOLDOWN_DAYS, reliefStatus } from './recovery';
 import { express, founderGenome, inherit } from './genetics';
 import { axolotlFounderGenome } from './axolotlGenetics';
@@ -45,9 +47,9 @@ export const STOCK_PRICE = 250;
  * decorations (FS-503); v9 adds the koi rescue for no-money recovery (FS-504); v10 accepts genome v3 records and
  * genome v3 shop stock (FS-601); v11 adds mutation origins to every fish (FS-603); v12 adds named
  * bloodlines (FS-604); v13 adds explicit species identity and independent axolotl genetics; v14 adds the persistent
- * axolotl shop.
+ * axolotl shop. v15 adds the competition circuit, v16 Genesis genetics, and v17 goldfish with their own shop and atlas.
  */
-export const WORLD_VERSION = 16;
+export const WORLD_VERSION = 17;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -68,6 +70,13 @@ function axolotlFounder(world: World, name: string, sex: Fish['sex'], timestamp:
     generation: 0, parents: null, bornAt: iso(timestamp), tankId: world.tanks[0].id, status: 'living', mutations: [], life: adultLife(genome), breeding: idleBreeding(), origins: [] };
 }
 
+/** Goldfish founders draw from their own namespace, so adding the species never perturbs koi or axolotl seeds. */
+function goldfishFounder(world: World, name: string, sex: Fish['sex'], timestamp: string): Fish {
+  const birthSeed = hash(`${world.seed}:goldfish-founder:${world.nextId}`), genome = goldfishFounderGenome(birthSeed);
+  return { id: id(world.nextId), name, sex, species: 'goldfish', genome, birthSeed,
+    generation: 0, parents: null, bornAt: iso(timestamp), tankId: world.tanks[0].id, status: 'living', mutations: [], life: adultLife(genome), breeding: idleBreeding(), origins: [] };
+}
+
 function newTank(id: string, name: string, planted: boolean): Tank {
   const water = defaultWater();
   return { id, name, capacity: TANK_CAPACITY, planted, water, care: defaultCare(water), decorations: planted ? legacyDecorations() : [] };
@@ -79,11 +88,11 @@ function newTank(id: string, name: string, planted: boolean): Tank {
  * transparent scientist-mode atlas, so their recorded pacing stays valid.
  */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = RESEARCH_GENOME_VERSION): World {
-  const world: World = { version: 16, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
+  const world: World = { version: 17, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
   ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed, 0, shopModelFor(genomeVersion)), naming: NAMING_MODEL, relief: defaultRelief(), bloodlines: [], nextBloodlineId: 1,
-    axolotlShop: initialAxolotlShop(seed, 0, genomeVersion >= 4 ? 2 : 1), circuit: initialCircuit(), alleles: [], atlas: initialAtlas(genomeVersion >= 4 ? 'discovery' : 'scientist') };
+    axolotlShop: initialAxolotlShop(seed, 0, genomeVersion >= 4 ? 2 : 1), circuit: initialCircuit(), alleles: [], atlas: initialAtlas(genomeVersion >= 4 ? 'discovery' : 'scientist'), goldfishShop: initialGoldfishShop(seed) };
   ['Haru', 'Sumi', 'Kohaku', 'Yuki', 'Akira', 'Momo'].forEach((name, i) => {
     world.fish.push(founder(world, name, i % 2 === 0 ? 'F' : 'M', timestamp, genomeVersion)); world.nextId++;
   });
@@ -109,6 +118,7 @@ export type Command =
   | { type: 'buy'; tankId: string; timestamp: string; genomeVersion?: GenomeVersion; species?: Species }
   | { type: 'buy-listing'; listingId: string; tankId: string; timestamp: string }
   | { type: 'buy-axolotl-listing'; listingId: string; tankId: string; timestamp: string }
+  | { type: 'buy-goldfish-listing'; listingId: string; tankId: string; timestamp: string }
   | { type: 'add-tank' }
   | { type: 'purchase-tank' }
   | { type: 'upgrade-tank'; tankId: string }
@@ -149,9 +159,10 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('sell'), fishId: fishIdSchema, priceModel: priceModelSchema }).strict(),
   z.object({ type: z.literal('sell-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING), priceModel: priceModelSchema }).strict(),
   z.object({ type: z.literal('rehome-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING) }).strict(),
-  z.object({ type: z.literal('buy'), tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema, species: z.enum(['koi', 'axolotl']).optional() }).strict(),
+  z.object({ type: z.literal('buy'), tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema, species: z.enum(['koi', 'axolotl', 'goldfish']).optional() }).strict(),
   z.object({ type: z.literal('buy-listing'), listingId: z.string().regex(/^LS-\d{6,16}$/), tankId: tankIdSchema, timestamp: z.string().datetime() }).strict(),
   z.object({ type: z.literal('buy-axolotl-listing'), listingId: z.string().regex(/^AX-\d{6,16}$/), tankId: tankIdSchema, timestamp: z.string().datetime() }).strict(),
+  z.object({ type: z.literal('buy-goldfish-listing'), listingId: z.string().regex(/^GF-\d{6,16}$/), tankId: tankIdSchema, timestamp: z.string().datetime() }).strict(),
   z.object({ type: z.literal('add-tank') }).strict(),
   z.object({ type: z.literal('purchase-tank') }).strict(),
   z.object({ type: z.literal('upgrade-tank'), tankId: tankIdSchema }).strict(),
@@ -308,7 +319,7 @@ export function applyCommand(world: World, command: Command): World {
       const mother = getFish(command.motherId), father = getFish(command.fatherId);
       if (mother.id === father.id || mother.sex !== 'F' || father.sex !== 'M') throw new Error('Choose a female and a male.');
       if (isEgg(mother.life) || isEgg(father.life)) throw new Error('Eggs cannot breed. Wait until they hatch.');
-      if (mother.species !== father.species) throw new Error('Koi and axolotls cannot breed with each other. Choose two members of the same species.');
+      if (mother.species !== father.species) throw new Error('Different species cannot breed with each other. Choose two members of the same species.');
       room(offspring);
       space(command.tankId, offspring);
       // A pre-FS-113 command could only name genome v1 parents, which then produced genome v1 children.
@@ -362,7 +373,8 @@ export function applyCommand(world: World, command: Command): World {
       if (next.credits < STOCK_PRICE) throw new Error('You need 250 lab credits for unrelated stock.');
       room(1);
       const species = command.species ?? 'koi';
-      const fish = species === 'axolotl'
+      const fish = species === 'goldfish' ? goldfishFounder(next, '', next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp)
+        : species === 'axolotl'
         ? axolotlFounder(next, '', next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp, (command.genomeVersion ?? 3) >= 4 ? 2 : 1)
         : founder(next, '', next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp, command.genomeVersion ?? 1);
       fish.name = newFishName(`${next.seed}:fish:${next.nextId}`, fish, takenNames(next));
@@ -400,6 +412,23 @@ export function applyCommand(world: World, command: Command): World {
       });
       next.nextId++;
       next.axolotlShop = { ...next.axolotlShop, listings: next.axolotlShop.listings.filter(entry => entry.id !== listing.id) };
+      next.ledger = recordEntry(next.ledger, 'stock', -listing.price, 1, `${listing.name} from ${listing.id}`);
+      break;
+    }
+    case 'buy-goldfish-listing': {
+      // A goldfish shop specimen (world v17): the listed genome, sex and name become a goldfish founder in the chosen tank.
+      if (!next.goldfishShop) throw new Error('This world has no goldfish counter.');
+      const listing = next.goldfishShop.listings.find(entry => entry.id === command.listingId);
+      if (!listing) throw new Error('That goldfish is no longer in the shop.');
+      space(command.tankId, 1);
+      room(1);
+      afford(listing.price, `${listing.name} (${listing.id})`);
+      next.fish.push({
+        id: id(next.nextId), name: listing.name, sex: listing.sex, species: 'goldfish', genome: listing.genome, birthSeed: listing.birthSeed, generation: 0, parents: null,
+        bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', mutations: [], life: adultLife(listing.genome), breeding: idleBreeding(), origins: [],
+      });
+      next.nextId++;
+      next.goldfishShop = { ...next.goldfishShop, listings: next.goldfishShop.listings.filter(entry => entry.id !== listing.id) };
       next.ledger = recordEntry(next.ledger, 'stock', -listing.price, 1, `${listing.name} from ${listing.id}`);
       break;
     }

@@ -2,6 +2,10 @@
 
 **Baseline:** koi genome v1, v2 (FS-113) and v3 (FS-601), plus independent axolotl Genome v1 (18 September 2026); registry model 1, development v5 and species-dispatched anatomy/rendering. **Scope:** synthetic game genetics. Locus names describe fictional controls unless explicitly called out as biological phenotype anchors. Source notes are preserved in [source/original-concept.txt](source/original-concept.txt).
 
+### Independent goldfish genome (implemented, FS-130)
+
+Goldfish genome v1 (world v17) is a third discriminated genome: **72 ordered `gf_*` loci on 12 synthetic chromosomes**, Genesis-native (every goldfish carries a development block), with its own founder weights, map positions, mutation targets, load catalog, validation, fingerprint and expression. A few loci are anchored to identified goldfish genes (chdA twin tail, an lrp2 telescope/celestial allelic series, the T transparent-scale locus, kcnk5b long fins, polygenic dorsal loss); hoods, bubble sacs, pearl scales, patterns and the juvenile color break are game rules. Full design, sources and founder statistics: [FS-130 report](research/FS-130-GOLDFISH.md).
+
 ### Independent axolotl genome (implemented)
 
 Axolotls are not represented as koi with different art. `AxolotlGenome` is a separate discriminated genome with **66 ordered loci on 11 synthetic chromosomes**, six allele states per locus, its own founder distributions, map positions, linkage/crossover, mutation multipliers/targets, validation, fingerprint and phenotype expression. The stable locus IDs are `axo_*`; no koi locus ID or koi registry entry is reused. World v13 stores species explicitly and rejects a species/genome mismatch.

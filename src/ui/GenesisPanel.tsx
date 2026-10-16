@@ -27,6 +27,8 @@ export function GenesisPanel({ world, fish, readOnly, onRun }: { world: World; f
     FINS_TEXT[species][g.fins],
     g.ghost >= 0.99 ? 'Ghost: pigment cascade silenced' : g.ghost > 0 ? 'Faded: weak pigment cascade' : null,
     g.glow > 0 ? `${species === 'koi' ? 'Photophores' : 'Fluorescent'} · glow ${pct(g.glow)}` : null,
+    species === 'goldfish' && p.goldfish?.health.buoyancy ? 'Weak swim bladder: floats head-down' : null,
+    species === 'goldfish' && p.goldfish?.health.vision ? `Vision limited ${pct(p.goldfish.health.vision)}: protruding eyes, bubble sacs or an overgrown hood find less food` : null,
     g.plume ? 'Plume gills (two recessive copies)' : null,
     g.extraDigits ? `${g.extraDigits} extra digit${g.extraDigits === 1 ? '' : 's'} per foot (threshold trait)` : null,
     g.hueShift ? `Hue shifted ${g.hueShift > 0 ? '+' : ''}${Math.round(g.hueShift)}° by new alleles` : null,
@@ -39,7 +41,7 @@ export function GenesisPanel({ world, fish, readOnly, onRun }: { world: World; f
       <div><dt>Food competition</dt><dd>Wins {pct(Math.min(2, shareVsTypical))} of a typical share when food is short<small>boldness, activity and appetite against long fins</small></dd></div>
       <div><dt>Clutch size</dt><dd>{pct(g.clutchFactor)} of the reserved places<small>fertility, vigor and load</small></dd></div>
       <div><dt>Hybrid vigor</dt><dd>{g.vigor.toFixed(2)}× growth and fertility<small>{pct(g.heterozygosity)} of loci heterozygous; inbreeding lowers it, outcrossing restores it</small></dd></div>
-      <div><dt>Regeneration</dt><dd>{pct(g.regeneration)} · recovers condition {g.regeneration >= 0.5 ? 'quickly' : 'slowly'}{g.regeneration >= 0.72 ? `; regrows ${species === 'koi' ? 'eroded fins' : 'missing digits'}` : ''}</dd></div>
+      <div><dt>Regeneration</dt><dd>{pct(g.regeneration)} · recovers condition {g.regeneration >= 0.5 ? 'quickly' : 'slowly'}{g.regeneration >= 0.72 ? `; regrows ${species === 'axolotl' ? 'missing digits' : 'eroded fins'}` : ''}</dd></div>
       <div><dt>Canalization</dt><dd>{pct(g.canalization)} · {g.asymmetry > 0.05 ? 'visibly asymmetric' : g.asymmetry > 0.03 ? 'slightly irregular' : 'tightly symmetric'}<small>low canalization adds noise and lets defects show more strongly</small></dd></div>
       {g.conditionCap < 1 ? <div><dt>Constitution</dt><dd>Condition cannot rise above {pct(g.conditionCap)}</dd></div> : null}
     </dl>

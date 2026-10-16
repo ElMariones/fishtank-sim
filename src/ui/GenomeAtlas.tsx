@@ -8,11 +8,14 @@ import { alleleCarriers } from '../core/genesisView';
 import { KOI_LOCUS_NOTES } from '../core/locusNotes';
 import type { GenomeLocus } from '../core/catalog';
 import type { Species, World } from '../core/types';
+import { GOLDFISH_LOCUS_NOTES, type GoldfishLocus } from '../core/goldfishCatalog';
+import { SPECIES_INFO } from '../core/species';
 import type { Command } from '../core/world';
 import { Icon } from './Icon';
 
 type Run = (command: Command, message: string) => World | null;
 const note = (species: Species, id: string) => species === 'koi' ? KOI_LOCUS_NOTES[id as GenomeLocus]
+  : species === 'goldfish' ? GOLDFISH_LOCUS_NOTES[id as GoldfishLocus] ?? ''
   : AXOLOTL_LOCUS_NOTES[id as AxolotlLocus] ?? AXOLOTL_DEV_NOTES[id as AxolotlDevLocus] ?? '';
 
 /**
@@ -31,14 +34,14 @@ export function GenomeAtlas({ world, readOnly, onRun, onInspect }: { world: Worl
     <header className="atlas-header">
       <div>
         <p className="eyebrow">Genome Atlas · {discovery ? 'discovery mode' : 'scientist mode'}</p>
-        <h2>What you know about the {species === 'koi' ? 'koi' : 'axolotl'} genome</h2>
+        <h2>What you know about the {SPECIES_INFO[species].one} genome</h2>
         <p className="help-copy">{discovery
           ? 'Loci start unidentified. Breed animals that carry two different alleles at a locus and the clutch shows it segregating: enough evidence identifies the trait, more reveals how its copies combine, and clutches from parents heterozygous at two neighbouring loci measure how often they recombine, placing them on the chromosome map. Sequencing an animal reveals its genotype and hidden load, and doubles what its clutches teach.'
           : 'Every locus, genotype and hidden carrier is shown, as in a research lab. Evidence and linkage are still recorded from your clutches.'}</p>
       </div>
       <div className="atlas-controls">
         <div className="segmented" role="group" aria-label="Species">
-          {(['koi', 'axolotl'] as const).map(value => <button key={value} aria-pressed={species === value} onClick={() => setSpecies(value)}>{value === 'koi' ? 'Koi' : 'Axolotl'}</button>)}
+          {(['koi', 'goldfish', 'axolotl'] as const).map(value => <button key={value} aria-pressed={species === value} onClick={() => setSpecies(value)}>{SPECIES_INFO[value].title}</button>)}
         </div>
         <button className="quiet" disabled={readOnly} onClick={() => onRun({ type: 'set-atlas-mode', mode: discovery ? 'scientist' : 'discovery' }, discovery ? 'Scientist mode: every locus is shown.' : 'Discovery mode: only what you have learned is shown.')}>
           <Icon name={discovery ? 'eye' : 'search'} size={15} />{discovery ? 'Switch to scientist mode' : 'Switch to discovery mode'}</button>

@@ -31,7 +31,7 @@ export function FishCard({ fish, view, selected, inBatch, batchMode, favorite, r
       <span className="card-body">
         <span className="card-name-row"><strong className="card-name">{fish.name}</strong><SexMark sex={fish.sex} /></span>
         <span className="visually-hidden">Generation {fish.generation}{rank !== undefined ? `, rank ${rank} for the breeding goal` : ''}{egg ? ', egg' : ''}.</span>
-        <small className="card-meta">{fish.species === 'axolotl' ? 'Axolotl' : 'Koi'} · {status}</small>
+        <small className="card-meta">{fish.species === 'axolotl' ? 'Axolotl' : fish.species === 'goldfish' ? 'Goldfish' : 'Koi'} · {status}</small>
         {living && !egg ? <span className="bar card-growth" aria-hidden="true"><span style={{ width: `${Math.round(growth * 100)}%` }} /></span> : null}
         {goal ? <span className="goal-chip"><Icon name="sparkles" size={12} />{goal.label} <b className="mono">{goal.match}</b></span> : null}
       </span>

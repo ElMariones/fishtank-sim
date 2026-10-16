@@ -5,7 +5,10 @@ import { reservedPlaces } from '../core/breeding';
 import { bestOffer, type TraitCache } from '../core/economy';
 import { metabolicPotential } from '../core/genetics';
 import { LISTING_LABELS, previewFish, SHOP_LISTING_DAYS, SHOP_REFRESH_DAYS, SHOP_SIZE } from '../core/shop';
-import type { AxolotlListing, Fish, Listing, Species, Tank, World } from '../core/types';
+import type { AxolotlListing, Fish, GoldfishListing, Listing, Species, Tank, World } from '../core/types';
+import { expressGoldfish, goldfishEyeText, goldfishTailText } from '../core/goldfishGenetics';
+import { GOLDFISH_LISTING_LABELS, GOLDFISH_SHOP_SIZE, previewGoldfish } from '../core/goldfishShop';
+import { SPECIES_INFO } from '../core/species';
 import { MAX_LIVING, MAX_RECORDS } from '../core/world';
 import { SexMark } from './Controls';
 import { FishPortrait } from './FishPortrait';
@@ -14,13 +17,14 @@ type Props = {
   world: World; tank: Tank; day: number; readOnly: boolean; traitCache: TraitCache;
   onBuy: (listing: Listing, tankId: string) => void; onClose: () => void;
   onBuyAxolotl: (listing: AxolotlListing, tankId: string) => void;
+  onBuyGoldfish: (listing: GoldfishListing, tankId: string) => void;
   /** Opens the FS-504 recovery options when credits cannot cover any listing. */
   onRecovery: () => void;
 };
 type Sort = 'price' | 'size' | 'leaving';
 /** One row, whichever counter it comes from: the listing, the animal it would become and what the row shows about it. */
 type Specimen = {
-  species: Species; listing: Listing | AxolotlListing; fish: Fish; size: number; kind: string; category: string; details: string[];
+  species: Species; listing: Listing | AxolotlListing | GoldfishListing; fish: Fish; size: number; kind: string; category: string; details: string[];
 };
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
@@ -35,11 +39,19 @@ function axolotlDetails(listing: AxolotlListing): string[] {
   ];
 }
 
+function goldfishDetails(listing: GoldfishListing): string[] {
+  const p = expressGoldfish(listing.genome);
+  return [
+    `${p.variety.name} · ${['common', 'uncommon', 'rare', 'very rare'][p.variety.rarity]} · ${Math.round(p.variety.standard * 100)}% of standard`,
+    `${goldfishTailText(p)} · ${goldfishEyeText(p).toLowerCase()} · ${p.scales.type} scales${p.head.hood ? ' · hood' : ''}`,
+  ];
+}
+
 /**
  * FS-502 NPC shop with a koi counter and, from world v14, an axolotl counter. Both hold fixed listings that change only
  * on delivery days, share the filters and deliver with the same capacity checks.
  */
-export function ShopPanel({ world, tank, day, readOnly, traitCache, onBuy, onBuyAxolotl, onClose, onRecovery }: Props) {
+export function ShopPanel({ world, tank, day, readOnly, traitCache, onBuy, onBuyAxolotl, onBuyGoldfish, onClose, onRecovery }: Props) {
   const [species, setSpecies] = useState<Species>('koi');
   const [sex, setSex] = useState<'all' | 'F' | 'M'>('all');
   const [category, setCategory] = useState('all');
@@ -65,22 +77,27 @@ export function ShopPanel({ world, tank, day, readOnly, traitCache, onBuy, onBuy
     species: 'axolotl', listing, fish: previewAxolotl(listing), size: expressAxolotl(listing.genome).adultLengthCm,
     kind: AXOLOTL_LISTING_LABELS[listing.category], category: listing.category, details: axolotlDetails(listing),
   })), [world.axolotlShop.listings]);
+  const goldfish = useMemo<Specimen[]>(() => world.goldfishShop.listings.map(listing => ({
+    species: 'goldfish', listing, fish: previewGoldfish(listing), size: expressGoldfish(listing.genome).adultLengthCm,
+    kind: GOLDFISH_LISTING_LABELS[listing.category], category: listing.category, details: goldfishDetails(listing),
+  })), [world.goldfishShop.listings]);
   const counter = species === 'koi'
     ? { specimens: koi, size: SHOP_SIZE, refreshed: world.shop.refreshedDay, labels: LISTING_LABELS as Record<string, string> }
+    : species === 'goldfish' ? { specimens: goldfish, size: GOLDFISH_SHOP_SIZE, refreshed: world.goldfishShop.refreshedDay, labels: GOLDFISH_LISTING_LABELS as Record<string, string> }
     : { specimens: axolotls, size: AXOLOTL_SHOP_SIZE, refreshed: world.axolotlShop.refreshedDay, labels: AXOLOTL_LISTING_LABELS as Record<string, string> };
   const nextDelivery = Math.max(1, counter.refreshed + SHOP_REFRESH_DAYS - day);
   const rows = counter.specimens
     .filter(row => (sex === 'all' || row.listing.sex === sex) && (category === 'all' || row.category === category))
     .sort((a, b) => sort === 'price' ? a.listing.price - b.listing.price || a.listing.id.localeCompare(b.listing.id)
       : sort === 'size' ? b.size - a.size : a.listing.expiresDay - b.listing.expiresDay || a.listing.id.localeCompare(b.listing.id));
-  const blocked = (listing: Listing | AxolotlListing) => readOnly ? 'This tab is read-only.'
+  const blocked = (listing: Listing | AxolotlListing | GoldfishListing) => readOnly ? 'This tab is read-only.'
     : world.credits < listing.price ? `Needs ◈ ${listing.price - world.credits} more.`
     : free(destination) < 1 ? `${destination.name} has no free place.`
     : occupancy.living + reserved >= MAX_LIVING ? 'The lab is at its living animal limit.'
     : world.fish.length + reserved >= MAX_RECORDS ? 'The permanent record limit is reached. Export this world before starting another.' : '';
-  const allListings = [...world.shop.listings, ...world.axolotlShop.listings];
+  const allListings = [...world.shop.listings, ...world.axolotlShop.listings, ...world.goldfishShop.listings];
   const chooseSpecies = (next: Species) => { setSpecies(next); setCategory('all'); };
-  const noun = species === 'koi' ? 'koi' : 'axolotl';
+  const noun = SPECIES_INFO[species].one;
 
   return <section className="shop-panel" aria-labelledby="shop-title">
     <div className="market-heading">
@@ -88,12 +105,13 @@ export function ShopPanel({ world, tank, day, readOnly, traitCache, onBuy, onBuy
       <button className="quiet panel-close" onClick={onClose}>Close</button>
     </div>
     <div className="sex-filter species-filter shop-species" role="group" aria-label="Shop counter">
-      {(['koi', 'axolotl'] as const).map(value => <button key={value} aria-pressed={species === value} onClick={() => chooseSpecies(value)}>
-        {value === 'koi' ? 'Koi' : 'Axolotls'}<span className="filter-count">{value === 'koi' ? world.shop.listings.length : world.axolotlShop.listings.length}</span>
+      {(['koi', 'goldfish', 'axolotl'] as const).map(value => <button key={value} aria-pressed={species === value} onClick={() => chooseSpecies(value)}>
+        {SPECIES_INFO[value].titles}<span className="filter-count">{value === 'koi' ? world.shop.listings.length : value === 'goldfish' ? world.goldfishShop.listings.length : world.axolotlShop.listings.length}</span>
       </button>)}
     </div>
     <p className="help-copy">{species === 'koi'
       ? 'Choose unrelated founders, visible variants or documented carriers of a hidden variant. Stock stays the same when you reopen or reload.'
+      : species === 'goldfish' ? 'Goldfish carry their own 72-locus genome: mixed domestic founders, fish bred to a fancy variety standard (oranda, ranchu, ryukin, telescope, bubble eye…), and documented carriers of a hidden twin-tail, telescope, bubble-eye, albino, blue, chocolate or curled-gill copy. They share aquariums but breed only with goldfish.'
       : 'Axolotls carry their own 66-locus genome: wild-type founders, visible pigment morphs, and documented carriers of a hidden leucistic-like, albino-like or melanoid-like copy. They share aquariums with koi but breed only with axolotls.'}</p>
     <p className="help-copy">Empty places refill every {SHOP_REFRESH_DAYS} game days. Listings leave after {SHOP_LISTING_DAYS} game days. Buying to resell always loses credits.</p>
     <div className="shop-filters">
@@ -116,8 +134,8 @@ export function ShopPanel({ world, tank, day, readOnly, traitCache, onBuy, onBuy
     {rows.length ? <ul className="shop-listings">{rows.map(({ listing, fish, size, kind, details }) => {
       const resale = bestOffer(world, fish, traitCache)?.amount ?? 0;
       const reason = blocked(listing), left = listing.expiresDay - day;
-      const purchase = () => species === 'koi' ? onBuy(listing as Listing, destination.id) : onBuyAxolotl(listing as AxolotlListing, destination.id);
-      return <li className={`shop-listing ${species === 'axolotl' ? 'axolotl-listing' : ''}`} key={listing.id}>
+      const purchase = () => species === 'koi' ? onBuy(listing as Listing, destination.id) : species === 'goldfish' ? onBuyGoldfish(listing as GoldfishListing, destination.id) : onBuyAxolotl(listing as AxolotlListing, destination.id);
+      return <li className={`shop-listing ${species === 'axolotl' ? 'axolotl-listing' : species === 'goldfish' ? 'goldfish-listing' : ''}`} key={listing.id}>
         <FishPortrait fish={fish} view="adult" />
         <div>
           <strong>{listing.name}</strong> <SexMark sex={listing.sex} withLabel />
