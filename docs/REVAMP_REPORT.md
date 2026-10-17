@@ -464,10 +464,10 @@ AGENTS.md forbids labeling the product as a biological koi simulator. Marketing 
 
 ### Phase 2: Discovery and creation (8–10 weeks)
 
-- R-201 Open-ended alleles and the Allele Registry.
-- R-202 Genome Atlas (Discovery mode) and Codex.
-- R-203 Module-graph anatomy (first modules: second dorsal, wen, bubble eye; polydactyly, extra gill ramus, crest).
-- R-204 PixiJS renderer migration.
+- R-201 Open-ended alleles and the Allele Registry. *Done 17 Oct 2026 ([report](research/R-201-204-GENESIS-MODEL-2.md)).*
+- R-202 Genome Atlas (Discovery mode) and Codex. *Done 17 Oct 2026.*
+- R-203 Module-graph anatomy (first modules: second dorsal, wen, bubble eye; polydactyly, extra gill ramus, crest). *Done 17 Oct 2026 (goldfish modules not yet).*
+- R-204 PixiJS renderer migration. *Done 17 Oct 2026 for the fish layer; the aquascape stays Canvas 2D.*
 - R-205 God Tools tier 1: sequencer, cryobank, mutagen lamp.
 
 ### Phase 3: Scale and meta (8 weeks)

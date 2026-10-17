@@ -1,3 +1,4 @@
+import { RarityChip } from './RarityPanel';
 import { useMemo, useState } from 'react';
 import { expressAxolotl } from '../core/axolotlGenetics';
 import { AXOLOTL_LISTING_LABELS, AXOLOTL_SHOP_SIZE, previewAxolotl } from '../core/axolotlShop';
@@ -138,7 +139,7 @@ export function ShopPanel({ world, tank, day, readOnly, traitCache, onBuy, onBuy
       return <li className={`shop-listing ${species === 'axolotl' ? 'axolotl-listing' : species === 'goldfish' ? 'goldfish-listing' : ''}`} key={listing.id}>
         <FishPortrait fish={fish} view="adult" />
         <div>
-          <strong>{listing.name}</strong> <SexMark sex={listing.sex} withLabel />
+          <strong>{listing.name}</strong> <SexMark sex={listing.sex} withLabel /> <RarityChip fish={fish} />
           <small>{kind} · {listing.id} · adult length potential {size.toFixed(0)} cm</small>
           <small>{title(listing.note)}.</small>
           {details.map(line => <small key={line}>{line}</small>)}

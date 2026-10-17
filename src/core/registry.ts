@@ -8,6 +8,7 @@ import {
 } from './structure';
 import { genesisProblem, isNovel, KOI_LOAD, type DominanceClass } from './genesis';
 import { DEVELOPMENT_ALLELE_LABELS, DEVELOPMENT_BASELINE, DEVELOPMENT_FOUNDER_WEIGHTS, DEVELOPMENT_OFFSET, KOI_DOMINANCE, koiNovelEligible } from './koiGenesis';
+import { moduleAlleleCounts } from './modules';
 import type { Genome } from './types';
 
 /**
@@ -107,7 +108,7 @@ export function genomeProblem(genome: Genome): string | null {
   if ((genome.version === 4) !== Boolean(genome.genesis)) return 'Only genome v4 carries a development block.';
   const novel = new Map((genome.genesis?.novel ?? []).map(entry => [entry.id, entry]));
   if (genome.genesis) {
-    const problem = genesisProblem(genome.genesis, KOI_LOAD, loci.length, koiNovelEligible);
+    const problem = genesisProblem(genome.genesis, KOI_LOAD, loci.length, koiNovelEligible, moduleAlleleCounts('koi'));
     if (problem) return problem;
   }
   for (const entry of loci) {

@@ -1,4 +1,5 @@
 import { clamp, hash, random } from './random';
+import type { ModuleTraits, SomaticMark } from './modules';
 
 /**
  * Genesis model v1: the species-independent layer that koi genome v4 and axolotl genome v2 share.
@@ -30,11 +31,21 @@ export const LOAD_MUTATION_RATE = 0.03;
 
 /** Side effects a novel allele can carry beyond its own locus. Values are small signed shifts, interpreted per species. */
 export const CHANNELS = ['hue', 'glow', 'sheen', 'size', 'speed', 'metabolism', 'boldness', 'fertility', 'maturity', 'growth', 'pattern', 'fins'] as const;
-export type Channel = typeof CHANNELS[number];
+/**
+ * Genesis model 2 (world v18) channels. Model 1 alleles never draw these, so `createNovel` keeps its exact stream; model 2
+ * enrichment (`genesis2.ts`) adds them. Canonical order is CHANNELS then these, so model 1 effects serialize unchanged.
+ */
+export const EXTRA_CHANNELS = ['depth', 'eye', 'contrast', 'longevity'] as const;
+export const ALL_CHANNELS = [...CHANNELS, ...EXTRA_CHANNELS] as const;
+export type Channel = typeof ALL_CHANNELS[number];
 export const CHANNEL_LABELS: Record<Channel, string> = {
   hue: 'color hue', glow: 'glow', sheen: 'sheen', size: 'adult size', speed: 'swimming speed', metabolism: 'metabolism', boldness: 'boldness',
   fertility: 'fertility', maturity: 'maturity age', growth: 'growth rate', pattern: 'pattern density', fins: 'fin length',
+  depth: 'body depth', eye: 'eye size', contrast: 'pattern contrast', longevity: 'lifespan',
 };
+/** How a model 2 allele arose: a small step, a large leap, or a change in dominance with little change in value. */
+export type AlleleKind = 'drift' | 'leap' | 'regulatory';
+export const ALLELE_KINDS: readonly AlleleKind[] = ['drift', 'leap', 'regulatory'];
 
 export type NovelAllele = {
   id: number;
@@ -47,10 +58,20 @@ export type NovelAllele = {
   /** Dominance weight; catalog alleles use 0.3–1, so above 1 dominates every catalog allele. */
   potency: number;
   effects: Partial<Record<Channel, number>>;
+  /** Genesis model 2 only: how the allele arose. Model 1 alleles have none. */
+  kind?: AlleleKind;
 };
 /** Load sites present on each chromosome copy, as site IDs from the species load catalog. */
 export type LoadCopies = { maternal: number[]; paternal: number[] };
-export type GenesisBlock = { dev: number; load: LoadCopies; novel: NovelAllele[] };
+/** Body-plan module genes (Genesis model 2): one small allele array per homolog, in the species' module locus order. */
+export type ModuleCopies = { maternal: number[]; paternal: number[] };
+/**
+ * `model` and `modules` are present only on genomes born under Genesis model 2 (world v18). Their absence means model 1,
+ * so every earlier genome keeps its exact shape, expression and draw-op stream.
+ */
+export type GenesisBlock = { dev: number; load: LoadCopies; novel: NovelAllele[]; model?: 2; modules?: ModuleCopies };
+export type GenesisModel = 1 | 2;
+export const genesisModelOf = (block: GenesisBlock | undefined): GenesisModel => block?.model === 2 ? 2 : 1;
 
 export type DominanceClass = 'additive' | 'up' | 'down' | 'over';
 export const DOMINANCE_LABELS: Record<DominanceClass, string> = {
@@ -272,6 +293,9 @@ export type GenesisTraits = {
   novelAlleles: number;
   /** Axolotl only. */
   extraDigits?: number; plume?: boolean;
+  /** Genesis model 2 (development v7) only: expressed body-plan modules and a one-off somatic mark. */
+  modules?: ModuleTraits;
+  somatic?: SomaticMark | null;
 };
 
 export function defectsFor(load: LoadCopies, catalog: readonly LoadSite[], regeneration: number): GenesisDefect[] {
@@ -285,7 +309,7 @@ export function defectsFor(load: LoadCopies, catalog: readonly LoadSite[], regen
 }
 
 /** Validation shared by both species: bounded sizes and known IDs. */
-export function genesisProblem(block: unknown, catalog: readonly LoadSite[], lociCount: number, eligible: (locus: number) => boolean): string | null {
+export function genesisProblem(block: unknown, catalog: readonly LoadSite[], lociCount: number, eligible: (locus: number) => boolean, moduleAlleles: readonly number[] = []): string | null {
   if (!block || typeof block !== 'object') return 'Genesis genomes need a development block.';
   const value = block as Partial<GenesisBlock>;
   if (!Number.isInteger(value.dev) || value.dev! < 0 || value.dev! > 4294967295) return 'Invalid development seed.';
@@ -301,7 +325,17 @@ export function genesisProblem(block: unknown, catalog: readonly LoadSite[], loc
     seen.add(entry.id);
     if (!Number.isInteger(entry.locus) || entry.locus < 0 || entry.locus >= lociCount || !eligible(entry.locus)) return 'A novel allele sits at an unsupported locus.';
     if (!Number.isFinite(entry.value) || !Number.isFinite(entry.potency) || entry.potency <= 0 || entry.potency > 2) return 'Invalid novel allele value.';
-    if (!entry.effects || typeof entry.effects !== 'object' || Object.entries(entry.effects).some(([channel, amount]) => !(CHANNELS as readonly string[]).includes(channel) || !Number.isFinite(amount) || Math.abs(amount as number) > 1)) return 'Invalid novel allele effect.';
+    const channels: readonly string[] = value.model === 2 ? ALL_CHANNELS : CHANNELS;
+    if (!entry.effects || typeof entry.effects !== 'object' || Object.entries(entry.effects).some(([channel, amount]) => !channels.includes(channel) || !Number.isFinite(amount) || Math.abs(amount as number) > 1)) return 'Invalid novel allele effect.';
+    if (entry.kind !== undefined && (value.model !== 2 || !ALLELE_KINDS.includes(entry.kind))) return 'Invalid novel allele kind.';
+  }
+  if (value.model === undefined) return value.modules === undefined ? null : 'Only Genesis model 2 genomes carry module genes.';
+  if (value.model !== 2) return 'Unsupported Genesis model.';
+  // Module genes: one allele per module locus on each homolog, within that locus' allele range.
+  const modules = value.modules;
+  if (!modules || !Array.isArray(modules.maternal) || !Array.isArray(modules.paternal)) return 'Genesis model 2 genomes need module genes.';
+  for (const copy of [modules.maternal, modules.paternal]) {
+    if (copy.length !== moduleAlleles.length || copy.some((allele, i) => !Number.isInteger(allele) || allele < 0 || allele >= moduleAlleles[i])) return 'Invalid module gene.';
   }
   return null;
 }

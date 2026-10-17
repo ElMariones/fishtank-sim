@@ -16,9 +16,12 @@ import {
   expressGoldfish, goldfishFingerprint, goldfishHeterozygosity, inheritGoldfish, isGoldfishGenome, type GoldfishGenome, type GoldfishPhenotype,
 } from './goldfishGenetics';
 import { GOLDFISH_DEFAULT_MUTATION_RATE } from './goldfishCatalog';
-import type { CreatureGenome, Genome, Mutation, Phenotype } from './types';
+import type { CreatureGenome, Genome, Mutation, Phenotype, Species } from './types';
+import { upgradeChild } from './genesis2';
+import { latentModules } from './modules';
 import {
-  carriedNovel, createNovel, founderLoadPair, isNovel, KOI_LOAD, KOI_SCALE, NOVEL_SHARE, novelId, novelMap, transmitLoad, type LoadCopies, type NovelAllele,
+  carriedNovel, createNovel, founderLoadPair, isNovel, KOI_LOAD, KOI_SCALE, NOVEL_SHARE, novelId, novelMap, transmitLoad, type GenesisModel, type LoadCopies,
+  type ModuleCopies, type NovelAllele,
 } from './genesis';
 import { expressKoiGenesis, koiGenesisHeterozygosity, koiNovelEligible, koiResolver } from './koiGenesis';
 
@@ -76,11 +79,29 @@ const LOCUS_BLOCKS = [LOCUS_REGISTRY.slice(0, LOCI.length), LOCUS_REGISTRY.slice
  * `mutationRate` sets the small-effect rate; registry loci with their own class (structural) keep their rate unless it is 0.
  * A `trace` receives the homolog each parent transmitted at every locus (FS-603) without changing any random draw.
  */
-export function inherit(mother: Genome, father: Genome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace): { genome: Genome; mutations: Mutation[] };
-export function inherit(mother: AxolotlGenome, father: AxolotlGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace): { genome: AxolotlGenome; mutations: Mutation[] };
-export function inherit(mother: GoldfishGenome, father: GoldfishGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace): { genome: GoldfishGenome; mutations: Mutation[] };
-export function inherit(mother: CreatureGenome, father: CreatureGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace): { genome: CreatureGenome; mutations: Mutation[] };
-export function inherit(mother: CreatureGenome, father: CreatureGenome, seed: number, mutationRate = MUTATION_RATE, requested?: GenomeVersion, trace?: InheritanceTrace): { genome: CreatureGenome; mutations: Mutation[] } {
+export function inherit(mother: Genome, father: Genome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace, model?: GenesisModel): { genome: Genome; mutations: Mutation[] };
+export function inherit(mother: AxolotlGenome, father: AxolotlGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace, model?: GenesisModel): { genome: AxolotlGenome; mutations: Mutation[] };
+export function inherit(mother: GoldfishGenome, father: GoldfishGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace, model?: GenesisModel): { genome: GoldfishGenome; mutations: Mutation[] };
+export function inherit(mother: CreatureGenome, father: CreatureGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace, model?: GenesisModel): { genome: CreatureGenome; mutations: Mutation[] };
+/**
+ * `model` is the world's Genesis model (world v18). Model 2 runs the model 1 meiosis unchanged and then adds module genes
+ * and enriches the open-ended alleles that arose in this birth (`genesis2.ts`); model 1 (the default) is exactly the
+ * historical behavior, so recorded journals replay unchanged.
+ */
+export function inherit(mother: CreatureGenome, father: CreatureGenome, seed: number, mutationRate = MUTATION_RATE, requested?: GenomeVersion, trace?: InheritanceTrace, model: GenesisModel = 1): { genome: CreatureGenome; mutations: Mutation[] } {
+  const result = inheritModel1(mother, father, seed, mutationRate, requested, trace);
+  if (model !== 2 || !result.genome.genesis) return result;
+  const species = speciesOf(result.genome);
+  const pool = new Map<number, NovelAllele>([...novelMap(mother.genesis), ...novelMap(father.genesis)]);
+  const { genome } = upgradeChild(species, result.genome, modulesOf(mother), modulesOf(father), pool, seed);
+  return { genome, mutations: result.mutations };
+}
+
+export const speciesOf = (genome: CreatureGenome): Species => isGoldfishGenome(genome) ? 'goldfish' : isAxolotlGenome(genome) ? 'axolotl' : 'koi';
+/** A genome's module genes: its own under Genesis model 2, otherwise the latent genotype read from its fingerprint. */
+export const modulesOf = (genome: CreatureGenome): ModuleCopies => genome.genesis?.modules ?? latentModules(speciesOf(genome), fingerprint(genome));
+
+function inheritModel1(mother: CreatureGenome, father: CreatureGenome, seed: number, mutationRate: number, requested?: GenomeVersion, trace?: InheritanceTrace): { genome: CreatureGenome; mutations: Mutation[] } {
   const motherGoldfish = isGoldfishGenome(mother), fatherGoldfish = isGoldfishGenome(father);
   if (motherGoldfish !== fatherGoldfish) throw new Error('Different species cannot produce offspring.');
   if (motherGoldfish && fatherGoldfish) {
@@ -314,10 +335,13 @@ export function metabolicPotential(genome: CreatureGenome): { adultLengthCm: num
   };
 }
 
+/** Model 2 genomes add their module genes to the fingerprint; model 1 fingerprints are unchanged. */
+export const moduleTail = (modules: ModuleCopies | undefined) => modules ? `|m${modules.maternal.join('')}/${modules.paternal.join('')}` : '';
+
 export function fingerprint(genome: CreatureGenome): string {
   if (isGoldfishGenome(genome)) return goldfishFingerprint(genome);
   if (isAxolotlGenome(genome)) return axolotlFingerprint(genome);
-  const tail = genome.genesis ? `|d${genome.genesis.dev}` : '';
+  const tail = genome.genesis ? `|d${genome.genesis.dev}${moduleTail(genome.genesis.modules)}` : '';
   return hash(`g${genome.version}:${genome.maternal.join(',')}|${genome.paternal.join(',')}${tail}`).toString(16).padStart(8, '0').toUpperCase();
 }
 

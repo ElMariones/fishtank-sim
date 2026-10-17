@@ -6,7 +6,10 @@ import { clamp, hash, random } from '../core/random';
 import type { AccentColor, BaseColor, DotColor, IrisColor, Phenotype } from '../core/types';
 import { drawAxolotl } from './axolotl';
 import { drawGoldfish } from './goldfish';
-import { drawEyeCloud, drawFray, drawGenesisSkin, drawPhotophores, drawVeilStreamers, kinkAt, shiftHue, towardRoot, veilEdge, VEIL_ALPHA, VEIL_CORE } from './genesis';
+import {
+  drawBubbleSac, drawEyeCloud, drawFray, drawGenesisSkin, drawPhotophores, drawSomatic, drawVeilStreamers, drawWen, kinkAt, shiftHue, somaticPoint, towardRoot, veilEdge,
+  VEIL_ALPHA, VEIL_CORE,
+} from './genesis';
 import { FULL_DETAIL, type Detail } from './lod';
 
 const placedMarkings = new WeakMap<Phenotype, { seed: number; markings: PlacedMarking[] }>();
@@ -215,8 +218,9 @@ export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: numb
   if (detail.finRays) for (const ray of lobes.flatMap(lobe => lobe.rays)) { ctx.beginPath(); ctx.moveTo(...at(ray.start)); ctx.quadraticCurveTo(...at(ray.control, wave * 0.5), ...at(tip(ray.end), wave)); ctx.stroke(); }
   ctx.restore();
   if (genesis && genesis.finFray > 0) for (const lobe of lobes) drawFray(ctx, genesis, [tip(lobe.upperTip), lobe.notch, tip(lobe.lowerTip)].map(v => ({ x: v.x, y: v.y + wave })), (v, dy = 0) => at(v, dy), l, seed);
-  // Dorsal and pectoral fins sit behind the body with roots inside the outline.
-  for (const [fin, isDorsal] of [[dorsal, true], [pectoral, false]] as const) {
+  // Dorsal and pectoral fins sit behind the body with roots inside the outline. A second dorsal fin (module) sways with the first.
+  const module2 = a.modules?.dorsal2, dorsal2 = module2 && motion ? { ...module2, control: { x: module2.control.x + Math.sin(motion.finPhase * 0.5 + 0.8) * 0.012, y: module2.control.y } } : module2 ?? null;
+  for (const [fin, isDorsal] of [[dorsal, true], [dorsal2, true], [pectoral, false]] as const) {
     if (!fin) continue;
     const path = new Path2D();
     path.moveTo(...at(fin.start)); path.quadraticCurveTo(...at(fin.control), ...at(fin.end)); path.closePath();
@@ -290,6 +294,10 @@ export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: numb
   }
   ctx.globalAlpha = 1;
   if (genesis) drawGenesisSkin(ctx, genesis, a, (v, dy = 0) => at(v, dy), l, h, seed);
+  if (genesis?.somatic) {
+    const [sx, sy] = at(somaticPoint(a.top, a.bottom, a.snoutX, 0.5, genesis.somatic.u, genesis.somatic.v));
+    drawSomatic(ctx, genesis.somatic, sx, sy, l, genesis.somatic.u > 0.5 ? orange : base);
+  }
   const shine = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
   shine.addColorStop(0, `rgba(255,255,255,${0.22 + p.metallic * 0.4})`); shine.addColorStop(0.42, '#ffffff00'); shine.addColorStop(1, '#092a344f');
   ctx.fillStyle = shine; ctx.fillRect(-l, -h, l * 2, h * 2);
@@ -298,6 +306,8 @@ export function drawFish(ctx: CanvasRenderingContext2D, p: Phenotype, seed: numb
   ctx.beginPath(); ctx.moveTo(...at(a.gill.start)); ctx.quadraticCurveTo(...at(a.gill.control), ...at(a.gill.end)); ctx.stroke();
   ctx.restore();
   ctx.strokeStyle = '#e3f2e24a'; ctx.stroke(body);
+  if (a.modules?.wen) drawWen(ctx, a.modules.wen, (v, dy = 0) => at(v, dy), l, orange, seed);
+  if (a.modules?.bubble) drawBubbleSac(ctx, a.modules.bubble, (v, dy = 0) => at(v, dy), l, time);
   const { center, radius, pupilRadius } = a.eye;
   const [eyeX, eyeY] = at(center), eyeRadius = radius * l;
   ctx.fillStyle = palette.iris[0]; ctx.beginPath(); ctx.arc(eyeX, eyeY, eyeRadius, 0, Math.PI * 2); ctx.fill();

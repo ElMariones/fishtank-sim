@@ -21,8 +21,9 @@ import {
 import {
   AXOLOTL_LOAD, AXOLOTL_SCALE, carriedNovel, channelEffects, combine, createNovel, defectsFor, developmentNoise, founderLoadPair, founderPotency, genesisProblem,
   isNovel, NOVEL_SHARE, novelId, novelMap, transmitLoad, vigorFor,
-  type DominanceClass, type GenesisBlock, type GenesisTraits, type LoadCopies, type NovelAllele, type Resolved,
+  type Channel, type DominanceClass, type GenesisBlock, type GenesisTraits, type LoadCopies, type NovelAllele, type Resolved,
 } from './genesis';
+import { expressModules, moduleAlleleCounts, somaticFor } from './modules';
 import { clamp, hash, random } from './random';
 
 export type AxolotlGenome = {
@@ -85,10 +86,13 @@ export type AxolotlPhenotype = {
       foreLength: number; hindLength: number; thickness: number;
       digitLength: number; digitSpread: number; frontDigits: number; rearDigits: number;
     };
-    tail: { length: number; height: number; taper: number; finHeight: number; finReach: number; wave: number };
+    /** `crest` and `crestReach` (0–1) exist only on Genesis model 2 animals with a dorsal crest module. */
+    tail: { length: number; height: number; taper: number; finHeight: number; finReach: number; wave: number; crest?: number; crestReach?: number };
     gills: {
       stalkLength: number; branchCount: number; filamentLength: number; angleDeg: number;
       saturation: number; oxygenEfficiency: number;
+      /** Rami per side when a model 2 module changes it; absent means the standard three. */
+      rami?: number;
     };
     eyes: { size: number; spacing: number; height: number; pupilRatio: number };
   };
@@ -449,7 +453,8 @@ export function expressAxolotl(genome: AxolotlGenome): AxolotlPhenotype {
   if (!genome.genesis) return expressAxolotlBase(genome);
   const cached = genesisPhenotypes.get(genome);
   if (cached) return cached;
-  const phenotype = applyAxolotlGenesis(expressAxolotlBase(genome), genome);
+  const developed = applyAxolotlGenesis(expressAxolotlBase(genome), genome);
+  const phenotype = genome.genesis.model === 2 ? developAxolotlV7(developed, genome) : developed;
   genesisPhenotypes.set(genome, phenotype);
   return phenotype;
 }
@@ -547,6 +552,30 @@ function applyAxolotlGenesis(base: AxolotlPhenotype, genome: AxolotlGenome): Axo
     clutchFactor: clamp((0.45 + 0.6 * fertility) * Math.min(1.05, vigor) * (subfertile ? 0.45 : 1), 0.15, 1), oxygenDemand: oxygen, viable, defects,
     finFray, eyeCloud, depigment, kink, novelAlleles: block.novel.length, extraDigits, plume,
   };
+  return p;
+}
+
+/**
+ * Axolotl development v7 (Genesis model 2): model 2 side-effect channels, body-plan modules (a fourth gill ramus,
+ * polydactyly, a dorsal crest) and one-off somatic marks over the development v2 phenotype.
+ */
+function developAxolotlV7(developed: AxolotlPhenotype, genome: AxolotlGenome): AxolotlPhenotype {
+  const block = genome.genesis!, p: AxolotlPhenotype = structuredClone(developed), m = p.morphology, traits = p.genesis!;
+  const pair = axolotlPair(genome), effects = channelEffects(Array.from({ length: AXOLOTL_V2_REGISTRY.length }, (_, i) => pair(i)));
+  const e = (channel: Channel) => effects[channel] ?? 0;
+  m.body.depth *= clamp(1 + 0.4 * e('depth'), 0.7, 1.35);
+  m.eyes.size *= clamp(1 + 0.6 * e('eye'), 0.6, 1.5);
+  p.pattern.contrast = clamp(p.pattern.contrast + 0.35 * e('contrast'));
+  p.longevity = p.life.longevityYears = Math.max(4, p.longevity + 6 * e('longevity'));
+  const modules = expressModules('axolotl', block.modules!, block.dev, traits.canalization);
+  let oxygenEfficiency = m.gills.oxygenEfficiency, speed = p.speed;
+  if (modules.extraRami) { m.gills.rami = 4; oxygenEfficiency += 0.06; }
+  if (modules.ramusLength) m.gills.stalkLength *= 1 + modules.ramusLength;
+  if (modules.polydactyly) { m.limbs.frontDigits = Math.min(7, m.limbs.frontDigits + modules.polydactyly); m.limbs.rearDigits = Math.min(7, m.limbs.rearDigits + modules.polydactyly); }
+  if (modules.crest) { m.tail.crest = modules.crest; m.tail.crestReach = modules.crestReach; speed *= 1 - 0.03 * modules.crest; }
+  m.gills.oxygenEfficiency = Math.round(clamp(oxygenEfficiency, 0.4, 1.6) * 10000) / 10000;
+  p.speed = p.behavior.cruiseSpeed = speed;
+  p.genesis = { ...traits, modules, somatic: somaticFor(block.dev, traits.canalization) };
   return p;
 }
 
@@ -873,7 +902,7 @@ export function axolotlGenomeProblem(value: unknown): string | null {
   if ((genome.version === AXOLOTL_GENESIS_VERSION) !== Boolean(genome.genesis)) return 'Only axolotl genome v2 carries a development block.';
   const novel = new Map((genome.genesis?.novel ?? []).map(entry => [entry.id, entry]));
   if (genome.genesis) {
-    const problem = genesisProblem(genome.genesis, AXOLOTL_LOAD, registry.length, axolotlNovelEligible);
+    const problem = genesisProblem(genome.genesis, AXOLOTL_LOAD, registry.length, axolotlNovelEligible, moduleAlleleCounts('axolotl'));
     if (problem) return problem;
   }
   for (let index = 0; index < registry.length; index++) {
@@ -906,7 +935,10 @@ export const isAxolotlGenome = (value: unknown): value is AxolotlGenome => axolo
 
 export function axolotlFingerprint(genome: AxolotlGenome): string {
   validateAxolotlGenome(genome);
-  if (genome.genesis) return `AX2-${hash(`ax2:${genome.maternal.join(',')}|${genome.paternal.join(',')}|d${genome.genesis.dev}`).toString(16).padStart(8, '0').toUpperCase()}`;
+  if (genome.genesis) {
+    const modules = genome.genesis.modules ? `|m${genome.genesis.modules.maternal.join('')}/${genome.genesis.modules.paternal.join('')}` : '';
+    return `AX2-${hash(`ax2:${genome.maternal.join(',')}|${genome.paternal.join(',')}|d${genome.genesis.dev}${modules}`).toString(16).padStart(8, '0').toUpperCase()}`;
+  }
   return `AX1-${hash(`ax1:${genome.maternal.join(',')}|${genome.paternal.join(',')}`).toString(16).padStart(8, '0').toUpperCase()}`;
 }
 

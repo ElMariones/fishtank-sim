@@ -54,6 +54,7 @@ import { FamilyView } from './FamilyView';
 import { FishPortrait, type PortraitView } from './FishPortrait';
 import { FishCard } from './FishCard';
 import { AxolotlGenomeView, AxolotlTraitPanel } from './AxolotlGenetics';
+import { RarityPanel } from './RarityPanel';
 import { GenesisPanel } from './GenesisPanel';
 import { GenomeAtlas } from './GenomeAtlas';
 import { atlasProgress, genotypeVisible, locusStage } from '../core/atlas';
@@ -979,9 +980,10 @@ export function App({ initial }: { initial: LoadedSession }) {
             <div className="trait-block"><div className="block-title"><Icon name="sparkles" size={15} /><span className="eyebrow">Inherited tendencies</span></div>
               {([['Sociability', p.social], ['Boldness', p.bold], ['Activity', p.activity], ['Curiosity', p.curious]] as const).map(([name, value]) => <div className="trait" key={name} role="meter" aria-label={name} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value * 100)}>
                 <span>{name}</span><span className="bar gene"><span style={{ width: `${Math.round(value * 100)}%` }} /></span><span className="mono">{Math.round(value * 100)}</span></div>)}</div>
+            <RarityPanel world={world} fish={fish} />
             <GenesisPanel world={world} fish={fish} readOnly={initial.readOnly || blocked} onRun={run} />
             {fish.species === 'goldfish' ? <GoldfishTraitPanel fish={fish} genotypeKnown={genotypeVisible(world, fish)} /> : fish.species === 'axolotl' ? <AxolotlTraitPanel fish={fish} genotypeKnown={genotypeVisible(world, fish)} /> : koiGenome ? <>
-              <div className="trait-block appearance-block"><div className="block-title"><Icon name="brush" size={15} /><span className="eyebrow">Appearance · genome v{koiGenome.version}</span></div>{koiGenome.version === 1 ? <p className="help-copy">Genome v1 fish carry no Color or Ornament chromosomes and keep the classic look. Their offspring carry both chromosomes, where a new mutation can appear.</p> : null}<dl className="appearance-traits">{appearanceRows.map(row => <div key={row.trait}><dt>{row.trait}</dt><dd>{row.value}{row.rarity ? <span className={`rarity ${row.rarity.replace(' ', '-')}`}>{row.rarity}</span> : null}</dd></div>)}</dl>{appearanceRows.some(row => row.rarity) ? <p className="help-copy">Rarity describes founder stock, not your aquarium or any global population.</p> : null}</div>
+              <div className="trait-block appearance-block"><div className="block-title"><Icon name="brush" size={15} /><span className="eyebrow">Appearance · genome v{koiGenome.version}</span></div>{koiGenome.version === 1 ? <p className="help-copy">Genome v1 fish carry no Color or Ornament chromosomes and keep the classic look. Their offspring carry both chromosomes, where a new mutation can appear.</p> : null}<dl className="appearance-traits">{appearanceRows.map(row => <div key={row.trait}><dt>{row.trait}</dt><dd>{row.value}</dd></div>)}</dl></div>
               <div className="trait-block appearance-block structure-block"><div className="block-title"><Icon name="layers" size={15} /><span className="eyebrow">Structure · genome v{koiGenome.version}</span></div>{koiGenome.version < 3 ? <p className="help-copy">Genome v{koiGenome.version} fish carry no Structure chromosome and keep a standard tail, dorsal fin and two barbels. Their offspring carry it, where a rare structural mutation can appear.</p> : null}<dl className="appearance-traits">{describeStructure(koiGenome).map(row => <div key={row.trait}><dt>{row.trait}</dt><dd>{row.value}{row.carrier && genotypeVisible(world, fish) ? <span className="rarity carrier">hidden copy</span> : null}</dd></div>)}</dl></div>
             </> : null}
             {fish.status === 'living' ? <div className="fish-actions">

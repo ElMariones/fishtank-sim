@@ -6,8 +6,9 @@ import {
 import {
   carriedNovel, channelEffects, combine, createNovel, defectsFor, developmentNoise, founderLoadPair, founderPotency, genesisProblem, GOLDFISH_LOAD,
   GOLDFISH_SCALE, isNovel, NOVEL_SHARE, novelId, novelMap, transmitLoad, vigorFor,
-  type DominanceClass, type GenesisTraits, type GenesisBlock, type NovelAllele, type Resolved,
+  type Channel, type DominanceClass, type GenesisTraits, type GenesisBlock, type NovelAllele, type Resolved,
 } from './genesis';
+import { expressModules, moduleAlleleCounts, somaticFor } from './modules';
 import { clamp, hash, random } from './random';
 
 /**
@@ -199,9 +200,25 @@ export function expressGoldfish(genome: GoldfishGenome): GoldfishPhenotype {
   const cached = phenotypes.get(genome);
   if (cached) return cached;
   validateGoldfishGenome(genome);
-  const phenotype = develop(genome);
+  const phenotype = genome.genesis.model === 2 ? developGoldfishV7(develop(genome), genome) : develop(genome);
   phenotypes.set(genome, phenotype);
   return phenotype;
+}
+
+/**
+ * Goldfish development v7 (Genesis model 2): model 2 side-effect channels and one-off somatic marks. Goldfish carry no
+ * module genes yet; their hoods, bubble eyes and lobed tails already come from their own loci.
+ */
+function developGoldfishV7(developed: GoldfishPhenotype, genome: GoldfishGenome): GoldfishPhenotype {
+  const block = genome.genesis, p: GoldfishPhenotype = structuredClone(developed), pair = goldfishPair(genome);
+  const effects = channelEffects(Array.from({ length: GOLDFISH_LOCI.length }, (_, i) => pair(i)));
+  const e = (channel: Channel) => effects[channel] ?? 0;
+  p.body.depth *= clamp(1 + 0.4 * e('depth'), 0.7, 1.35);
+  p.eyes.size *= clamp(1 + 0.6 * e('eye'), 0.6, 1.5);
+  p.pattern.edge = clamp(p.pattern.edge + 0.35 * e('contrast'));
+  p.longevity = p.life.longevityYears = Math.max(4, p.longevity + 8 * e('longevity'));
+  p.genesis = { ...p.genesis, modules: expressModules('goldfish', block.modules!, block.dev, p.genesis.canalization), somatic: somaticFor(block.dev, p.genesis.canalization) };
+  return p;
 }
 
 function develop(genome: GoldfishGenome): GoldfishPhenotype {
@@ -501,7 +518,7 @@ export function goldfishGenomeProblem(value: unknown): string | null {
   if (genome.version !== GOLDFISH_GENOME_VERSION) return `Unsupported goldfish genome version ${String(genome.version)}.`;
   if (!Array.isArray(genome.maternal) || !Array.isArray(genome.paternal)) return 'Goldfish genome homologs must be arrays.';
   if (genome.maternal.length !== GOLDFISH_LOCI.length || genome.paternal.length !== GOLDFISH_LOCI.length) return `Goldfish genome v1 requires ${GOLDFISH_LOCI.length} loci per homolog.`;
-  const problem = genesisProblem(genome.genesis, GOLDFISH_LOAD, GOLDFISH_LOCI.length, goldfishNovelEligible);
+  const problem = genesisProblem(genome.genesis, GOLDFISH_LOAD, GOLDFISH_LOCI.length, goldfishNovelEligible, moduleAlleleCounts('goldfish'));
   if (problem) return problem;
   const novel = new Map(genome.genesis!.novel.map(entry => [entry.id, entry]));
   for (let index = 0; index < GOLDFISH_LOCI.length; index++) {
@@ -524,7 +541,8 @@ export const isGoldfishGenome = (value: unknown): value is GoldfishGenome => !!v
 
 export function goldfishFingerprint(genome: GoldfishGenome): string {
   validateGoldfishGenome(genome);
-  return `GF1-${hash(`gf1:${genome.maternal.join(',')}|${genome.paternal.join(',')}|d${genome.genesis.dev}`).toString(16).padStart(8, '0').toUpperCase()}`;
+  const modules = genome.genesis.modules ? `|m${genome.genesis.modules.maternal.join('')}/${genome.genesis.modules.paternal.join('')}` : '';
+  return `GF1-${hash(`gf1:${genome.maternal.join(',')}|${genome.paternal.join(',')}|d${genome.genesis.dev}${modules}`).toString(16).padStart(8, '0').toUpperCase()}`;
 }
 export function goldfishHeterozygosity(genome: GoldfishGenome): number {
   return genome.maternal.filter((allele, index) => allele !== genome.paternal[index]).length / genome.maternal.length;

@@ -1,4 +1,5 @@
 import { goldfishAnatomyFor, GOLDFISH_TAIL_WAVE, type GFin, type GLobe, type GoldfishAnatomy, type GVec } from '../core/goldfishAnatomy';
+import { drawSomatic, somaticPoint } from './genesis';
 import type { GoldfishColor, GoldfishPhenotype } from '../core/goldfishGenetics';
 import { hash, random } from '../core/random';
 import { drawEyeCloud, drawFray } from './genesis';
@@ -186,6 +187,11 @@ export function drawGoldfish(ctx: CanvasRenderingContext2D, p: GoldfishPhenotype
       ctx.fillStyle = soft;
     } else ctx.fillStyle = css(color, alpha);
     ctx.beginPath(); ctx.arc(0, 0, patch.rx * l, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  }
+  // Genesis model 2 somatic mark.
+  if (p.genesis.somatic) {
+    const point = somaticPoint(a.top, a.bottom, a.top[0].x + 0.08, 0.42, p.genesis.somatic.u, p.genesis.somatic.v);
+    drawSomatic(ctx, p.genesis.somatic, point.x * l, point.y * l, l, css(c.body, 1));
   }
   // Scales: metallic arcs catch light, reticulated outlines darken, pearl domes and nacreous sparkles shine.
   if (texture.scales) {

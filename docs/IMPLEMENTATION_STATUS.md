@@ -1,6 +1,39 @@
 # Implementation status
 
-**Updated:** 16 October 2026 (FS-130 goldfish) · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
+**Updated:** 17 October 2026 (R-201–R-204 Genesis model 2) · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
+
+## Genesis model 2, Allele Registry, Codex, module anatomy, PixiJS and rarity — R-201–R-204 DONE, 17 October 2026 (user request)
+
+World v18 · development v7 · renderer v9. Report: [R-201–R-204](research/R-201-204-GENESIS-MODEL-2.md); ADR-078–080.
+
+- **Genome analysis → more variety (Genesis model 2).** New alleles now come in three kinds: drift, *leap* (about 1 in 8:
+  a 2.2–3× step plus an extra side effect) and *regulatory* (about 1 in 8: dominance flips). Four new side-effect
+  channels (body depth, eye size, pattern contrast, lifespan). One-off **somatic marks** (mosaic sectors, birthmarks)
+  from the development seed. Older genomes carry a **latent module genotype**, so founders can hide body-plan traits.
+- **R-201 Allele Registry** (`alleleRegistry.ts`, Atlas tab): kind, parent allele, lineage depth and derived alleles,
+  value shift, side effects, living carriers, homozygotes and copy share; filters, sorts and search; lost alleles stay.
+- **R-202 Atlas and Codex** (`codex.ts`, `segregation.ts`): chromosome 13 *Body plan* in the Atlas; a Codex of 24 koi,
+  17 axolotl and 30 goldfish named phenotypes credited to the first bred animal; clutch ratio analysis (χ² against
+  single-locus ratios) that uses only visible phenotypes.
+- **R-203 module-graph anatomy** (`modules.ts`): koi second dorsal fin, wen and bubble eyes; axolotl fourth gill ramus,
+  polydactyly and dorsal crest; threshold, recessive and dominant rules with trade-offs; `bodyPlanFor` graph in the
+  inspector; anatomy bounds and renderers draw every module. Goldfish carry no module genes yet.
+- **R-204 PixiJS fish layer** (`rendering/pixiFishLayer.ts`, `TankCanvas.tsx`): fish are GPU sprites between the Canvas 2D
+  aquascape and a Canvas 2D front layer; small fish use shared flipbook textures, larger fish their own live canvas with
+  exact motion. `?renderer=canvas`, a stored preference or a WebGL failure keep the Canvas 2D path. `pixi.js` is now a
+  dependency, loaded lazily.
+- **Rarity for every species** (`rarity.ts`, `RarityPanel.tsx`): six tiers (common → legendary) per visible trait from a
+  fixed reference of 800 bred animals; a calibrated specimen tier and score; breeding potential once the genotype is
+  known; tier chips on cards and shop listings. Display only: prices are unchanged.
+- **Compatibility.** World v1–v17 saves migrate at Genesis model 1 (journals replay byte-identically), then rebase to
+  model 2 and credit their bred animals in the Codex. Research harnesses stay at model 1.
+
+Evidence: 377 tests in 54 files, strict TypeScript and the production build pass; in-app browser journey on an isolated
+port. See [testing](TESTING.md#r-201r-204-genesis-model-2-codex-and-pixi).
+
+Limits: module, allele-kind, somatic and Codex values are first tunings, not playtested. Pixi frame timing was not
+measured on named hardware. Module mutations are not listed in `fish.mutations`. Shop founders are model 1 genomes
+(latent modules only).
 
 ## Sell all fish in an aquarium — DONE, pushed `a5622b5`, 17 October 2026 (user request)
 

@@ -2,8 +2,9 @@ import { expressAppearance } from './appearance';
 import { APPEARANCE_LOCI, GENOME_LOCI, LOCI, STRUCTURE_LOCI, type DevelopmentLocus, type GenomeLocus } from './catalog';
 import {
   channelEffects, combine, defectsFor, developmentNoise, founderPotency, isNovel, KOI_LOAD, novelMap, vigorFor,
-  type DominanceClass, type GenesisTraits, type Resolved,
+  type Channel, type DominanceClass, type GenesisTraits, type Resolved,
 } from './genesis';
+import { expressModules, somaticFor } from './modules';
 import { markingAnchors } from './pattern';
 import { clamp } from './random';
 import { expressStructure } from './structure';
@@ -210,5 +211,27 @@ export function expressKoiGenesis(genome: Genome, core: (g: (name: GenomeLocus) 
     canalization, asymmetry, maturityDays, regeneration, vigor, heterozygosity, competitiveness, conditionCap, clutchFactor, viable, oxygenDemand,
     defects, finFray, eyeCloud, depigment, kink, novelAlleles: block.novel.length,
   };
+  return block.model === 2 ? developKoiV7(p, genome, resolver) : p;
+}
+
+/**
+ * Development v7 (Genesis model 2): the model 2 side-effect channels, body-plan modules and one-off somatic marks, applied
+ * over the development v6 phenotype. Model 1 genomes never reach this function.
+ */
+function developKoiV7(p: Phenotype, genome: Genome, resolver: KoiResolver): Phenotype {
+  const block = genome.genesis!, traits = p.genesis!;
+  const effects = channelEffects(GENOME_LOCI.map((_, i) => resolver.pair(i)));
+  const e = (channel: Channel) => effects[channel] ?? 0;
+  p.depth *= clamp(1 + 0.45 * e('depth'), 0.7, 1.35);
+  p.eye *= clamp(1 + 0.7 * e('eye'), 0.6, 1.5);
+  p.appearance = { ...p.appearance, contrast: clamp(p.appearance.contrast + 0.35 * e('contrast'), 0.3, 1) };
+  p.longevity = Math.max(4, p.longevity + 10 * e('longevity'));
+  const modules = expressModules('koi', block.modules!, block.dev, traits.canalization);
+  let { competitiveness, conditionCap } = traits;
+  // Trade-offs: a second dorsal adds drag; a wen hides the eyes a little; bubble sacs are fragile and slow the fish.
+  if (modules.secondDorsal) p.speed *= 1 - 0.04 * modules.secondDorsal;
+  if (modules.wen) competitiveness -= 0.08 * modules.wen;
+  if (modules.bubble) { p.speed *= 0.94; competitiveness -= 0.1; conditionCap = Math.min(conditionCap, 0.92); }
+  p.genesis = { ...traits, competitiveness: clamp(competitiveness, 0.05, 1.3), conditionCap, modules, somatic: somaticFor(block.dev, traits.canalization) };
   return p;
 }

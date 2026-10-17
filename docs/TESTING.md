@@ -1,5 +1,42 @@
 # Testing and verification
 
+## R-201–R-204 Genesis model 2, Codex and Pixi
+
+17 October 2026, Windows 11, Node via the checkout's npm scripts.
+
+- `npx vitest run`: **377 tests in 54 files pass** (359 before). New: `tests/genesis2.test.ts` (14: model 1 inheritance
+  unchanged; valid, deterministic model 2 children for every species with untouched locus arrays; latent module genes and
+  distinct fingerprints; allele kind shares and the new channels; module rates in random versus selected lines; koi
+  anatomy valid and inside bounds at module extremes and drawable; axolotl fourth ramus, digits and crest; somatic rates;
+  model 2 worlds and research worlds; Codex credits validated on load and a bad key rejected; byte-identical replay of a
+  model 2 journal; Body plan loci observed only under model 2; species-safe Codex tests) and `tests/rarity.test.ts`
+  (4: the six-tier ladder; deterministic reference in well under a second per species; spread of tiers; calibration —
+  at least 55% common and under 2% legendary in 300 random bred animals per species). Changed facts only: world version
+  18 and atlas length 78 in `competitions` and `goldfishIntegration`.
+- `npx tsc --noEmit` and `npm run build` pass (the existing >500 kB chunk warning remains; Pixi is in separate lazy
+  chunks). `node scripts/check-docs.mjs`: no broken links.
+- Measured (probe runs, 3 000 model 2 births per species from unrelated founders): modules show in 6.5% of koi (second
+  dorsal 2.5%, wen 2.9%, bubble 1.1%) and 7.0% of axolotls (crest 4.2%, polydactyly 1.6%, fourth ramus 1.3%); specimen
+  tiers in 400 random animals: koi 303 common / 3 legendary, axolotl 289 / 2, goldfish 321 / 1.
+- Browser (in-app, isolated port 5195; the user's own save on 5173 was not opened):
+  - An existing v17 development save loaded, replayed and rebased: the Atlas header reads *Genesis model 2*, 78 loci and
+    a Codex counter.
+  - Fast breeding Haru × Sumi (20 eggs) and six day advances: the Codex credited *Birthmarked* to a newborn; Body plan
+    loci gained evidence; the Allele Registry listed 11 alleles with drift/regulatory badges, lineage and carrier share;
+    Clutch ratios analysed the 60-young family.
+  - Rarity panel for a koi (faint tiger stripes *rare*, dark fin tips *epic*), a bought axolotl (xanthic *very rare*) and a
+    bought goldfish (ryukin *rare*, redcap *very rare*); *rare* chips on collection cards; in the shop a calico veiltail
+    listing shows a *rare* chip.
+  - Pixi: `data-renderer="pixi"`; fish, axolotl and goldfish draw between the aquascape and the front plants with the
+    selection halo and name pill on top. A first build stacked the layers wrongly (an existing `.aquarium canvas` rule)
+    and React's development double mount lost the WebGL context; both fixed. Synthetic clicks across the canvas changed
+    the selection (picking works). `?renderer=canvas` draws the same scene with Canvas 2D.
+  - A reload after breeding, buying and advancing passed replay validation.
+  - Visual fixtures: the new *Body-plan modules and somatic marks* board shows twin sail, lionhead, bubble eye, dragon,
+    mosaic, birthmark, four-ramus, polydactyl, crested and dragon axolotl. The first twin-sail card had a founder dorsal
+    too small to read, so module fixtures now use a tall dorsal allele.
+  - Not done: frame timing (the pane was hidden, which suspends animation frames) and mobile layout of the new Atlas tabs.
+
 ## Sell all fish in an aquarium
 
 17 October 2026, Windows 11, Node via the checkout's npm scripts.

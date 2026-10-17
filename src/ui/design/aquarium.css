@@ -22,6 +22,9 @@
   box-shadow: inset 0 0 0 1px rgb(182 255 240 / .16), inset 0 2px 0 rgb(255 255 255 / .1); }
 .aquarium canvas { position: relative; z-index: 0; }
 .tank-canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+/* Renderer v9: the Pixi fish layer and the Canvas 2D front layer stack over the aquascape canvas; clicks reach the aquascape canvas. */
+.aquarium .tank-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+.aquarium .tank-layer[hidden] { display: none; }
 /* Front glass: a soft reflection band, the surface glint and depth at the edges. */
 .aquarium::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 2; border-radius: inherit;
   background:

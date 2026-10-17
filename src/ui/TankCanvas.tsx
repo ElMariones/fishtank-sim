@@ -16,6 +16,19 @@ import { decorationsOf } from '../core/tankManagement';
 import { MotionWorkerClient } from '../simulation/motionClient';
 import { TRANSFORM_STRIDE, type FromMotionWorker, type PlaybackSpeed } from '../simulation/protocol';
 import { TICK_MS } from '../simulation/time';
+import { PixiFishLayer, type FishDraw } from '../rendering/pixiFishLayer';
+
+/**
+ * Renderer v9 (R-204): fish draw through PixiJS as GPU sprites between two Canvas 2D layers (aquascape behind, front
+ * plants, glass and the selection overlay in front). `?renderer=canvas`, a stored preference or a missing WebGL context
+ * keeps the single Canvas 2D path, which draws exactly the same fish.
+ */
+function canvasRendererRequested(): boolean {
+  try {
+    if (new URLSearchParams(window.location.search).get('renderer') === 'canvas') return true;
+    return window.localStorage.getItem('fishtank-sim.renderer') === 'canvas';
+  } catch { return false; }
+}
 
 type Props = {
   fish: Fish[]; eggs: number; tank: Tank; selectedId: string; onSelect: (id: string) => void; paused: boolean; speed: number; feedSignal: number;
@@ -54,6 +67,10 @@ function savedScene(tank: Tank): Scene {
 
 export function TankCanvas(props: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const glHostRef = useRef<HTMLDivElement>(null);
+  const frontRef = useRef<HTMLCanvasElement>(null);
+  const fishLayer = useRef<PixiFishLayer | null>(null);
+  const [renderer, setRenderer] = useState<'starting' | 'pixi' | 'canvas'>('starting');
   const latest = useRef(props);
   const actors = useRef<Actor[]>(props.fish.map(createActor));
   const previous = useRef(new Map<string, Actor>());
@@ -173,9 +190,25 @@ export function TankCanvas(props: Props) {
   useEffect(() => { reportBehavior(); }, [props.selectedId]);
 
   useEffect(() => {
-    const canvas = canvasRef.current, ctx = canvas?.getContext('2d');
+    const canvas = canvasRef.current, ctx = canvas?.getContext('2d'), glHost = glHostRef.current, frontCanvas = frontRef.current, frontCtx = frontCanvas?.getContext('2d') ?? null;
     if (!canvas || !ctx) return;
-    let width = 800, height = 500, frame = 0, lastPaint = performance.now(), idle = 0;
+    let width = 800, height = 500, frame = 0, lastPaint = performance.now(), idle = 0, disposed = false;
+    // The Pixi fish layer starts asynchronously; fish draw with Canvas 2D until it is ready, and again if it is lost.
+    const fallBack = () => { fishLayer.current?.destroy(); fishLayer.current = null; setRenderer('canvas'); dirty.current = true; };
+    // Each mount gets its own WebGL canvas: a destroyed Pixi application loses its context, so it must never be shared.
+    const glCanvas = glHost && frontCtx && !canvasRendererRequested() ? document.createElement('canvas') : null;
+    if (glCanvas && glHost) {
+      glCanvas.className = 'tank-layer tank-fish-layer';
+      glHost.replaceChildren(glCanvas);
+      const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+      void PixiFishLayer.create(glCanvas, canvas.clientWidth || width, canvas.clientHeight || height, dpr).then(layer => {
+        if (disposed) { layer?.destroy(); return; }
+        if (!layer) { fallBack(); return; }
+        layer.resize(canvas.clientWidth || width, canvas.clientHeight || height, dpr);
+        fishLayer.current = layer; setRenderer('pixi'); dirty.current = true;
+      });
+      glCanvas.addEventListener('webglcontextlost', fallBack);
+    } else setRenderer('canvas');
     const renderer = new AquascapeRenderer();
     // Idle time paints the other aquariums' static layers at this canvas size, one tank per idle period. A warmed layer
     // stays in the shared cache; warming an already cached scene is only a lookup.
@@ -202,6 +235,8 @@ export function TankCanvas(props: Props) {
       width = entries[0].contentRect.width; height = entries[0].contentRect.height;
       const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
       canvas.width = width * dpr; canvas.height = height * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (frontCanvas && frontCtx) { frontCanvas.width = width * dpr; frontCanvas.height = height * dpr; frontCtx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+      fishLayer.current?.resize(width, height, dpr);
       dirty.current = true;
       scheduleWarm();
     });
@@ -215,7 +250,9 @@ export function TankCanvas(props: Props) {
       dirty.current = blend < 1;
       lastPaint = now;
       const time = frameClock.current.fromTime + (simulationTime.current - frameClock.current.fromTime) * blend;
+      const layer = fishLayer.current, front = layer && frontCtx ? frontCtx : ctx;
       ctx.clearRect(0, 0, width, height);
+      if (front !== ctx) front.clearRect(0, 0, width, height);
       const scene = current.preview?.scene() ?? savedScene(current.tank);
       renderer.paintBack(ctx, width, height, scene, time);
       renderer.paintPlants(ctx, width, height, scene, time, 'back');
@@ -249,7 +286,8 @@ export function TankCanvas(props: Props) {
         ctx.fillStyle = '#dab36b';
         for (let i = 0; i < food.length; i += 2) { ctx.beginPath(); ctx.arc(food[i] * width, food[i + 1] * height, 2.2, 0, Math.PI * 2); ctx.fill(); }
       }
-      const fishById = new Map(current.fish.map(fish => [fish.id, fish])), paintedNow: Painted[] = [];
+      const fishById = new Map(current.fish.map(fish => [fish.id, fish])), paintedNow: Painted[] = [], draws: FishDraw[] = [];
+      let selection: { pose: ReturnType<typeof fishPose>; phenotype: Actor['phenotype']; name: string } | null = null;
       for (const actor of actors.current) {
         const fish = fishById.get(actor.id);
         if (!fish) continue;
@@ -268,35 +306,20 @@ export function TankCanvas(props: Props) {
         phase.fin = (phase.fin + dt * playing * (axolotl ? 0.4 + effort * 4 : goldfish ? 3.5 + 2 * actor.phenotype.activity : 2.5 + 2 * actor.phenotype.activity)) % PHASE_WRAP;
         phases.current.set(actor.id, phase);
         const growth = visualGrowth(fish.life.lengthCm, actor.phenotype.adultLengthCm), pose = fishPose(shown, width, height, growth, facing);
-        ctx.save(); ctx.translate(pose.x, pose.y);
-        if (actor.id === current.selectedId) {
-          const b = shown.phenotype.species === 'goldfish' && shown.phenotype.goldfish ? goldfishAnatomyFor(shown.phenotype.goldfish).bounds
-            : shown.phenotype.species === 'axolotl' && shown.phenotype.axolotl
-            ? axolotlAnatomyFor(shown.phenotype.axolotl).bounds : anatomyFor(shown.phenotype).bounds;
-          const length = pose.bodyLength;
-          // Selection: a soft glowing halo that breathes, and a name pill above the fish in the interface's typeface.
-          const breathe = 0.75 + Math.sin(time * 2.4) * 0.25;
-          ctx.save(); ctx.scale(pose.flip < 0 ? -1 : 1, 1); ctx.rotate(pose.angle);
-          const cx = (b.minX + b.maxX) / 2 * length, cy = (b.minY + b.maxY) / 2 * length, rx = (b.maxX - b.minX) / 2 * length * 1.1, ry = (b.maxY - b.minY) / 2 * length * 1.25 + 4;
-          ctx.shadowColor = 'rgba(94,240,210,.8)'; ctx.shadowBlur = 10 * breathe;
-          ctx.strokeStyle = `rgba(94,240,210,${0.35 + 0.3 * breathe})`; ctx.lineWidth = 1.4; ctx.setLineDash([2, 5]); ctx.lineDashOffset = -time * 8;
-          ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+        if (actor.id === current.selectedId) selection = { pose, phenotype: shown.phenotype, name: fish.name };
+        const motion = { tailPhase: phase.tail, finPhase: phase.fin, effort, grounded };
+        if (layer) draws.push({ id: actor.id, phenotype: shown.phenotype, seed: fish.birthSeed, size: pose.size, bodyLength: pose.bodyLength, x: pose.x, y: pose.y, flip: pose.flip, angle: pose.angle, motion, time });
+        else {
+          ctx.save(); ctx.translate(pose.x, pose.y); ctx.scale(pose.flip, 1); ctx.rotate(pose.angle);
+          drawFish(ctx, shown.phenotype, fish.birthSeed, pose.size, time, motion);
           ctx.restore();
-          const labelY = -Math.max(-b.minY, b.maxY) * length * 1.2 - 16;
-          ctx.font = '600 11.5px "Instrument Sans", system-ui, sans-serif';
-          const text = fish.name, tw = ctx.measureText(text).width, pw = tw + 18, ph = 20;
-          ctx.fillStyle = 'rgba(3,18,24,.78)'; ctx.strokeStyle = 'rgba(94,240,210,.55)'; ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.roundRect(-pw / 2, labelY - ph / 2, pw, ph, ph / 2); ctx.fill(); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(-4, labelY + ph / 2); ctx.lineTo(0, labelY + ph / 2 + 5); ctx.lineTo(4, labelY + ph / 2); ctx.fillStyle = 'rgba(94,240,210,.55)'; ctx.fill();
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#d9fff6'; ctx.fillText(text, 0, labelY + 0.5); ctx.textBaseline = 'alphabetic';
         }
-        ctx.scale(pose.flip, 1); ctx.rotate(pose.angle);
-        drawFish(ctx, shown.phenotype, fish.birthSeed, pose.size, time, { tailPhase: phase.tail, finPhase: phase.fin, effort, grounded });
-        ctx.restore();
         paintedNow.push({ actor: shown, facing, growth });
       }
-      renderer.paintPlants(ctx, width, height, scene, time, 'front');
-      renderer.paintFront(ctx, width, height, scene, time);
+      if (layer) layer.render(draws);
+      renderer.paintPlants(front, width, height, scene, time, 'front');
+      renderer.paintFront(front, width, height, scene, time);
+      if (selection) paintSelection(front, selection.pose, selection.phenotype, selection.name, time);
       painted.current = paintedNow;
       // The first frame with the new tank's own motion ends its loading state.
       if (!awaitingReady.current && loadingRef.current) { loadingRef.current = false; setLoadingTank(null); scheduleWarm(); }
@@ -304,13 +327,17 @@ export function TankCanvas(props: Props) {
     };
     frame = requestAnimationFrame(render);
     return () => {
+      disposed = true; glCanvas?.removeEventListener('webglcontextlost', fallBack);
+      fishLayer.current?.destroy(); fishLayer.current = null; glCanvas?.remove();
       cancelAnimationFrame(frame); resize.disconnect();
       if (idle) { if (typeof cancelIdleCallback === 'function') cancelIdleCallback(idle); else window.clearTimeout(idle); }
     };
   }, []);
 
   return <>
-    <canvas ref={canvasRef} className="tank-canvas" role="img" aria-label={`${props.tank.name}, ${props.fish.length} swimming fish${props.eggs ? ` and ${props.eggs} incubating eggs` : ''}. Select a fish using the collection below.`}
+    <div ref={glHostRef} className="tank-layer tank-fish-host" aria-hidden="true" hidden={renderer === 'canvas'} data-renderer={renderer} />
+    <canvas ref={frontRef} className="tank-layer tank-front-layer" aria-hidden="true" hidden={renderer === 'canvas'} />
+    <canvas ref={canvasRef} className="tank-canvas" data-renderer={renderer} role="img" aria-label={`${props.tank.name}, ${props.fish.length} swimming fish${props.eggs ? ` and ${props.eggs} incubating eggs` : ''}. Select a fish using the collection below.`}
       onClick={event => {
         if (props.editing) return;
         const rect = event.currentTarget.getBoundingClientRect(), shown = painted.current, byId = new Map(shown.map(entry => [entry.actor.id, entry]));
@@ -328,4 +355,26 @@ export function TankCanvas(props: Props) {
       {workerState.status === 'failed' ? <button onClick={() => client.current?.restart()}>Restart aquarium motion</button> : null}
     </div> : null}
   </>;
+}
+
+/** Selection: a soft glowing halo that breathes around the fish, and a name pill above it in the interface's typeface. */
+function paintSelection(ctx: CanvasRenderingContext2D, pose: ReturnType<typeof fishPose>, phenotype: Actor['phenotype'], name: string, time: number) {
+  const b = phenotype.species === 'goldfish' && phenotype.goldfish ? goldfishAnatomyFor(phenotype.goldfish).bounds
+    : phenotype.species === 'axolotl' && phenotype.axolotl ? axolotlAnatomyFor(phenotype.axolotl).bounds : anatomyFor(phenotype).bounds;
+  const length = pose.bodyLength, breathe = 0.75 + Math.sin(time * 2.4) * 0.25;
+  ctx.save(); ctx.translate(pose.x, pose.y);
+  ctx.save(); ctx.scale(pose.flip < 0 ? -1 : 1, 1); ctx.rotate(pose.angle);
+  const cx = (b.minX + b.maxX) / 2 * length, cy = (b.minY + b.maxY) / 2 * length, rx = (b.maxX - b.minX) / 2 * length * 1.1, ry = (b.maxY - b.minY) / 2 * length * 1.25 + 4;
+  ctx.shadowColor = 'rgba(94,240,210,.8)'; ctx.shadowBlur = 10 * breathe;
+  ctx.strokeStyle = `rgba(94,240,210,${0.35 + 0.3 * breathe})`; ctx.lineWidth = 1.4; ctx.setLineDash([2, 5]); ctx.lineDashOffset = -time * 8;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+  const labelY = -Math.max(-b.minY, b.maxY) * length * 1.2 - 16;
+  ctx.font = '600 11.5px "Instrument Sans", system-ui, sans-serif';
+  const tw = ctx.measureText(name).width, pw = tw + 18, ph = 20;
+  ctx.fillStyle = 'rgba(3,18,24,.78)'; ctx.strokeStyle = 'rgba(94,240,210,.55)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(-pw / 2, labelY - ph / 2, pw, ph, ph / 2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-4, labelY + ph / 2); ctx.lineTo(0, labelY + ph / 2 + 5); ctx.lineTo(4, labelY + ph / 2); ctx.fillStyle = 'rgba(94,240,210,.55)'; ctx.fill();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#d9fff6'; ctx.fillText(name, 0, labelY + 0.5); ctx.textBaseline = 'alphabetic';
+  ctx.restore();
 }

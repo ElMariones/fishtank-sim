@@ -9,7 +9,7 @@ import {
   type VisualDescriptorKey, type VisualFixtureSubject,
 } from '../core/visualFixtures';
 import { EggPortrait, PhenotypePortrait } from './FishPortrait';
-import { GENESIS_AXOLOTL_FIXTURES, GENESIS_FOUNDER_SAMPLE, GENESIS_KOI_FIXTURES, type GenesisFixture } from '../core/genesisFixtures';
+import { GENESIS2_FIXTURES, GENESIS_AXOLOTL_FIXTURES, GENESIS_FOUNDER_SAMPLE, GENESIS_KOI_FIXTURES, type GenesisFixture } from '../core/genesisFixtures';
 import { express } from '../core/genetics';
 import { goldfishFounderGenome, goldfishTailText, type GoldfishVariety } from '../core/goldfishGenetics';
 import { VARIETY_TEMPLATES, withGoldfishAlleles } from '../core/goldfishShop';
@@ -138,6 +138,11 @@ export function VisualFixtureLab({ onClose }: { onClose: () => void }) {
       <div className="fixture-section-heading"><div><div className="eyebrow">GENESIS · KOI GENOME V4 · AXOLOTL GENOME V2 · RENDERER V8</div><h2 id="genesis-fixtures-title">Genesis variants</h2></div><p>Each card starts from a founder and sets chosen development alleles, a homozygous load site or one open-ended allele. Older genomes never draw these layers.</p></div>
       <div className="fixture-grid appearance">{[...GENESIS_KOI_FIXTURES, ...GENESIS_AXOLOTL_FIXTURES].map(fixture => <GenesisCard key={fixture.id} fixture={fixture} />)}</div>
       <div className="fixture-grid appearance">{GENESIS_FOUNDER_SAMPLE.map(fixture => <GenesisCard key={fixture.id} fixture={fixture} />)}</div>
+    </section>
+
+    <section className="fixture-section" aria-labelledby="genesis2-fixtures-title">
+      <div className="fixture-section-heading"><div><div className="eyebrow">GENESIS MODEL 2 · BODY-PLAN MODULES · RENDERER V9</div><h2 id="genesis2-fixtures-title">Body-plan modules and somatic marks</h2></div><p>Module genes duplicate, transform or add structures once a threshold is crossed; somatic marks are one-off and never inherited.</p></div>
+      <div className="fixture-grid appearance">{GENESIS2_FIXTURES.map(fixture => <GenesisCard key={fixture.id} fixture={fixture} />)}</div>
     </section>
 
     <section className="fixture-section" aria-labelledby="goldfish-fixtures-title">

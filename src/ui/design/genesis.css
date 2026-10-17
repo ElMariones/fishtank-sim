@@ -53,3 +53,56 @@
   .atlas-locus { grid-template-columns: 10px minmax(0, 1fr); }
   .atlas-evidence { grid-column: 2; }
 }
+
+/* Rarity panel (all species) */
+.rarity-block .block-title { align-items: center; }
+.rarity-overall { margin-left: auto; height: 22px; padding: 0 10px; font-size: 11px; }
+.rarity-summary { margin: 4px 0 8px; font-size: var(--t-xs); color: var(--fg-2); }
+.rarity-traits dd { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.rarity-row.tier-0 dd { color: var(--fg-3); }
+.rarity-row.tier-4 dt, .rarity-row.tier-5 dt { color: var(--fg-1, inherit); }
+.rarity-potential { margin-top: 10px; }
+.rarity-potential h4 { margin: 0 0 4px; font-size: var(--t-xs); text-transform: uppercase; letter-spacing: .06em; color: var(--fg-3); }
+.rarity-potential ul { margin: 0; padding-left: 18px; font-size: var(--t-xs); color: var(--fg-2); }
+.card-rarity { height: 18px; padding: 0 6px; font-size: 9.5px; }
+
+/* Body plan (R-203) and allele kinds (R-201) */
+.genesis-plan h4 { margin: 10px 0 4px; }
+.body-plan { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: var(--t-xs); }
+.body-plan li { display: flex; justify-content: space-between; gap: 8px; padding: 2px 6px 2px calc(6px + var(--depth, 0) * 14px); border-radius: 6px; color: var(--fg-2); }
+.body-plan li:not(.origin-standard) { background: var(--gene-a14, rgb(171 152 255 / .1)); color: var(--fg-1, inherit); }
+.plan-origin { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; color: var(--gene-ink); }
+.plan-origin.novel { color: var(--brass); } .plan-origin.reduced { color: var(--fg-3); }
+.allele-kind { display: inline-block; margin-right: 6px; padding: 0 6px; border-radius: 99px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  border: 1px solid var(--line-3); color: var(--fg-2); }
+.allele-kind.leap { border-color: rgb(255 214 120 / .6); color: #ffd98a; }
+.allele-kind.regulatory { border-color: rgb(171 152 255 / .5); color: var(--gene-ink); }
+
+/* Atlas tabs, registry, Codex and clutch ratios (R-201, R-202) */
+.atlas-tabs { justify-self: start; flex-wrap: wrap; }
+.body-plan-chromosome { border-color: rgb(255 214 120 / .25); }
+.registry-controls { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; margin-bottom: var(--s-3); }
+.registry-controls input[type="search"] { min-width: 12rem; flex: 1 1 12rem; max-width: 22rem; }
+.registry-list li.lost { opacity: .62; }
+.registry-list .lineage { color: var(--gene-ink); }
+.registry-frequency { height: 4px; margin: 2px 0; }
+.atlas-codex, .atlas-ratios { padding: var(--s-4); border-radius: var(--r-lg); border: 1px solid var(--line-2); background: rgb(160 225 225 / .02); }
+.atlas-codex h3, .atlas-ratios h3 { margin: 0 0 var(--s-2); font-size: var(--t-sm); color: var(--fg-1); }
+.codex-grid { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: var(--s-3); }
+.codex-card { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 10px; padding: 10px; border-radius: var(--r-lg); border: 1px solid var(--line-2); background: rgb(160 225 225 / .03); }
+.codex-card.missing { border-style: dashed; color: var(--fg-3); }
+.codex-card.found.tier-3 { box-shadow: 0 0 18px -8px rgb(171 120 255 / .8); }
+.codex-card.found.tier-4 { box-shadow: 0 0 20px -6px rgb(255 200 90 / .8); border-color: rgb(255 214 120 / .45); }
+.codex-plate { display: grid; place-items: center; width: 72px; height: 56px; border-radius: 10px; background: rgb(3 18 24 / .5); overflow: hidden; color: var(--fg-3); }
+.codex-plate canvas { max-width: 100%; max-height: 100%; }
+.codex-text { display: grid; gap: 3px; align-content: start; font-size: var(--t-xs); }
+.codex-text .rarity { justify-self: start; }
+.codex-text small { color: var(--fg-3); font-size: var(--t-floor); }
+.ratio-families { display: flex; flex-wrap: wrap; gap: 6px; margin: var(--s-3) 0; }
+.ratio-families button { display: grid; text-align: left; font-size: var(--t-xs); padding: 6px 10px; border-radius: 10px; border: 1px solid var(--line-2); background: transparent; color: var(--fg-2); }
+.ratio-families button[aria-pressed="true"] { border-color: var(--tide); color: var(--fg-1); background: var(--tide-a14); }
+.ratio-families small { color: var(--fg-3); }
+.ratio-table ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ratio-table li { display: grid; gap: 3px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line-1, var(--line-2)); font-size: var(--t-xs); }
+.ratio-counts { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--fg-2); }
+.ratio-fit { color: var(--tide-ink); }

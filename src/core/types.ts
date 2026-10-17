@@ -8,6 +8,7 @@ import type { GoldfishGenome, GoldfishPhenotype } from './goldfishGenetics';
 import type { GoldfishRecessive } from './goldfishCatalog';
 import type { GenesisBlock, GenesisTraits } from './genesis';
 import type { AlleleRecord, AtlasState } from './atlas';
+import type { CodexState } from './codex';
 
 /**
  * Genome v1 holds 48 loci per copy; genome v2 appends the 12 Color and Ornament loci (60); genome v3 the 6 Structure loci
@@ -176,7 +177,7 @@ export type ReliefState = { model: 1; claims: number; cooldownDays: number };
  * Older saves migrate with defaults.
  */
 export type World = {
-  version: 17; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
+  version: 18; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
   market: MarketState; ledger: Ledger; shop: ShopState; naming: NamingModel; relief: ReliefState;
   /** Registered bloodlines and the next registry number (world v12). */
   bloodlines: Bloodline[]; nextBloodlineId: number;
@@ -189,6 +190,13 @@ export type World = {
   atlas: AtlasState;
   /** Persistent goldfish stock (world v17), a third counter beside the koi and axolotl shops. */
   goldfishShop: GoldfishShopState;
+  /**
+   * Genesis model (world v18). Model 2 births add module genes and enriched alleles, observe module loci and credit the
+   * Codex. Older worlds migrate at model 1 so their journals replay unchanged, then move to model 2 when the runtime rebases.
+   */
+  genesisModel: 1 | 2;
+  /** Named phenotypes discovered in this world (world v18). */
+  codex: CodexState;
 };
 /**
  * Development v2 inherited marking anchor, derived from one phased two-locus haplotype block.

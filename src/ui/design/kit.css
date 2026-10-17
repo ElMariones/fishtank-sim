@@ -185,6 +185,13 @@ html.has-modal { overflow: hidden; }
   border: 1px solid var(--line-3); color: var(--fg-2); }
 .rarity.rare { border-color: var(--brass-a30); color: var(--brass); background: var(--brass-a12); }
 .rarity.very-rare { border-color: rgb(255 143 200 / .4); color: var(--rose-ink); background: rgb(255 143 200 / .1); box-shadow: 0 0 12px -4px rgb(255 143 200 / .6); }
+.rarity.common { color: var(--fg-3); border-color: var(--line-2, var(--line-3)); opacity: .8; }
+.rarity.uncommon { border-color: rgb(94 240 210 / .35); color: rgb(150 245 222); background: rgb(94 240 210 / .08); }
+.rarity.epic { border-color: rgb(171 152 255 / .55); color: #d6ccff; background: linear-gradient(120deg, rgb(130 100 255 / .22), rgb(200 120 255 / .16)); box-shadow: 0 0 14px -4px rgb(171 120 255 / .8); }
+.rarity.legendary { border-color: rgb(255 214 120 / .7); color: #2a1a00; background: linear-gradient(110deg, #ffd27a, #fff1b8 30%, #ffb347 55%, #ffe6a0 80%, #ffcf6b); background-size: 220% 100%;
+  box-shadow: 0 0 16px -3px rgb(255 200 90 / .85); animation: legendary-sheen 3.2s linear infinite; }
+@keyframes legendary-sheen { from { background-position: 0% 0; } to { background-position: 220% 0; } }
+@media (prefers-reduced-motion: reduce) { .rarity.legendary { animation: none; } }
 .rarity.carrier, .rarity.recorded { border-color: rgb(171 152 255 / .35); color: var(--gene-ink); }
 .pagination { display: flex; align-items: center; justify-content: center; gap: var(--s-3); margin: var(--s-4) 0; font-size: var(--t-xs); color: var(--fg-3); font-variant-numeric: tabular-nums; }
 .pagination button { font-size: var(--t-xs); }

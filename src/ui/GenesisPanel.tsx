@@ -6,6 +6,8 @@ import { alleleCarriers, alleleEffectText, alleleName, carriedAlleles, FINS_TEXT
 import type { Fish, World } from '../core/types';
 import type { Command } from '../core/world';
 import { Icon } from './Icon';
+import { KIND_LABELS, KIND_TEXT } from '../core/alleleRegistry';
+import { bodyPlanFor, SOMATIC_LABELS } from '../core/modules';
 
 type Run = (command: Command, message: string) => World | null;
 const pct = (value: number) => `${Math.round(value * 100)}%`;
@@ -32,7 +34,15 @@ export function GenesisPanel({ world, fish, readOnly, onRun }: { world: World; f
     g.plume ? 'Plume gills (two recessive copies)' : null,
     g.extraDigits ? `${g.extraDigits} extra digit${g.extraDigits === 1 ? '' : 's'} per foot (threshold trait)` : null,
     g.hueShift ? `Hue shifted ${g.hueShift > 0 ? '+' : ''}${Math.round(g.hueShift)}° by new alleles` : null,
+    g.modules?.secondDorsal ? 'Second dorsal fin (duplication module)' : null,
+    g.modules?.wen ? 'Wen over the head (novel module)' : null,
+    g.modules?.bubble ? 'Bubble-eye sacs (two recessive copies)' : null,
+    g.modules?.extraRami ? 'Fourth gill ramus on each side (two recessive copies)' : null,
+    g.modules?.polydactyly ? `Polydactyly: ${g.modules.polydactyly} more digit${g.modules.polydactyly === 1 ? '' : 's'} per foot` : null,
+    g.modules?.crest ? 'Dorsal crest along the back (dominant module)' : null,
+    g.somatic ? `${SOMATIC_LABELS[g.somatic.kind]}: a one-off mark from development, never inherited` : null,
   ].filter((value): value is string => Boolean(value));
+  const plan = g.modules ? bodyPlanFor(p) : [];
   return <div className="trait-block genesis-block">
     <div className="block-title"><Icon name="dna" size={15} /><span className="eyebrow">Genesis development</span></div>
     <ul className="genesis-features">{features.map(feature => <li key={feature}>{feature}</li>)}</ul>
@@ -45,6 +55,14 @@ export function GenesisPanel({ world, fish, readOnly, onRun }: { world: World; f
       <div><dt>Canalization</dt><dd>{pct(g.canalization)} · {g.asymmetry > 0.05 ? 'visibly asymmetric' : g.asymmetry > 0.03 ? 'slightly irregular' : 'tightly symmetric'}<small>low canalization adds noise and lets defects show more strongly</small></dd></div>
       {g.conditionCap < 1 ? <div><dt>Constitution</dt><dd>Condition cannot rise above {pct(g.conditionCap)}</dd></div> : null}
     </dl>
+    {plan.length ? <div className="genesis-plan">
+      <h4>Body plan</h4>
+      <ul className="body-plan">{plan.map(node => <li key={node.id} className={`origin-${node.origin}`} style={{ '--depth': node.parent === null ? 0 : node.parent === 'body' ? 1 : 2 } as React.CSSProperties}>
+        <span>{node.label}{node.count > 1 && !/\d/.test(node.label) ? ` ×${node.count}` : ''}</span>
+        {node.origin !== 'standard' ? <span className={`plan-origin ${node.origin}`}>{node.origin}</span> : null}
+      </li>)}</ul>
+      {g.modules && Object.keys(g.modules.liability).length ? <p className="help-copy">Threshold liability: {Object.entries(g.modules.liability).map(([trait, value]) => `${trait} ${Math.round(value * 100)}%`).join(' · ')}. At 100% a module grows.</p> : null}
+    </div> : null}
     <div className="genesis-load">
       <h4>Genetic load</h4>
       {load.expressed.length ? <ul className="defect-list">{load.expressed.map(site => {
@@ -69,7 +87,7 @@ export function GenesisPanel({ world, fish, readOnly, onRun }: { world: World; f
             ? <form className="allele-rename" onSubmit={event => { event.preventDefault(); if (onRun({ type: 'name-allele', alleleId: allele.definition.id, name: draft }, `Allele named ${draft.trim()}.`)) setRenaming(null); }}>
               <input aria-label="Allele name" value={draft} maxLength={32} autoFocus onChange={event => setDraft(event.target.value)} /><button disabled={!draft.trim()}>Save</button><button type="button" className="quiet" onClick={() => setRenaming(null)}>Cancel</button></form>
             : <b>{alleleName(allele)}{allele.record && !allele.record.named ? <small> (named after the fish where it arose)</small> : null}</b>}
-          <small>{allele.copies === 2 ? 'Two copies' : 'One copy'} at {allele.locusLabel}{allele.arose ? ' · arose in this animal' : ''}</small>
+          <small>{allele.definition.kind ? <span className={`allele-kind ${allele.definition.kind}`} data-tip={KIND_TEXT[allele.definition.kind]}>{KIND_LABELS[allele.definition.kind]}</span> : null}{allele.copies === 2 ? 'Two copies' : 'One copy'} at {allele.locusLabel}{allele.arose ? ' · arose in this animal' : ''}</small>
           <small>{alleleEffectText(allele.definition, species)}</small>
           {carriers ? <small>{carriers.living} living carrier{carriers.living === 1 ? '' : 's'} in this world{carriers.homozygous ? `, ${carriers.homozygous} with two copies` : ''}</small> : null}
           {allele.record && renaming !== allele.definition.id && !readOnly ? <button className="link-button" onClick={() => { setRenaming(allele.definition.id); setDraft(allele.record!.name); }}>Rename allele</button> : null}

@@ -51,10 +51,22 @@ export type Anatomy = {
   /** The first tail lobe; paired and crown tails add `extraLobes` sharing its root. */
   caudal: Caudal;
   extraLobes: Caudal[];
+  /**
+   * Body-plan modules (R-203, Genesis model 2 only; absent otherwise so older fish keep their exact geometry): a second
+   * dorsal fin behind the first, a wen over the head (as an offset of the dorsal outline) and fluid sacs under the eye.
+   */
+  modules?: AnatomyModules;
   /** Conservative: includes fin controls, the eye and the full tail wave. */
   bounds: Bounds;
   /** Developmental constraints applied to keep anatomy attached, in plain language. */
   adjustments: string[];
+};
+
+export type AnatomyModules = {
+  dorsal2: Curve | null;
+  /** Wen cap: points on the dorsal outline and the cap height above each, in BL. */
+  wen: { base: Vec[]; heights: number[] } | null;
+  bubble: { center: Vec; rx: number; ry: number } | null;
 };
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -241,18 +253,44 @@ export function buildAnatomy(p: Phenotype): Anatomy {
     }));
   });
 
-  const df = at(-0.18), dc = at(-0.08), db = at(structure.dorsal === 'reduced' ? 0.1 : 0.3);
+  // A second dorsal fin (module) takes the rear of the dorsal base, so a full first dorsal ends earlier.
+  const plan = p.genesis?.modules, twin = Boolean(plan?.secondDorsal);
+  const dorsalEnd = structure.dorsal === 'reduced' ? 0.1 : twin ? 0.06 : 0.3;
+  const df = at(-0.18), dc = at(-0.08), db = at(dorsalEnd);
   const dorsal = structure.dorsal === 'absent' ? null : {
     start: { x: -0.18, y: df.top + 0.3 * df.half },
     control: { x: -0.08, y: dc.top - p.dorsal * (structure.dorsal === 'reduced' ? 0.35 : 1) },
-    end: { x: structure.dorsal === 'reduced' ? 0.1 : 0.3, y: db.top + 0.3 * db.half },
+    end: { x: dorsalEnd, y: db.top + 0.3 * db.half },
   };
+  let modules: AnatomyModules | undefined;
+  if (plan && (plan.secondDorsal || plan.wen || plan.bubble)) {
+    const s2 = at(0.12), c2 = at(0.24), e2 = at(0.4);
+    const dorsal2 = plan.secondDorsal ? {
+      start: { x: 0.12, y: s2.top + 0.3 * s2.half }, control: { x: 0.24, y: c2.top - Math.max(0.04, p.dorsal) * (0.55 + 0.45 * plan.secondDorsal) }, end: { x: 0.4, y: e2.top + 0.3 * e2.half },
+    } : null;
+    let wen: AnatomyModules['wen'] = null;
+    if (plan.wen) {
+      const from = snoutX + 0.04, to = Math.min(-0.1, eyeX + 0.06 + 0.08 * plan.wen), height = (0.016 + 0.034 * plan.wen) * Math.max(0.6, d / 0.3);
+      const base = Array.from({ length: 13 }, (_, i) => { const x = lerp(from, to, i / 12); return { x, y: at(x).top }; });
+      wen = { base, heights: base.map((_, i) => height * Math.sin(Math.PI * (0.08 + 0.84 * i / 12)) ** 0.7) };
+    }
+    const bubble = plan.bubble ? (() => {
+      const rx = radius * (1.1 + 1.3 * plan.bubble), ry = radius * (0.9 + 1.1 * plan.bubble);
+      return { center: { x: eyeX + radius * 0.2, y: eye.center.y + radius * 0.7 + ry * 0.75 }, rx, ry };
+    })() : null;
+    modules = { dorsal2, wen, bubble };
+  }
   const pf = at(-0.2), pc = at(-0.05), pb = at(0.1);
   const pectoral = { start: { x: -0.2, y: pf.center + 0.3 * pf.half }, control: { x: -0.05, y: pc.bottom + 0.16 * d + p.pectoral }, end: { x: 0.1, y: pb.center + 0.8 * pb.half } };
 
   const lobes = tailFor(p, structure, at(0.42).center, at(0.46).center, d), [caudal, ...extraLobes] = lobes;
 
-  const still = [...top, ...bottom, ...(dorsal ? [dorsal.control] : []), pectoral.control, ...lobes.flatMap(lobe => [lobe.root, lobe.upperInner, lobe.lowerInner]),
+  const moduleExtent = modules ? [
+    ...(modules.dorsal2 ? [modules.dorsal2.control] : []),
+    ...(modules.wen ? modules.wen.base.map((v, i) => ({ x: v.x, y: v.y - modules!.wen!.heights[i] * 1.25 })) : []),
+    ...(modules.bubble ? [{ x: modules.bubble.center.x - modules.bubble.rx, y: modules.bubble.center.y - modules.bubble.ry }, { x: modules.bubble.center.x + modules.bubble.rx, y: modules.bubble.center.y + modules.bubble.ry }] : []),
+  ] : [];
+  const still = [...top, ...bottom, ...moduleExtent, ...(dorsal ? [dorsal.control] : []), pectoral.control, ...lobes.flatMap(lobe => [lobe.root, lobe.upperInner, lobe.lowerInner]),
     ...barbels.flatMap(b => [b.control, b.end]), { x: eyeX - radius, y: eye.center.y - radius }, { x: eyeX + radius, y: eye.center.y + radius }];
   const waving = lobes.flatMap(lobe => [lobe.upperOuter, lobe.upperTip, lobe.notch, lobe.lowerTip, lobe.lowerOuter]);
   const bounds = {
@@ -261,7 +299,7 @@ export function buildAnatomy(p: Phenotype): Anatomy {
     minY: Math.min(...still.map(v => v.y), ...waving.map(v => v.y - TAIL_WAVE)) - BOUNDS_MARGIN,
     maxY: Math.max(...still.map(v => v.y), ...waving.map(v => v.y + TAIL_WAVE)) + BOUNDS_MARGIN,
   };
-  return { version: ANATOMY_VERSION, snoutX, top, bottom, eye, gill, mouth, barbels, dorsal, pectoral, caudal, extraLobes, bounds, adjustments };
+  return { version: ANATOMY_VERSION, snoutX, top, bottom, eye, gill, mouth, barbels, dorsal, pectoral, caudal, extraLobes, ...(modules ? { modules } : {}), bounds, adjustments };
 }
 
 const cache = new WeakMap<Phenotype, Anatomy>();
@@ -280,7 +318,10 @@ export function silhouettePoints(a: Anatomy): Vec[] {
     points.push(...cubicPoints(c.root, c.upperInner, shift(c.upperOuter), shift(c.upperTip), 16), shift(c.notch),
       ...cubicPoints(shift(c.lowerTip), shift(c.lowerOuter), c.lowerInner, c.root, 16));
   }
-  for (const curve of [...(a.dorsal ? [a.dorsal] : []), a.pectoral, ...a.barbels]) points.push(...quadPoints(curve.start, curve.control, curve.end, 16));
+  for (const curve of [...(a.dorsal ? [a.dorsal] : []), ...(a.modules?.dorsal2 ? [a.modules.dorsal2] : []), a.pectoral, ...a.barbels]) points.push(...quadPoints(curve.start, curve.control, curve.end, 16));
+  const wen = a.modules?.wen, bubble = a.modules?.bubble;
+  if (wen) points.push(...wen.base.map((v, i) => ({ x: v.x, y: v.y - wen.heights[i] })));
+  if (bubble) for (let i = 0; i < 16; i++) points.push({ x: bubble.center.x + Math.cos(i / 8 * Math.PI) * bubble.rx, y: bubble.center.y + Math.sin(i / 8 * Math.PI) * bubble.ry });
   for (let i = 0; i < 16; i++) {
     const angle = (i / 16) * Math.PI * 2;
     points.push({ x: a.eye.center.x + Math.cos(angle) * a.eye.radius, y: a.eye.center.y + Math.sin(angle) * a.eye.radius });

@@ -31,13 +31,13 @@ function goldfishPair(): { world: World; mother: Fish; father: Fish } {
 describe('goldfish in the world (v17)', () => {
   it('opens new worlds with a valid goldfish counter and an empty goldfish atlas', () => {
     const world = createWorld(NOW, 481516, GENOME_VERSION);
-    expect(world.version).toBe(WORLD_VERSION); expect(WORLD_VERSION).toBe(17);
+    expect(world.version).toBe(WORLD_VERSION); expect(WORLD_VERSION).toBe(18);
     expect(world.goldfishShop.listings).toHaveLength(GOLDFISH_SHOP_SIZE);
     for (const listing of world.goldfishShop.listings) {
       expect(goldfishListingProblem(listing)).toBeNull();
       expect(listing.price).toBeGreaterThan(FOUNDER_RESALE_CAP);
     }
-    expect(world.atlas.goldfish.evidence).toHaveLength(72);
+    expect(world.atlas.goldfish.evidence).toHaveLength(78);
     expect(roundTrip(world)).toEqual(world);
   });
 
@@ -102,19 +102,21 @@ describe('goldfish in the world (v17)', () => {
 
   it('migrates a world v16 save: goldfish atlas and counter are added, nothing else changes', () => {
     const world = createWorld(NOW, 99, GENOME_VERSION);
-    const { goldfishShop: _shop, ...rest } = world, { goldfish: _atlas, ...atlas } = world.atlas;
-    const v16 = { ...rest, version: 16, atlas };
+    const { goldfishShop: _shop, genesisModel: _model, codex: _codex, ...rest } = world, { goldfish: _atlas, ...atlas } = world.atlas;
+    // A world v16 atlas holds 72 loci per species (world v18 appends the Body plan loci).
+    const legacy = (entry: typeof atlas.koi) => ({ ...entry, evidence: entry.evidence.slice(0, 72), stage: entry.stage.slice(0, 72) });
+    const v16 = { ...rest, version: 16, atlas: { ...atlas, koi: legacy(atlas.koi), axolotl: legacy(atlas.axolotl) } };
     const migrated = decodeSave(JSON.stringify(v16));
-    expect(migrated.version).toBe(17);
+    expect(migrated.version).toBe(18); expect(migrated.genesisModel).toBe(1); expect(migrated.atlas.koi.evidence).toHaveLength(78);
     expect(migrated.fish).toEqual(world.fish); expect(migrated.credits).toBe(world.credits); expect(migrated.shop).toEqual(world.shop);
     expect(migrated.goldfishShop.listings).toHaveLength(GOLDFISH_SHOP_SIZE);
     expect(migrated.atlas.goldfish.stage.every(stage => stage === 0)).toBe(true);
     expect(roundTrip(migrated)).toEqual(migrated);
-    // A runtime saved at v16 rebases onto v17 and keeps the stock its own replay delivered.
+    // A runtime saved at v16 rebases onto v18, keeps the stock its own replay delivered and moves to Genesis model 2.
     const runtime = createRuntime(migrated, 'legacy');
     const stored = { ...runtime, world: v16, checkpoint: { ...runtime.checkpoint, world: v16 } };
     const restored = decodeRuntime(JSON.stringify(stored));
-    expect(restored.world.version).toBe(17); expect(restored.world.fish).toEqual(world.fish);
+    expect(restored.world.version).toBe(18); expect(restored.world.fish).toEqual(world.fish); expect(restored.world.genesisModel).toBe(2);
   });
 
   it('rejects a goldfish whose species does not match its genome', () => {

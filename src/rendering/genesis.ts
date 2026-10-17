@@ -131,3 +131,71 @@ export function shiftHue(color: string, degrees: number): string {
   const hue = ((Number(match[1]) + degrees) % 360 + 360) % 360;
   return color.replace(match[0], `hsl(${hue.toFixed(1)} `);
 }
+
+// ── Renderer v9: Genesis model 2 modules and somatic marks (R-203). Skipped entirely when a phenotype has none. ──────────
+
+/** A raspberry-like wen over the head: overlapping lobes riding the dorsal outline. */
+export function drawWen(ctx: CanvasRenderingContext2D, wen: { base: readonly Vec[]; heights: readonly number[] }, at: At, l: number, color: string, seed: number) {
+  const rng = random(hash(`genesis-wen:${seed}`));
+  ctx.save();
+  for (let pass = 0; pass < 2; pass++) {
+    wen.base.forEach((point, i) => {
+      const h = wen.heights[i];
+      if (h <= 0.002) return;
+      const [x, y] = at({ x: point.x + (rng() - 0.5) * 0.01, y: point.y - h * (pass ? 0.75 : 0.45) });
+      const r = Math.max(0.8, l * h * (pass ? 0.42 : 0.62));
+      const lobe = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.1, x, y, r);
+      lobe.addColorStop(0, 'rgba(255,238,220,0.95)'); lobe.addColorStop(0.45, color); lobe.addColorStop(1, color);
+      ctx.fillStyle = lobe; ctx.globalAlpha = pass ? 0.9 : 0.95;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    });
+  }
+  ctx.restore();
+}
+
+/** A translucent fluid sac below the eye. */
+export function drawBubbleSac(ctx: CanvasRenderingContext2D, bubble: { center: Vec; rx: number; ry: number }, at: At, l: number, time: number) {
+  const [x, y] = at(bubble.center), wobble = 1 + Math.sin(time * 1.7) * 0.025, rx = bubble.rx * l * wobble, ry = bubble.ry * l / wobble;
+  ctx.save();
+  const sac = ctx.createRadialGradient(x - rx * 0.35, y - ry * 0.4, 0, x, y, Math.max(rx, ry));
+  sac.addColorStop(0, 'rgba(250,252,255,0.75)'); sac.addColorStop(0.55, 'rgba(214,232,244,0.42)'); sac.addColorStop(1, 'rgba(170,200,222,0.5)');
+  ctx.fillStyle = sac; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(240,250,255,0.6)'; ctx.lineWidth = Math.max(0.6, l * 0.004); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.ellipse(x - rx * 0.38, y - ry * 0.42, rx * 0.16, ry * 0.1, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+export type SomaticDraw = { kind: 'mosaic' | 'birthmark'; size: number; hue: number; shape: 'blot' | 'star' | 'crescent' | 'ring' };
+/**
+ * A somatic mark at (x, y) in pixels inside an already-clipped body: a mosaic sector recolors a soft patch with a
+ * hue-rotated version of the skin color; a birthmark is a small star, crescent or ring.
+ */
+export function drawSomatic(ctx: CanvasRenderingContext2D, mark: SomaticDraw, x: number, y: number, l: number, skin: string) {
+  ctx.save();
+  if (mark.kind === 'mosaic') {
+    const r = mark.size * l, patch = ctx.createRadialGradient(x, y, r * 0.35, x, y, r);
+    const color = /^hsl\(/.test(skin) ? shiftHue(skin, mark.hue) : `hsl(${((mark.hue % 360) + 360) % 360} 55% 55%)`;
+    patch.addColorStop(0, color); patch.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.72; ctx.fillStyle = patch;
+    ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.7, mark.hue / 90, 0, Math.PI * 2); ctx.fill();
+  } else {
+    const r = Math.max(1.4, mark.size * l), dark = mark.hue > 0;
+    ctx.fillStyle = dark ? 'rgba(28,22,30,0.72)' : 'rgba(255,250,236,0.85)'; ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = Math.max(0.8, r * 0.35);
+    ctx.beginPath();
+    if (mark.shape === 'star') {
+      for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+      ctx.closePath(); ctx.fill();
+    } else if (mark.shape === 'crescent') {
+      ctx.arc(x, y, r, 0.6, Math.PI * 2 - 0.6); ctx.arc(x + r * 0.45, y, r * 0.75, Math.PI * 2 - 0.9, 0.9, true); ctx.closePath(); ctx.fill();
+    } else { ctx.arc(x, y, r * 0.8, 0, Math.PI * 2); ctx.stroke(); }
+  }
+  ctx.restore();
+}
+
+/** Body-space position of a somatic mark from its (u, v) on an outline: u 0 snout … 1 peduncle, v −1 dorsal … 1 ventral. */
+export function somaticPoint(top: readonly Vec[], bottom: readonly Vec[], fromX: number, toX: number, u: number, v: number): Vec {
+  const x = fromX + (toX - fromX) * u;
+  const t = top.find(point => point.x >= x) ?? top[top.length - 1], b = bottom.find(point => point.x >= x) ?? bottom[bottom.length - 1];
+  const center = (t.y + b.y) / 2, half = Math.abs(b.y - t.y) / 2;
+  return { x, y: center + v * half * 0.8 };
+}

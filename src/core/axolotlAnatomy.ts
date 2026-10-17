@@ -25,8 +25,8 @@ export type AxolotlRenderPhenotype = {
     body: { length: number; width: number; depth: number; taper: number; flex: number; mass: number };
     head: { width: number; length: number; snoutRoundness: number; mouthWidth: number; jawDepth: number; neckWidth: number };
     limbs: { foreLength: number; hindLength: number; thickness: number; digitLength: number; digitSpread: number; frontDigits: number; rearDigits: number };
-    tail: { length: number; height: number; taper: number; finHeight: number; finReach: number; wave: number };
-    gills: { stalkLength: number; branchCount: number; filamentLength: number; angleDeg: number; saturation: number; oxygenEfficiency: number };
+    tail: { length: number; height: number; taper: number; finHeight: number; finReach: number; wave: number; crest?: number; crestReach?: number };
+    gills: { stalkLength: number; branchCount: number; filamentLength: number; angleDeg: number; saturation: number; oxygenEfficiency: number; rami?: number };
     eyes: { size: number; spacing: number; height: number; pupilRatio: number };
   };
   pigmentation: {
@@ -72,6 +72,9 @@ export type AxolotlShape = {
   tailFin: number;
   tailFinReach: number;
   tailWave: number;
+  /** Genesis model 2 dorsal crest module (R-203): membrane height and how far toward the head it reaches, 0–1. */
+  dorsalCrest?: number;
+  dorsalCrestReach?: number;
   gillLength: number;
   gillSpread: number;
   gillThickness: number;
@@ -210,6 +213,7 @@ export function sanitizeAxolotlShape(input: Partial<AxolotlShape>): AxolotlShape
     tailTaper: unit(input.tailTaper ?? d.tailTaper, d.tailTaper),
     tailFin: unit(input.tailFin ?? d.tailFin, d.tailFin),
     tailFinReach: unit(input.tailFinReach ?? d.tailFinReach, d.tailFinReach),
+    ...(input.dorsalCrest ? { dorsalCrest: unit(input.dorsalCrest, 0), dorsalCrestReach: unit(input.dorsalCrestReach ?? 0, 0) } : {}),
     tailWave: unit(input.tailWave ?? d.tailWave, d.tailWave),
     gillLength: unit(input.gillLength ?? d.gillLength, d.gillLength),
     gillSpread: unit(input.gillSpread ?? d.gillSpread, d.gillSpread),
@@ -299,11 +303,12 @@ export function axolotlShapeFromPhenotype(p: AxolotlRenderPhenotype): AxolotlSha
     tailTaper: norm(m.tail.taper, 0.22, 0.8),
     tailFin: norm(m.tail.finHeight, 0.05, 0.24),
     tailFinReach: norm(m.tail.finReach, 0.42, 0.95),
+    ...(m.tail.crest ? { dorsalCrest: m.tail.crest, dorsalCrestReach: m.tail.crestReach ?? 0 } : {}),
     tailWave: norm(m.tail.wave, -0.16, 0.16),
     gillLength: norm(m.gills.stalkLength, 0.07, 0.25),
     gillSpread: norm(m.gills.angleDeg, 18, 73),
     gillThickness: clamp(0.3 + norm(m.gills.branchCount, 4, 15) * 0.5),
-    gillStalkCount: 3,
+    gillStalkCount: m.gills.rami ?? 3,
     gillBranchCount: m.gills.branchCount,
     gillFrondDensity: norm(m.gills.branchCount, 4, 15),
     gillFilamentLength: norm(m.gills.filamentLength, 0.025, 0.13),
@@ -536,10 +541,13 @@ export function buildAxolotlAnatomy(input: AxolotlShapeInput): AxolotlAnatomy {
   const fin = 0.04 + p.tailFin * 0.115;
   const finStart = 0.22 - p.tailFinReach * 0.2;
   const crest = { x: tailBaseX + 0.25, y: -tailHalf - fin + flexY * 0.24 };
+  // A dorsal crest module moves the membrane's start toward the neck and raises it along the back.
+  const crestHeight = (p.dorsalCrest ?? 0) * 0.055;
+  const dorsalStart = crestHeight ? lerp(finStart, neckX + 0.05, p.dorsalCrestReach ?? 0) : finStart;
   const dorsalFin = [
-    ...cubic({ x: finStart, y: -torsoHalf * 0.9 },
-      { x: finStart + 0.17, y: -torsoHalf * 0.9 },
-      { x: tailBaseX, y: crest.y }, crest),
+    ...cubic({ x: dorsalStart, y: -torsoHalf * 0.9 },
+      { x: dorsalStart + 0.17, y: -torsoHalf * 0.9 - crestHeight * 1.6 },
+      { x: tailBaseX, y: crest.y - crestHeight * 0.6 }, crest),
     ...cubic(crest, { x: tailTipX - 0.35, y: crest.y },
       { x: tailTipX - 0.035, y: -0.065 }, tip).slice(1),
   ];

@@ -8,6 +8,8 @@ import type { AxolotlGenome } from './axolotlGenetics';
 import { GOLDFISH_LOCUS_REGISTRY } from './goldfishCatalog';
 import { goldfishDominance, goldfishPair, type GoldfishGenome } from './goldfishGenetics';
 import type { Fish, Genome, Species, World } from './types';
+import { modulesOf } from './genetics';
+import { moduleLoci, MODULE_INDEX_OFFSET } from './modules';
 
 /**
  * Genome Atlas v1 (world v16). In discovery mode a species' loci start unidentified, and the player learns them the way a
@@ -34,7 +36,9 @@ export type AtlasState = { model: 1; mode: AtlasMode; koi: AtlasSpecies; axolotl
 /** A named open-ended allele. Its value and effects live in every genome that carries it; this holds the name. */
 export type AlleleRecord = { id: number; species: Species; locus: number; origin: string; name: string; named: boolean };
 
-export const ATLAS_LOCI = 72;
+/** World v17 atlases hold 72 loci per species; world v18 appends six Body plan module loci (78). */
+export const LEGACY_ATLAS_LOCI = 72;
+export const ATLAS_LOCI = 78;
 export const STAGE_EVIDENCE = [0, 16, 48] as const;
 /** Informative meioses with a neighbouring locus needed to place a characterized locus on its chromosome map. */
 export const MAP_MEIOSES = 40;
@@ -47,6 +51,9 @@ export const MAX_ALLELE_RECORDS = 4000;
 export const STAGE_LABELS = ['Unidentified', 'Trait identified', 'Inheritance known', 'Mapped'] as const;
 
 export const emptySpecies = (): AtlasSpecies => ({ evidence: Array(ATLAS_LOCI).fill(0), stage: Array(ATLAS_LOCI).fill(0), links: {}, defects: [] });
+/** World v18 migration: a 72-locus atlas gains the Body plan loci at zero evidence. */
+export const padSpecies = (entry: AtlasSpecies): AtlasSpecies => entry.evidence.length >= ATLAS_LOCI ? entry
+  : { ...entry, evidence: [...entry.evidence, ...Array(ATLAS_LOCI - entry.evidence.length).fill(0)], stage: [...entry.stage, ...Array(ATLAS_LOCI - entry.stage.length).fill(0)] };
 export const initialAtlas = (mode: AtlasMode): AtlasState => ({ model: 1, mode, koi: emptySpecies(), axolotl: emptySpecies(), sequenced: [], goldfish: emptySpecies() });
 
 export type AtlasLocus = {
@@ -78,10 +85,31 @@ export const GOLDFISH_ATLAS: readonly AtlasLocus[] = GOLDFISH_LOCUS_REGISTRY.map
   index, id: entry.id, label: entry.label, chromosome: GOLDFISH_CHROMOSOME_IDS.indexOf(entry.chromosomeId) + 1, chromosomeLabel: entry.chromosomeLabel,
   position: index % 6, dominance: goldfishDominance(index), categorical: goldfishDominance(index) === null, visibility: GOLDFISH_VISIBILITY[entry.chromosomeId] ?? 0.6,
 }));
-export const atlasLoci = (species: Species) => species === 'koi' ? KOI_ATLAS : species === 'axolotl' ? AXOLOTL_ATLAS : GOLDFISH_ATLAS;
+/** Chromosome 13, Body plan (world v18): module loci follow the 72 locus arrays in Atlas numbering. */
+const moduleAtlas = (species: Species): AtlasLocus[] => moduleLoci(species).map((entry, k) => ({
+  index: MODULE_INDEX_OFFSET + k, id: `module:${entry.id}`, label: entry.label, chromosome: 13, chromosomeLabel: 'Body plan', position: k,
+  dominance: null, categorical: true, visibility: 0.9,
+}));
+const KOI_FULL = [...KOI_ATLAS, ...moduleAtlas('koi')], AXOLOTL_FULL = [...AXOLOTL_ATLAS, ...moduleAtlas('axolotl')], GOLDFISH_FULL = [...GOLDFISH_ATLAS, ...moduleAtlas('goldfish')];
+export const atlasLoci = (species: Species): readonly AtlasLocus[] => species === 'koi' ? KOI_FULL : species === 'axolotl' ? AXOLOTL_FULL : GOLDFISH_FULL;
+export const isModuleLocus = (index: number) => index >= MODULE_INDEX_OFFSET;
+
+/** The two allele IDs a fish carries at an atlas index: a locus array position, or a Body plan module gene. */
+export function atlasAlleles(fish: Pick<Fish, 'genome' | 'species'>, index: number): [number, number] | null {
+  if (index >= MODULE_INDEX_OFFSET) {
+    if (!fish.genome.genesis) return null;
+    const modules = modulesOf(fish.genome), k = index - MODULE_INDEX_OFFSET;
+    return k < modules.maternal.length ? [modules.maternal[k], modules.paternal[k]] : null;
+  }
+  return index < fish.genome.maternal.length ? [fish.genome.maternal[index], fish.genome.paternal[index]] : null;
+}
 
 /** How a genome's two copies at one locus read for the atlas: comparable values, or categorical identities. */
 function values(fish: Fish): (index: number) => [number, number] | null {
+  const read = valuesAt(fish);
+  return index => index >= MODULE_INDEX_OFFSET ? atlasAlleles(fish, index) : read(index);
+}
+function valuesAt(fish: Fish): (index: number) => [number, number] | null {
   const genome = fish.genome;
   if (fish.species === 'goldfish') {
     const goldfish = genome as GoldfishGenome, pair = goldfishPair(goldfish);
@@ -104,16 +132,17 @@ function values(fish: Fish): (index: number) => [number, number] | null {
 function informative(fish: Fish, locus: AtlasLocus, read: (index: number) => [number, number] | null): boolean {
   const pair = read(locus.index);
   if (!pair) return false;
-  const ids = [fish.genome.maternal[locus.index], fish.genome.paternal[locus.index]];
-  if (ids[0] === ids[1]) return false;
+  const ids = atlasAlleles(fish, locus.index);
+  if (!ids || ids[0] === ids[1]) return false;
   if (locus.categorical) return true;
   return Math.abs(pair[0] - pair[1]) >= (fish.species === 'koi' ? 0.8 : 0.3);
 }
 
 /** Which parental homolog (0 maternal, 1 paternal) a child copy carries at a locus, or null when it cannot be told. */
 function transmitted(parent: Fish, child: Fish, copy: 'maternal' | 'paternal', index: number): 0 | 1 | null {
-  if (index >= parent.genome.maternal.length || index >= child.genome[copy].length) return null;
-  const allele = child.genome[copy][index], m = parent.genome.maternal[index], p = parent.genome.paternal[index];
+  const from = atlasAlleles(parent, index), to = atlasAlleles(child, index);
+  if (!from || !to) return null;
+  const allele = to[copy === 'maternal' ? 0 : 1], [m, p] = from;
   if (m === p) return null;
   return allele === m ? 0 : allele === p ? 1 : null;
 }
@@ -123,9 +152,10 @@ export type Observation = { atlas: AtlasState; discoveries: string[] };
 /**
  * Learn from one family's hatched offspring. Pure: returns the updated atlas and plain-language discoveries.
  */
-export function observeFamily(atlas: AtlasState, mother: Fish, father: Fish, offspring: readonly Fish[]): Observation {
+export function observeFamily(atlas: AtlasState, mother: Fish, father: Fish, offspring: readonly Fish[], modules = false): Observation {
   if (!offspring.length || mother.species !== father.species) return { atlas, discoveries: [] };
-  const species = mother.species, loci = atlasLoci(species), before = atlas[species];
+  // Body plan loci are observed only under Genesis model 2 (world v18), so model 1 journals replay unchanged.
+  const species = mother.species, loci = modules ? atlasLoci(species) : atlasLoci(species).filter(locus => !isModuleLocus(locus.index)), before = atlas[species];
   const next: AtlasSpecies = { evidence: [...before.evidence], stage: [...before.stage], links: { ...before.links }, defects: [...before.defects] };
   const discoveries: string[] = [];
   const sequenced = new Set(atlas.sequenced), sample = Math.min(offspring.length, CLUTCH_SAMPLE);

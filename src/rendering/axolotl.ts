@@ -13,6 +13,7 @@ import {
 } from '../core/axolotlAnatomy';
 import { axolotlPose, type AxolotlMotion } from '../core/axolotlPose';
 import type { GenesisTraits } from '../core/genesis';
+import { drawSomatic, somaticPoint } from './genesis';
 
 /** Genesis (axolotl genome v2) traits ride on the phenotype; plain shapes and genome v1 animals have none. */
 const genesisOf = (input: AxolotlShapeInput): GenesisTraits | undefined => (input as { genesis?: GenesisTraits }).genesis;
@@ -314,6 +315,11 @@ export function drawAxolotl(
       ctx.beginPath(); ctx.ellipse(px, py, l * (0.025 + blotch() * 0.04), l * (0.014 + blotch() * 0.02), blotch() * 3, 0, Math.PI * 2); ctx.fill();
     }
     ctx.globalAlpha = 1;
+  }
+  // Genesis model 2 somatic mark on the torso.
+  if (genesis?.somatic) {
+    const [sx, sy] = at(somaticPoint(a.top, a.bottom, a.top[0].x + 0.12, 0.45, genesis.somatic.u, genesis.somatic.v));
+    drawSomatic(ctx, genesis.somatic, sx, sy, l, p.baseColor);
   }
   if (detail.finRays && p.texture > 0.05) {
     ctx.globalAlpha = 0.05 + p.texture * 0.09;

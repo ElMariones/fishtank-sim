@@ -7,6 +7,8 @@ import { AXOLOTL_SHOP_MODEL } from './axolotlShop';
 import { TICKS_PER_GAME_DAY } from './water';
 import { applyCommand, commandSchema, WORLD_VERSION, type Command } from './world';
 import type { World } from './types';
+import { discover } from './codex';
+import { isEgg } from './development';
 import { offlineWindow, TICK_MS, timelineSegments, type OfflineWindow } from '../simulation/time';
 
 export { TICK_MS };
@@ -160,6 +162,7 @@ export function decodeRuntime(raw: string): Runtime {
     world.shop = { ...world.shop, model: SHOP_MODEL };
     // Genesis: from the rebase on, the axolotl counter delivers genome v2 stock too.
     world.axolotlShop = { ...world.axolotlShop, model: AXOLOTL_SHOP_MODEL };
+    Object.assign(world, toGenesisModel2(world));
     return { ...replayed, world, tick: parsed.tick, simulation, checkpoint: { world, tick: parsed.tick, revision: parsed.revision }, events: [] };
   }
   return { ...replayed, world, tick: parsed.tick, simulation };
@@ -212,6 +215,17 @@ export function importRuntime(raw: string, legacyWorldId: string): Runtime {
   // A bare save has no journal to replay, so it moves to the current naming and shop models at once.
   const world = decodeSave(raw), source = Number((parsed as { version?: unknown } | null)?.version);
   // A Genesis-era (v16) bare world keeps the shop models it chose; older worlds move to Genesis stock.
-  if (source >= WORLD_VERSION) return createRuntime({ ...world, naming: NAMING_MODEL }, legacyWorldId);
-  return createRuntime({ ...world, naming: NAMING_MODEL, shop: { ...world.shop, model: SHOP_MODEL }, axolotlShop: { ...world.axolotlShop, model: AXOLOTL_SHOP_MODEL } }, legacyWorldId);
+  if (source >= 17) return createRuntime(toGenesisModel2({ ...world, naming: NAMING_MODEL }), legacyWorldId);
+  return createRuntime(toGenesisModel2({ ...world, naming: NAMING_MODEL, shop: { ...world.shop, model: SHOP_MODEL }, axolotlShop: { ...world.axolotlShop, model: AXOLOTL_SHOP_MODEL } }), legacyWorldId);
+}
+
+/**
+ * A Genesis-era world that migrated at model 1 moves to model 2 when it rebases: from then on its births add module genes
+ * and enriched alleles, and the Codex credits the animals it already bred. Research worlds (no Genesis genomes) stay at
+ * model 1.
+ */
+export function toGenesisModel2(world: World): World {
+  if (world.genesisModel === 2 || !world.fish.some(fish => fish.genome.genesis)) return world;
+  const bred = world.fish.filter(fish => fish.generation > 0 && !isEgg(fish.life));
+  return { ...world, genesisModel: 2, codex: discover(world.codex, bred, world.circuit.day) };
 }

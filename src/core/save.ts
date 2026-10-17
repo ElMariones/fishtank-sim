@@ -5,11 +5,12 @@ import { z } from 'zod';
 import { BLOCKER_CODES, CLUTCH_SIZES, CLUTCH_STAGES, idleBreeding, reservedPlaces } from './breeding';
 import { defaultCare, RATION_KEYS, THERMOSTAT_RANGE } from './care';
 import { ALL_LOCI, APPEARANCE_LOCI, GENOME_LOCI, LOCI, LOCI_PER_GENOME } from './catalog';
-import { ATLAS_LOCI, emptySpecies, initialAtlas, MAX_ALLELE_RECORDS, MAX_SEQUENCED } from './atlas';
+import { ATLAS_LOCI, emptySpecies, initialAtlas, LEGACY_ATLAS_LOCI, MAX_ALLELE_RECORDS, MAX_SEQUENCED, padSpecies } from './atlas';
+import { CODEX_BY_KEY, emptyCodex } from './codex';
 import { GOLDFISH_LOCI_COUNT, GOLDFISH_RECESSIVES } from './goldfishCatalog';
 import { goldfishGenomeProblem, isGoldfishGenome } from './goldfishGenetics';
 import { GOLDFISH_SHOP_SIZE, goldfishListingProblem, initialGoldfishShop } from './goldfishShop';
-import { CHANNELS, MAX_LOAD_PER_COPY, MAX_NOVEL_PER_GENOME, NOVEL_ID_MIN } from './genesis';
+import { ALL_CHANNELS, ALLELE_KINDS, MAX_LOAD_PER_COPY, MAX_NOVEL_PER_GENOME, NOVEL_ID_MIN } from './genesis';
 import { AXOLOTL_V2_LOCI_COUNT } from './axolotlCatalog';
 import { genomeProblem } from './registry';
 import { MAX_ORIGINS_PER_FISH, ORIGIN_ID_PATTERN, originProblem, reconstructOrigins } from './origins';
@@ -38,8 +39,13 @@ const genesisBlock = z.object({
   novel: z.array(z.object({
     id: z.number().int().min(NOVEL_ID_MIN).max(NOVEL_MAX), locus: z.number().int().min(0).max(80), parent: z.number().int().min(0).max(NOVEL_MAX),
     value: z.number().min(-10).max(10), potency: z.number().min(0.01).max(2),
-    effects: z.object(Object.fromEntries(CHANNELS.map(channel => [channel, z.number().min(-1).max(1).optional()])) as Record<typeof CHANNELS[number], z.ZodOptional<z.ZodNumber>>).strict(),
+    effects: z.object(Object.fromEntries(ALL_CHANNELS.map(channel => [channel, z.number().min(-1).max(1).optional()])) as Record<typeof ALL_CHANNELS[number], z.ZodOptional<z.ZodNumber>>).strict(),
+    // Genesis model 2 (world v18) records how an allele arose; model 1 alleles have no kind.
+    kind: z.enum(ALLELE_KINDS as [typeof ALLELE_KINDS[number], ...typeof ALLELE_KINDS[number][]]).optional(),
   }).strict()).max(MAX_NOVEL_PER_GENOME),
+  // Genesis model 2 (world v18): module genes on the Body plan chromosome. The registry validates counts per species.
+  model: z.literal(2).optional(),
+  modules: z.object({ maternal: z.array(z.number().int().min(0).max(3)).max(8), paternal: z.array(z.number().int().min(0).max(3)).max(8) }).strict().optional(),
 }).strict();
 const fishIdSchema = z.string().regex(/^FSH-\d{6}$/);
 /** Genome v1 records stay valid unchanged; genome v2 records carry the appended Color and Ornament loci. */
@@ -196,11 +202,20 @@ const fishV16 = z.object({ ...fishRecordV13, mutations: z.array(mutationV16).max
 const competitionRunV16 = competitionRun.extend({ participants: z.array(competitionRun.shape.participants.element.extend({ fish: fishV16 }).strict()).min(9).max(10) }).strict();
 const circuitV16 = circuit.extend({ active: competitionRunV16.nullable(), history: z.array(competitionRunV16).max(MAX_COMPETITION_HISTORY) }).strict();
 const atlasSpecies = z.object({
-  evidence: z.array(z.number().min(0).max(1e9)).length(ATLAS_LOCI), stage: z.array(z.number().int().min(0).max(3)).length(ATLAS_LOCI),
+  evidence: z.array(z.number().min(0).max(1e9)).length(LEGACY_ATLAS_LOCI), stage: z.array(z.number().int().min(0).max(3)).length(LEGACY_ATLAS_LOCI),
   links: z.record(z.string().regex(/^\d{1,2}-\d{1,2}$/), z.tuple([z.number().int().min(0), z.number().int().min(0)])), defects: z.array(z.number().int().min(1).max(64)).max(64),
 }).strict();
 const atlas = z.object({ model: z.literal(1), mode: z.enum(['discovery', 'scientist']), koi: atlasSpecies, axolotl: atlasSpecies, sequenced: z.array(fishIdSchema).max(MAX_SEQUENCED) }).strict();
 const atlasV17 = atlas.extend({ goldfish: atlasSpecies }).strict();
+/** World v18 atlases append the six Body plan module loci. */
+const atlasSpeciesV18 = atlasSpecies.extend({
+  evidence: z.array(z.number().min(0).max(1e9)).length(ATLAS_LOCI), stage: z.array(z.number().int().min(0).max(3)).length(ATLAS_LOCI),
+}).strict();
+const atlasV18 = atlasV17.extend({ koi: atlasSpeciesV18, axolotl: atlasSpeciesV18, goldfish: atlasSpeciesV18 }).strict();
+const codex = z.object({
+  model: z.literal(1),
+  entries: z.array(z.object({ key: z.string().max(60), fishId: fishIdSchema, day: z.number().int().min(0).max(10_000_000) }).strict()).max(CODEX_BY_KEY.size),
+}).strict();
 const alleleRecords = z.array(z.object({
   id: z.number().int().min(NOVEL_ID_MIN).max(NOVEL_MAX), species: z.enum(['koi', 'axolotl']), locus: z.number().int().min(0).max(80), origin: fishIdSchema,
   name: z.string().trim().min(1).max(32), named: z.boolean(),
@@ -223,6 +238,9 @@ const goldfishShop = z.object({
   model: z.literal(1), nextListing: z.number().int().positive(), refreshedDay: z.number().int().min(0).max(1e12), listings: z.array(goldfishListing).max(GOLDFISH_SHOP_SIZE),
 }).strict();
 const schema = z.discriminatedUnion('version', [
+  // World v18 adds Genesis model 2, the Codex and the Body plan atlas loci.
+  z.object({ ...worldV13, version: z.literal(18), fish: z.array(fishV17).max(MAX_RECORDS), clutches: z.array(clutchV17).max(MAX_RECORDS), ledger: ledgerV16, shop: shopV16,
+    axolotlShop: axolotlShopV16, circuit: circuitV17, alleles: alleleRecordsV17, atlas: atlasV18, goldfishShop, genesisModel: z.union([z.literal(1), z.literal(2)]), codex }),
   // World v17 adds goldfish: a third species, its own shop counter (appended last) and its own atlas.
   z.object({ ...worldV13, version: z.literal(17), fish: z.array(fishV17).max(MAX_RECORDS), clutches: z.array(clutchV17).max(MAX_RECORDS), ledger: ledgerV16, shop: shopV16,
     axolotlShop: axolotlShopV16, circuit: circuitV17, alleles: alleleRecordsV17, atlas: atlasV17, goldfishShop }),
@@ -285,13 +303,14 @@ export function decodeSave(raw: string): World {
   let world: World;
   // Worlds v1–v16 predate goldfish: the goldfish atlas opens empty and the goldfish counter opens with a day-0 delivery,
   // appended last. When the runtime rebases an older world it keeps the stock the world's own replay delivered instead.
-  const goldfishFields = (old: World): World => ({ ...old, version: 17, atlas: { ...old.atlas, goldfish: emptySpecies() }, goldfishShop: initialGoldfishShop(old.seed) });
+  const goldfishFields = (old: World): World => ({ ...old, version: 17 as never, atlas: { ...old.atlas, goldfish: emptySpecies() }, goldfishShop: initialGoldfishShop(old.seed) });
   // Worlds v1–v15 predate Genesis: research spending opens at zero, the allele registry is empty and the atlas opens in
   // scientist mode, so an existing world keeps showing every locus it always showed.
   const genesisFields = (old: Omit<World, 'version' | 'alleles' | 'atlas'>): World => ({
     ...old, version: 16, ledger: { ...old.ledger, totals: { ...old.ledger.totals, research: 0 } }, alleles: [], atlas: initialAtlas('scientist'),
   } as unknown as World);
-  if (parsed.version === 17) world = parsed as unknown as World;
+  if (parsed.version === 18) world = parsed as unknown as World;
+  else if (parsed.version === 17) world = parsed as unknown as World;
   else if (parsed.version === 16) world = parsed as unknown as World;
   else if (parsed.version === 15) world = genesisFields(parsed as unknown as World);
   else if (parsed.version === 14) world = genesisFields({ ...parsed, circuit: initialCircuit() } as unknown as World);
@@ -339,6 +358,12 @@ export function decodeSave(raw: string): World {
     });
   }
   if (parsed.version < 17) world = goldfishFields({ ...world, version: 16 } as unknown as World);
+  // Worlds v1-v17 open at Genesis model 1 with an empty Codex and pad their atlas with the Body plan loci, so their
+  // journals replay unchanged; the runtime moves them to model 2 when it rebases.
+  if (parsed.version < 18) {
+    const old = world as unknown as Omit<World, 'genesisModel' | 'codex'>;
+    world = { ...old, version: 18, atlas: { ...old.atlas, koi: padSpecies(old.atlas.koi), axolotl: padSpecies(old.atlas.axolotl), goldfish: padSpecies(old.atlas.goldfish) }, genesisModel: 1, codex: emptyCodex() } as World;
+  }
   world.tanks = world.tanks.map(tank => ({ ...tank, decorations: decorationsOf(tank) }));
   for (const tank of world.tanks) {
     validateLayout(decorationsOf(tank));
@@ -450,6 +475,12 @@ export function decodeSave(raw: string): World {
     alleleIds.add(record.id);
   }
   if (new Set(world.atlas.sequenced).size !== world.atlas.sequenced.length || world.atlas.sequenced.some(id => !ids.has(id))) throw new Error('Invalid sequencing record.');
+  const codexKeys = new Set<string>();
+  for (const entry of world.codex.entries) {
+    const definition = CODEX_BY_KEY.get(entry.key), fish = ids.get(entry.fishId);
+    if (!definition || codexKeys.has(entry.key) || !fish || fish.species !== definition.species) throw new Error('Invalid Codex record.');
+    codexKeys.add(entry.key);
+  }
   return world;
 }
 

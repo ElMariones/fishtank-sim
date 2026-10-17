@@ -1,3 +1,4 @@
+import { RarityChip } from './RarityPanel';
 import type { Fish } from '../core/types';
 import { isEgg } from '../core/development';
 import { SexMark } from './Controls';
@@ -39,6 +40,7 @@ export function FishCard({ fish, view, selected, inBatch, batchMode, favorite, r
     <span className="card-tags" aria-hidden="true">
       <span className="generation">G{fish.generation}</span>
       {rank !== undefined ? <span className="rank-chip mono">#{rank}</span> : null}
+      {egg ? null : <RarityChip fish={fish} />}
       {egg ? <span className="chip koi egg-chip"><Icon name="egg" size={11} />egg</span> : null}
     </span>
     <button className={`bare favorite-toggle ${favorite ? 'on' : ''}`} aria-pressed={favorite} aria-label={`Favorite ${fish.name}`} data-tip={favorite ? 'Kept as a favorite · never sold in bulk' : 'Keep as a favorite'} onClick={onFavorite}>

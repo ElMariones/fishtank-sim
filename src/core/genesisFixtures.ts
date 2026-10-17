@@ -3,6 +3,7 @@ import { axolotlFounderGenome, type AxolotlGenome } from './axolotlGenetics';
 import { GENOME_LOCI, type GenomeLocus } from './catalog';
 import { express, founderGenome } from './genetics';
 import { AXOLOTL_LOAD, KOI_LOAD, NOVEL_ID_MIN, type Channel, type DefectKind } from './genesis';
+import { somaticFor } from './modules';
 import type { CreatureGenome, Genome, Phenotype, Species } from './types';
 
 /**
@@ -90,3 +91,27 @@ export const GENESIS_FOUNDER_SAMPLE: readonly GenesisFixture[] = [
   ...Array.from({ length: 8 }, (_, i) => make(`genesis-koi-founder-${i + 1}`, `Koi founder ${i + 1}`, 'koi', founderGenome(9100 + i * 7, 4), 9100 + i * 7, 'Unedited genome v4 founder.')),
   ...Array.from({ length: 4 }, (_, i) => make(`genesis-axo-founder-${i + 1}`, `Axolotl founder ${i + 1}`, 'axolotl', axolotlFounderGenome(9300 + i * 11, 2), 9300 + i * 11, 'Unedited genome v2 founder.')),
 ];
+
+/**
+ * Genesis model 2 fixtures (renderer v9, R-203): the same clean founders with module genes set on both homologs, and one
+ * development seed chosen for each somatic mark. Model 2 genomes only; everything older never draws these layers.
+ */
+const model2 = <T extends Genome | AxolotlGenome>(genome: T, modules: number[], dev = genome.genesis!.dev): T =>
+  ({ ...genome, genesis: { ...genome.genesis!, dev, model: 2 as const, modules: { maternal: [...modules], paternal: [...modules] } } });
+/** The first development seed (from a fixed start) that develops the requested somatic mark at fixture canalization. */
+const devWith = (kind: 'mosaic' | 'birthmark', canalization: number) => { for (let dev = 1; dev < 100000; dev++) if (somaticFor(dev, canalization)?.kind === kind) return dev; return 1; };
+const NONE = [0, 0, 0, 0, 0, 0];
+const koiCanalization = express(koi({})).genesis!.canalization;
+export const GENESIS2_FIXTURES: readonly GenesisFixture[] = [
+  make('genesis2-koi-twin-sail', 'Twin sail', 'koi', model2(koi({ alleles: { dorsal_height: [5, 5] } }), [3, 3, 0, 0, 0, 0]), 51, 'Dorsal duplication module past its threshold: a second dorsal fin behind the first.'),
+  make('genesis2-koi-lionhead', 'Lionhead koi', 'koi', model2(koi({}), [0, 0, 3, 3, 0, 0]), 52, 'Wen module: a raspberry hood over the head.'),
+  make('genesis2-koi-bubble', 'Bubble-eye koi', 'koi', model2(koi({}), [0, 0, 0, 0, 1, 3]), 53, 'Two recessive sac copies: fluid pouches under the eyes.'),
+  make('genesis2-koi-dragon', 'Dragon', 'koi', model2(koi({ alleles: { fin_program: [4, 1], dorsal_height: [5, 4] } }), [3, 3, 3, 3, 0, 0]), 54, 'Wen, second dorsal and veil fins together.'),
+  make('genesis2-koi-mosaic', 'Mosaic sector', 'koi', model2(koi({}), NONE, devWith('mosaic', koiCanalization)), 55, 'A somatic patch of recolored skin. Never inherited.'),
+  make('genesis2-koi-birthmark', 'Birthmark', 'koi', model2(koi({}), NONE, devWith('birthmark', koiCanalization)), 56, 'A small one-off mark from development.'),
+  make('genesis2-axo-four-rami', 'Four-ramus gills', 'axolotl', model2(axolotl({}), [1, 3, 0, 0, 0, 0]), 61, 'Two recessive copies: a fourth gill ramus on each side.'),
+  make('genesis2-axo-polydactyl', 'Polydactyl', 'axolotl', model2(axolotl({}), [0, 0, 3, 0, 0, 0]), 62, 'Polydactyly module: extra digits on every foot.'),
+  make('genesis2-axo-crested', 'Crested', 'axolotl', model2(axolotl({}), [0, 0, 0, 1, 3, 3]), 63, 'Dominant crest module: a membrane crest along the back.'),
+  make('genesis2-axo-dragon', 'Dragon axolotl', 'axolotl', model2(axolotl({ alleles: { axo_frill_program: [5, 4] } }), [1, 3, 3, 1, 3, 3]), 64, 'Sail crest, dorsal crest, four rami and extra digits.'),
+];
+
