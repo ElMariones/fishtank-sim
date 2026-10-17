@@ -794,3 +794,7 @@ Browser: in-app Chromium, isolated port 5174 QA world. Verified compound targets
 ## Breeding panel and inspector layout follow-up — DONE, pushed `c50e579`
 
 13 September 2026. In-app Chromium on port 5174 verified the **Hide options** and **Open breeding options** control, including `aria-expanded` state and the compact closed summary. The desktop inspector remained at 16px from the viewport top after a 700px window scroll (`position: sticky`, bounded internal overflow). The fresh load had no console errors. The mobile breakpoint keeps the inspector in normal flow so it does not cover breeding and collection content.
+
+## Rename aquarium (⋯ menu)
+
+`rename-tank` command (trimmed 1–32 chars, rejected atomically for unknown tank or invalid name) with Rename… in both the rail card ⋯ menu and the tank header menu. 15 Oct 2026: `npm test` 55 files / 394 tests passed (new core test) and `npm run build` passed. Browser: renamed tank 2 via the rail menu; the rail card updated.

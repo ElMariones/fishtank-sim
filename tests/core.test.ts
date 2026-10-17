@@ -203,6 +203,18 @@ describe('world commands and persistence', () => {
     expect(() => applyCommand(world, { type: 'move', fishId: world.fish[0].id, tankId: 'missing' })).toThrow();
   });
 
+  it('renames an aquarium as a pure label and rejects invalid names atomically', () => {
+    const world = createWorld(NOW), before = JSON.stringify(world);
+    const renamed = applyCommand(world, { type: 'rename-tank', tankId: 'tank-2', name: '  Nursery  ' });
+    expect(renamed.tanks.find(t => t.id === 'tank-2')!.name).toBe('Nursery');
+    expect(renamed.tanks.find(t => t.id === 'tank-2')!.capacity).toBe(world.tanks.find(t => t.id === 'tank-2')!.capacity);
+    expect(renamed.credits).toBe(world.credits);
+    expect(() => applyCommand(world, { type: 'rename-tank', tankId: 'tank-2', name: ' ' })).toThrow();
+    expect(() => applyCommand(world, { type: 'rename-tank', tankId: 'tank-2', name: 'x'.repeat(33) })).toThrow();
+    expect(() => applyCommand(world, { type: 'rename-tank', tankId: 'missing', name: 'Nope' })).toThrow();
+    expect(JSON.stringify(world)).toBe(before);
+  });
+
   it('deducts NPC purchase funds and cannot profit by instant resale', () => {
     const world = createWorld(NOW);
     const bought = applyCommand(world, { type: 'buy', tankId: 'tank-2', timestamp: NOW });

@@ -10,7 +10,7 @@ import { AnimatedNumber, CapacityBar } from './ShellParts';
 
 export type LabView = 'aquarium' | 'research' | 'fixtures' | 'competitions' | 'trophies' | 'atlas';
 export type TankSummary = { id: string; name: string; capacity: number; living: number; eggs: number; tone: 'good' | 'warn' | 'alert'; style: TankStyle; display: boolean };
-export type TankAction = 'open' | 'aquascape' | 'care' | 'habitat';
+export type TankAction = 'open' | 'aquascape' | 'care' | 'habitat' | 'rename';
 
 const PRIMARY: [LabView, string, IconName, string][] = [
   ['aquarium', 'Aquarium', 'tank', 'G then A'], ['atlas', 'Genome Atlas', 'dna', 'G then L'], ['competitions', 'Competitions', 'trophy', 'G then C'], ['trophies', 'Trophy room', 'medal', 'G then T'],
@@ -42,6 +42,8 @@ export function NavRail({ view, onView, compact, onCompact, tanks: allTanks, act
     { id: 'aquascape', label: 'Aquascape', icon: 'brush', hint: 'Decorate on the live tank', tone: 'brass', onSelect: () => onTankAction(tank.id, 'aquascape') },
     { id: 'care', label: 'Care controls', icon: 'drop', hint: TONE_TEXT[tank.tone], onSelect: () => onTankAction(tank.id, 'care') },
     { id: 'habitat', label: 'Habitat & expansion', icon: 'leaf', onSelect: () => onTankAction(tank.id, 'habitat') },
+    { type: 'separator', id: 's' },
+    { id: 'rename', label: 'Rename…', icon: 'tag', onSelect: () => onTankAction(tank.id, 'rename') },
   ];
   const tankCard = (tank: TankSummary, label: string) => {
     const [top, bottom] = BACKDROP[tank.style.backdrop];

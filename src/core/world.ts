@@ -139,6 +139,7 @@ export type Command =
   | { type: 'place-decorations'; tankId: string; decorations: Decoration[] }
   | { type: 'decorate'; tankId: string }
   | { type: 'style-tank'; tankId: string; style: TankStyle }
+  | { type: 'rename-tank'; tankId: string; name: string }
   | { type: 'feed'; tankId: string }
   | { type: 'set-care'; tankId: string; ration: Ration; filterTier: number; aerationTier: number; targetC: number }
   | { type: 'change-water'; tankId: string; percent: WaterChangePercent }
@@ -185,6 +186,7 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('place-decorations'), tankId: tankIdSchema, decorations: savedDecorationsSchema }).strict(),
   z.object({ type: z.literal('decorate'), tankId: tankIdSchema }).strict(),
   z.object({ type: z.literal('style-tank'), tankId: tankIdSchema, style: tankStyleSchema }).strict(),
+  z.object({ type: z.literal('rename-tank'), tankId: tankIdSchema, name: z.string().max(64) }).strict(),
   z.object({ type: z.literal('feed'), tankId: tankIdSchema }).strict(),
   z.object({
     type: z.literal('set-care'), tankId: tankIdSchema, ration: z.enum(RATION_KEYS),
@@ -505,6 +507,13 @@ export function applyCommand(world: World, command: Command): World {
       const { substrate, backdrop, lighting, effect } = command.style;
       tank.style = effect ? { substrate, backdrop, lighting, effect } : { substrate, backdrop, lighting };
       if (cost) next.ledger = recordEntry(next.ledger, 'equipment', -cost, 0, `Aquascape look: ${tank.name}`);
+      break;
+    }
+    case 'rename-tank': {
+      // A tank name is a mutable label: the id, water, residents and ledger history are untouched.
+      const tank = space(command.tankId, 0), name = command.name.trim();
+      if (!name || name.length > 32) throw new Error('Use a name between 1 and 32 characters.');
+      tank.name = name;
       break;
     }
     // Historical free commands remain for replay and frozen research scenarios; live UI uses paid commands.

@@ -170,6 +170,8 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [movedTo, setMovedTo] = useState<string | null>(null);
   const [rehomeId, setRehomeId] = useState<string | null>(null);
   const [clearOpen, setClearOpen] = useState(false);
+  const [renamingTankId, setRenamingTankId] = useState<string | null>(null);
+  const renamingTank = world.tanks.find(t => t.id === renamingTankId) ?? null;
   const [showMarket, setShowMarket] = useState(false);
   const [showShop, setShowShop] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -605,6 +607,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   }
   function openTank(id: string) { setView('aquarium'); setTankId(id); setShowArchived(false); setQuery(''); }
   function tankAction(id: string, action: TankAction) {
+    if (action === 'rename') { setRenamingTankId(id); return; }
     openTank(id);
     if (action === 'aquascape') { if (id === tank.id) openAquascape(); else setPendingAquascape(true); }
     else if (action === 'care') { setWorkspace('care'); focusSoon('workspace-panel'); }
@@ -664,6 +667,7 @@ export function App({ initial }: { initial: LoadedSession }) {
     { type: 'separator', id: 's' },
     { id: 'care', label: 'Care controls', icon: 'drop', shortcut: '3', onSelect: () => { setWorkspace('care'); focusSoon('workspace-panel'); } },
     { id: 'habitat', label: 'Habitat & expansion', icon: 'leaf', shortcut: '4', onSelect: () => { setWorkspace('habitat'); focusSoon('workspace-panel'); } },
+    { id: 'rename-tank', label: 'Rename aquarium…', icon: 'tag', disabled: initial.readOnly, onSelect: () => setRenamingTankId(tank.id) },
     { id: 'shop', label: 'Buy stock for this tank', icon: 'shop', onSelect: () => openDrawer('shop') },
     { id: 'clear', label: 'Sell all fish…', icon: 'coins', tone: 'brass', hint: clearable.length ? `${clearable.length} · no buyer → rehomed` : 'Nothing to sell', disabled: initial.readOnly || !!aquascape || !clearable.length, onSelect: () => setClearOpen(true) },
     { id: 'switch', label: 'Switch aquarium', icon: 'tank', items: world.tanks.map(t => ({ id: `t-${t.id}`, label: t.name, checked: t.id === tank.id, onSelect: () => openTank(t.id) })) },
@@ -1046,7 +1050,13 @@ export function App({ initial }: { initial: LoadedSession }) {
       }}><Icon name="coins" size={16} />Confirm sale</button></>}>
       {offers[0] ? <ol className="dialog-list">{offers[0].terms.map(term => <li key={term.label}><Icon name="spark" size={13} /><span>{term.label}</span><span>{signedCredits(term.amount)}</span></li>)}</ol> : null}
     </Dialog>
-    <Dialog open={!!rehomeFish} onClose={() => setRehomeId(null)} fallbackFocus={backToProfile} icon="home" title={rehomeFish ? `Rehome ${rehomeFish.name}?` : ''}
+    <Dialog open={!!renamingTank} onClose={() => setRenamingTankId(null)} fallbackFocus={() => document.getElementById('collection')} icon="tag" title="Rename aquarium"
+      description="A name is only a label. Residents, water and history stay exactly as they are.">
+      {renamingTank ? <form className="rename-form" key={renamingTank.id} onSubmit={event => { event.preventDefault(); const name = String(new FormData(event.currentTarget).get('name')); if (run({ type: 'rename-tank', tankId: renamingTank.id, name }, 'Aquarium renamed.')) setRenamingTankId(null); }}>
+        <label>Aquarium name<input name="name" autoFocus autoComplete="off" spellCheck={false} aria-label="Aquarium name" defaultValue={renamingTank.name} maxLength={32} required /></label>
+        <button className="primary">Rename</button></form> : null}
+    </Dialog>
+    <Dialog open={!!rehomeFish}onClose={() => setRehomeId(null)} fallbackFocus={backToProfile} icon="home" title={rehomeFish ? `Rehome ${rehomeFish.name}?` : ''}
       description="They leave for a new home outside your aquarium. No credits change, and their family record remains available."
       actions={<><button className="quiet" onClick={() => setRehomeId(null)}>Cancel</button><button className="primary" onClick={() => { if (rehomeFish) run({ type: 'rehome-batch', fishIds: [rehomeFish.id] }, `${rehomeFish.name} was rehomed. The archived profile remains in the family tree.`, 'info'); setRehomeId(null); }}>Confirm rehoming</button></>} />
     <Dialog open={batchReview === 'sale' && salePlan.sales.length > 0} onClose={() => setBatchReview(null)} fallbackFocus={() => document.getElementById('collection')} tone="brass" icon="coins" wide
