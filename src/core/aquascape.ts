@@ -46,6 +46,17 @@ export const DECOR_ITEMS = [
   item('orn-chest', 'Treasure chest', 'ornaments', 'rock', 0.045, 50, 'Lid ajar, with the odd escaping bubble.'),
   item('orn-clam', 'Giant clam', 'ornaments', 'rock', 0.04, 40, 'A fluted shell holding a pearl.'),
   item('orn-bubbler', 'Air stone', 'ornaments', 'rock', 0.03, 15, 'A steady column of fine bubbles.'),
+  // Aquascaping set 2.
+  item('plant-anubias', 'Anubias nana', 'plants', 'cover', 0.065, 30, 'Broad, glossy dark leaves on a creeping rhizome.'),
+  item('plant-rotala', 'Rotala rotundifolia', 'plants', 'cover', 0.075, 35, 'Dense stems that fade from green to pink at the tips.'),
+  item('plant-crypt', 'Cryptocoryne wendtii', 'plants', 'cover', 0.065, 30, 'A bronze rosette of rippled, wavy leaves.'),
+  item('rock-dragon', 'Dragon stone', 'rocks', 'rock', 0.07, 40, 'Clay-brown ohko stone riddled with holes.'),
+  item('rock-arch', 'Stone arch', 'rocks', 'rock', 0.085, 65, 'A natural arch with open water beneath its span.'),
+  item('rock-crystal', 'Quartz cluster', 'rocks', 'rock', 0.05, 70, 'Glassy crystal points that catch and hold the light.'),
+  item('wood-bonsai', 'Bonsai driftwood', 'wood', 'rock', 0.075, 60, 'A twisted little tree with a canopy of moss.'),
+  item('orn-torii', 'Torii gate', 'ornaments', 'rock', 0.07, 65, 'A vermilion shrine gate rising from the sand.'),
+  item('orn-bridge', 'Moon bridge', 'ornaments', 'rock', 0.09, 75, 'An arched garden bridge with lacquered rails.'),
+  item('orn-wreck', 'Shipwreck bow', 'ornaments', 'rock', 0.09, 90, 'The barnacled prow of a sunken sailing ship.'),
 ] as const satisfies readonly DecorItem[];
 export type DecorItemId = typeof DECOR_ITEMS[number]['id'];
 export const DECOR_ITEM_IDS = DECOR_ITEMS.map(entry => entry.id) as [DecorItemId, ...DecorItemId[]];
@@ -90,7 +101,7 @@ const round = (value: number, digits = 2) => Math.round(value * 10 ** digits) / 
 
 // ---- Tank looks ----------------------------------------------------------------------------------------------------
 
-export type StyleFacet = 'substrate' | 'backdrop' | 'lighting';
+export type StyleFacet = 'substrate' | 'backdrop' | 'lighting' | 'effect';
 export type StyleOption = { id: string; name: string; price: number; swatch: string[]; blurb: string };
 const option = (id: string, name: string, price: number, swatch: string[], blurb: string): StyleOption => ({ id, name, price, swatch, blurb });
 
@@ -117,16 +128,48 @@ export const LIGHTINGS = [
   option('moonlight', 'Moonlight', 40, ['#8fb2ff', '#2b3d7a'], 'Dim blue night; lanterns glow.'),
   option('grow', 'Grow LED', 50, ['#ff9ee6', '#9ad7ff'], 'Full-spectrum pink-white planted light.'),
   option('aurora', 'Aurora RGB', 80, ['#6dffb5', '#8a7dff', '#ff7ad9'], 'Slowly cycling coloured light.'),
+  // Lighting set 2.
+  option('gallery', 'Gallery spotlights', 60, ['#fff8e8', '#1a1a1f'], 'Dark surround with focused show spots from above.'),
+  option('deepsea', 'Abyssal glow', 55, ['#2a6bff', '#04102e'], 'Deep-ocean blue with a faint cold shimmer.'),
+  option('neon', 'Neon reef', 70, ['#ff3df2', '#2cf4ff'], 'Saturated magenta and cyan club lighting.'),
+  option('ember', 'Campfire ember', 45, ['#ffb35c', '#7a2a0a'], 'Low, flickering firelight.'),
+  option('storm', 'Thunderstorm', 65, ['#9aa8c0', '#26303f'], 'Grey stormlight with the odd flash of lightning.'),
+  option('dawn', 'Sakura dawn', 45, ['#ffd1e3', '#ffeec4'], 'Soft pink morning light.'),
 ] as const satisfies readonly StyleOption[];
-export const STYLE_OPTIONS = { substrate: SUBSTRATES, backdrop: BACKDROPS, lighting: LIGHTINGS } as const;
-export type TankStyle = { substrate: typeof SUBSTRATES[number]['id']; backdrop: typeof BACKDROPS[number]['id']; lighting: typeof LIGHTINGS[number]['id'] };
+/** Water effects: cosmetic particles and motion layered over the tank. `none` is never saved, so older looks are unchanged. */
+export const EFFECTS = [
+  option('none', 'No effect', 0, ['#1d5560', '#0a2630'], 'Clear water.'),
+  option('motes', 'Drifting motes', 20, ['#e8f4ef', '#7fa59a'], 'Fine particles drifting in the current.'),
+  option('plankton', 'Glowing plankton', 45, ['#7dfff0', '#1a5cff'], 'Bioluminescent sparks that pulse as they drift.'),
+  option('curtain', 'Bubble curtain', 35, ['#e6fbff', '#5fb9c4'], 'A wall of rising bubbles along the back glass.'),
+  option('mist', 'Surface mist', 30, ['#ffffff', '#9fc4cc'], 'A soft haze rolling under the waterline.'),
+  option('petals', 'Falling petals', 40, ['#ffc4dc', '#ff8fb8'], 'Cherry petals sinking slowly through the water.'),
+  option('sparkle', 'Light sparkle', 35, ['#fffbe0', '#ffe27a'], 'Glints of light dancing in the upper water.'),
+  option('current', 'Flowing current', 30, ['#bfeaf2', '#3b7f8c'], 'Faint streaks showing the flow of water.'),
+] as const satisfies readonly StyleOption[];
+export const STYLE_OPTIONS = { substrate: SUBSTRATES, backdrop: BACKDROPS, lighting: LIGHTINGS, effect: EFFECTS } as const;
+export type EffectId = typeof EFFECTS[number]['id'];
+export type TankStyle = {
+  substrate: typeof SUBSTRATES[number]['id']; backdrop: typeof BACKDROPS[number]['id']; lighting: typeof LIGHTINGS[number]['id'];
+  /** Optional water effect; absent means none. */
+  effect?: Exclude<EffectId, 'none'>;
+};
 /** Tanks without a saved look use the free options. */
 export const DEFAULT_STYLE: TankStyle = { substrate: 'sand', backdrop: 'deep', lighting: 'daylight' };
 export const styleOf = (tank: { style?: TankStyle }): TankStyle => tank.style ?? DEFAULT_STYLE;
 export const styleOption = (facet: StyleFacet, id: string): StyleOption => (STYLE_OPTIONS[facet] as readonly StyleOption[]).find(entry => entry.id === id) ?? STYLE_OPTIONS[facet][0];
+export const STYLE_FACETS = ['substrate', 'backdrop', 'lighting', 'effect'] as const satisfies readonly StyleFacet[];
+/** The option a look uses for a facet; a look without an effect uses `none`. */
+export const facetValue = (style: TankStyle, facet: StyleFacet): string => facet === 'effect' ? style.effect ?? 'none' : style[facet];
+/** A look with one facet changed. Choosing no effect drops the key, so the look matches one that never had an effect. */
+export function withFacet(style: TankStyle, facet: StyleFacet, id: string): TankStyle {
+  if (facet !== 'effect') return { ...style, [facet]: id };
+  const { substrate, backdrop, lighting } = style;
+  return id === 'none' ? { substrate, backdrop, lighting } : { substrate, backdrop, lighting, effect: id as Exclude<EffectId, 'none'> };
+}
 /** Each facet changed to a paid option is charged at that option's price; returning to a free option costs nothing. */
 export const styleCost = (from: TankStyle, to: TankStyle) =>
-  (['substrate', 'backdrop', 'lighting'] as const).reduce((sum, facet) => sum + (from[facet] === to[facet] ? 0 : styleOption(facet, to[facet]).price), 0);
+  STYLE_FACETS.reduce((sum, facet) => sum + (facetValue(from, facet) === facetValue(to, facet) ? 0 : styleOption(facet, facetValue(to, facet)).price), 0);
 
 // ---- Themes ---------------------------------------------------------------------------------------------------------
 
@@ -157,6 +200,15 @@ export const THEMES: Theme[] = [
   ] },
   { id: 'aurora', name: 'Aurora grotto', blurb: 'Cave rock and lava under cycling colour.', style: { substrate: 'black', backdrop: 'deep', lighting: 'aurora' }, pieces: [
     ['rock-cave', 0.36, 1.2], ['rock-lava', 0.64, 1, 4], ['plant-cabomba', 0.12, 1.1, 1], ['plant-ludwigia', 0.86, 1.1], ['orn-bubbler', 0.52, 1],
+  ] },
+  { id: 'shrine', name: 'Shrine garden', blurb: 'A torii gate and bonsai over rippled crypts at dawn.', style: { substrate: 'sand', backdrop: 'mountains', lighting: 'dawn', effect: 'petals' }, pieces: [
+    ['orn-torii', 0.3, 1.1], ['wood-bonsai', 0.66, 1.05, 2], ['plant-crypt', 0.12, 1], ['plant-anubias', 0.48, 0.9, 1], ['plant-rotala', 0.88, 1.1], ['plant-hairgrass', 0.56, 1, 3],
+  ] },
+  { id: 'wreck', name: 'Wreck dive', blurb: 'A sunken prow under stormlight and drifting motes.', style: { substrate: 'pebbles', backdrop: 'deep', lighting: 'storm', effect: 'motes' }, pieces: [
+    ['orn-wreck', 0.36, 1.15], ['rock-dragon', 0.72, 1, 1], ['plant-anubias', 0.86, 1], ['plant-vallisneria', 0.1, 1.1], ['orn-bubbler', 0.56, 1],
+  ] },
+  { id: 'crystal', name: 'Crystal cavern', blurb: 'Quartz under a stone arch in the abyssal glow.', style: { substrate: 'black', backdrop: 'black', lighting: 'deepsea', effect: 'plankton' }, pieces: [
+    ['rock-arch', 0.42, 1.1], ['rock-crystal', 0.72, 1.1], ['rock-crystal', 0.2, 0.8, 3], ['plant-crypt', 0.88, 0.9, 2], ['plant-moss', 0.58, 0.8],
   ] },
   { id: 'bare', name: 'Bare breeding tank', blurb: 'Open water and clean sand for easy watching.', style: DEFAULT_STYLE, pieces: [
     ['plant-moss', 0.2, 1], ['plant-moss', 0.8, 1, 1],

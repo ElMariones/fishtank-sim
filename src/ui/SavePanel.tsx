@@ -1,6 +1,10 @@
 import { useState } from 'react';
-import { importRuntime, MAX_SAVE_CHARACTERS, type Runtime } from '../core/runtime';
+import { createRuntime, importRuntime, MAX_SAVE_CHARACTERS, type Runtime } from '../core/runtime';
 import { SAVE_KEY } from '../core/save';
+import { GENOME_VERSION } from '../core/catalog';
+import { createWorld } from '../core/world';
+import { PREFERENCES_KEY } from '../core/collection';
+import { GUIDE_KEY } from '../core/onboarding';
 import { readSlots, type SaveSlots } from '../persistence/database';
 import type { SaveSession } from '../persistence/session';
 
@@ -8,6 +12,15 @@ export function downloadText(raw: string, filename: string) {
   const url = URL.createObjectURL(new Blob([raw], { type: 'application/json' }));
   const link = document.createElement('a'); link.href = url; link.download = filename; link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * A brand-new world with a fresh seed and starting stock, as on a first visit. The seed only chooses the new world; every
+ * inherited outcome inside it still comes from that world's seeded streams.
+ */
+export function freshRuntime(timestamp = new Date().toISOString()): Runtime {
+  const seed = crypto.getRandomValues(new Uint32Array(1))[0];
+  return createRuntime(createWorld(timestamp, seed, GENOME_VERSION), crypto.randomUUID());
 }
 
 export function SavePanel({ runtime, session, blocked, readOnly, onSaved, onBusy }: {
@@ -18,6 +31,7 @@ export function SavePanel({ runtime, session, blocked, readOnly, onSaved, onBusy
   const [message, setMessage] = useState('Importing replaces this device’s current world after review. Existing valid saves become backups.');
   const [slots, setSlots] = useState<SaveSlots | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   function validate(raw: string) {
     setPreview(null);
     try {
@@ -25,6 +39,11 @@ export function SavePanel({ runtime, session, blocked, readOnly, onSaved, onBusy
       setPreview(next);
       setMessage('Valid save. Review the fish counts below before replacing this world.');
     } catch (error) { setMessage(`Import rejected. Current world is unchanged. ${error instanceof Error ? error.message : 'Invalid save.'}`); }
+  }
+  async function resetAll() {
+    // Goals, favorites and the guide refer to the old world's fish; the new world starts them fresh.
+    try { localStorage.removeItem(PREFERENCES_KEY); localStorage.removeItem(GUIDE_KEY); } catch { /* Device storage is optional. */ }
+    await commit(freshRuntime(), true);
   }
   async function commit(next: Runtime, replace: boolean) {
     if (!session) { setMessage('Storage is unavailable. Export your session and reload to retry.'); return; }
@@ -71,6 +90,18 @@ export function SavePanel({ runtime, session, blocked, readOnly, onSaved, onBusy
       <button disabled={busy || !session || readOnly} onClick={() => void commit(preview, true)}>Replace world with reviewed import</button>
       <button disabled={busy} onClick={() => setPreview(null)}>Cancel import</button>
     </div> : null}
+    <div className="reset-all">
+      <h3>Reset all</h3>
+      <p>Start a whole new world: new founders, starting credits, two aquariums and an empty calendar. The world you have now moves to the previous-save recovery copy, and Export keeps a file of it.</p>
+      {confirmReset ? <div className="save-actions" role="group" aria-label="Confirm reset">
+        <span className="warning">Replace {runtime.world.fish.filter(f => f.status === 'living').length} living fish and {runtime.world.tanks.length} aquariums with a new world?</span>
+        <button className="danger" disabled={busy || !session || readOnly} onClick={() => void resetAll()}>Yes, start a new world</button>
+        <button disabled={busy} onClick={() => setConfirmReset(false)}>Keep this world</button>
+      </div> : <div className="save-actions">
+        <button disabled={busy || !session || readOnly} onClick={() => setConfirmReset(true)}>Reset all…</button>
+        <button onClick={() => downloadText(JSON.stringify(runtime), 'fishtank-before-reset.json')}>Export before resetting</button>
+      </div>}
+    </div>
     {slots ? <div><h3>Recovery copies</h3>{(['current', 'backup1', 'backup2'] as const).map(key => {
       const record = slots[key];
       return <div className="save-actions" key={key}><span>{key === 'current' ? 'Stored current' : key === 'backup1' ? 'Previous save' : 'Older save'} · {record?.savedAt ?? 'No copy yet'}</span>

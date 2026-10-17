@@ -252,6 +252,8 @@
 .save-panel textarea { min-height: 8rem; }
 .save-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: var(--s-3) 0; font-size: var(--t-xs); color: var(--fg-2); }
 .import-preview { margin: var(--s-3) 0; padding: var(--s-4); border-radius: var(--r-md); border: 1px solid rgb(110 201 255 / .35); background: var(--tide-a14); }
+.reset-all { margin: var(--s-5) 0; padding: var(--s-4); border-radius: var(--r-md); border: 1px solid var(--rose-a30); background: var(--rose-a14); }
+.reset-all h3 { margin-top: 0; }
 .save-state, .save-navigation .save-state { display: block; margin: 0; padding: 0; font-size: var(--t-xs); color: var(--fg-3); }
 main.save-panel { margin: 20vh auto; max-width: 520px; text-align: center; }
 

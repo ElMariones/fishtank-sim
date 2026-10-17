@@ -2,7 +2,37 @@
 
 **Updated:** 17 October 2026 (R-201–R-204 Genesis model 2) · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
 
-## Goldfish body-plan modules — DONE, not committed, 17 October 2026 (follow-up to R-203)
+## Reset all, Expositorium display aquariums, aquascaping set 2 — DONE, 17 October 2026 (user request)
+
+No world version change: every addition is an optional field or a new command, and older saves and journals decode and
+replay unchanged. ADR-082.
+
+- **Reset all** (`SavePanel.tsx`, `freshRuntime`): a two-step button in Saves starts a whole new world (new seed from
+  `crypto.getRandomValues`, Genesis genome founders, ◈ 1,200, two aquariums, Day 0). It goes through the normal
+  `SaveSession.save`, so the replaced world rotates into the previous-save recovery copy. It also clears this device's
+  goals/favorites and guide progress, which refer to the old world's fish. An "Export before resetting" button sits beside it.
+- **Expositorium** (`world.ts`, `Expositorium.tsx`, `Shell.tsx`, `HabitatPanel.tsx`, `TankCanvas.tsx`): `purchase-display`
+  opens a display aquarium (◈ 600, 5 places, 4,000 L, black sand, blackout, gallery spotlights). At most 3, and they do not
+  count toward the 8 working tanks. `Tank.display` is an optional `true`; `decodeSave` rejects a display with any other
+  capacity, more than 3 displays or 8 working tanks, or a world with only displays. Displays never expand. Fish there are
+  ordinary residents: they move in and out, court and breed under the usual rules. The rail lists displays in their own
+  Expositorium section, and the header reads "Expositorium · display aquarium". Fish draw 1.7× larger (`DISPLAY_SCALE`,
+  shared by drawing and picking). A plaque row lists each fish (species, sex, generation, display-only rarity tier and rare
+  trait count) and selects it. A spotlight follows the selected fish and can be turned off. "Offer a treat" drops visual
+  pellets only and never feeds.
+- **Aquascaping set 2** (`aquascape.ts`, `decor.ts`, `rendering/aquascape.ts`): ten pieces appended to the catalog: Anubias
+  nana, Rotala rotundifolia, Cryptocoryne wendtii (plants); dragon stone, stone arch (open span), quartz cluster (glows)
+  (rocks); bonsai driftwood (wood); torii gate, moon bridge, shipwreck bow (ornaments). Six lightings: gallery spotlights,
+  abyssal glow, neon reef, campfire ember (flicker), thunderstorm (deterministic lightning), Sakura dawn. A new **Effects**
+  facet with seven effects: drifting motes, glowing plankton, bubble curtain, surface mist, falling petals, light sparkle,
+  flowing current. `TankStyle.effect` is optional and `none` is never saved, so earlier `style-tank` commands replay
+  byte-identically. Three themes use the new set: Shrine garden, Wreck dive, Crystal cavern.
+- **Renderer fix found on the way (renderer v9).** On the Pixi path the lighting's multiply grade was painted onto the
+  transparent front overlay, which made that overlay opaque and hid the fish and the whole tank under Golden hour, Moonlight,
+  Grow LED, Aurora and every new multiply lighting. `paintFront` now takes an upper canvas: the multiply becomes a CSS
+  `mix-blend-mode: multiply` tint layer between the two front canvases, in the same order as the Canvas 2D path.
+
+## Goldfish body-plan modules — DONE, committed `f58fabe`, 17 October 2026 (follow-up to R-203)
 
 World v19 · body-plan set 2 · goldfish anatomy v1 (optional module fins). ADR-081.
 

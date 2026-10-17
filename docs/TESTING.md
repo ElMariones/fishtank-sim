@@ -1,5 +1,24 @@
 # Testing and verification
 
+## Reset all, Expositorium and aquascaping set 2
+
+17 October 2026, Windows 11, Node via the checkout's npm scripts.
+
+- `npm test`: **393 tests in 55 files pass** (383 before). New `tests/expositorium.test.ts`: display purchase, ledger and
+  style; three displays on top of eight working tanks; no expansion; five-fish capacity with an atomic rejection of a sixth
+  move; save round trip and journal replay; tampered capacity and display-only worlds rejected; every catalog piece
+  (all 36) paints at three variants; six new lightings, seven effects, `withFacet`/`styleCost`; `effect: 'none'` never
+  saved; the three new themes build valid layouts.
+- `npm run build`: strict TypeScript and the production build pass (chunk-size warning was already there).
+- Browser, isolated dev server on port 5197 (Pixi renderer, 1024×900): bought a display from the rail; moved one fish
+  through the inspector and two by batch move; the display drew larger fish under gallery spots, three plaques plus two
+  empty plinths, plaque selection, spotlight and treat pellets. Applied Crystal cavern (◈ 350, look ◈ 100) and it
+  survived a reload. Torii, moon bridge, shipwreck, bonsai, anubias, rotala, crypt thumbnails and the new lighting and
+  effect previews rendered. Reset all → confirmation → new world with ◈ 1,200, two aquariums, Day 0, empty Expositorium.
+  No console errors. The multiply-overlay bug was found here and the fix was rechecked the same way.
+- Not covered: breeding inside a display tank in the browser (covered by the shared capacity rules only), the Canvas 2D
+  fallback renderer with the new lights, and phone widths.
+
 ## Goldfish body-plan modules (world v19)
 
 17 October 2026, Windows 11, Node via the checkout's npm scripts.

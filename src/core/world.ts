@@ -35,6 +35,14 @@ export const COHORT_SIZE = 20;
 export const FAST_OFFSPRING_COUNTS = [1, 2, 4, 8, 12, 16, 20, 24] as const;
 export const MAX_FAST_OFFSPRING = 24;
 export const MAX_TANKS = 8;
+/**
+ * Expositorium display aquariums: separate showcase tanks for a keeper's best fish. They hold five fish, are drawn larger,
+ * never expand and do not count toward the eight working tanks. Fish in them live, court and breed as anywhere else.
+ */
+export const MAX_DISPLAYS = 3;
+export const DISPLAY_CAPACITY = 5;
+export const DISPLAY_PRICE = 600;
+export const isDisplay = (tank: Pick<Tank, 'display'>) => tank.display === true;
 export const TANK_CAPACITY = 60;
 /** Living fish across every tank. Sold fish become archive records and do not count. */
 export const MAX_LIVING = MAX_TANKS * TANK_CAPACITY;
@@ -126,6 +134,7 @@ export type Command =
   | { type: 'buy-goldfish-listing'; listingId: string; tankId: string; timestamp: string }
   | { type: 'add-tank' }
   | { type: 'purchase-tank' }
+  | { type: 'purchase-display' }
   | { type: 'upgrade-tank'; tankId: string }
   | { type: 'place-decorations'; tankId: string; decorations: Decoration[] }
   | { type: 'decorate'; tankId: string }
@@ -171,6 +180,7 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('buy-goldfish-listing'), listingId: z.string().regex(/^GF-\d{6,16}$/), tankId: tankIdSchema, timestamp: z.string().datetime() }).strict(),
   z.object({ type: z.literal('add-tank') }).strict(),
   z.object({ type: z.literal('purchase-tank') }).strict(),
+  z.object({ type: z.literal('purchase-display') }).strict(),
   z.object({ type: z.literal('upgrade-tank'), tankId: tankIdSchema }).strict(),
   z.object({ type: z.literal('place-decorations'), tankId: tankIdSchema, decorations: savedDecorationsSchema }).strict(),
   z.object({ type: z.literal('decorate'), tankId: tankIdSchema }).strict(),
@@ -440,7 +450,7 @@ export function applyCommand(world: World, command: Command): World {
       break;
     }
     case 'purchase-tank': {
-      if (next.tanks.length >= MAX_TANKS) throw new Error('This lab supports up to eight tanks.');
+      if (next.tanks.filter(t => !isDisplay(t)).length >= MAX_TANKS) throw new Error('This lab supports up to eight tanks.');
       afford(TANK_PRICE, 'New aquarium');
       let n = 1; while (next.tanks.some(t => t.id === `tank-${n}`)) n++;
       const tank = newTank(`tank-${n}`, `Lineage Tank ${n}`, false);
@@ -449,8 +459,21 @@ export function applyCommand(world: World, command: Command): World {
       next.ledger = recordEntry(next.ledger, 'equipment', -TANK_PRICE, 0, `Aquarium: ${tank.name}`);
       break;
     }
+    case 'purchase-display': {
+      const displays = next.tanks.filter(isDisplay).length;
+      if (displays >= MAX_DISPLAYS) throw new Error(`The expositorium has room for ${MAX_DISPLAYS} display aquariums.`);
+      afford(DISPLAY_PRICE, 'Display aquarium');
+      let n = 1; while (next.tanks.some(t => t.id === `display-${n}`)) n++;
+      const tank = newTank(`display-${n}`, `Showcase ${n}`, false);
+      tank.capacity = DISPLAY_CAPACITY; tank.water.volumeL = 4000; tank.display = true;
+      tank.style = { substrate: 'black', backdrop: 'black', lighting: 'gallery' };
+      next.tanks.push(tank);
+      next.ledger = recordEntry(next.ledger, 'equipment', -DISPLAY_PRICE, 0, `Display aquarium: ${tank.name}`);
+      break;
+    }
     case 'upgrade-tank': {
       const tank = space(command.tankId, 0);
+      if (isDisplay(tank)) throw new Error('Display aquariums keep their five places.');
       if (tank.capacity >= 60) throw new Error('This aquarium already has the maximum 60 places.');
       if (tank.water.volumeL > 190000) throw new Error('This imported aquarium is too large to expand.');
       afford(TANK_UPGRADE_PRICE, 'Aquarium expansion');
@@ -478,7 +501,9 @@ export function applyCommand(world: World, command: Command): World {
       // FS-117: a cosmetic look. Each facet changed to a paid option is charged; water and behavior are unaffected.
       const tank = space(command.tankId, 0), cost = styleCost(styleOf(tank), command.style);
       afford(cost, 'The new look');
-      tank.style = { substrate: command.style.substrate, backdrop: command.style.backdrop, lighting: command.style.lighting };
+      // Effects were added after FS-117: a look without one saves exactly as before, so older journals replay unchanged.
+      const { substrate, backdrop, lighting, effect } = command.style;
+      tank.style = effect ? { substrate, backdrop, lighting, effect } : { substrate, backdrop, lighting };
       if (cost) next.ledger = recordEntry(next.ledger, 'equipment', -cost, 0, `Aquascape look: ${tank.name}`);
       break;
     }

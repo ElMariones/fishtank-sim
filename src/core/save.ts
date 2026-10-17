@@ -27,7 +27,7 @@ import { AXOLOTL_SHOP_SIZE, AXOLOTL_SWITCHES, axolotlListingProblem, initialAxol
 import { defaultRelief, RELIEF_COOLDOWN_DAYS } from './recovery';
 import type { Fish, Tank, World } from './types';
 import { defaultWater, WATER_LIMITS } from './water';
-import { MAX_LIVING, MAX_RECORDS, MAX_TANKS } from './world';
+import { DISPLAY_CAPACITY, isDisplay, MAX_DISPLAYS, MAX_LIVING, MAX_RECORDS, MAX_TANKS } from './world';
 
 const alleles = (count: number) => z.array(z.number().int().min(0).max(5)).length(count);
 const NOVEL_MAX = NOVEL_ID_MIN + 2_000_000_000;
@@ -140,7 +140,7 @@ const axolotlShop = z.object({
   model: z.literal(1), nextListing: z.number().int().positive(), refreshedDay: z.number().int().min(0).max(1e12), listings: z.array(axolotlListing).max(AXOLOTL_SHOP_SIZE),
 }).strict();
 const axolotlShopV16 = axolotlShop.extend({ model: z.union([z.literal(1), z.literal(2)]) }).strict();
-const tank = { id: z.string().max(50), name: z.string().min(1).max(32), capacity: z.number().int().min(1).max(60), planted: z.boolean() };
+const tank = { id: z.string().max(50), name: z.string().min(1).max(32), capacity: z.number().int().min(1).max(60), planted: z.boolean(), display: z.literal(true).optional() };
 const header = { seed: z.number().int().min(0).max(4294967295), nextId: z.number().int().positive(), credits: z.number().int().nonnegative().max(1e9) };
 const fishRecord = {
   id: fishIdSchema, name: z.string().min(1).max(32), sex: z.enum(['F', 'M']),
@@ -181,7 +181,7 @@ const bloodline = z.object({
 const worldV8 = {
   version: z.literal(8), ...header, nextClutchId: z.number().int().positive(),
   // FS-117 appends an optional cosmetic look after the layout.
-  tanks: z.array(z.object({ ...tank, water, care, decorations: savedDecorationsSchema, style: tankStyleSchema.optional() })).min(1).max(MAX_TANKS),
+  tanks: z.array(z.object({ ...tank, water, care, decorations: savedDecorationsSchema, style: tankStyleSchema.optional() })).min(1).max(MAX_TANKS + MAX_DISPLAYS),
   fish: z.array(z.object({ ...fishRecord, status: z.enum(['living', 'sold', 'rehomed']), life, breeding })).max(MAX_RECORDS), clutches: z.array(clutch).max(MAX_RECORDS),
   market, ledger, shop, naming: z.union([z.literal(1), z.literal(2), z.literal(3)]),
 };
@@ -372,7 +372,10 @@ export function decodeSave(raw: string): World {
   // Worlds v1-v18 open at body-plan set 1: their goldfish births replay without module genes; the runtime rebases them to set 2.
   if (parsed.version < 19) world = { ...(world as unknown as Omit<World, 'bodyPlan'>), version: 19, bodyPlan: 1 } as World;
   world.tanks = world.tanks.map(tank => ({ ...tank, decorations: decorationsOf(tank) }));
+  if (world.tanks.filter(isDisplay).length > MAX_DISPLAYS || world.tanks.filter(t => !isDisplay(t)).length > MAX_TANKS) throw new Error('Too many aquariums.');
+  if (world.tanks.every(isDisplay)) throw new Error('A world needs at least one working aquarium.');
   for (const tank of world.tanks) {
+    if (isDisplay(tank) && tank.capacity !== DISPLAY_CAPACITY) throw new Error('A display aquarium has five places.');
     validateLayout(decorationsOf(tank));
     if (parsed.version >= 8 && tank.planted !== decorationsOf(tank).some(item => item.kind === 'cover')) throw new Error('Plant cover does not match the saved layout.');
   }

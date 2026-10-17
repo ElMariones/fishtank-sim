@@ -40,7 +40,12 @@ type Props = {
   editing?: boolean;
   /** Every aquarium: their backdrops and pieces are painted in idle time, so switching to one shows it at once. */
   tanks?: readonly Tank[];
+  /** Expositorium display aquarium: fish are drawn larger, and the selected fish can be followed by a spotlight. */
+  display?: boolean;
+  spotlight?: boolean;
 };
+/** How much larger fish are drawn in a display aquarium. Drawing and picking share it, so clicks still land on the fish. */
+export const DISPLAY_SCALE = 1.7;
 /** Anything that can hand the canvas a scene and say when it changed, such as the aquascape editor's draft store. */
 export type PreviewSource = { scene: () => Scene; subscribe: (listener: () => void) => () => void };
 type WorkerState = { status: 'starting' | 'ready' | 'recovering' | 'recovered' | 'failed'; message: string };
@@ -69,6 +74,8 @@ export function TankCanvas(props: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const glHostRef = useRef<HTMLDivElement>(null);
   const frontRef = useRef<HTMLCanvasElement>(null);
+  const tintRef = useRef<HTMLDivElement>(null);
+  const glowRef = useRef<HTMLCanvasElement>(null);
   const fishLayer = useRef<PixiFishLayer | null>(null);
   const [renderer, setRenderer] = useState<'starting' | 'pixi' | 'canvas'>('starting');
   const latest = useRef(props);
@@ -191,6 +198,7 @@ export function TankCanvas(props: Props) {
 
   useEffect(() => {
     const canvas = canvasRef.current, ctx = canvas?.getContext('2d'), glHost = glHostRef.current, frontCanvas = frontRef.current, frontCtx = frontCanvas?.getContext('2d') ?? null;
+    const glowCanvas = glowRef.current, glowCtx = glowCanvas?.getContext('2d') ?? null, tint = tintRef.current;
     if (!canvas || !ctx) return;
     let width = 800, height = 500, frame = 0, lastPaint = performance.now(), idle = 0, disposed = false;
     // The Pixi fish layer starts asynchronously; fish draw with Canvas 2D until it is ready, and again if it is lost.
@@ -235,7 +243,9 @@ export function TankCanvas(props: Props) {
       width = entries[0].contentRect.width; height = entries[0].contentRect.height;
       const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
       canvas.width = width * dpr; canvas.height = height * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      if (frontCanvas && frontCtx) { frontCanvas.width = width * dpr; frontCanvas.height = height * dpr; frontCtx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+      for (const [layerCanvas, layerCtx] of [[frontCanvas, frontCtx], [glowCanvas, glowCtx]] as const) {
+        if (layerCanvas && layerCtx) { layerCanvas.width = width * dpr; layerCanvas.height = height * dpr; layerCtx.setTransform(dpr, 0, 0, dpr, 0, 0); }
+      }
       fishLayer.current?.resize(width, height, dpr);
       dirty.current = true;
       scheduleWarm();
@@ -250,9 +260,10 @@ export function TankCanvas(props: Props) {
       dirty.current = blend < 1;
       lastPaint = now;
       const time = frameClock.current.fromTime + (simulationTime.current - frameClock.current.fromTime) * blend;
-      const layer = fishLayer.current, front = layer && frontCtx ? frontCtx : ctx;
+      const layer = fishLayer.current, front = layer && frontCtx ? frontCtx : ctx, glow = layer && glowCtx ? glowCtx : undefined, top = glow ?? front;
       ctx.clearRect(0, 0, width, height);
       if (front !== ctx) front.clearRect(0, 0, width, height);
+      glow?.clearRect(0, 0, width, height);
       const scene = current.preview?.scene() ?? savedScene(current.tank);
       renderer.paintBack(ctx, width, height, scene, time);
       renderer.paintPlants(ctx, width, height, scene, time, 'back');
@@ -305,7 +316,7 @@ export function TankCanvas(props: Props) {
         phase.tail = (phase.tail + dt * playing * (axolotl ? 1.2 + 3 * effort : goldfish ? 2 + 3.5 * effort + 1.2 * actor.phenotype.activity : 3 + 5 * effort + 2 * actor.phenotype.activity)) % PHASE_WRAP;
         phase.fin = (phase.fin + dt * playing * (axolotl ? 0.4 + effort * 4 : goldfish ? 3.5 + 2 * actor.phenotype.activity : 2.5 + 2 * actor.phenotype.activity)) % PHASE_WRAP;
         phases.current.set(actor.id, phase);
-        const growth = visualGrowth(fish.life.lengthCm, actor.phenotype.adultLengthCm), pose = fishPose(shown, width, height, growth, facing);
+        const growth = visualGrowth(fish.life.lengthCm, actor.phenotype.adultLengthCm) * (current.display ? DISPLAY_SCALE : 1), pose = fishPose(shown, width, height, growth, facing);
         if (actor.id === current.selectedId) selection = { pose, phenotype: shown.phenotype, name: fish.name };
         const motion = { tailPhase: phase.tail, finPhase: phase.fin, effort, grounded };
         if (layer) draws.push({ id: actor.id, phenotype: shown.phenotype, seed: fish.birthSeed, size: pose.size, bodyLength: pose.bodyLength, x: pose.x, y: pose.y, flip: pose.flip, angle: pose.angle, motion, time });
@@ -318,8 +329,10 @@ export function TankCanvas(props: Props) {
       }
       if (layer) layer.render(draws);
       renderer.paintPlants(front, width, height, scene, time, 'front');
-      renderer.paintFront(front, width, height, scene, time);
-      if (selection) paintSelection(front, selection.pose, selection.phenotype, selection.name, time);
+      const multiply = renderer.paintFront(front, width, height, scene, time, glow);
+      if (tint) tint.style.background = multiply ?? 'transparent';
+      if (selection && current.display && current.spotlight) paintSpotlight(top, selection.pose, width, height, time);
+      if (selection) paintSelection(top, selection.pose, selection.phenotype, selection.name, time);
       painted.current = paintedNow;
       // The first frame with the new tank's own motion ends its loading state.
       if (!awaitingReady.current && loadingRef.current) { loadingRef.current = false; setLoadingTank(null); scheduleWarm(); }
@@ -337,6 +350,8 @@ export function TankCanvas(props: Props) {
   return <>
     <div ref={glHostRef} className="tank-layer tank-fish-host" aria-hidden="true" hidden={renderer === 'canvas'} data-renderer={renderer} />
     <canvas ref={frontRef} className="tank-layer tank-front-layer" aria-hidden="true" hidden={renderer === 'canvas'} />
+    <div ref={tintRef} className="tank-layer tank-tint" aria-hidden="true" hidden={renderer === 'canvas'} />
+    <canvas ref={glowRef} className="tank-layer tank-glow-layer" aria-hidden="true" hidden={renderer === 'canvas'} />
     <canvas ref={canvasRef} className="tank-canvas" data-renderer={renderer} role="img" aria-label={`${props.tank.name}, ${props.fish.length} swimming fish${props.eggs ? ` and ${props.eggs} incubating eggs` : ''}. Select a fish using the collection below.`}
       onClick={event => {
         if (props.editing) return;
@@ -355,6 +370,19 @@ export function TankCanvas(props: Props) {
       {workerState.status === 'failed' ? <button onClick={() => client.current?.restart()}>Restart aquarium motion</button> : null}
     </div> : null}
   </>;
+}
+
+/** Expositorium spotlight: the room dims around the selected fish and a warm pool of light follows it. */
+function paintSpotlight(ctx: CanvasRenderingContext2D, pose: ReturnType<typeof fishPose>, width: number, height: number, time: number) {
+  const radius = Math.max(60, pose.bodyLength * 1.15) * (1 + Math.sin(time * 1.6) * 0.03);
+  const dim = ctx.createRadialGradient(pose.x, pose.y, radius * 0.55, pose.x, pose.y, radius * 2.6);
+  dim.addColorStop(0, 'rgba(0,0,0,0)'); dim.addColorStop(1, 'rgba(0,3,8,.5)');
+  ctx.fillStyle = dim; ctx.fillRect(0, 0, width, height);
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  const warm = ctx.createRadialGradient(pose.x, pose.y, 0, pose.x, pose.y, radius);
+  warm.addColorStop(0, 'rgba(255,244,220,.13)'); warm.addColorStop(1, 'rgba(255,244,220,0)');
+  ctx.fillStyle = warm; ctx.fillRect(pose.x - radius, pose.y - radius, radius * 2, radius * 2);
+  ctx.restore();
 }
 
 /** Selection: a soft glowing halo that breathes around the fish, and a name pill above it in the interface's typeface. */

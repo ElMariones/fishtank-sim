@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BACKDROPS, DECOR_ITEM_IDS, DECOR_VARIANTS, LIGHTINGS, SUBSTRATES } from './aquascape';
+import { BACKDROPS, DECOR_ITEM_IDS, DECOR_VARIANTS, EFFECTS, LIGHTINGS, SUBSTRATES } from './aquascape';
 import { MAX_DECORATIONS } from './tankManagement';
 
 const decorationSchema = z.object({
@@ -12,4 +12,8 @@ const decorationSchema = z.object({
 export const savedDecorationsSchema = z.array(decorationSchema).max(MAX_DECORATIONS);
 const ids = <T extends readonly { id: string }[]>(options: T) => options.map(entry => entry.id) as [T[number]['id'], ...T[number]['id'][]];
 /** FS-117 tank look. Cosmetic only; absent on tanks that never changed it. */
-export const tankStyleSchema = z.object({ substrate: z.enum(ids(SUBSTRATES)), backdrop: z.enum(ids(BACKDROPS)), lighting: z.enum(ids(LIGHTINGS)) }).strict();
+export const tankStyleSchema = z.object({
+  substrate: z.enum(ids(SUBSTRATES)), backdrop: z.enum(ids(BACKDROPS)), lighting: z.enum(ids(LIGHTINGS)),
+  // Water effect (aquascaping set 2). A saved look never stores `none`.
+  effect: z.enum(ids(EFFECTS)).exclude(['none']).optional(),
+}).strict();

@@ -46,7 +46,8 @@ import type { AxolotlListing, Clutch, Fish, GoldfishListing, Listing, World } fr
 import { SPECIES_INFO } from '../core/species';
 import { GoldfishGenomeView, GoldfishTraitPanel } from './GoldfishGenetics';
 import { TICKS_PER_GAME_DAY } from '../core/water';
-import { COHORT_SIZE, type Command } from '../core/world';
+import { COHORT_SIZE, isDisplay, type Command } from '../core/world';
+import { ShowcasePlaques } from './Expositorium';
 import { styleOf, styleOption } from '../core/aquascape';
 import { FastBreeding } from './FastBreeding';
 import { Pagination, SexMark } from './Controls';
@@ -123,6 +124,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [tab, setTab] = useState<'Overview' | 'Genome' | 'Family'>('Overview');
   const [paused, setPaused] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const [feedSignal, setFeedSignal] = useState(0);
+  const [spotlight, setSpotlight] = useState(true);
   const [behavior, setBehavior] = useState<BehaviorSummary | null>(null);
   // Every notice is a toast and stays in the activity log for the session.
   const noticeSeq = useRef(0);
@@ -617,7 +619,7 @@ export function App({ initial }: { initial: LoadedSession }) {
     const alert = status.oxygen === 'critical' || status.ammonia === 'high' || status.stocking === 'overstocked' || (status.hatched > 0 && status.fedLevel === 'starving');
     const warn = status.oxygen === 'low' || status.ammonia === 'elevated' || status.stocking === 'heavy' || (status.hatched > 0 && status.fedLevel === 'underfed');
     const here = living.filter(f => f.tankId === t.id);
-    return { id: t.id, name: t.name, capacity: t.capacity, living: here.length, eggs: here.filter(f => isEgg(f.life)).length, tone: alert ? 'alert' as const : warn ? 'warn' as const : 'good' as const, style: styleOf(t) };
+    return { id: t.id, name: t.name, capacity: t.capacity, living: here.length, eggs: here.filter(f => isEgg(f.life)).length, tone: alert ? 'alert' as const : warn ? 'warn' as const : 'good' as const, style: styleOf(t), display: isDisplay(t) };
   }), [world, living]);
   const activeStatus = useMemo(() => careStatus(world, tank.id), [world, tank.id]), activeWarnings = useMemo(() => careWarnings(world, tank.id), [world, tank.id]);
   const warningCount = { critical: activeWarnings.filter(w => w.severity === 'critical').length, total: activeWarnings.length };
@@ -625,6 +627,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const saveState = saveError === 'Saving…' ? 'Saving…' : saveError ? 'Session not saved' : 'Saved on this device';
   const viewTitle = view === 'aquarium' ? tank.name : VIEW_TITLES[view];
   const style = styleOf(tank);
+  const workingTanks = world.tanks.filter(t => !isDisplay(t));
   const eggsHere = residents.length - swimmers.length;
   const unread = notices.filter(notice => notice.id > readNotice).length;
 
@@ -739,12 +742,13 @@ export function App({ initial }: { initial: LoadedSession }) {
     <NavRail view={view} onView={next => { setView(next); openDrawer(null); }} compact={railCompact} onCompact={() => setRailCompact(v => !v)}
       tanks={tankSummaries} activeTankId={tank.id} loadingTankId={collectionPending ? tank.id : null}
       onTank={openTank} onTankAction={tankAction} onAddTank={() => { setView('aquarium'); setWorkspace('habitat'); focusSoon('workspace-panel'); }}
+      onAddDisplay={() => { setView('aquarium'); setWorkspace('habitat'); focusSoon('display-offer'); }}
       credits={world.credits} saveState={saveState} guide={{ done: guideProgress.filter(step => step.done).length, total: guideProgress.length, hidden: guide.hidden }}
       onMarket={() => openDrawer(showMarket ? null : 'market')} onShop={() => openDrawer(showShop ? null : 'shop')} onSaves={() => openDrawer(showSaves ? null : 'saves')}
       onGuide={() => setGuide(current => ({ ...current, hidden: !current.hidden }))} onExport={() => downloadText(JSON.stringify(runtime), 'fishtank-save-v2.json')}
       open={{ market: showMarket, shop: showShop, saves: showSaves }} />
     <div className="shell-main">
-      <Topbar eyebrow={view === 'aquarium' ? `Aquarium ${String(tankIndex + 1).padStart(2, '0')} of ${world.tanks.length}` : 'Genetics lab'} title={viewTitle}
+      <Topbar eyebrow={view === 'aquarium' ? isDisplay(tank) ? 'Expositorium · display aquarium' : `Aquarium ${String(workingTanks.indexOf(tank) + 1).padStart(2, '0')} of ${workingTanks.length}` : 'Genetics lab'} title={viewTitle}
         calendar={{ label: calendarLabel(gameDay), day: gameDay, disabledReason: calendarBlocked, advancing, onAdvance: days => void skipDays(days) }}
         credits={world.credits} living={living.length} courting={courting} incubating={incubating} records={world.fish.length}
         onLedger={() => openDrawer(showMarket ? null : 'market')} onSearch={() => setPaletteOpen(true)} onShortcuts={() => setShortcutsOpen(true)}
@@ -775,7 +779,7 @@ export function App({ initial }: { initial: LoadedSession }) {
         <section className={`aquarium-stage ${aquascape ? 'is-editing' : ''}`} aria-labelledby="tank-title">
           <div className="tank-heading">
             <div className="tank-heading-title">
-              <span className="eyebrow">{styleOption('backdrop', style.backdrop).name} · {styleOption('substrate', style.substrate).name} · {styleOption('lighting', style.lighting).name}</span>
+              <span className="eyebrow">{styleOption('backdrop', style.backdrop).name} · {styleOption('substrate', style.substrate).name} · {styleOption('lighting', style.lighting).name}{style.effect ? ` · ${styleOption('effect', style.effect).name}` : ''}</span>
               <h1 id="tank-title">{tank.name}</h1>
             </div>
             <div className="tank-heading-meta">
@@ -788,7 +792,7 @@ export function App({ initial }: { initial: LoadedSession }) {
           </div>
           <div className="aquarium-frame">
             <div className={`aquarium ${aquascape ? 'is-editing' : ''}`} aria-label="Live aquarium" role="group">
-              <TankCanvas fish={swimmers} eggs={eggsHere} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={1} feedSignal={feedSignal} onBehavior={setBehavior} tanks={world.tanks} preview={aquascape} editing={!!aquascape} />
+              <TankCanvas fish={swimmers} eggs={eggsHere} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={1} feedSignal={feedSignal} onBehavior={setBehavior} tanks={world.tanks} preview={aquascape} editing={!!aquascape} display={isDisplay(tank)} spotlight={spotlight} />
               {aquascape ? <><AquascapeOverlay store={aquascape} saved={decorationsOf(tank)} /><span className="editing-badge"><Icon name="brush" size={14} />Aquascaping · time and fish wait until you apply or cancel</span></> : null}
               {aquascape ? null : <TankHud status={activeStatus} tank={tank} warnings={warningCount} paused={paused} onCare={() => { setWorkspace('care'); focusSoon('workspace-panel'); }} />}
               {eggsHere && !aquascape ? <span className="egg-badge"><Icon name="egg" size={13} />{eggsHere} eggs incubating</span> : null}
@@ -796,6 +800,8 @@ export function App({ initial }: { initial: LoadedSession }) {
                 <button className="primary btn-sm" onClick={() => openDrawer('shop')}><Icon name="shop" size={14} />Browse the NPC shop</button></div> : null}
             </div>
           </div>
+          {isDisplay(tank) && !aquascape ? <ShowcasePlaques fish={residents} selectedId={selectedId} spotlight={spotlight} onSelect={id => select(id)}
+            onSpotlight={() => setSpotlight(value => !value)} onTreat={() => setFeedSignal(value => value + 1)} /> : null}
           {aquascape ? null : <div className="tank-stand">
             <div className="stand-group">
               <button className="stand-button" aria-pressed={!paused} data-tip="Pause or play swimming (M)" onClick={() => setPaused(v => !v)}>

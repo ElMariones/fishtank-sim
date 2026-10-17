@@ -666,6 +666,278 @@ const frogbit: Draw = p => {
   }
 };
 
+// ---- Aquascaping set 2 ----------------------------------------------------------------------------------------------
+
+const anubias: Draw = p => {
+  const { ctx, w, h, rng, time } = p;
+  const hue = pick(rng, [115, 125, 105]), leaves = 7 + Math.floor(rng() * 4);
+  // A creeping rhizome along the substrate, with fine roots gripping it.
+  if (p.layer !== 'front') {
+    ctx.strokeStyle = hsl(40, 30, 32); ctx.lineWidth = Math.max(2.5, w * 0.06); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-w * 0.45, -2); ctx.quadraticCurveTo(0, -w * 0.08, w * 0.45, -1); ctx.stroke();
+    ctx.strokeStyle = 'rgba(220,210,180,.35)'; ctx.lineWidth = 0.7;
+    for (let r = 0; r < 9; r++) { const x = (r / 8 - 0.5) * w * 0.85; ctx.beginPath(); ctx.moveTo(x, -2); ctx.lineTo(x + (rng() - 0.5) * 6, 3); ctx.stroke(); }
+  }
+  for (let i = 0; i < leaves; i++) {
+    if (!inLayer(p, i, 0.35)) continue;
+    const foot = (i / (leaves - 1) - 0.5) * w * 0.8, spread = (i / (leaves - 1) - 0.5) * 1.6 + (rng() - 0.5) * 0.3;
+    const stem = h * (0.25 + rng() * 0.35), angle = -Math.PI / 2 + spread * 0.7 + swayAt(time, i, 0.4) * 0.03;
+    const sx = foot + Math.cos(angle) * stem, sy = -2 + Math.sin(angle) * stem;
+    ctx.strokeStyle = hsl(hue, 35, 24); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(foot, -2); ctx.quadraticCurveTo(foot, sy * 0.6, sx, sy); ctx.stroke();
+    const leafL = h * (0.34 + rng() * 0.16), leafW = leafL * (0.42 + rng() * 0.1), light = 18 + rng() * 10;
+    ctx.save(); ctx.translate(sx, sy); ctx.rotate(angle + Math.PI / 2);
+    const g = ctx.createLinearGradient(-leafW, -leafL, leafW, 0); g.addColorStop(0, hsl(hue, 45, light + 16)); g.addColorStop(1, hsl(hue, 50, light - 6));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 0); ctx.bezierCurveTo(-leafW, -leafL * 0.2, -leafW * 0.8, -leafL * 0.95, 0, -leafL); ctx.bezierCurveTo(leafW * 0.8, -leafL * 0.95, leafW, -leafL * 0.2, 0, 0); ctx.fill();
+    // Glossy sheen and veins.
+    ctx.fillStyle = 'rgba(230,255,230,.13)'; ctx.beginPath(); ctx.ellipse(-leafW * 0.25, -leafL * 0.55, leafW * 0.22, leafL * 0.3, 0.2, 0, TAU); ctx.fill();
+    ctx.strokeStyle = hsl(hue, 30, light + 22, 0.45); ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -leafL * 0.95); ctx.stroke();
+    for (let v = 1; v < 5; v++) for (const side of [-1, 1]) { const y = -leafL * v / 5.5; ctx.beginPath(); ctx.moveTo(0, y); ctx.quadraticCurveTo(side * leafW * 0.3, y - leafL * 0.05, side * leafW * 0.55, y - leafL * 0.14); ctx.stroke(); }
+    ctx.restore();
+  }
+  // Some plants carry a pale flower spathe.
+  if (p.variant % 3 === 1 && p.layer !== 'back') {
+    const fx = w * 0.12, fy = -h * 0.82;
+    ctx.strokeStyle = hsl(hue, 30, 30); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(fx * 0.4, -2); ctx.quadraticCurveTo(fx, fy * 0.5, fx, fy); ctx.stroke();
+    ctx.fillStyle = '#f1f0dc'; ctx.beginPath(); ctx.ellipse(fx + 2, fy - 4, 3.2, 7, 0.25, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#e8d78c'; ctx.beginPath(); ctx.ellipse(fx, fy - 5, 1.4, 4.5, 0.1, 0, TAU); ctx.fill();
+  }
+};
+
+const rotala: Draw = p => {
+  const { ctx, w, h, rng, time } = p;
+  const stems = 9 + Math.floor(rng() * 5), tipHue = pick(rng, [338, 350, 12, 326]);
+  for (let s = 0; s < stems; s++) {
+    if (!inLayer(p, s, 0.35)) continue;
+    const x = (rng() - 0.5) * w * 0.9, length = h * (0.6 + rng() * 0.42), nodes = 11, sway = swayAt(time, s, 0.5);
+    const at = (t: number) => [x + sway * t * t * w * 0.12 + Math.sin(t * 3 + s) * 2, -length * t] as const;
+    ctx.strokeStyle = hsl(100, 30, 26); ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(x, 0);
+    for (let n = 1; n <= nodes; n++) { const [px, py] = at(n / nodes); ctx.lineTo(px, py); }
+    ctx.stroke();
+    for (let n = 1; n <= nodes; n++) {
+      const t = n / nodes, [px, py] = at(t), size = 2.2 + (1 - Math.abs(t - 0.6)) * 2.4;
+      // Leaves blush from green at the base to pink or red toward the light.
+      const hue = t < 0.55 ? 100 : (lerp(100, tipHue > 180 ? tipHue - 360 : tipHue, (t - 0.55) / 0.45) + 360) % 360, sat = lerp(45, 70, t), light = lerp(28, 52, t);
+      ctx.fillStyle = hsl(hue, sat, light, 0.95);
+      for (const side of [-1, 1]) { ctx.beginPath(); ctx.ellipse(px + side * size * 0.85, py, size, size * 0.62, side * 0.4, 0, TAU); ctx.fill(); }
+    }
+  }
+};
+
+const crypt: Draw = p => {
+  const { ctx, w, h, rng, time } = p;
+  const leaves = 9 + Math.floor(rng() * 5), tone = pick(rng, [[28, 40], [95, 35], [15, 45]] as const);
+  for (let i = 0; i < leaves; i++) {
+    if (!inLayer(p, i, 0.3)) continue;
+    const spread = (i / (leaves - 1) - 0.5) * 2.4 + (rng() - 0.5) * 0.3, angle = -Math.PI / 2 + spread * 0.5 + swayAt(time, i, 0.45) * 0.04;
+    const length = h * (0.55 + rng() * 0.45), width = length * (0.16 + rng() * 0.05), light = 22 + rng() * 14;
+    ctx.save(); ctx.translate((i / (leaves - 1) - 0.5) * w * 0.35, 0); ctx.rotate(angle + Math.PI / 2);
+    // A rippled, wavy-edged blade on a short petiole.
+    const edge = (side: number) => { const pts: [number, number][] = []; for (let s = 0; s <= 12; s++) { const t = s / 12, bulge = Math.sin(t * Math.PI) ** 0.8 * width * (t > 0.2 ? 1 : t * 5); pts.push([side * (bulge + Math.sin(t * 22 + i) * width * 0.12 * (t > 0.2 ? 1 : 0)), -length * (0.18 + t * 0.82)]); } return pts; };
+    const left = edge(-1), right = edge(1).reverse();
+    const g = ctx.createLinearGradient(0, 0, 0, -length); g.addColorStop(0, hsl(tone[0], tone[1], light - 8)); g.addColorStop(1, hsl(tone[0] + 10, tone[1] + 10, light + 12));
+    ctx.strokeStyle = hsl(tone[0], 25, 26); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -length * 0.18); ctx.stroke();
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, -length * 0.18);
+    for (const [x, y] of [...left, ...right]) ctx.lineTo(x, y);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = hsl(tone[0], 30, light + 22, 0.4); ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(0, -length * 0.18); ctx.lineTo(0, -length * 0.98); ctx.stroke();
+    ctx.restore();
+  }
+};
+
+const dragonStone: Draw = p => {
+  const { ctx, w, h, rng } = p;
+  contactShadow(p, 1.1);
+  const outline = moundPath(rng, w * 1.05, h, 13, 0.4, (rng() - 0.5) * 1.2);
+  trace(ctx, outline, true);
+  const hue = pick(rng, [26, 32, 20]);
+  ctx.fillStyle = stoneFill(ctx, w, h, hue, 30, 40); ctx.fill();
+  ctx.save(); ctx.clip();
+  // Crumbly ridges and the holes that give ohko stone its look.
+  for (let i = 0; i < 14; i++) {
+    const x = (rng() - 0.5) * w, y = -rng() * h * 0.95;
+    ctx.strokeStyle = `rgba(60,30,12,${0.25 + rng() * 0.25})`; ctx.lineWidth = 1 + rng() * 1.8;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.bezierCurveTo(x + w * 0.1, y - h * 0.08, x + w * 0.18, y + h * 0.05, x + w * (0.2 + rng() * 0.15), y + (rng() - 0.5) * h * 0.1); ctx.stroke();
+  }
+  for (let i = 0; i < 18 + Math.round(w * 0.12); i++) {
+    const x = (rng() - 0.5) * w * 0.9, y = -rng() * h * 0.85, r = 1.2 + rng() * Math.max(2, w * 0.05);
+    const hole = ctx.createRadialGradient(x, y, 0, x, y, r);
+    hole.addColorStop(0, 'rgba(18,8,3,.95)'); hole.addColorStop(0.7, 'rgba(40,18,6,.7)'); hole.addColorStop(1, 'rgba(40,18,6,0)');
+    ctx.fillStyle = hole; ctx.beginPath(); ctx.ellipse(x, y, r, r * (0.6 + rng() * 0.3), rng() * Math.PI, 0, TAU); ctx.fill();
+    ctx.strokeStyle = hsl(hue, 35, 62, 0.35); ctx.lineWidth = 0.7; ctx.beginPath(); ctx.arc(x, y + r * 0.25, r * 0.9, 0.3, Math.PI - 0.3); ctx.stroke();
+  }
+  ctx.restore();
+  mossTufts(p, outline.slice(2, -2), 0.3);
+};
+
+const stoneArch: Draw = p => {
+  const { ctx, w, h, rng } = p;
+  contactShadow(p, 1.25);
+  const hue = pick(rng, [210, 30, 200]), span = w * 1.2, thick = Math.max(6, h * 0.24), legW = span * 0.2, top = -h;
+  const outer = () => {
+    ctx.moveTo(-span / 2, 0); ctx.bezierCurveTo(-span / 2 - legW * 0.1, top * 0.5, -span * 0.38, top, 0, top - (rng() - 0.5) * 2);
+    ctx.bezierCurveTo(span * 0.38, top, span / 2 + legW * 0.1, top * 0.5, span / 2, 0); ctx.closePath();
+  };
+  const inner = () => {
+    const iw = span / 2 - legW, ih = top + thick;
+    ctx.moveTo(iw, 0); ctx.bezierCurveTo(iw, ih * 0.55, iw * 0.6, ih, 0, ih); ctx.bezierCurveTo(-iw * 0.6, ih, -iw, ih * 0.55, -iw, 0); ctx.closePath();
+  };
+  // Even-odd fill leaves the opening clear, so the backdrop and fish show through the arch.
+  ctx.beginPath(); outer(); inner();
+  ctx.fillStyle = stoneFill(ctx, span, h, hue, 10, 42); ctx.fill('evenodd');
+  ctx.save(); ctx.beginPath(); outer(); inner(); ctx.clip('evenodd');
+  for (let i = 0; i < 9; i++) {
+    const y = -h * (i + 0.5) / 9; ctx.strokeStyle = `rgba(0,0,0,${0.12 + rng() * 0.12})`; ctx.lineWidth = 0.8 + rng();
+    ctx.beginPath(); ctx.moveTo(-span / 2, y); ctx.quadraticCurveTo(0, y + (rng() - 0.5) * 6, span / 2, y + (rng() - 0.5) * 4); ctx.stroke();
+  }
+  speckle(p, 40, span, h, ['rgba(255,255,255,.14)', 'rgba(0,0,0,.25)'], 1.1);
+  // The underside of the span falls into shadow.
+  const under = ctx.createLinearGradient(0, top + thick * 1.4, 0, top + thick * 0.6); under.addColorStop(0, 'rgba(0,0,0,.4)'); under.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = under; ctx.fillRect(-span / 2, top, span, thick * 1.6);
+  ctx.restore();
+  ctx.beginPath(); outer(); ctx.strokeStyle = 'rgba(220,230,235,.22)'; ctx.lineWidth = 1; ctx.stroke();
+  mossTufts(p, [[-span * 0.3, top * 0.82], [0, top - 1], [span * 0.25, top * 0.85], [-span * 0.42, top * 0.4], [span * 0.44, top * 0.35]], 0.65);
+};
+
+/** Centre of the brightest crystal, for the glow drawn over the fish. */
+export const crystalCore = (w: number, h: number) => ({ x: 0, y: -h * 0.45, r: Math.max(w, h) * 0.9 });
+const crystal: Draw = p => {
+  const { ctx, w, h, rng } = p;
+  contactShadow(p, 1.1);
+  const hue = pick(rng, [275, 190, 320, 210]), points = 5 + Math.floor(rng() * 3);
+  // A rough matrix rock, then prisms from tallest at the back to small ones in front.
+  const base = moundPath(rng, w * 1.1, h * 0.22, 8, 0.3);
+  trace(ctx, base, true); ctx.fillStyle = stoneFill(ctx, w, h * 0.22, 30, 8, 30); ctx.fill();
+  const prisms = Array.from({ length: points }, (_, i) => ({ x: (rng() - 0.5) * w * 0.8, lean: (rng() - 0.5) * 0.9, length: h * (0.45 + rng() * 0.6) * (i === 0 ? 1.15 : 1), width: w * (0.1 + rng() * 0.08) }))
+    .sort((a, b) => b.length - a.length);
+  for (const prism of prisms) {
+    ctx.save(); ctx.translate(prism.x * 0.7, -h * 0.1); ctx.rotate(prism.lean * 0.6);
+    const { length: L, width: W } = prism, tip = L * 0.2;
+    // Three visible faces of a hexagonal prism with a pointed termination.
+    const faces: [number, number, number][] = [[-W, -W * 0.35, 18], [-W * 0.35, W * 0.35, 34], [W * 0.35, W, 8]];
+    for (const [x0, x1, light] of faces) {
+      ctx.fillStyle = hsl(hue, 55, light + 30, 0.62);
+      ctx.beginPath(); ctx.moveTo(x0, 0); ctx.lineTo(x0, -L + tip); ctx.lineTo(0, -L); ctx.lineTo(x1, -L + tip); ctx.lineTo(x1, 0); ctx.closePath(); ctx.fill();
+    }
+    ctx.strokeStyle = hsl(hue, 70, 88, 0.55); ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(-W * 0.35, 0); ctx.lineTo(-W * 0.35, -L + tip); ctx.lineTo(0, -L); ctx.lineTo(W * 0.35, -L + tip); ctx.lineTo(W * 0.35, 0); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.beginPath(); ctx.moveTo(-W * 0.25, -L * 0.25); ctx.lineTo(-W * 0.15, -L * 0.7); ctx.lineTo(-W * 0.08, -L * 0.68); ctx.lineTo(-W * 0.18, -L * 0.24); ctx.fill();
+    ctx.restore();
+  }
+};
+
+const bonsai: Draw = p => {
+  const { ctx, w, h, rng } = p;
+  contactShadow(p, 1.2);
+  const hue = pick(rng, [30, 24, 36]), light = 44 + rng() * 10, trunkW = Math.max(4, w * 0.13), side = rng() > 0.5 ? 1 : -1;
+  const crown = [side * w * 0.18, -h * 0.72] as const;
+  woodStroke(ctx, () => { ctx.beginPath(); ctx.moveTo(0, 0); ctx.bezierCurveTo(-side * w * 0.35, -h * 0.2, side * w * 0.45, -h * 0.4, crown[0], crown[1]); }, trunkW, hue, light);
+  // Roots flare into the sand.
+  for (const dir of [-1, 1]) woodStroke(ctx, () => { ctx.beginPath(); ctx.moveTo(0, -trunkW * 0.4); ctx.quadraticCurveTo(dir * w * 0.25, -2, dir * w * 0.42, 1); }, trunkW * 0.5, hue, light);
+  const branches = 3 + Math.floor(rng() * 2), pads: [number, number, number][] = [];
+  for (let b = 0; b < branches; b++) {
+    const t = 0.5 + b / branches * 0.5, sx = lerp(0, crown[0], t), sy = lerp(-h * 0.25, crown[1], t), dir = b % 2 ? 1 : -1;
+    const ex = sx + dir * w * (0.3 + rng() * 0.25), ey = sy - h * (0.08 + rng() * 0.12);
+    woodStroke(ctx, () => { ctx.beginPath(); ctx.moveTo(sx, sy); ctx.quadraticCurveTo((sx + ex) / 2, sy - h * 0.12, ex, ey); }, trunkW * 0.42, hue, light);
+    pads.push([ex, ey, w * (0.2 + rng() * 0.08)]);
+  }
+  pads.push([crown[0], crown[1] - h * 0.06, w * 0.28]);
+  // Moss canopy pads, layered from dark undersides to sunlit tops.
+  for (const [x, y, r] of pads) {
+    for (let k = 0; k < 7; k++) {
+      const bx = x + (rng() - 0.5) * r * 1.6, by = y + (rng() - 0.6) * r * 0.5, br = r * (0.38 + rng() * 0.28);
+      const g = ctx.createRadialGradient(bx - br * 0.3, by - br * 0.4, br * 0.1, bx, by, br);
+      g.addColorStop(0, hsl(100, 50, 46)); g.addColorStop(0.7, hsl(110, 55, 26)); g.addColorStop(1, hsl(120, 60, 14));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(bx, by, br, br * 0.7, 0, 0, TAU); ctx.fill();
+    }
+    ctx.fillStyle = hsl(95, 50, 52, 0.6);
+    for (let d = 0; d < 14; d++) { ctx.beginPath(); ctx.arc(x + (rng() - 0.5) * r * 1.6, y - r * 0.2 - rng() * r * 0.4, 0.9, 0, TAU); ctx.fill(); }
+  }
+};
+
+const torii: Draw = p => {
+  const { ctx, w, h, rng } = p;
+  contactShadow(p, 1.25);
+  const red = pick(rng, [[8, 78, 46], [2, 70, 40], [14, 80, 50]] as const), paint = (l: number) => hsl(red[0], red[1], red[2] + l);
+  const gap = w * 0.95, pillarW = Math.max(3, w * 0.12), topY = -h * 0.86, nukiY = -h * 0.66;
+  for (const side of [-1, 1]) {
+    const x = side * gap / 2, g = ctx.createLinearGradient(x - pillarW / 2, 0, x + pillarW / 2, 0);
+    g.addColorStop(0, paint(10)); g.addColorStop(0.5, paint(0)); g.addColorStop(1, paint(-18));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x - pillarW * 0.55, 0); ctx.lineTo(x - pillarW * 0.45, topY); ctx.lineTo(x + pillarW * 0.45, topY); ctx.lineTo(x + pillarW * 0.55, 0); ctx.fill();
+    // Black-lacquered feet.
+    ctx.fillStyle = '#1a1412'; ctx.fillRect(x - pillarW * 0.62, -h * 0.07, pillarW * 1.24, h * 0.07);
+  }
+  // Nuki tie beam and the central tablet.
+  ctx.fillStyle = paint(-6); ctx.fillRect(-gap / 2 - pillarW * 1.1, nukiY - h * 0.045, gap + pillarW * 2.2, h * 0.07);
+  ctx.fillStyle = paint(-12); ctx.fillRect(-pillarW * 0.4, topY, pillarW * 0.8, nukiY - topY);
+  // Kasagi: the upturned top lintel, red over black.
+  const span = gap + pillarW * 3.4;
+  const lintel = (y: number, thickness: number, color: string, lift: number) => {
+    ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(-span / 2, y - lift); ctx.quadraticCurveTo(0, y + lift * 0.3, span / 2, y - lift);
+    ctx.lineTo(span / 2 - 2, y - lift - thickness); ctx.quadraticCurveTo(0, y - thickness + lift * 0.3, -span / 2 + 2, y - lift - thickness); ctx.closePath(); ctx.fill();
+  };
+  lintel(topY, h * 0.07, paint(4), h * 0.02);
+  lintel(topY - h * 0.07, h * 0.05, '#1d1714', h * 0.05);
+  ctx.strokeStyle = 'rgba(255,230,210,.25)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-span / 2 + 3, topY - h * 0.075); ctx.quadraticCurveTo(0, topY - h * 0.06, span / 2 - 3, topY - h * 0.075); ctx.stroke();
+  mossTufts(p, [[-gap / 2, -h * 0.05], [gap / 2, -h * 0.04], [-gap * 0.3, nukiY - h * 0.05]], 0.6);
+};
+
+const bridge: Draw = p => {
+  const { ctx, w, h, rng } = p;
+  contactShadow(p, 1.3);
+  const span = w * 1.35, rise = h * 0.62, deck = Math.max(4, h * 0.1), hue = pick(rng, [6, 12, 30]), lacquer = (l: number) => hsl(hue, hue === 30 ? 40 : 72, 42 + l);
+  const arc = (t: number) => -Math.sin(t * Math.PI) * rise;
+  // Deck: a thick lacquered arc on two stone footings.
+  ctx.fillStyle = hsl(30, 8, 40); for (const side of [-1, 1]) ctx.fillRect(side * span / 2 - (side > 0 ? span * 0.12 : 0), -h * 0.12, span * 0.12, h * 0.12);
+  ctx.beginPath(); ctx.moveTo(-span / 2, 0);
+  for (let i = 0; i <= 24; i++) { const t = i / 24; ctx.lineTo(lerp(-span / 2, span / 2, t), arc(t) - deck); }
+  for (let i = 24; i >= 0; i--) { const t = i / 24; ctx.lineTo(lerp(-span / 2, span / 2, t) * 0.92, arc(t) * 0.9); }
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, -rise - deck, 0, 0); g.addColorStop(0, lacquer(10)); g.addColorStop(1, lacquer(-22));
+  ctx.fillStyle = g; ctx.fill();
+  // Railing posts and two rails following the curve, with bronze caps.
+  const rail = h * 0.26, posts = 7;
+  ctx.strokeStyle = lacquer(-4); ctx.lineWidth = Math.max(1.5, w * 0.025);
+  for (let i = 0; i <= posts; i++) { const t = 0.06 + i / posts * 0.88, x = lerp(-span / 2, span / 2, t), y = arc(t) - deck; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - rail); ctx.stroke(); }
+  for (const lift of [rail, rail * 0.5]) {
+    ctx.lineWidth = lift === rail ? Math.max(2, w * 0.03) : Math.max(1, w * 0.018); ctx.beginPath();
+    for (let i = 0; i <= 20; i++) { const t = 0.06 + i / 20 * 0.88, x = lerp(-span / 2, span / 2, t), y = arc(t) - deck - lift; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#c99a3c';
+  for (const t of [0.06, 0.94]) { ctx.beginPath(); ctx.arc(lerp(-span / 2, span / 2, t), arc(t) - deck - rail - 2, Math.max(1.6, w * 0.03), 0, TAU); ctx.fill(); }
+  mossTufts(p, [[-span * 0.42, -h * 0.14], [span * 0.42, -h * 0.13]], 0.7);
+};
+
+const wreck: Draw = p => {
+  const { ctx, w, h, rng } = p;
+  contactShadow(p, 1.35);
+  const length = w * 1.45, depth = h * 0.62, hue = pick(rng, [26, 20, 32]), tilt = -0.18 - rng() * 0.1;
+  ctx.save(); ctx.rotate(tilt);
+  // Hull: the bow rises out of the sand, the stern is buried.
+  const hull = () => { ctx.beginPath(); ctx.moveTo(-length * 0.5, depth * 0.1); ctx.lineTo(-length * 0.5, -depth * 0.8); ctx.lineTo(length * 0.25, -depth * 0.85); ctx.quadraticCurveTo(length * 0.48, -depth * 0.9, length * 0.55, -depth * 1.15); ctx.quadraticCurveTo(length * 0.42, -depth * 0.2, length * 0.18, depth * 0.1); ctx.closePath(); };
+  hull();
+  const g = ctx.createLinearGradient(0, -depth, 0, depth * 0.1); g.addColorStop(0, hsl(hue, 30, 34)); g.addColorStop(1, hsl(hue, 34, 12));
+  ctx.fillStyle = g; ctx.fill();
+  ctx.save(); hull(); ctx.clip();
+  ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.lineWidth = 1;
+  for (let i = 1; i < 7; i++) { const y = -depth * 0.85 + depth * i / 7; ctx.beginPath(); ctx.moveTo(-length * 0.5, y); ctx.quadraticCurveTo(length * 0.2, y + 2, length * 0.55, y - depth * 0.25 * (1 - i / 7)); ctx.stroke(); }
+  // A broken plank hole and barnacles.
+  ctx.fillStyle = 'rgba(5,4,3,.9)'; ctx.beginPath(); ctx.moveTo(-length * 0.2, -depth * 0.2); ctx.lineTo(-length * 0.12, -depth * 0.55); ctx.lineTo(-length * 0.02, -depth * 0.32); ctx.lineTo(-length * 0.08, -depth * 0.1); ctx.closePath(); ctx.fill();
+  for (let b = 0; b < 26; b++) { ctx.fillStyle = `rgba(225,220,200,${0.25 + rng() * 0.35})`; ctx.beginPath(); ctx.arc((rng() - 0.5) * length, -rng() * depth, 0.8 + rng() * 1.6, 0, TAU); ctx.fill(); }
+  ctx.restore();
+  // Portholes with brass rims.
+  for (const x of [0.02, 0.18]) {
+    ctx.fillStyle = '#b08a3a'; ctx.beginPath(); ctx.arc(length * x, -depth * 0.58, Math.max(2.5, depth * 0.09), 0, TAU); ctx.fill();
+    ctx.fillStyle = '#081013'; ctx.beginPath(); ctx.arc(length * x, -depth * 0.58, Math.max(1.6, depth * 0.06), 0, TAU); ctx.fill();
+  }
+  // Gunwale and a broken mast stump.
+  ctx.strokeStyle = hsl(hue, 25, 46); ctx.lineWidth = Math.max(2, depth * 0.06); ctx.beginPath(); ctx.moveTo(-length * 0.5, -depth * 0.8); ctx.lineTo(length * 0.25, -depth * 0.85); ctx.quadraticCurveTo(length * 0.48, -depth * 0.9, length * 0.55, -depth * 1.15); ctx.stroke();
+  woodStroke(ctx, () => { ctx.beginPath(); ctx.moveTo(-length * 0.15, -depth * 0.82); ctx.lineTo(-length * 0.13, -h * 1.05); }, Math.max(3, w * 0.07), hue, 40);
+  ctx.strokeStyle = 'rgba(210,200,170,.35)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-length * 0.13, -h * 1.0); ctx.quadraticCurveTo(length * 0.2, -depth * 1.2, length * 0.52, -depth * 1.1); ctx.stroke();
+  ctx.restore();
+  mossTufts(p, [[-length * 0.35, -depth * 0.7], [length * 0.1, -depth * 0.8], [-length * 0.45, -depth * 0.2]], 0.6);
+};
+
 type Drawer = { draw: Draw; /** Visual height as a multiple of footprint radius × tank height. */ height: number; animated: boolean };
 export const PIECE_DRAWERS: Record<string, Drawer> = {
   'plant-vallisneria': { draw: vallisneria, height: 5.4, animated: true },
@@ -694,6 +966,16 @@ export const PIECE_DRAWERS: Record<string, Drawer> = {
   'orn-chest': { draw: chest, height: 0, animated: false },
   'orn-clam': { draw: clam, height: 0, animated: false },
   'orn-bubbler': { draw: bubbler, height: 0, animated: false },
+  'plant-anubias': { draw: anubias, height: 2.6, animated: true },
+  'plant-rotala': { draw: rotala, height: 4.6, animated: true },
+  'plant-crypt': { draw: crypt, height: 3, animated: true },
+  'rock-dragon': { draw: dragonStone, height: 0, animated: false },
+  'rock-arch': { draw: stoneArch, height: 0, animated: false },
+  'rock-crystal': { draw: crystal, height: 0, animated: false },
+  'wood-bonsai': { draw: bonsai, height: 0, animated: false },
+  'orn-torii': { draw: torii, height: 0, animated: false },
+  'orn-bridge': { draw: bridge, height: 0, animated: false },
+  'orn-wreck': { draw: wreck, height: 0, animated: false },
 };
 /** Lotus pads need to know where the waterline is, which depends on the tank's size. */
 export const drawLotus = (surfaceAbove: number) => lotus(surfaceAbove);

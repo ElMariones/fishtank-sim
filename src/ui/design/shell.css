@@ -237,3 +237,7 @@
 }
 @media (max-width: 420px) { .calendar-date > span { display: none; } .calendar { padding-left: 6px; } }
 @media (hover: none) { .tank-more { opacity: 1; } }
+
+/* Expositorium: display aquariums get their own rail section and a brass-framed swatch. */
+.rail-expo { margin-top: var(--s-3); }
+.tank-swatch.display { box-shadow: inset 0 0 0 1.5px var(--brass-a30), 0 0 10px var(--brass-a12); }

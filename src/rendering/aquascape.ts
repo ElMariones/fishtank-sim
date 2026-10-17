@@ -1,7 +1,7 @@
 import { itemOf, pieceRadius, type TankStyle } from '../core/aquascape';
 import { hash, random } from '../core/random';
 import type { Decoration } from '../core/tankManagement';
-import { drawLotus, lanternWindow, PIECE_DRAWERS, pieceRng, type PieceContext } from './decor';
+import { crystalCore, drawLotus, lanternWindow, PIECE_DRAWERS, pieceRng, type PieceContext } from './decor';
 
 /**
  * Tank scene renderer (FS-117): backdrop, substrate, decoration pieces, caustics, light rays, colour grading, bubbles
@@ -53,7 +53,23 @@ export function drawPiece(ctx: CanvasRenderingContext2D, piece: Decoration, box:
 
 // ---- Looks ----------------------------------------------------------------------------------------------------------
 
-type Grade = { multiply: string | null; rays: string; rayAlpha: number; caustics: number; glow: number; haze: string };
+type Grade = {
+  multiply: string | null; rays: string; rayAlpha: number; caustics: number; glow: number; haze: string;
+  /** Gallery lighting: focused spot cones from above, in this colour. */
+  spots?: string;
+  /** Storm lighting: brightness of a lightning flash this frame, 0–1. */
+  flash?: number;
+};
+/** Lightings dim enough that the glass vignette deepens. */
+const DARK_LIGHTINGS: readonly TankStyle['lighting'][] = ['moonlight', 'deepsea', 'gallery', 'storm'];
+/** A lightning flash: each 9 s window may hold one double flicker, chosen from the window's index. */
+function lightning(time: number) {
+  const window = Math.floor(time / 9), at = (hash(`storm:${window}`) % 1000) / 1000;
+  if (at > 0.45) return 0;
+  const t = time - window * 9 - at * 9;
+  if (t < 0 || t > 0.6) return 0;
+  return Math.max(0, 1 - t / 0.12) + (t > 0.22 ? Math.max(0, 0.7 - (t - 0.22) / 0.2) : 0);
+}
 function gradeFor(lighting: TankStyle['lighting'], time: number): Grade {
   switch (lighting) {
     case 'tropical': return { multiply: null, rays: '255,248,215', rayAlpha: 0.16, caustics: 0.3, glow: 0.25, haze: 'rgba(255,245,200,.05)' };
@@ -64,7 +80,99 @@ function gradeFor(lighting: TankStyle['lighting'], time: number): Grade {
       const hue = (time * 9) % 360;
       return { multiply: `hsl(${hue.toFixed(0)}, 70%, 80%)`, rays: hslRgb((hue + 40) % 360), rayAlpha: 0.13, caustics: 0.16, glow: 0.8, haze: `hsla(${hue.toFixed(0)}, 80%, 60%, .06)` };
     }
+    case 'gallery': return { multiply: '#a7a4ac', rays: '255,248,230', rayAlpha: 0.05, caustics: 0.1, glow: 0.9, haze: 'rgba(0,0,0,.08)', spots: '255,246,222' };
+    case 'deepsea': {
+      const pulse = 0.5 + Math.sin(time * 0.4) * 0.5;
+      return { multiply: '#3a5cc4', rays: '90,150,255', rayAlpha: 0.05 + pulse * 0.03, caustics: 0.1, glow: 1.2, haze: 'rgba(10,30,110,.16)' };
+    }
+    case 'neon': {
+      const swing = Math.sin(time * 0.6) * 0.5 + 0.5;
+      return { multiply: swing > 0.5 ? '#f3b6ff' : '#b0f4ff', rays: swing > 0.5 ? '255,90,240' : '60,240,255', rayAlpha: 0.15, caustics: 0.22, glow: 0.9, haze: `rgba(${Math.round(lerp(40, 255, swing))},${Math.round(lerp(230, 40, swing))},${Math.round(lerp(255, 230, swing))},.07)` };
+    }
+    case 'ember': {
+      const flicker = 0.85 + Math.sin(time * 6.3) * 0.06 + Math.sin(time * 11.7 + 1) * 0.05 + Math.sin(time * 2.1) * 0.04;
+      return { multiply: '#ffc995', rays: '255,140,60', rayAlpha: 0.08 * flicker, caustics: 0.08, glow: 1 * flicker, haze: `rgba(255,90,20,${(0.12 * flicker).toFixed(3)})` };
+    }
+    case 'storm': {
+      const flash = lightning(time);
+      return { multiply: '#8e98ab', rays: '200,215,240', rayAlpha: 0.04 + flash * 0.3, caustics: 0.08 + flash * 0.4, glow: 0.8, haze: 'rgba(30,40,60,.14)', flash };
+    }
+    case 'dawn': return { multiply: '#ffe6ee', rays: '255,214,226', rayAlpha: 0.14, caustics: 0.2, glow: 0.45, haze: 'rgba(255,180,210,.07)' };
     default: return { multiply: null, rays: '225,245,255', rayAlpha: 0.1, caustics: 0.18, glow: 0.3, haze: 'rgba(200,240,255,.03)' };
+  }
+}
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+// ---- Effects --------------------------------------------------------------------------------------------------------
+
+/** A particle's resting place and drift, from its index alone, so every frame shows the same particles moving on. */
+const seeded = (effect: string, i: number, salt: number) => (hash(`${effect}:${i}:${salt}`) % 10000) / 10000;
+/** Effects layered over the fish and under the grade, so the tank's light colours them like everything else. */
+function paintEffect(ctx: CanvasRenderingContext2D, W: number, H: number, effect: TankStyle['effect'], time: number) {
+  if (!effect) return;
+  const top = WATERLINE * H, floor = SUBSTRATE_TOP * H;
+  if (effect === 'motes') {
+    for (let i = 0; i < 70; i++) {
+      const x = ((seeded(effect, i, 1) + time * (0.004 + seeded(effect, i, 2) * 0.01)) % 1) * W, y = top + ((seeded(effect, i, 3) + Math.sin(time * 0.3 + i) * 0.02) % 1) * (floor - top);
+      ctx.fillStyle = `rgba(235,245,235,${(0.12 + seeded(effect, i, 4) * 0.25).toFixed(3)})`; ctx.fillRect(x, y, 1 + seeded(effect, i, 5) * 1.4, 1 + seeded(effect, i, 5) * 1.4);
+    }
+  } else if (effect === 'plankton') {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 46; i++) {
+      const x = ((seeded(effect, i, 1) + time * 0.006 * (seeded(effect, i, 2) - 0.5)) % 1 + 1) % 1 * W, y = top + seeded(effect, i, 3) * (floor - top) + Math.sin(time * 0.5 + i * 1.3) * 8;
+      const pulse = Math.max(0, Math.sin(time * (0.8 + seeded(effect, i, 4)) + i * 2.1)), r = 1.5 + seeded(effect, i, 5) * 2.5;
+      if (pulse < 0.05) continue;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r * 4); g.addColorStop(0, `rgba(140,255,240,${(0.7 * pulse).toFixed(3)})`); g.addColorStop(1, 'rgba(40,120,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(x - r * 4, y - r * 4, r * 8, r * 8);
+    }
+    ctx.restore();
+  } else if (effect === 'curtain') {
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i < 90; i++) {
+      const lane = seeded(effect, i, 1), speed = 0.18 + seeded(effect, i, 2) * 0.12, phase = (time * speed + seeded(effect, i, 3)) % 1;
+      const x = (0.06 + lane * 0.88) * W + Math.sin(time * 2 + i) * (1 + phase * 3), y = floor - phase * (floor - top), r = 0.8 + seeded(effect, i, 4) * 1.8 + phase;
+      ctx.strokeStyle = `rgba(225,250,255,${(0.32 * (1 - phase * 0.6)).toFixed(3)})`; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+    }
+  } else if (effect === 'mist') {
+    for (let band = 0; band < 3; band++) {
+      const y = top + H * (0.02 + band * 0.045), drift = (time * (6 + band * 3)) % (W * 0.6);
+      for (let k = -1; k < 4; k++) {
+        const cx = k * W * 0.6 + drift - W * 0.1, g = ctx.createRadialGradient(cx, y, 0, cx, y, W * 0.35);
+        g.addColorStop(0, `rgba(235,248,250,${0.13 - band * 0.03})`); g.addColorStop(1, 'rgba(235,248,250,0)');
+        ctx.fillStyle = g; ctx.save(); ctx.translate(cx, y); ctx.scale(1, 0.18); ctx.translate(-cx, -y); ctx.fillRect(cx - W * 0.35, y - W * 0.35, W * 0.7, W * 0.7); ctx.restore();
+      }
+    }
+  } else if (effect === 'petals') {
+    for (let i = 0; i < 26; i++) {
+      const speed = 0.025 + seeded(effect, i, 2) * 0.03, phase = (time * speed + seeded(effect, i, 3)) % 1;
+      const x = ((seeded(effect, i, 1) + Math.sin(time * 0.4 + i) * 0.03 + phase * 0.08) % 1) * W, y = top + phase * (floor - top);
+      const spin = time * (0.6 + seeded(effect, i, 4)) + i, size = 3 + seeded(effect, i, 5) * 3;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(spin); ctx.scale(1, 0.45 + Math.abs(Math.sin(spin * 1.3)) * 0.55);
+      ctx.fillStyle = `rgba(255,${190 + Math.round(seeded(effect, i, 6) * 40)},${215 + Math.round(seeded(effect, i, 7) * 25)},0.85)`;
+      ctx.beginPath(); ctx.moveTo(0, -size); ctx.bezierCurveTo(size, -size * 0.6, size * 0.7, size * 0.6, 0, size * 0.8); ctx.bezierCurveTo(-size * 0.7, size * 0.6, -size, -size * 0.6, 0, -size); ctx.fill();
+      ctx.restore();
+    }
+  } else if (effect === 'sparkle') {
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 40; i++) {
+      const life = (time * (0.5 + seeded(effect, i, 2) * 0.6) + seeded(effect, i, 3)) % 1, glint = Math.sin(life * Math.PI) ** 3;
+      if (glint < 0.05) continue;
+      const cycle = Math.floor(time * (0.5 + seeded(effect, i, 2) * 0.6) + seeded(effect, i, 3));
+      const x = seeded(effect, i, cycle) * W, y = top + seeded(effect, i, cycle + 7) * (floor - top) * 0.6, r = 2 + glint * 4;
+      ctx.strokeStyle = `rgba(255,250,215,${(0.8 * glint).toFixed(3)})`; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x - r, y); ctx.lineTo(x + r, y); ctx.moveTo(x, y - r); ctx.lineTo(x, y + r); ctx.stroke();
+      ctx.fillStyle = `rgba(255,255,240,${(0.9 * glint).toFixed(3)})`; ctx.beginPath(); ctx.arc(x, y, 1.1, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  } else if (effect === 'current') {
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 22; i++) {
+      const y = top + (0.08 + seeded(effect, i, 1) * 0.84) * (floor - top), speed = 0.05 + seeded(effect, i, 2) * 0.06, length = W * (0.08 + seeded(effect, i, 3) * 0.14);
+      const head = ((time * speed + seeded(effect, i, 4)) % 1.3 - 0.15) * W, g = ctx.createLinearGradient(head - length, 0, head, 0);
+      g.addColorStop(0, 'rgba(210,245,250,0)'); g.addColorStop(1, `rgba(210,245,250,${(0.1 + seeded(effect, i, 5) * 0.12).toFixed(3)})`);
+      ctx.strokeStyle = g; ctx.lineWidth = 1 + seeded(effect, i, 6) * 1.5; ctx.beginPath(); ctx.moveTo(head - length, y);
+      ctx.quadraticCurveTo(head - length / 2, y + Math.sin(time + i) * 6, head, y); ctx.stroke();
+    }
   }
 }
 function hslRgb(hue: number) {
@@ -317,9 +425,15 @@ export class AquascapeRenderer {
     ctx.drawImage(this.plantLayers[layer]!.canvas, 0, 0, W, H);
   }
 
-  /** Bubbles, light rays, grading, glowing lanterns, the waterline and glass, over the fish. */
-  paintFront(ctx: CanvasRenderingContext2D, W: number, H: number, scene: Scene, time: number) {
+  /**
+   * Bubbles, light rays, grading, glowing lanterns, the waterline and glass, over the fish. A multiply grade only works on
+   * an opaque target: on a transparent overlay above the GPU fish layer it would fill the whole glass. With `over`, the
+   * graded part stops before the multiply, everything after it goes to `over`, and the multiply colour is returned for the
+   * caller to apply as a CSS multiply blend between the two layers, in the same order as the single-canvas path.
+   */
+  paintFront(ctx: CanvasRenderingContext2D, W: number, H: number, scene: Scene, time: number, over?: CanvasRenderingContext2D): string | null {
     const grade = gradeFor(scene.style.lighting, time);
+    paintEffect(ctx, W, H, scene.style.effect, time);
     for (const piece of scene.decorations) {
       const id = piece.item;
       if (id !== 'orn-bubbler' && id !== 'orn-chest') continue;
@@ -342,9 +456,28 @@ export class AquascapeRenderer {
       ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x - spread * 0.3, 0); ctx.lineTo(x + spread * 0.3, 0); ctx.lineTo(x + spread * 1.4 - W * 0.12, H); ctx.lineTo(x - spread * 1.4 - W * 0.12, H); ctx.fill();
     }
     ctx.restore();
-    if (grade.multiply) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = grade.multiply; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+    if (grade.multiply && !over) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = grade.multiply; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+    if (over) ctx = over;
     ctx.fillStyle = grade.haze; ctx.fillRect(0, 0, W, H);
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    if (grade.spots) {
+      // Three show spots that drift slightly, each a soft cone with a pool of light on the substrate.
+      for (let s = 0; s < 3; s++) {
+        const x = W * (0.2 + s * 0.3) + Math.sin(time * 0.15 + s * 2) * W * 0.03, spread = W * 0.11, floor = SUBSTRATE_TOP * H;
+        const cone = ctx.createLinearGradient(0, 0, 0, floor); cone.addColorStop(0, `rgba(${grade.spots},.22)`); cone.addColorStop(1, `rgba(${grade.spots},.05)`);
+        ctx.fillStyle = cone; ctx.beginPath(); ctx.moveTo(x - spread * 0.2, 0); ctx.lineTo(x + spread * 0.2, 0); ctx.lineTo(x + spread, floor); ctx.lineTo(x - spread, floor); ctx.fill();
+        const pool = ctx.createRadialGradient(x, floor, 0, x, floor, spread * 1.2); pool.addColorStop(0, `rgba(${grade.spots},.3)`); pool.addColorStop(1, `rgba(${grade.spots},0)`);
+        ctx.save(); ctx.translate(x, floor); ctx.scale(1, 0.25); ctx.translate(-x, -floor); ctx.fillStyle = pool; ctx.fillRect(x - spread * 1.2, floor - spread * 1.2, spread * 2.4, spread * 2.4); ctx.restore();
+      }
+    }
+    if (grade.flash) { ctx.fillStyle = `rgba(220,230,255,${(grade.flash * 0.35).toFixed(3)})`; ctx.fillRect(0, 0, W, H); }
+    for (const piece of scene.decorations) {
+      if (piece.item !== 'rock-crystal') continue;
+      // Quartz holds the light: a slow pulse, strongest in dim tanks.
+      const box = pieceBox(piece, W, H), core = crystalCore(box.w, box.h), x = box.cx, y = box.base + core.y, pulse = 0.75 + Math.sin(time * 1.3 + piece.x * 20) * 0.25;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, core.r); g.addColorStop(0, `rgba(210,170,255,${(0.32 * grade.glow * pulse).toFixed(3)})`); g.addColorStop(1, 'rgba(160,120,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(x - core.r, y - core.r, core.r * 2, core.r * 2);
+    }
     for (const piece of scene.decorations) {
       if (piece.item !== 'orn-lantern') continue;
       const box = pieceBox(piece, W, H), win = lanternWindow(box.w, box.h), x = box.cx, y = box.base + win.y, flicker = 0.9 + Math.sin(time * 7 + piece.x * 40) * 0.05 + Math.sin(time * 13) * 0.03;
@@ -362,7 +495,7 @@ export class AquascapeRenderer {
     for (let x = 0; x <= W; x += 8) { const y = surface + Math.sin(x * 0.03 + time * 1.4) * 1.6 + Math.sin(x * 0.011 - time * 0.8) * 1.4; x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
     ctx.stroke();
     // Glass: a soft diagonal sheen and vignette, painted once per size and lighting.
-    const dpr = ctx.getTransform().a || 1, key = `${W}x${H}@${dpr}:${scene.style.lighting === 'moonlight'}`;
+    const dark = DARK_LIGHTINGS.includes(scene.style.lighting), dpr = ctx.getTransform().a || 1, key = `${W}x${H}@${dpr}:${dark}`;
     if (this.glass?.key !== key) {
       const canvas = this.glass?.canvas ?? document.createElement('canvas');
       canvas.width = Math.max(1, Math.round(W * dpr)); canvas.height = Math.max(1, Math.round(H * dpr));
@@ -371,11 +504,12 @@ export class AquascapeRenderer {
       sheen.addColorStop(0, 'rgba(255,255,255,.06)'); sheen.addColorStop(0.35, 'rgba(255,255,255,0)'); sheen.addColorStop(0.62, 'rgba(255,255,255,0)'); sheen.addColorStop(0.66, 'rgba(255,255,255,.035)'); sheen.addColorStop(0.72, 'rgba(255,255,255,0)');
       glass.fillStyle = sheen; glass.fillRect(0, 0, W, H);
       const vignette = glass.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.35, W / 2, H * 0.5, Math.max(W, H) * 0.75);
-      vignette.addColorStop(0, 'rgba(0,0,0,0)'); vignette.addColorStop(1, scene.style.lighting === 'moonlight' ? 'rgba(0,4,16,.6)' : 'rgba(0,6,10,.42)');
+      vignette.addColorStop(0, 'rgba(0,0,0,0)'); vignette.addColorStop(1, dark ? 'rgba(0,4,16,.6)' : 'rgba(0,6,10,.42)');
       glass.fillStyle = vignette; glass.fillRect(0, 0, W, H);
       this.glass = { canvas, key };
     }
     ctx.drawImage(this.glass.canvas, 0, 0, W, H);
+    return over ? grade.multiply : null;
   }
 }
 
@@ -395,7 +529,9 @@ export function paintThumbnail(canvas: HTMLCanvasElement, piece: Decoration, tim
   if (entry.id === 'plant-hairgrass') h = H * 0.3;
   if (entry.id === 'plant-moss') { w = W * 0.5; h = H * 0.3; }
   if (entry.id === 'orn-bubbler') { w = W * 0.3; h = H * 0.12; }
-  if (entry.id === 'wood-spider' || entry.id === 'wood-roots') { w = W * 0.42; h = H * 0.62; }
+  if (entry.id === 'wood-spider' || entry.id === 'wood-roots' || entry.id === 'wood-bonsai' || entry.id === 'orn-torii') { w = W * 0.42; h = H * 0.62; }
+  if (entry.id === 'orn-bridge' || entry.id === 'orn-wreck' || entry.id === 'rock-arch') { w = W * 0.56; h = H * 0.5; }
+  if (entry.id === 'rock-crystal') { w = W * 0.4; h = H * 0.6; }
   const variant = piece.variant ?? 0;
   const draw = entry.id === 'plant-lotus' ? drawLotus(ground - 6) : drawer.draw;
   ctx.save(); ctx.translate(W / 2, surface ? H * 0.14 : ground); if (piece.rotation > 90 && piece.rotation < 270) ctx.scale(-1, 1);

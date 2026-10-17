@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
 import {
   BACKDROPS, DECOR_CATEGORIES, DECOR_ITEMS, DECOR_VARIANTS, LIGHTINGS, SCALE_RANGE, SUBSTRATES, THEMES, decorItem, itemOf, piecePrice, settle,
-  styleCost, styleOf, type DecorCategory, type StyleFacet, type StyleOption, type TankStyle, type Theme,
+  styleCost, styleOf, EFFECTS, facetValue, withFacet, type DecorCategory, type StyleFacet, type StyleOption, type TankStyle, type Theme,
 } from '../core/aquascape';
 import { nearestValid, nextPieceId, placePiece, themeLayout } from '../core/aquascapeLayout';
 import { decorationsOf, layoutProblem, MAX_DECORATIONS, type Decoration } from '../core/tankManagement';
@@ -198,6 +198,7 @@ const ScenePreview = memo(function ScenePreview({ scene }: { scene: Scene }) {
 type DockTab = 'themes' | DecorCategory | StyleFacet;
 const LOOK_TABS: { id: StyleFacet; label: string; options: readonly StyleOption[] }[] = [
   { id: 'substrate', label: 'Substrate', options: SUBSTRATES }, { id: 'backdrop', label: 'Backdrop', options: BACKDROPS }, { id: 'lighting', label: 'Lighting', options: LIGHTINGS },
+  { id: 'effect', label: 'Effects', options: EFFECTS },
 ];
 
 type DockProps = { world: World; tank: Tank; store: DraftStore; readOnly?: boolean;
@@ -228,7 +229,7 @@ export function AquascapeDock({ world, tank, store, readOnly, onRun, onClose }: 
   };
   const themeScenes = useMemo(() => new Map(THEMES.map(theme => [theme.id, { decorations: themeLayout(theme), style: theme.style }])), []);
   const themeCosts = useMemo(() => new Map(THEMES.map(theme => [theme.id, themeScenes.get(theme.id)!.decorations.reduce((sum, piece) => sum + piecePrice(piece), 0) + styleCost(savedStyle, theme.style)])), [themeScenes, savedStyle]);
-  const lookScenes = useMemo(() => new Map(LOOK_TABS.flatMap(look => look.options.map(option => [`${look.id}:${option.id}`, { decorations: draft.decorations, style: { ...draft.style, [look.id]: option.id } }] as const))),
+  const lookScenes = useMemo(() => new Map(LOOK_TABS.flatMap(look => look.options.map(option => [`${look.id}:${option.id}`, { decorations: draft.decorations, style: withFacet(draft.style, look.id, option.id) }] as const))),
     // Look previews show the current layout: rebuilt when the tab or look changes or a drag ends, never during a drag.
     [tab, draft.style, draft.dragging === null ? draft.decorations : null]);
 
@@ -238,7 +239,7 @@ export function AquascapeDock({ world, tank, store, readOnly, onRun, onClose }: 
       <p>Drag pieces onto the glass or tap to add · pieces settle into the substrate · plants give cover, everything else is solid</p>
     </div>
     <div className="dock-tabs" role="tablist" aria-label="Aquascape catalog">
-      {([['themes', 'Themes', 'spark'], ...DECOR_CATEGORIES.map(c => [c.id, c.label, c.id === 'plants' ? 'leaf' : c.id === 'rocks' ? 'mountain' : c.id === 'wood' ? 'layers' : 'brush']), ['substrate', 'Substrate', 'grid'], ['backdrop', 'Backdrop', 'wave'], ['lighting', 'Lighting', 'sun']] as [DockTab, string, Parameters<typeof Icon>[0]['name']][]).map(([id, label, icon]) =>
+      {([['themes', 'Themes', 'spark'], ...DECOR_CATEGORIES.map(c => [c.id, c.label, c.id === 'plants' ? 'leaf' : c.id === 'rocks' ? 'mountain' : c.id === 'wood' ? 'layers' : 'brush']), ['substrate', 'Substrate', 'grid'], ['backdrop', 'Backdrop', 'wave'], ['lighting', 'Lighting', 'sun'], ['effect', 'Effects', 'spark']] as [DockTab, string, Parameters<typeof Icon>[0]['name']][]).map(([id, label, icon]) =>
         <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>
           <Icon name={icon} size={15} />{label}{id in counts && counts[id] ? <span className="tab-badge">{counts[id]}</span> : null}
         </button>)}
@@ -257,9 +258,9 @@ export function AquascapeDock({ world, tank, store, readOnly, onRun, onClose }: 
           <span className="price">◈ {entry.price}</span><span className={`kind-tag ${entry.kind}`}>{entry.kind === 'cover' ? 'Cover' : 'Solid'}</span>
         </button>) : null}
       {LOOK_TABS.filter(look => look.id === tab).flatMap(look => look.options.map(option => {
-        const active = draft.style[look.id] === option.id, owned = savedStyle[look.id] === option.id;
+        const active = facetValue(draft.style, look.id) === option.id, owned = facetValue(savedStyle, look.id) === option.id;
         return <button key={option.id} type="button" className={`dock-card look-card ${active ? 'active' : ''}`} aria-pressed={active}
-          onClick={() => setDraft(current => current && ({ ...current, style: { ...current.style, [look.id]: option.id } }))}>
+          onClick={() => setDraft(current => current && ({ ...current, style: withFacet(current.style, look.id, option.id) }))}>
           <ScenePreview scene={lookScenes.get(`${look.id}:${option.id}`)!} />
           <strong>{option.name}{active ? <Icon name="check" size={14} /> : null}</strong><small>{option.blurb}</small>
           <span className="price">{owned ? 'Current' : option.price ? `◈ ${option.price}` : 'Free'}</span>

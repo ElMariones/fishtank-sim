@@ -9,7 +9,7 @@ import { Popover } from './kit/Overlay';
 import { AnimatedNumber, CapacityBar } from './ShellParts';
 
 export type LabView = 'aquarium' | 'research' | 'fixtures' | 'competitions' | 'trophies' | 'atlas';
-export type TankSummary = { id: string; name: string; capacity: number; living: number; eggs: number; tone: 'good' | 'warn' | 'alert'; style: TankStyle };
+export type TankSummary = { id: string; name: string; capacity: number; living: number; eggs: number; tone: 'good' | 'warn' | 'alert'; style: TankStyle; display: boolean };
 export type TankAction = 'open' | 'aquascape' | 'care' | 'habitat';
 
 const PRIMARY: [LabView, string, IconName, string][] = [
@@ -25,15 +25,16 @@ const SUBSTRATE: Record<TankStyle['substrate'], string> = { sand: '#d3bd8f', gra
 
 type RailProps = {
   view: LabView; onView: (view: LabView) => void; compact: boolean; onCompact: () => void;
-  tanks: TankSummary[]; activeTankId: string; loadingTankId?: string | null; onTank: (id: string) => void; onTankAction: (id: string, action: TankAction) => void; onAddTank: () => void;
+  tanks: TankSummary[]; activeTankId: string; loadingTankId?: string | null; onTank: (id: string) => void; onTankAction: (id: string, action: TankAction) => void; onAddTank: () => void; onAddDisplay: () => void;
   credits: number; saveState: string; guide: { done: number; total: number; hidden: boolean };
   onMarket: () => void; onShop: () => void; onSaves: () => void; onGuide: () => void; onExport: () => void;
   open: { market: boolean; shop: boolean; saves: boolean };
 };
 
 /** The left navigation rail: brand, lab views, aquariums as live swatches with their own menus, and lab tools. */
-export function NavRail({ view, onView, compact, onCompact, tanks, activeTankId, loadingTankId, onTank, onTankAction, onAddTank, credits, saveState, guide, onMarket, onShop, onSaves, onGuide, onExport, open }: RailProps) {
+export function NavRail({ view, onView, compact, onCompact, tanks: allTanks, activeTankId, loadingTankId, onTank, onTankAction, onAddTank, onAddDisplay, credits, saveState, guide, onMarket, onShop, onSaves, onGuide, onExport, open }: RailProps) {
   const saving = saveState === 'Saving…', failed = saveState === 'Session not saved';
+  const tanks = allTanks.filter(tank => !tank.display), displays = allTanks.filter(tank => tank.display);
   const context = useContextMenu();
   const tankMenu = (tank: TankSummary): MenuEntry[] => [
     { type: 'heading', id: 'h', label: tank.name },
@@ -42,6 +43,26 @@ export function NavRail({ view, onView, compact, onCompact, tanks, activeTankId,
     { id: 'care', label: 'Care controls', icon: 'drop', hint: TONE_TEXT[tank.tone], onSelect: () => onTankAction(tank.id, 'care') },
     { id: 'habitat', label: 'Habitat & expansion', icon: 'leaf', onSelect: () => onTankAction(tank.id, 'habitat') },
   ];
+  const tankCard = (tank: TankSummary, label: string) => {
+    const [top, bottom] = BACKDROP[tank.style.backdrop];
+    return <div className={`rail-tank ${tank.id === activeTankId ? 'active' : ''}`} key={tank.id} onContextMenu={event => context.open(event, tankMenu(tank), `${tank.name} actions`)}>
+      <button className={`tank-card ${tank.id === loadingTankId ? 'loading' : ''}`} aria-current={tank.id === activeTankId ? 'true' : undefined} aria-busy={tank.id === loadingTankId}
+        onClick={() => onTank(tank.id)} aria-label={`${tank.name}: ${tank.living} of ${tank.capacity} places${tank.eggs ? `, ${tank.eggs} eggs` : ''}, ${TONE_TEXT[tank.tone].toLowerCase()}`}
+        data-tip={`${tank.name} · ${tank.living}/${tank.capacity}`} data-tip-collapsed data-tip-side="right"
+        onKeyDown={event => { if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) { event.preventDefault(); context.openFor(event.currentTarget, tankMenu(tank), `${tank.name} actions`); } }}>
+        <span className={`tank-swatch ${tank.display ? 'display' : ''}`} aria-hidden="true" style={{ '--sw-top': top, '--sw-bottom': bottom, '--sw-floor': SUBSTRATE[tank.style.substrate] } as React.CSSProperties}>
+          <span className="mono">{label}</span><i className={`tone-dot ${tank.tone}`} />
+        </span>
+        <span className="rail-label tank-card-body">
+          <span className="tank-card-name">{tank.name}</span>
+          <small><span className="mono">{tank.living}/{tank.capacity}</span>{tank.eggs ? <> · <Icon name="egg" size={11} /> {tank.eggs}</> : null} · <span className={`tone-text ${tank.tone}`}>{TONE_TEXT[tank.tone]}</span></small>
+          <CapacityBar used={tank.living} capacity={tank.capacity} />
+        </span>
+      </button>
+      {compact ? null : <MenuButton className="quiet icon-button btn-sm tank-more" items={tankMenu(tank)} label={`${tank.name} actions`} ariaLabel={`${tank.name} actions`} placement="right-start">
+        <Icon name="more" size={16} /></MenuButton>}
+    </div>;
+  };
   const tool = (icon: IconName, label: string, onClick: () => void, extra?: ReactNode, expanded?: boolean, className = '') =>
     <button className={`rail-item rail-tool ${className}`} onClick={onClick} aria-label={label} data-tip={label} data-tip-collapsed data-tip-side="right" aria-expanded={expanded}>
       <Icon name={icon} /><span className="rail-label">{label}</span>{extra}</button>;
@@ -62,29 +83,15 @@ export function NavRail({ view, onView, compact, onCompact, tanks, activeTankId,
     </nav>
     {view === 'aquarium' ? <div className="rail-section rail-tanks">
       <div className="rail-heading rail-label"><span>Aquariums</span><span className="mono">{tanks.length}/8</span></div>
-      <nav aria-label="Aquariums">{tanks.map((tank, i) => {
-        const [top, bottom] = BACKDROP[tank.style.backdrop];
-        return <div className={`rail-tank ${tank.id === activeTankId ? 'active' : ''}`} key={tank.id} onContextMenu={event => context.open(event, tankMenu(tank), `${tank.name} actions`)}>
-          <button className={`tank-card ${tank.id === loadingTankId ? 'loading' : ''}`} aria-current={tank.id === activeTankId ? 'true' : undefined} aria-busy={tank.id === loadingTankId}
-            onClick={() => onTank(tank.id)} aria-label={`${tank.name}: ${tank.living} of ${tank.capacity} places${tank.eggs ? `, ${tank.eggs} eggs` : ''}, ${TONE_TEXT[tank.tone].toLowerCase()}`}
-            data-tip={`${tank.name} · ${tank.living}/${tank.capacity}`} data-tip-collapsed data-tip-side="right"
-            onKeyDown={event => { if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) { event.preventDefault(); context.openFor(event.currentTarget, tankMenu(tank), `${tank.name} actions`); } }}>
-            <span className="tank-swatch" aria-hidden="true" style={{ '--sw-top': top, '--sw-bottom': bottom, '--sw-floor': SUBSTRATE[tank.style.substrate] } as React.CSSProperties}>
-              <span className="mono">{String(i + 1).padStart(2, '0')}</span><i className={`tone-dot ${tank.tone}`} />
-            </span>
-            <span className="rail-label tank-card-body">
-              <span className="tank-card-name">{tank.name}</span>
-              <small><span className="mono">{tank.living}/{tank.capacity}</span>{tank.eggs ? <> · <Icon name="egg" size={11} /> {tank.eggs}</> : null} · <span className={`tone-text ${tank.tone}`}>{TONE_TEXT[tank.tone]}</span></small>
-              <CapacityBar used={tank.living} capacity={tank.capacity} />
-            </span>
-          </button>
-          {compact ? null : <MenuButton className="quiet icon-button btn-sm tank-more" items={tankMenu(tank)} label={`${tank.name} actions`} ariaLabel={`${tank.name} actions`} placement="right-start">
-            <Icon name="more" size={16} /></MenuButton>}
-        </div>;
-      })}</nav>
+      <nav aria-label="Aquariums">{tanks.map((tank, i) => tankCard(tank, String(i + 1).padStart(2, '0')))}</nav>
       <button className="rail-item rail-add" onClick={onAddTank} aria-label="Add or expand aquariums" data-tip="Add or expand aquariums" data-tip-collapsed data-tip-side="right">
         <Icon name="plus" size={16} /><span className="rail-label">Add or expand aquariums</span></button>
+      <div className="rail-heading rail-label rail-expo"><span>Expositorium</span><span className="mono">{displays.length}/3</span></div>
+      {displays.length ? <nav aria-label="Expositorium">{displays.map((tank, i) => tankCard(tank, `★${i + 1}`))}</nav> : null}
+      <button className="rail-item rail-add" onClick={onAddDisplay} aria-label="Open a display aquarium" data-tip="Display aquariums show off up to five of your best fish" data-tip-collapsed data-tip-side="right">
+        <Icon name="crown" size={16} /><span className="rail-label">{displays.length ? 'Add a display aquarium' : 'Open the expositorium'}</span></button>
     </div> : null}
+
     <div className="rail-section rail-research">
       <div className="rail-heading rail-label"><span>Research</span></div>
       {RESEARCH.map(([value, label, icon]) => <button key={value} aria-label={label} data-tip={label} data-tip-collapsed data-tip-side="right"
