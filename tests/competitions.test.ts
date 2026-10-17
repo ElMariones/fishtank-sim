@@ -119,7 +119,7 @@ describe('calendar competition circuit', () => {
     const raw = JSON.parse(JSON.stringify(runtime));
     for (const world of [raw.world, raw.checkpoint.world]) { world.version = 14; delete world.circuit; for (const key of ['competitionEntry', 'competitionPrize', 'competitionPurchase']) delete world.ledger.totals[key]; }
     const restored = decodeRuntime(JSON.stringify(raw));
-    expect(restored.world.fish).toEqual(runtime.world.fish); expect(restored.world.credits).toBe(runtime.world.credits); expect(restored.world.version).toBe(18);
+    expect(restored.world.fish).toEqual(runtime.world.fish); expect(restored.world.credits).toBe(runtime.world.credits); expect(restored.world.version).toBe(19);
     expect(restored.world.circuit.day).toBe(37); expect(restored.tick).toBe(runtime.tick);
     expect(decodeRuntime(JSON.stringify(restored))).toEqual(restored);
   });

@@ -4,7 +4,7 @@ import {
   type AlleleKind, type Channel, type GenesisBlock, type ModuleCopies, type NovelAllele, type NovelScale,
 } from './genesis';
 import { GOLDFISH_LOCUS_REGISTRY } from './goldfishCatalog';
-import { inheritModules, type ModuleMutation } from './modules';
+import { inheritModules, type BodyPlanSet, type ModuleMutation } from './modules';
 import { clamp, hash, random } from './random';
 import type { Species } from './types';
 
@@ -69,13 +69,13 @@ type WithGenesis = { genesis?: GenesisBlock };
  * holds every novel allele the parents carried, so carried alleles keep their definitions and derived ones find their
  * parent's value.
  */
-export function upgradeChild<T extends WithGenesis>(species: Species, child: T, mother: ModuleCopies, father: ModuleCopies, pool: ReadonlyMap<number, NovelAllele>, seed: number): { genome: T; moduleMutations: ModuleMutation[] } {
+export function upgradeChild<T extends WithGenesis>(species: Species, child: T, mother: ModuleCopies, father: ModuleCopies, pool: ReadonlyMap<number, NovelAllele>, seed: number, bodyPlan?: BodyPlanSet): { genome: T; moduleMutations: ModuleMutation[] } {
   const block = child.genesis;
   if (!block) return { genome: child, moduleMutations: [] };
   const local = new Map(pool);
   for (const entry of block.novel) if (!local.has(entry.id)) local.set(entry.id, entry);
   const novel = block.novel.map(entry => pool.has(entry.id) ? entry : enrichAllele(entry, species, local));
-  const { modules, mutations } = inheritModules(species, mother, father, seed);
+  const { modules, mutations } = inheritModules(species, mother, father, seed, bodyPlan);
   // Key order matches the save schema (dev, load, novel, model, modules), so replay comparisons stay byte-identical.
   return { genome: { ...child, genesis: { dev: block.dev, load: block.load, novel, model: GENESIS_MODEL_2, modules } }, moduleMutations: mutations };
 }

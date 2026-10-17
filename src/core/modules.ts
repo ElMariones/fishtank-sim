@@ -59,10 +59,30 @@ export const AXOLOTL_MODULE_LOCI: readonly ModuleLocus[] = [
   { id: 'crest_reach', label: 'Crest reach', rule: 'modifier', alleles: LEVELS, weights: [0.4, 0.3, 0.2, 0.1],
     note: 'How far forward a dorsal crest reaches.' },
 ];
-/** Goldfish already express hoods, bubble eyes and lobed tails through their own loci; they carry no module genes yet. */
-export const GOLDFISH_MODULE_LOCI: readonly ModuleLocus[] = [];
+/**
+ * Goldfish hoods, bubble eyes and lobed tails already come from their own loci. Their module genes (body-plan set 2,
+ * world v19) duplicate fins instead: a second dorsal fin and a second pectoral pair.
+ */
+export const GOLDFISH_MODULE_LOCI: readonly ModuleLocus[] = [
+  { id: 'dorsal_duplication', label: 'Dorsal duplication', rule: 'liability', alleles: LIABILITY, weights: [0.86, 0.1, 0.03, 0.01],
+    note: 'Liability for a second dorsal fin behind the first. A threshold trait; fish without a full dorsal fin never show it.' },
+  { id: 'dorsal_modifier', label: 'Dorsal duplication modifier', rule: 'modifier', alleles: LEVELS, weights: [0.45, 0.3, 0.17, 0.08],
+    note: 'Adds a little liability toward a second dorsal fin and sets its height.' },
+  { id: 'pectoral_duplication', label: 'Pectoral duplication', rule: 'recessive', alleles: ['single', 'double'], weights: [0.87, 0.13],
+    note: 'Recessive: two double copies grow a second, smaller pectoral pair behind the first.' },
+  { id: 'pectoral_length', label: 'Second pectoral length', rule: 'modifier', alleles: LEVELS, weights: [0.4, 0.3, 0.2, 0.1],
+    note: 'How long a second pectoral pair grows.' },
+];
 
-export const moduleLoci = (species: Species): readonly ModuleLocus[] => species === 'koi' ? KOI_MODULE_LOCI : species === 'axolotl' ? AXOLOTL_MODULE_LOCI : GOLDFISH_MODULE_LOCI;
+/**
+ * Body-plan sets. Set 1 is the R-203 registry (no goldfish module genes); set 2 adds the goldfish fin duplications. A world
+ * v18 journal recorded goldfish births under set 1, so it replays there and moves to set 2 when the runtime rebases.
+ */
+export type BodyPlanSet = 1 | 2;
+export const BODY_PLAN_SET: BodyPlanSet = 2;
+const NO_LOCI: readonly ModuleLocus[] = [];
+export const moduleLoci = (species: Species, set: BodyPlanSet = BODY_PLAN_SET): readonly ModuleLocus[] =>
+  species === 'koi' ? KOI_MODULE_LOCI : species === 'axolotl' ? AXOLOTL_MODULE_LOCI : set >= 2 ? GOLDFISH_MODULE_LOCI : NO_LOCI;
 /** Allele count per module locus, for validation. */
 export const moduleAlleleCounts = (species: Species): number[] => moduleLoci(species).map(locus => locus.alleles.length);
 /** Module loci follow the 72 locus arrays in Atlas numbering. */
@@ -78,16 +98,16 @@ function weighted(rng: () => number, weights: readonly number[]): number {
 }
 
 /** Module genes for a genome that carries none: deterministic from its fingerprint, hidden like any carrier state. */
-export function latentModules(species: Species, fingerprint: string): ModuleCopies {
-  const loci = moduleLoci(species), rng = random(hash(`genesis-v2:latent-modules:${species}:${fingerprint}`));
+export function latentModules(species: Species, fingerprint: string, set: BodyPlanSet = BODY_PLAN_SET): ModuleCopies {
+  const loci = moduleLoci(species, set), rng = random(hash(`genesis-v2:latent-modules:${species}:${fingerprint}`));
   return { maternal: loci.map(locus => weighted(rng, locus.weights)), paternal: loci.map(locus => weighted(rng, locus.weights)) };
 }
 
 export type ModuleMutation = { locus: number; copy: 'maternal' | 'paternal'; from: number; to: number };
 
 /** Linked transmission of the Body plan chromosome with its own streams, plus per-copy mutation by one allele step. */
-export function inheritModules(species: Species, mother: ModuleCopies, father: ModuleCopies, seed: number): { modules: ModuleCopies; mutations: ModuleMutation[] } {
-  const loci = moduleLoci(species), mutations: ModuleMutation[] = [];
+export function inheritModules(species: Species, mother: ModuleCopies, father: ModuleCopies, seed: number, set: BodyPlanSet = BODY_PLAN_SET): { modules: ModuleCopies; mutations: ModuleMutation[] } {
+  const loci = moduleLoci(species, set), mutations: ModuleMutation[] = [];
   const gamete = (parent: ModuleCopies, copy: 'maternal' | 'paternal') => {
     const rng = random(hash(`genesis-v2:modules:${copy}:${seed}`));
     let side = rng() < 0.5 ? 0 : 1;
@@ -108,10 +128,12 @@ export function inheritModules(species: Species, mother: ModuleCopies, father: M
 export type ModuleTraits = {
   secondDorsal: number; wen: number; bubble: number;
   extraRami: number; ramusLength: number; polydactyly: number; crest: number; crestReach: number;
+  /** Goldfish (body-plan set 2): a second pectoral pair, relative length 0–1. */
+  doublePectoral: number;
   /** Liability against threshold per liability trait (1 = exactly at threshold), for the inspector. */
   liability: Record<string, number>;
 };
-export const NO_MODULES: ModuleTraits = { secondDorsal: 0, wen: 0, bubble: 0, extraRami: 0, ramusLength: 0, polydactyly: 0, crest: 0, crestReach: 0, liability: {} };
+export const NO_MODULES: ModuleTraits = { secondDorsal: 0, wen: 0, bubble: 0, extraRami: 0, ramusLength: 0, polydactyly: 0, crest: 0, crestReach: 0, doublePectoral: 0, liability: {} };
 
 const round = (value: number) => Math.round(value * 1000) / 1000;
 
@@ -142,12 +164,18 @@ export function expressModules(species: Species, copies: ModuleCopies, dev: numb
       traits.crest = round(clamp(0.38 + 0.1 * sum(4) + 0.06 * crestNoise, 0.3, 1));
       traits.crestReach = round(clamp(0.3 + 0.12 * sum(5), 0.3, 1));
     }
+  } else if (copies.maternal.length) {
+    // Goldfish, body-plan set 2. A set 1 genome (empty module copies) expresses nothing and draws no noise.
+    const dorsal = sum(0) + 0.35 * sum(1) + 0.7 * noise(), pec = noise();
+    traits.liability = { 'second dorsal': round(dorsal / 3.4) };
+    if (dorsal >= 3.4) traits.secondDorsal = round(clamp(0.45 + 0.16 * (dorsal - 3.4) + 0.05 * sum(1), 0.4, 1));
+    if (both(2)) traits.doublePectoral = round(clamp(0.55 + 0.07 * sum(3) + 0.05 * pec, 0.45, 1));
   }
   return traits;
 }
 
 export const hasModules = (traits: ModuleTraits | undefined) =>
-  Boolean(traits && (traits.secondDorsal || traits.wen || traits.bubble || traits.extraRami || traits.polydactyly || traits.crest));
+  Boolean(traits && (traits.secondDorsal || traits.wen || traits.bubble || traits.extraRami || traits.polydactyly || traits.crest || traits.doublePectoral));
 
 // ── Somatic marks ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -207,7 +235,10 @@ export function bodyPlanFor(p: Phenotype): ModuleNode[] {
       node('eyes', 'eye', eyes === 'normal' ? 'Eyes' : `Eyes (${eyes})`, 'head', 2, eyes === 'normal' ? 'standard' : 'transformation'),
       ...(g.eyes.bubble > 0.05 ? [node('sacs', 'sac', 'Bubble sacs', 'eyes', 2, 'transformation', Math.round(g.eyes.bubble * 100) / 100)] : []),
       ...(g.fins.dorsal === 'absent' ? [] : [node('dorsal', 'dorsal', g.fins.dorsal === 'full' ? 'Dorsal fin' : 'Dorsal remnant', 'body', 1, g.fins.dorsal === 'full' ? 'standard' : 'reduced')]),
-      node('pectorals', 'pectoral', 'Pectoral fins', 'body', 2), node('pelvics', 'pelvic', 'Pelvic fins', 'body', 2),
+      ...(m.secondDorsal ? [node('dorsal-2', 'dorsal', 'Second dorsal fin', 'body', 1, 'duplication', m.secondDorsal)] : []),
+      node('pectorals', 'pectoral', 'Pectoral fins', 'body', 2),
+      ...(m.doublePectoral ? [node('pectorals-2', 'pectoral', 'Second pectoral pair', 'body', 2, 'duplication', m.doublePectoral)] : []),
+      node('pelvics', 'pelvic', 'Pelvic fins', 'body', 2),
       node('anal', 'anal', g.fins.analPaired ? 'Paired anal fins' : 'Anal fin', 'body', g.fins.analPaired ? 2 : 1, g.fins.analPaired ? 'duplication' : 'standard'),
       node('caudal', 'caudal', `Caudal fin (${lobes} lobe${lobes === 1 ? '' : 's'})`, 'body', lobes, lobes > 1 ? 'duplication' : 'standard'),
     ];

@@ -13,6 +13,7 @@ import { GENESIS2_FIXTURES, GENESIS_AXOLOTL_FIXTURES, GENESIS_FOUNDER_SAMPLE, GE
 import { express } from '../core/genetics';
 import { goldfishFounderGenome, goldfishTailText, type GoldfishVariety } from '../core/goldfishGenetics';
 import { VARIETY_TEMPLATES, withGoldfishAlleles } from '../core/goldfishShop';
+import { bodyPlanFor } from '../core/modules';
 import { hash } from '../core/random';
 
 /** Goldfish v1 board: each breed standard applied to one founder background, plus a few unselected founders. */
@@ -30,9 +31,12 @@ const GOLDFISH_BOARD = (() => {
 /** Renderer v8: a Genesis fixture with what development made of its chosen alleles and load. */
 function GenesisCard({ fixture }: { fixture: GenesisFixture }) {
   const g = fixture.phenotype.genesis!;
-  const facts = [g.fins !== 'standard' ? (fixture.species === 'koi' ? g.fins : g.fins === 'veil' ? 'frilled crest' : 'sail crest') : null, g.ghost ? `ghost ${Math.round(g.ghost * 100)}%` : null,
+  const facts = [g.fins !== 'standard' ? (fixture.species !== 'axolotl' ? g.fins : g.fins === 'veil' ? 'frilled crest' : 'sail crest') : null, g.ghost ? `ghost ${Math.round(g.ghost * 100)}%` : null,
     g.glow ? `glow ${Math.round(g.glow * 100)}%` : null, g.plume ? 'plume gills' : null, g.extraDigits ? `+${g.extraDigits} digits` : null, g.hueShift ? `hue ${Math.round(g.hueShift)}°` : null,
-    ...g.defects.map(defect => `${defect.label}${defect.rescued ? ' (regrown)' : ''}`), `canalization ${Math.round(g.canalization * 100)}%`].filter(Boolean);
+    ...g.defects.map(defect => `${defect.label}${defect.rescued ? ' (regrown)' : ''}`),
+    // Sized body-plan modules (Genesis model 2): what the module genes grew.
+    ...bodyPlanFor(fixture.phenotype).filter(node => node.size !== undefined).map(node => `${node.label.toLowerCase()} ${Math.round(node.size! * 100)}%`),
+    `canalization ${Math.round(g.canalization * 100)}%`].filter(Boolean);
   return <article className="fixture-card appearance-card">
     <div className="fixture-card-heading"><span>{fixture.id}</span><code>{fixture.species}</code></div>
     <PhenotypePortrait phenotype={fixture.phenotype} seed={fixture.birthSeed} label={`${fixture.label}, Genesis fixture`} />

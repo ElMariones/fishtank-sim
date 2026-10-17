@@ -36,6 +36,8 @@ const GOLDFISH: RatioTrait[] = [
   { id: 'scales', label: 'Scales', classify: p => p.goldfish?.scales.type ?? 'metallic' },
   { id: 'hood', label: 'Hood', classify: p => p.goldfish?.head.hoodKind ?? 'none' },
   { id: 'fins', label: 'Fin length', classify: p => ((p.goldfish?.fins.long ?? 0) > 0 ? 'long' : 'short') },
+  { id: 'second-dorsal', label: 'Second dorsal fin', classify: p => (m(p)?.secondDorsal ? 'twin dorsal' : 'single') },
+  { id: 'pectorals', label: 'Pectoral pairs', classify: p => (m(p)?.doublePectoral ? 'two pairs' : 'one pair') },
 ];
 export const RATIO_TRAITS: Record<Species, RatioTrait[]> = { koi: KOI, axolotl: AXOLOTL, goldfish: GOLDFISH };
 

@@ -1,5 +1,29 @@
 # Testing and verification
 
+## Goldfish body-plan modules (world v19)
+
+17 October 2026, Windows 11, Node via the checkout's npm scripts.
+
+- `npm test`: **383 tests in 54 files pass** (377 before). New in `tests/genesis2.test.ts`:
+  - Second dorsal and second pectorals each show in 1–3.5% of 2 000 random model 2 goldfish births.
+  - Every goldfish module fixture builds finite anatomy at three development seeds, with every fin point inside the
+    bounds. The second dorsal sits behind the first and picking finds it. Drawing does not throw.
+  - Dorsal masking without a full dorsal, `bodyPlanFor` duplication nodes, the four Codex entries and the speed and
+    turning trade-offs.
+  - Set 1 goldfish stay valid and module-free, and their set 2 young carry four module loci.
+  - Axolotl grandchildren that carry enriched alleles stay valid axolotl genomes.
+  - At most six module loci per species.
+
+  New in `tests/goldfishIntegration.test.ts`: a world v18 runtime with goldfish births at set 1 replays, rebases to
+  v19 at set 2 with identical fish, and breeds goldfish with module genes afterwards. Version expectations moved
+  from 18 to 19 there and in `tests/competitions.test.ts`.
+- `npm run build`: strict TypeScript and the production build pass. The chunk-size warning was already there.
+- Browser: the dev server ran on an isolated port (5196; 5195 was in use) at `#/fixtures`. The four `genesis2-gf-*`
+  cards rendered: a second dorsal behind the first, a second pectoral pair under the gill, both on the veiltail, and a
+  dorsal-less ranchu. Cards list "second dorsal fin 100%" and "second pectoral pair 96–97%". No console errors.
+- Not covered: a module goldfish swimming in the live Pixi tank, and module goldfish bred through the calendar in the
+  browser.
+
 ## R-201–R-204 Genesis model 2, Codex and Pixi
 
 17 October 2026, Windows 11, Node via the checkout's npm scripts.

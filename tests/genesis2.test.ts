@@ -8,8 +8,12 @@ import { CODEX, CODEX_BY_KEY, codexMatches, discover, emptyCodex } from '../src/
 import { ALL_CHANNELS, CHANNELS, EXTRA_CHANNELS, isNovel } from '../src/core/genesis';
 import { enrichAllele, LEAP_SHARE } from '../src/core/genesis2';
 import { express, fingerprint, founderGenome, inherit, modulesOf } from '../src/core/genetics';
-import { goldfishFounderGenome, goldfishGenomeProblem } from '../src/core/goldfishGenetics';
-import { bodyPlanFor, expressModules, KOI_MODULE_LOCI, latentModules, moduleLoci, somaticFor } from '../src/core/modules';
+import { goldfishAnatomyFor, goldfishContainsPoint } from '../src/core/goldfishAnatomy';
+import { goldfishFounderGenome, goldfishGenomeProblem, type GoldfishGenome } from '../src/core/goldfishGenetics';
+import { GENESIS2_FIXTURES } from '../src/core/genesisFixtures';
+import { bodyPlanFor, expressModules, GOLDFISH_MODULE_LOCI, KOI_MODULE_LOCI, latentModules, moduleLoci, somaticFor } from '../src/core/modules';
+import { hash } from '../src/core/random';
+import { drawGoldfish } from '../src/rendering/goldfish';
 import { genomeProblem } from '../src/core/registry';
 import { commandEnvelope, createRuntime, decodeRuntime, executeCommand } from '../src/core/runtime';
 import { decodeSave } from '../src/core/save';
@@ -124,13 +128,84 @@ describe('Body-plan modules (R-203)', () => {
 
   it('describes module loci for every species and keeps somatic marks rare and one-off', () => {
     expect(moduleLoci('koi')).toBe(KOI_MODULE_LOCI);
-    expect(moduleLoci('goldfish')).toHaveLength(0);
+    expect(moduleLoci('goldfish')).toBe(GOLDFISH_MODULE_LOCI); expect(moduleLoci('goldfish', 1)).toHaveLength(0);
+    for (const species of ['koi', 'axolotl', 'goldfish'] as const) expect(moduleLoci(species).length).toBeLessThanOrEqual(6);
     let marks = 0;
     for (let dev = 0; dev < 5000; dev++) if (somaticFor(dev, 0.5)) marks++;
     expect(marks / 5000).toBeGreaterThan(0.06); expect(marks / 5000).toBeLessThan(0.14);
     expect(expressModules('koi', { maternal: [0, 0, 0, 0, 0, 0], paternal: [0, 0, 0, 0, 0, 0] }, 1, 1).secondDorsal).toBe(0);
   });
 });
+
+describe('Goldfish body-plan modules (set 2, world v19)', () => {
+  const withModules = (genome: GoldfishGenome, modules: number[], dev = genome.genesis.dev): GoldfishGenome =>
+    ({ ...genome, genesis: { ...genome.genesis, dev, model: 2, modules: { maternal: [...modules], paternal: [...modules] } } });
+
+  it('show each module in about 1-3% of random model 2 births', () => {
+    let dorsal = 0, pectoral = 0;
+    const n = 2000;
+    for (let i = 0; i < n; i++) {
+      const child = inherit(goldfishFounderGenome(hash(`gm:${i}`)), goldfishFounderGenome(hash(`gf:${i}`)), hash(`gc:${i}`), MUTATION_RATE, GENOME_VERSION, undefined, 2).genome;
+      const m = express(child).genesis!.modules!;
+      if (m.secondDorsal) dorsal++; if (m.doublePectoral) pectoral++;
+    }
+    for (const share of [dorsal / n, pectoral / n]) { expect(share).toBeGreaterThan(0.01); expect(share).toBeLessThan(0.035); }
+  });
+
+  it('builds valid goldfish anatomy with modules at their extremes, inside its bounds', () => {
+    for (const fixture of GENESIS2_FIXTURES.filter(entry => entry.species === 'goldfish')) {
+      for (const dev of [1, 2, 3]) {
+        const genome = fixture.genome as GoldfishGenome, p = express(withModules(genome, genome.genesis.modules!.maternal, dev)), a = goldfishAnatomyFor(p.goldfish!);
+        const fins = [a.dorsal, a.dorsal2, a.pectoral, a.pectoral2, a.pelvic, ...a.anal].filter(Boolean);
+        for (const fin of fins) for (const v of fin!.points) {
+          expect(Number.isFinite(v.x) && Number.isFinite(v.y)).toBe(true);
+          expect(v.x).toBeGreaterThanOrEqual(a.bounds.minX); expect(v.x).toBeLessThanOrEqual(a.bounds.maxX);
+          expect(v.y).toBeGreaterThanOrEqual(a.bounds.minY); expect(v.y).toBeLessThanOrEqual(a.bounds.maxY);
+        }
+        const m = p.genesis!.modules!;
+        expect(Boolean(a.dorsal2)).toBe(m.secondDorsal > 0); expect(Boolean(a.pectoral2)).toBe(m.doublePectoral > 0);
+        if (a.dorsal && a.dorsal2) {
+          // The second dorsal sits behind the first, and picking finds it.
+          expect(Math.min(...a.dorsal2.points.map(v => v.x))).toBeGreaterThanOrEqual(Math.max(...a.dorsal.points.slice(0, 1).map(v => v.x)));
+          const tip = a.dorsal2.points[Math.floor(a.dorsal2.points.length / 2)];
+          expect(goldfishContainsPoint(a, { x: tip.x, y: tip.y + 0.004 })).toBe(true);
+        }
+        expect(() => measureWork(ctx => drawGoldfish(ctx, p.goldfish!, 7, 120, 0.4, { tailPhase: 1, finPhase: 2, effort: 0.5 }))).not.toThrow();
+      }
+    }
+  });
+
+  it('masks a second dorsal without a full first dorsal, and lists modules in the body plan and Codex', () => {
+    const fixtures = new Map(GENESIS2_FIXTURES.map(entry => [entry.id, entry]));
+    const twin = fixtures.get('genesis2-gf-twin-dorsal')!, masked = fixtures.get('genesis2-gf-masked')!, rig = fixtures.get('genesis2-gf-full-rig')!;
+    expect(twin.phenotype.genesis!.modules!.secondDorsal).toBeGreaterThan(0);
+    expect(masked.phenotype.goldfish!.fins.dorsal).not.toBe('full'); expect(masked.phenotype.genesis!.modules!.secondDorsal).toBe(0);
+    expect(masked.phenotype.genesis!.modules!.liability['second dorsal']).toBeGreaterThan(1);
+    const plan = bodyPlanFor(rig.phenotype);
+    expect(plan.find(node => node.id === 'dorsal-2')?.origin).toBe('duplication'); expect(plan.find(node => node.id === 'pectorals-2')?.origin).toBe('duplication');
+    const keys = codexMatches({ species: 'goldfish', genome: rig.genome }).map(entry => entry.key);
+    expect(keys).toEqual(expect.arrayContaining(['goldfish:twin-dorsal', 'goldfish:four-wing', 'goldfish:veiled-twin-dorsal', 'goldfish:full-rig']));
+    // Trade-offs: the full rig cruises slower and turns sharper than the same fish without modules.
+    const plain = express(withModules(rig.genome as GoldfishGenome, [0, 0, 0, 0])).goldfish!;
+    expect(rig.phenotype.goldfish!.behavior.cruiseSpeed).toBeLessThan(plain.behavior.cruiseSpeed);
+    expect(rig.phenotype.goldfish!.behavior.turning).toBeGreaterThan(plain.behavior.turning);
+  });
+
+  it('keeps set 1 goldfish (world v18) valid, module-free and replayable without module genes', () => {
+    const mother = goldfishFounderGenome(31), father = goldfishFounderGenome(32);
+    for (let seed = 0; seed < 20; seed++) {
+      const set1 = inherit(mother, father, seed, MUTATION_RATE, GENOME_VERSION, undefined, 2, 1).genome;
+      expect(set1.genesis!.modules).toEqual({ maternal: [], paternal: [] });
+      expect(goldfishGenomeProblem(set1)).toBeNull();
+      expect(hasNoModules(express(set1))).toBe(true);
+      // Its young under set 2 read the missing module loci from its latent genotype.
+      expect(modulesOf(set1).maternal).toHaveLength(GOLDFISH_MODULE_LOCI.length);
+      const child = inherit(set1, set1, seed + 100, MUTATION_RATE, GENOME_VERSION, undefined, 2).genome;
+      expect(child.genesis!.modules!.maternal).toHaveLength(GOLDFISH_MODULE_LOCI.length); expect(goldfishGenomeProblem(child)).toBeNull();
+    }
+  });
+});
+const hasNoModules = (p: Phenotype) => { const m = p.genesis!.modules!; return !m.secondDorsal && !m.doublePectoral; };
 
 describe('Codex and world v18', () => {
   const live = () => createWorld(NOW, 4242, GENOME_VERSION);
@@ -187,6 +262,17 @@ describe('Codex and world v18', () => {
       if (entry.species !== 'axolotl') expect(entry.test(axolotl)).toBe(false);
     }
   });
+});
+
+it('resolves the species of model 2 grandchildren that carry enriched alleles (body-plan set 2)', () => {
+  let checked = 0;
+  for (let i = 0; i < 60 && checked < 10; i++) {
+    const parent = inherit(axolotlFounderGenome(i * 2 + 1, 2), axolotlFounderGenome(i * 2 + 2, 2), i, 0.05, GENOME_VERSION, undefined, 2).genome;
+    if (!parent.genesis!.novel.some(entry => entry.kind)) continue;
+    const child = inherit(parent, parent, i + 7, 0.05, GENOME_VERSION, undefined, 2).genome;
+    expect(axolotlGenomeProblem(child)).toBeNull(); checked++;
+  }
+  expect(checked).toBeGreaterThan(0);
 });
 
 it('novel allele IDs stay above the catalog range under model 2', () => {

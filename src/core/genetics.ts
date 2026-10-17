@@ -18,7 +18,7 @@ import {
 import { GOLDFISH_DEFAULT_MUTATION_RATE } from './goldfishCatalog';
 import type { CreatureGenome, Genome, Mutation, Phenotype, Species } from './types';
 import { upgradeChild } from './genesis2';
-import { latentModules } from './modules';
+import { BODY_PLAN_SET, latentModules, moduleLoci, type BodyPlanSet } from './modules';
 import {
   carriedNovel, createNovel, founderLoadPair, isNovel, KOI_LOAD, KOI_SCALE, NOVEL_SHARE, novelId, novelMap, transmitLoad, type GenesisModel, type LoadCopies,
   type ModuleCopies, type NovelAllele,
@@ -79,27 +79,40 @@ const LOCUS_BLOCKS = [LOCUS_REGISTRY.slice(0, LOCI.length), LOCUS_REGISTRY.slice
  * `mutationRate` sets the small-effect rate; registry loci with their own class (structural) keep their rate unless it is 0.
  * A `trace` receives the homolog each parent transmitted at every locus (FS-603) without changing any random draw.
  */
-export function inherit(mother: Genome, father: Genome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace, model?: GenesisModel): { genome: Genome; mutations: Mutation[] };
-export function inherit(mother: AxolotlGenome, father: AxolotlGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace, model?: GenesisModel): { genome: AxolotlGenome; mutations: Mutation[] };
-export function inherit(mother: GoldfishGenome, father: GoldfishGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace, model?: GenesisModel): { genome: GoldfishGenome; mutations: Mutation[] };
-export function inherit(mother: CreatureGenome, father: CreatureGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace, model?: GenesisModel): { genome: CreatureGenome; mutations: Mutation[] };
+export function inherit(mother: Genome, father: Genome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace, model?: GenesisModel, bodyPlan?: BodyPlanSet): { genome: Genome; mutations: Mutation[] };
+export function inherit(mother: AxolotlGenome, father: AxolotlGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace, model?: GenesisModel, bodyPlan?: BodyPlanSet): { genome: AxolotlGenome; mutations: Mutation[] };
+export function inherit(mother: GoldfishGenome, father: GoldfishGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace, model?: GenesisModel, bodyPlan?: BodyPlanSet): { genome: GoldfishGenome; mutations: Mutation[] };
+export function inherit(mother: CreatureGenome, father: CreatureGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace, model?: GenesisModel, bodyPlan?: BodyPlanSet): { genome: CreatureGenome; mutations: Mutation[] };
 /**
  * `model` is the world's Genesis model (world v18). Model 2 runs the model 1 meiosis unchanged and then adds module genes
  * and enriches the open-ended alleles that arose in this birth (`genesis2.ts`); model 1 (the default) is exactly the
- * historical behavior, so recorded journals replay unchanged.
+ * historical behavior, so recorded journals replay unchanged. `bodyPlan` is the world's body-plan set (world v19): set 1
+ * gives goldfish no module genes, as world v18 journals recorded them.
  */
-export function inherit(mother: CreatureGenome, father: CreatureGenome, seed: number, mutationRate = MUTATION_RATE, requested?: GenomeVersion, trace?: InheritanceTrace, model: GenesisModel = 1): { genome: CreatureGenome; mutations: Mutation[] } {
+export function inherit(mother: CreatureGenome, father: CreatureGenome, seed: number, mutationRate = MUTATION_RATE, requested?: GenomeVersion, trace?: InheritanceTrace, model: GenesisModel = 1, bodyPlan: BodyPlanSet = BODY_PLAN_SET): { genome: CreatureGenome; mutations: Mutation[] } {
   const result = inheritModel1(mother, father, seed, mutationRate, requested, trace);
   if (model !== 2 || !result.genome.genesis) return result;
-  const species = speciesOf(result.genome);
+  // The model 1 child is not a valid genome yet when it carries model 2 (enriched) alleles, so its own species check falls
+  // back to koi. Body-plan set 2 reads the species from the mother; set 1 keeps the world v18 reading so its journals replay.
+  const species = bodyPlan >= 2 ? speciesOf(mother) : speciesOf(result.genome);
   const pool = new Map<number, NovelAllele>([...novelMap(mother.genesis), ...novelMap(father.genesis)]);
-  const { genome } = upgradeChild(species, result.genome, modulesOf(mother), modulesOf(father), pool, seed);
+  const { genome } = upgradeChild(species, result.genome, modulesOf(mother), modulesOf(father), pool, seed, bodyPlan);
   return { genome, mutations: result.mutations };
 }
 
 export const speciesOf = (genome: CreatureGenome): Species => isGoldfishGenome(genome) ? 'goldfish' : isAxolotlGenome(genome) ? 'axolotl' : 'koi';
-/** A genome's module genes: its own under Genesis model 2, otherwise the latent genotype read from its fingerprint. */
-export const modulesOf = (genome: CreatureGenome): ModuleCopies => genome.genesis?.modules ?? latentModules(speciesOf(genome), fingerprint(genome));
+/**
+ * A genome's module genes: its own under Genesis model 2, otherwise the latent genotype read from its fingerprint. A model 2
+ * genome born under an older body-plan set (a goldfish from a world v18 journal) carries fewer module loci than the current
+ * registry; the missing ones are read from its latent genotype, like an older founder's.
+ */
+export function modulesOf(genome: CreatureGenome): ModuleCopies {
+  const own = genome.genesis?.modules, species = speciesOf(genome);
+  if (own && own.maternal.length >= moduleLoci(species).length) return own;
+  const latent = latentModules(species, fingerprint(genome));
+  if (!own) return latent;
+  return { maternal: [...own.maternal, ...latent.maternal.slice(own.maternal.length)], paternal: [...own.paternal, ...latent.paternal.slice(own.paternal.length)] };
+}
 
 function inheritModel1(mother: CreatureGenome, father: CreatureGenome, seed: number, mutationRate: number, requested?: GenomeVersion, trace?: InheritanceTrace): { genome: CreatureGenome; mutations: Mutation[] } {
   const motherGoldfish = isGoldfishGenome(mother), fatherGoldfish = isGoldfishGenome(father);

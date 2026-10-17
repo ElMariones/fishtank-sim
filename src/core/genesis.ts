@@ -309,7 +309,7 @@ export function defectsFor(load: LoadCopies, catalog: readonly LoadSite[], regen
 }
 
 /** Validation shared by both species: bounded sizes and known IDs. */
-export function genesisProblem(block: unknown, catalog: readonly LoadSite[], lociCount: number, eligible: (locus: number) => boolean, moduleAlleles: readonly number[] = []): string | null {
+export function genesisProblem(block: unknown, catalog: readonly LoadSite[], lociCount: number, eligible: (locus: number) => boolean, moduleAlleles: readonly number[] = [], emptyModules = false): string | null {
   if (!block || typeof block !== 'object') return 'Genesis genomes need a development block.';
   const value = block as Partial<GenesisBlock>;
   if (!Number.isInteger(value.dev) || value.dev! < 0 || value.dev! > 4294967295) return 'Invalid development seed.';
@@ -334,6 +334,8 @@ export function genesisProblem(block: unknown, catalog: readonly LoadSite[], loc
   // Module genes: one allele per module locus on each homolog, within that locus' allele range.
   const modules = value.modules;
   if (!modules || !Array.isArray(modules.maternal) || !Array.isArray(modules.paternal)) return 'Genesis model 2 genomes need module genes.';
+  // `emptyModules`: goldfish born under body-plan set 1 (world v18) carry no module genes at all.
+  if (emptyModules && !modules.maternal.length && !modules.paternal.length) return null;
   for (const copy of [modules.maternal, modules.paternal]) {
     if (copy.length !== moduleAlleles.length || copy.some((allele, i) => !Number.isInteger(allele) || allele < 0 || allele >= moduleAlleles[i])) return 'Invalid module gene.';
   }

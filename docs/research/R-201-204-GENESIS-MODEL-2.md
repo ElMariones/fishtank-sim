@@ -124,7 +124,9 @@ picking, a reload that passed replay validation, and the new Visual fixtures boa
 
 - Balance values (module weights and thresholds, leap and regulatory shares, somatic rates, Codex tiers) are first
   tunings, not playtested.
-- Goldfish carry no module genes yet; their hoods and bubble eyes already come from their own loci.
+- Goldfish carried no module genes in this report; their hoods and bubble eyes come from their own loci. A later
+  follow-up (world v19, body-plan set 2, ADR-081) adds goldfish fin modules: a second dorsal fin and a second
+  pectoral pair.
 - Module mutations are not listed in `fish.mutations` (the mutation schema indexes the 72 locus arrays); the Codex and
   the inspector's body plan show their effect.
 - Frame timing of the Pixi layer was not measured on named hardware in this session (the browser pane was hidden when

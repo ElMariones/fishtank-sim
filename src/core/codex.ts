@@ -86,6 +86,11 @@ const GOLDFISH_ENTRIES: CodexEntry[] = [
   gold('panda', 'Panda', 3, 'Black-and-white panda pattern.', p => Boolean(p.goldfish?.pattern.modes.includes('panda'))),
   gold('mosaic', 'Mosaic', 3, 'A somatic patch of differently colored skin. Never inherited.', p => p.species === 'goldfish' && g(p)?.somatic?.kind === 'mosaic'),
   gold('birthmark', 'Birthmarked', 1, 'A small unique mark from development. Never inherited.', p => p.species === 'goldfish' && g(p)?.somatic?.kind === 'birthmark'),
+  // Body-plan set 2 (world v19): goldfish module genes.
+  gold('twin-dorsal', 'Twin Dorsal', 3, 'A duplicated dorsal fin: a second, smaller dorsal behind the first.', p => p.species === 'goldfish' && (m(p)?.secondDorsal ?? 0) > 0),
+  gold('four-wing', 'Four-Winged', 3, 'Two recessive copies grow a second pectoral pair behind the first.', p => p.species === 'goldfish' && (m(p)?.doublePectoral ?? 0) > 0),
+  gold('veiled-twin-dorsal', 'Veiled Twin Dorsal', 4, 'A second dorsal fin on a veil- or butterfly-tailed fish.', p => (m(p)?.secondDorsal ?? 0) > 0 && Boolean(p.goldfish?.tail.veil || p.goldfish?.tail.butterfly)),
+  gold('full-rig', 'Full Rig', 4, 'Both fin modules on one fish: a second dorsal fin and a second pectoral pair.', p => p.species === 'goldfish' && (m(p)?.secondDorsal ?? 0) > 0 && (m(p)?.doublePectoral ?? 0) > 0),
 ];
 
 export const CODEX: readonly CodexEntry[] = [...KOI_ENTRIES, ...AXOLOTL_ENTRIES, ...GOLDFISH_ENTRIES];

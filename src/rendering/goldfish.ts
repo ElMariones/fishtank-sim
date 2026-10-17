@@ -8,7 +8,8 @@ import { FULL_DETAIL, type Detail } from './lod';
 /**
  * Goldfish renderer v1. Consumes only the goldfish phenotype and its anatomy: translucent flowing fins, twin and
  * four-lobed tails, egg bodies, hoods, telescope, celestial and bubble eyes, pompons, metallic, nacreous and matte
- * scales, pearl domes, sarasa/redcap/panda/calico/tri-color patterns and the juvenile bronze. It never breeds, prices
+ * scales, pearl domes, sarasa/redcap/panda/calico/tri-color patterns, the juvenile bronze and the Genesis model 2 module
+ * fins (a second dorsal fin and a second pectoral pair). It never breeds, prices
  * or changes identity.
  */
 export type GoldfishMotion = { tailPhase: number; finPhase: number; effort: number };
@@ -161,6 +162,7 @@ export function drawGoldfish(ctx: CanvasRenderingContext2D, p: GoldfishPhenotype
   for (const lobe of a.lobes) if (lobe.far) drawLobe(lobe);
   for (const fin of a.anal) if (fin.far) drawFin(fin);
   if (a.dorsal) drawFin(a.dorsal, Math.sin(finPhase * 0.5) * 0.008);
+  if (a.dorsal2) drawFin(a.dorsal2, Math.sin(finPhase * 0.5 - 0.6) * 0.007);
   for (const lobe of a.lobes) if (!lobe.far) drawLobe(lobe);
   if (g.finFray > 0) for (const lobe of a.lobes) if (!lobe.far) drawFray(ctx, g, [lobe.upperTip, lobe.notch, lobe.lowerTip], (v: GVec) => at(v, wave), l, seed);
 
@@ -282,6 +284,8 @@ export function drawGoldfish(ctx: CanvasRenderingContext2D, p: GoldfishPhenotype
   // ── Near fins ──
   for (const fin of a.anal) if (!fin.far) drawFin(fin, Math.sin(finPhase + 1) * 0.006);
   drawFin(a.pelvic, Math.sin(finPhase + 0.5) * 0.008);
+  // A second pectoral pair beats a little behind the first.
+  if (a.pectoral2) drawFin(a.pectoral2, Math.sin(finPhase - 0.7) * 0.016 * (motion ? 0.4 + 0.6 * motion.effort : 0.6));
   drawFin(a.pectoral, Math.sin(finPhase) * 0.02 * (motion ? 0.4 + 0.6 * motion.effort : 0.6));
   // Mouth.
   ctx.strokeStyle = css(ground, 0.75, -0.3); ctx.lineWidth = Math.max(0.6, l * 0.004);

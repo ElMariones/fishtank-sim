@@ -238,6 +238,10 @@ const goldfishShop = z.object({
   model: z.literal(1), nextListing: z.number().int().positive(), refreshedDay: z.number().int().min(0).max(1e12), listings: z.array(goldfishListing).max(GOLDFISH_SHOP_SIZE),
 }).strict();
 const schema = z.discriminatedUnion('version', [
+  // World v19 adds the body-plan set (goldfish module genes from set 2).
+  z.object({ ...worldV13, version: z.literal(19), fish: z.array(fishV17).max(MAX_RECORDS), clutches: z.array(clutchV17).max(MAX_RECORDS), ledger: ledgerV16, shop: shopV16,
+    axolotlShop: axolotlShopV16, circuit: circuitV17, alleles: alleleRecordsV17, atlas: atlasV18, goldfishShop, genesisModel: z.union([z.literal(1), z.literal(2)]), codex,
+    bodyPlan: z.union([z.literal(1), z.literal(2)]) }),
   // World v18 adds Genesis model 2, the Codex and the Body plan atlas loci.
   z.object({ ...worldV13, version: z.literal(18), fish: z.array(fishV17).max(MAX_RECORDS), clutches: z.array(clutchV17).max(MAX_RECORDS), ledger: ledgerV16, shop: shopV16,
     axolotlShop: axolotlShopV16, circuit: circuitV17, alleles: alleleRecordsV17, atlas: atlasV18, goldfishShop, genesisModel: z.union([z.literal(1), z.literal(2)]), codex }),
@@ -309,7 +313,8 @@ export function decodeSave(raw: string): World {
   const genesisFields = (old: Omit<World, 'version' | 'alleles' | 'atlas'>): World => ({
     ...old, version: 16, ledger: { ...old.ledger, totals: { ...old.ledger.totals, research: 0 } }, alleles: [], atlas: initialAtlas('scientist'),
   } as unknown as World);
-  if (parsed.version === 18) world = parsed as unknown as World;
+  if (parsed.version === 19) world = parsed as unknown as World;
+  else if (parsed.version === 18) world = parsed as unknown as World;
   else if (parsed.version === 17) world = parsed as unknown as World;
   else if (parsed.version === 16) world = parsed as unknown as World;
   else if (parsed.version === 15) world = genesisFields(parsed as unknown as World);
@@ -362,8 +367,10 @@ export function decodeSave(raw: string): World {
   // journals replay unchanged; the runtime moves them to model 2 when it rebases.
   if (parsed.version < 18) {
     const old = world as unknown as Omit<World, 'genesisModel' | 'codex'>;
-    world = { ...old, version: 18, atlas: { ...old.atlas, koi: padSpecies(old.atlas.koi), axolotl: padSpecies(old.atlas.axolotl), goldfish: padSpecies(old.atlas.goldfish) }, genesisModel: 1, codex: emptyCodex() } as World;
+    world = { ...old, version: 18, atlas: { ...old.atlas, koi: padSpecies(old.atlas.koi), axolotl: padSpecies(old.atlas.axolotl), goldfish: padSpecies(old.atlas.goldfish) }, genesisModel: 1, codex: emptyCodex() } as unknown as World;
   }
+  // Worlds v1-v18 open at body-plan set 1: their goldfish births replay without module genes; the runtime rebases them to set 2.
+  if (parsed.version < 19) world = { ...(world as unknown as Omit<World, 'bodyPlan'>), version: 19, bodyPlan: 1 } as World;
   world.tanks = world.tanks.map(tank => ({ ...tank, decorations: decorationsOf(tank) }));
   for (const tank of world.tanks) {
     validateLayout(decorationsOf(tank));

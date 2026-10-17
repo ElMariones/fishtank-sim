@@ -73,7 +73,8 @@ const GOLDFISH: Extractor[] = [
   { trait: 'Eyes', value: p => title(p.goldfish?.eyes.kind ?? 'normal') + ((p.goldfish?.eyes.bubble ?? 0) > 0.05 ? ' with bubbles' : '') },
   { trait: 'Head', value: p => ({ none: 'No hood', crown: 'Crown hood', cheeks: 'Cheek hood', full: 'Full hood' })[p.goldfish?.head.hoodKind ?? 'none'] + ((p.goldfish?.head.pompon ?? 0) > 0.05 ? ', pompons' : '') },
   { trait: 'Scales', value: p => title(p.goldfish?.scales.type ?? 'metallic') + ((p.goldfish?.scales.pearl ?? 0) > 0.4 ? ', pearl' : '') },
-  { trait: 'Dorsal', value: p => title(p.goldfish?.fins.dorsal ?? 'full') },
+  { trait: 'Dorsal', value: p => title(p.goldfish?.fins.dorsal ?? 'full') + (p.genesis?.modules?.secondDorsal ? ' + second dorsal' : '') },
+  { trait: 'Pectorals', value: p => (p.genesis?.modules?.doublePectoral ? 'Two pairs' : 'One pair') },
   { trait: 'Size', value: p => sizeClass(p.adultLengthCm, 9, 26) },
   { trait: 'Somatic mark', value: somatic },
 ];

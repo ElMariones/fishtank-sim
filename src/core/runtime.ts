@@ -9,6 +9,7 @@ import { applyCommand, commandSchema, WORLD_VERSION, type Command } from './worl
 import type { World } from './types';
 import { discover } from './codex';
 import { isEgg } from './development';
+import { BODY_PLAN_SET } from './modules';
 import { offlineWindow, TICK_MS, timelineSegments, type OfflineWindow } from '../simulation/time';
 
 export { TICK_MS };
@@ -225,7 +226,9 @@ export function importRuntime(raw: string, legacyWorldId: string): Runtime {
  * model 1.
  */
 export function toGenesisModel2(world: World): World {
-  if (world.genesisModel === 2 || !world.fish.some(fish => fish.genome.genesis)) return world;
+  // Body-plan sets matter only under model 2: a model 2 world moves to the current set (world v19) when it rebases.
+  if (world.genesisModel === 2) return world.bodyPlan === BODY_PLAN_SET ? world : { ...world, bodyPlan: BODY_PLAN_SET };
+  if (!world.fish.some(fish => fish.genome.genesis)) return world;
   const bred = world.fish.filter(fish => fish.generation > 0 && !isEgg(fish.life));
-  return { ...world, genesisModel: 2, codex: discover(world.codex, bred, world.circuit.day) };
+  return { ...world, genesisModel: 2, bodyPlan: BODY_PLAN_SET, codex: discover(world.codex, bred, world.circuit.day) };
 }

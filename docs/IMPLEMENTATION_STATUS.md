@@ -2,6 +2,38 @@
 
 **Updated:** 17 October 2026 (R-201–R-204 Genesis model 2) · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
 
+## Goldfish body-plan modules — DONE, not committed, 17 October 2026 (follow-up to R-203)
+
+World v19 · body-plan set 2 · goldfish anatomy v1 (optional module fins). ADR-081.
+
+- **Module genes for goldfish** (`modules.ts`): four loci on chromosome 13, *Body plan*: dorsal duplication (liability)
+  and its modifier, pectoral duplication (recessive) and second-pectoral length. Atlas indices 72–75; the 78-entry atlas
+  arrays still fit (koi and axolotl use six).
+- **Expression and trade-offs** (`developGoldfishV7`): a second dorsal fin past the liability threshold. It is masked
+  when the fish has no full dorsal fin (ranchu, lionhead), so the liability stays hidden. A second pectoral pair from
+  two recessive copies. A second dorsal fin slows cruising by up to 5%; a second pectoral pair slows it by up to 3% and
+  sharpens turning by up to 12%.
+- **Anatomy and rendering** (`goldfishAnatomy.ts`, `rendering/goldfish.ts`): `dorsal2` (the first dorsal shortens) and
+  `pectoral2` are added only when expressed, so every other goldfish keeps its exact geometry. Bounds and picking
+  include them. `bodyPlanFor` lists both as duplications.
+- **Codex, rarity and ratios**: four goldfish Codex entries are appended: Twin Dorsal, Four-Winged, Veiled Twin Dorsal
+  and Full Rig (34 goldfish entries). The rarity Dorsal value gains "+ second dorsal" and there is a new Pectorals
+  trait. Clutch ratios gain second-dorsal and pectoral-pair classes.
+- **Fixtures**: four goldfish cards in `GENESIS2_FIXTURES`: a twin-dorsal ryukin, a four-winged shubunkin, a full-rig
+  veiltail, and a ranchu with the same dorsal liability, masked. The Genesis cards now list sized body-plan modules, and
+  goldfish fin programs no longer show axolotl crest wording.
+- **Measured rates** in random model 2 births (3 000 unrelated founder pairs): second dorsal 2.3% (90% of births have a
+  full dorsal), second pectoral pair 1.9%, either one 4.1%.
+- **Compatibility (world v19).** World v18 journals recorded goldfish births with empty module genes. Those saves now
+  migrate at **body-plan set 1**, replay unchanged, and then rebase to set 2. A set 1 goldfish stays valid with empty
+  module genes. As a parent it reads the missing loci from its latent genotype. Model 1 (research) worlds stay at set 1,
+  which they never read. Model 1 replay is unchanged.
+- **Fix found on the way (set 2 only).** Under model 2, `inherit` read the species from the unfinished model 1 child.
+  That child fails validation when it carries an enriched allele (it has a `kind` but no `model`), so its species fell
+  back to koi. Axolotl grandchildren that carried enriched alleles got koi module rules and koi-scale allele enrichment
+  (257 of 278 sampled). Goldfish ones got invalid module genes. Set 2 reads the species from the mother. Set 1 keeps the
+  old reading, so world v18 journals replay byte-identically.
+
 ## Genesis model 2, Allele Registry, Codex, module anatomy, PixiJS and rarity — R-201–R-204 DONE, pushed `8eebd2e`, 17 October 2026 (user request)
 
 World v18 · development v7 · renderer v9. Report: [R-201–R-204](research/R-201-204-GENESIS-MODEL-2.md); ADR-078–080.

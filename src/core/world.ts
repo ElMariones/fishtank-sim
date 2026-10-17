@@ -4,7 +4,8 @@ import { piecePrice, styleCost, styleOf } from './aquascape';
 import { TANK_PRICE, TANK_UPGRADE_PRICE, decorationsOf, validateLayout, legacyDecorations, type Decoration, type TankStyle } from './tankManagement';
 import { GENOME_VERSION, MUTATION_RATE, RESEARCH_GENOME_VERSION, type GenomeVersion } from './catalog';
 import { CLUTCH_SIZES, clutchId, courtingClutchOf, idleBreeding, pairingBlockers, reservedPlaces, withGenesisRecords, type ClutchSize } from './breeding';
-import { initialAtlas, MAX_SEQUENCED, observeFamily, SEQUENCE_COST } from './atlas';
+import { initialAtlas, MAX_SEQUENCED, observeFamily, observesModules, SEQUENCE_COST } from './atlas';
+import { BODY_PLAN_SET } from './modules';
 import { NOVEL_ID_MIN } from './genesis';
 import { emptyCodex, withDiscoveries } from './codex';
 import {
@@ -50,7 +51,7 @@ export const STOCK_PRICE = 250;
  * bloodlines (FS-604); v13 adds explicit species identity and independent axolotl genetics; v14 adds the persistent
  * axolotl shop. v15 adds the competition circuit, v16 Genesis genetics, and v17 goldfish with their own shop and atlas.
  */
-export const WORLD_VERSION = 18;
+export const WORLD_VERSION = 19;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -89,13 +90,13 @@ function newTank(id: string, name: string, planted: boolean): Tank {
  * transparent scientist-mode atlas, so their recorded pacing stays valid.
  */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = RESEARCH_GENOME_VERSION): World {
-  const world: World = { version: 18, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
+  const world: World = { version: 19, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
   ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed, 0, shopModelFor(genomeVersion)), naming: NAMING_MODEL, relief: defaultRelief(), bloodlines: [], nextBloodlineId: 1,
     axolotlShop: initialAxolotlShop(seed, 0, genomeVersion >= 4 ? 2 : 1), circuit: initialCircuit(), alleles: [], atlas: initialAtlas(genomeVersion >= 4 ? 'discovery' : 'scientist'), goldfishShop: initialGoldfishShop(seed),
     // The live game (Genesis genomes) runs Genesis model 2; research harnesses keep model 1 so their evidence is unchanged.
-    genesisModel: genomeVersion >= 4 ? 2 : 1, codex: emptyCodex() };
+    genesisModel: genomeVersion >= 4 ? 2 : 1, codex: emptyCodex(), bodyPlan: genomeVersion >= 4 ? BODY_PLAN_SET : 1 };
   ['Haru', 'Sumi', 'Kohaku', 'Yuki', 'Akira', 'Momo'].forEach((name, i) => {
     world.fish.push(founder(world, name, i % 2 === 0 ? 'F' : 'M', timestamp, genomeVersion)); world.nextId++;
   });
@@ -338,7 +339,7 @@ export function applyCommand(world: World, command: Command): World {
       for (let i = 0; i < offspring; i++) {
         // Genesis eggs are seeded by their place in the cross, so a non-viable egg never repeats its genome.
         const birthSeed = hash(`${world.seed}:birth:${next.nextId}:${mother.id}:${father.id}${genesis ? `:egg:${i}` : ''}`);
-        const trace = emptyTrace(), result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, version, trace, next.genesisModel);
+        const trace = emptyTrace(), result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, version, trace, next.genesisModel, next.bodyPlan);
         const development = genesis ? express(result.genome).genesis : undefined;
         if (development && !development.viable) { lethal.push(...development.defects.filter(d => d.kind === 'lethal').map(d => d.site)); continue; }
         const sex: Fish['sex'] = hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M';
@@ -353,7 +354,7 @@ export function applyCommand(world: World, command: Command): World {
       if (genesis) {
         // The lab shortcut images its embryos at once, so the atlas learns from the cross immediately.
         const recorded = withGenesisRecords(next, born, mother.species, lethal);
-        next.alleles = recorded.alleles; next.atlas = observeFamily(recorded.atlas, mother, father, born, next.genesisModel === 2).atlas;
+        next.alleles = recorded.alleles; next.atlas = observeFamily(recorded.atlas, mother, father, born, observesModules(next, mother.species)).atlas;
         next.codex = withDiscoveries(next, born).codex;
       }
       break;

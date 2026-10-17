@@ -8,6 +8,7 @@ import type { GoldfishGenome, GoldfishPhenotype } from './goldfishGenetics';
 import type { GoldfishRecessive } from './goldfishCatalog';
 import type { GenesisBlock, GenesisTraits } from './genesis';
 import type { AlleleRecord, AtlasState } from './atlas';
+import type { BodyPlanSet } from './modules';
 import type { CodexState } from './codex';
 
 /**
@@ -177,7 +178,7 @@ export type ReliefState = { model: 1; claims: number; cooldownDays: number };
  * Older saves migrate with defaults.
  */
 export type World = {
-  version: 18; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
+  version: 19; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
   market: MarketState; ledger: Ledger; shop: ShopState; naming: NamingModel; relief: ReliefState;
   /** Registered bloodlines and the next registry number (world v12). */
   bloodlines: Bloodline[]; nextBloodlineId: number;
@@ -197,6 +198,12 @@ export type World = {
   genesisModel: 1 | 2;
   /** Named phenotypes discovered in this world (world v18). */
   codex: CodexState;
+  /**
+   * Body-plan set (world v19). Set 2 adds goldfish module genes. World v18 saves migrate at set 1, so their goldfish births
+   * replay without module genes, then move to set 2 when the runtime rebases. Model 1 (research) worlds stay at set 1, which
+   * they never read, and move to the current set together with model 2.
+   */
+  bodyPlan: BodyPlanSet;
 };
 /**
  * Development v2 inherited marking anchor, derived from one phased two-locus haplotype block.

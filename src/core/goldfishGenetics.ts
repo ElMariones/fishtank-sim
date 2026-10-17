@@ -206,8 +206,10 @@ export function expressGoldfish(genome: GoldfishGenome): GoldfishPhenotype {
 }
 
 /**
- * Goldfish development v7 (Genesis model 2): model 2 side-effect channels and one-off somatic marks. Goldfish carry no
- * module genes yet; their hoods, bubble eyes and lobed tails already come from their own loci.
+ * Goldfish development v7 (Genesis model 2): model 2 side-effect channels, one-off somatic marks and, from body-plan set 2,
+ * module genes. Hoods, bubble eyes and lobed tails still come from their own loci; modules duplicate fins. A second dorsal
+ * fin needs a full first dorsal (dorsal loss masks it, as it would in a ranchu), adds drag and slows cruising; a second
+ * pectoral pair adds drag too but sharpens turning.
  */
 function developGoldfishV7(developed: GoldfishPhenotype, genome: GoldfishGenome): GoldfishPhenotype {
   const block = genome.genesis, p: GoldfishPhenotype = structuredClone(developed), pair = goldfishPair(genome);
@@ -217,7 +219,15 @@ function developGoldfishV7(developed: GoldfishPhenotype, genome: GoldfishGenome)
   p.eyes.size *= clamp(1 + 0.6 * e('eye'), 0.6, 1.5);
   p.pattern.edge = clamp(p.pattern.edge + 0.35 * e('contrast'));
   p.longevity = p.life.longevityYears = Math.max(4, p.longevity + 8 * e('longevity'));
-  p.genesis = { ...p.genesis, modules: expressModules('goldfish', block.modules!, block.dev, p.genesis.canalization), somatic: somaticFor(block.dev, p.genesis.canalization) };
+  const modules = expressModules('goldfish', block.modules!, block.dev, p.genesis.canalization);
+  if (modules.secondDorsal && p.fins.dorsal !== 'full') modules.secondDorsal = 0;
+  if (modules.secondDorsal) p.behavior.cruiseSpeed = round(p.behavior.cruiseSpeed * (1 - 0.05 * modules.secondDorsal), 6);
+  if (modules.doublePectoral) {
+    p.behavior.cruiseSpeed = round(p.behavior.cruiseSpeed * (1 - 0.03 * modules.doublePectoral), 6);
+    p.behavior.turning = round(p.behavior.turning * (1 + 0.12 * modules.doublePectoral));
+  }
+  p.speed = p.behavior.cruiseSpeed; p.turning = p.behavior.turning;
+  p.genesis = { ...p.genesis, modules, somatic: somaticFor(block.dev, p.genesis.canalization) };
   return p;
 }
 
@@ -518,7 +528,7 @@ export function goldfishGenomeProblem(value: unknown): string | null {
   if (genome.version !== GOLDFISH_GENOME_VERSION) return `Unsupported goldfish genome version ${String(genome.version)}.`;
   if (!Array.isArray(genome.maternal) || !Array.isArray(genome.paternal)) return 'Goldfish genome homologs must be arrays.';
   if (genome.maternal.length !== GOLDFISH_LOCI.length || genome.paternal.length !== GOLDFISH_LOCI.length) return `Goldfish genome v1 requires ${GOLDFISH_LOCI.length} loci per homolog.`;
-  const problem = genesisProblem(genome.genesis, GOLDFISH_LOAD, GOLDFISH_LOCI.length, goldfishNovelEligible, moduleAlleleCounts('goldfish'));
+  const problem = genesisProblem(genome.genesis, GOLDFISH_LOAD, GOLDFISH_LOCI.length, goldfishNovelEligible, moduleAlleleCounts('goldfish'), true);
   if (problem) return problem;
   const novel = new Map(genome.genesis!.novel.map(entry => [entry.id, entry]));
   for (let index = 0; index < GOLDFISH_LOCI.length; index++) {

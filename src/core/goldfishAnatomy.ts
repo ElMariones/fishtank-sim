@@ -31,6 +31,8 @@ export type GoldfishAnatomy = {
   pompons: GBump[];
   dorsal: GFin | null;
   pectoral: GFin; pelvic: GFin; anal: GFin[];
+  /** Body-plan modules (Genesis model 2, body-plan set 2): present only when expressed, so other fish keep their geometry. */
+  dorsal2?: GFin; pectoral2?: GFin;
   lobes: GLobe[];
   /** Conservative bounds including fins, hood, bubble sacs and the full tail wave. */
   bounds: GBounds;
@@ -111,15 +113,27 @@ export function buildGoldfishAnatomy(p: GoldfishPhenotype): GoldfishAnatomy {
   const pompons: GBump[] = p.head.pompon > 0 ? [0, 1].map(i => ({ x: eyeX - 0.055 + i * 0.012, y: eyeCenter.y + 0.012 + i * 0.008, r: 0.018 + 0.032 * p.head.pompon })) : [];
 
   // ── Fins ──
-  const L = f.length;
+  const L = f.length, plan = p.genesis.modules, twin = Boolean(plan?.secondDorsal) && f.dorsal === 'full';
   const dorsal = f.dorsal === 'absent' ? null : (() => {
-    const x0 = -0.12 + 0.04 * round, x1 = x0 + (f.dorsal === 'remnant' ? 0.06 : 0.3), height = f.dorsal === 'remnant' ? 0.03 : f.dorsalHeight * (0.75 + 0.35 * (L - 1)) * (0.85 + 0.15 * f.rays);
+    // A second dorsal fin takes the rear of the dorsal base, so the first one shortens.
+    const x0 = -0.12 + 0.04 * round, x1 = x0 + (f.dorsal === 'remnant' ? 0.06 : twin ? 0.19 : 0.3), height = f.dorsal === 'remnant' ? 0.03 : f.dorsalHeight * (0.75 + 0.35 * (L - 1)) * (0.85 + 0.15 * f.rays);
     const r0 = { x: x0, y: at(top, x0) + 0.012 }, r1 = { x: x1, y: at(top, x1) + 0.012 };
     const droop = (1 - f.rays) * 0.35 * Math.max(0, L - 1);
     return finOutline(r0, r1, { x: x0 + 0.1 + height * (0.45 + droop), y: at(top, x0) - height * (1 - 0.4 * droop) }, 0.24, f.rays);
   })();
+  const dorsal2 = twin ? (() => {
+    const x0 = -0.12 + 0.04 * round + 0.215, x1 = Math.min(PEDUNCLE - 0.06, x0 + 0.13), size = plan!.secondDorsal;
+    const height = f.dorsalHeight * (0.75 + 0.35 * (L - 1)) * (0.85 + 0.15 * f.rays) * (0.45 + 0.35 * size);
+    const r0 = { x: x0, y: at(top, x0) + 0.012 }, r1 = { x: x1, y: at(top, x1) + 0.012 };
+    return finOutline(r0, r1, { x: x0 + 0.05 + height * 0.5, y: at(top, x0) - height }, 0.22, f.rays);
+  })() : null;
   const pecRoot = { x: gillX + 0.03, y: at(bottom, gillX + 0.03) * 0.55 };
   const pectoral = finOutline(pecRoot, { x: pecRoot.x + 0.06, y: pecRoot.y + 0.015 }, { x: pecRoot.x + 0.1 + 0.05 * L, y: pecRoot.y + 0.06 + 0.035 * L }, 0.34, f.rays);
+  // A second pectoral pair grows just behind and below the first, shorter by its module size.
+  const pectoral2 = plan?.doublePectoral ? (() => {
+    const x = pecRoot.x + 0.075, root = { x, y: at(bottom, x) * 0.68 }, s = 0.55 + 0.4 * plan.doublePectoral;
+    return finOutline(root, { x: root.x + 0.05, y: root.y + 0.012 }, { x: root.x + (0.08 + 0.05 * L) * s, y: root.y + (0.05 + 0.035 * L) * s }, 0.32, f.rays);
+  })() : null;
   const pelX = -0.05 + 0.04 * round, pelRoot = { x: pelX, y: at(bottom, pelX) - 0.01 };
   const pelvic = finOutline(pelRoot, { x: pelX + 0.07, y: at(bottom, pelX + 0.07) - 0.012 }, { x: pelX + 0.1 + 0.05 * L, y: pelRoot.y + 0.05 + 0.045 * L }, 0.32, f.rays);
   const anX = 0.14, anRoot = { x: anX, y: at(bottom, anX) - 0.008 };
@@ -162,6 +176,7 @@ export function buildGoldfishAnatomy(p: GoldfishPhenotype): GoldfishAnatomy {
     bubble: bubble ? { ...bubble, center: turn(bubble.center) } : null,
     hood: hood.map(turnBump), pompons: pompons.map(turnBump),
     dorsal: dorsal ? turnFin(dorsal) : null, pectoral: turnFin(pectoral), pelvic: turnFin(pelvic), anal: anal.map(turnFin),
+    ...(dorsal2 ? { dorsal2: turnFin(dorsal2) } : {}), ...(pectoral2 ? { pectoral2: turnFin(pectoral2) } : {}),
     lobes: lobes.map(l => ({ ...l, root: turn(l.root), baseTop: turn(l.baseTop), baseBottom: turn(l.baseBottom), upperTip: turn(l.upperTip), upperOuter: turn(l.upperOuter), notch: turn(l.notch), lowerOuter: turn(l.lowerOuter), lowerTip: turn(l.lowerTip) })),
     tilt,
   };
@@ -169,7 +184,8 @@ export function buildGoldfishAnatomy(p: GoldfishPhenotype): GoldfishAnatomy {
 }
 
 function boundsOf(a: Omit<GoldfishAnatomy, 'bounds'>): GBounds {
-  const points: GVec[] = [...a.top, ...a.bottom, ...(a.dorsal?.points ?? []), ...a.pectoral.points, ...a.pelvic.points, ...a.anal.flatMap(fin => fin.points)];
+  const points: GVec[] = [...a.top, ...a.bottom, ...(a.dorsal?.points ?? []), ...a.pectoral.points, ...a.pelvic.points, ...a.anal.flatMap(fin => fin.points),
+    ...(a.dorsal2?.points ?? []), ...(a.pectoral2?.points ?? [])];
   for (const l of a.lobes) points.push(l.upperTip, l.lowerTip, l.upperOuter, l.lowerOuter, l.notch);
   const circles = [...a.hood, ...a.pompons, { ...a.eye.center, r: a.eye.radius }];
   if (a.bubble) circles.push({ ...a.bubble.center, r: Math.max(a.bubble.rx, a.bubble.ry) });
@@ -203,7 +219,7 @@ export function goldfishContainsPoint(a: GoldfishAnatomy, p: GVec, tolerance = 0
   const t = clamp(tolerance, 0, 0.12);
   if (p.x < a.bounds.minX - t || p.x > a.bounds.maxX + t || p.y < a.bounds.minY - t || p.y > a.bounds.maxY + t) return false;
   if (inPolygon([...a.top, ...[...a.bottom].reverse()], p)) return true;
-  for (const fin of [a.dorsal, a.pectoral, a.pelvic, ...a.anal]) if (fin && inPolygon(fin.points, p)) return true;
+  for (const fin of [a.dorsal, a.pectoral, a.pelvic, ...a.anal, a.dorsal2, a.pectoral2]) if (fin && inPolygon(fin.points, p)) return true;
   if (a.lobes.some(l => inPolygon(lobePolygon(l), p))) return true;
   const near = (c: GBump) => Math.hypot(p.x - c.x, p.y - c.y) <= c.r + t;
   if ([...a.hood, ...a.pompons, { ...a.eye.center, r: a.eye.radius }].some(near)) return true;

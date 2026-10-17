@@ -31,7 +31,7 @@ function goldfishPair(): { world: World; mother: Fish; father: Fish } {
 describe('goldfish in the world (v17)', () => {
   it('opens new worlds with a valid goldfish counter and an empty goldfish atlas', () => {
     const world = createWorld(NOW, 481516, GENOME_VERSION);
-    expect(world.version).toBe(WORLD_VERSION); expect(WORLD_VERSION).toBe(18);
+    expect(world.version).toBe(WORLD_VERSION); expect(WORLD_VERSION).toBe(19);
     expect(world.goldfishShop.listings).toHaveLength(GOLDFISH_SHOP_SIZE);
     for (const listing of world.goldfishShop.listings) {
       expect(goldfishListingProblem(listing)).toBeNull();
@@ -102,21 +102,46 @@ describe('goldfish in the world (v17)', () => {
 
   it('migrates a world v16 save: goldfish atlas and counter are added, nothing else changes', () => {
     const world = createWorld(NOW, 99, GENOME_VERSION);
-    const { goldfishShop: _shop, genesisModel: _model, codex: _codex, ...rest } = world, { goldfish: _atlas, ...atlas } = world.atlas;
+    const { goldfishShop: _shop, genesisModel: _model, codex: _codex, bodyPlan: _plan, ...rest } = world, { goldfish: _atlas, ...atlas } = world.atlas;
     // A world v16 atlas holds 72 loci per species (world v18 appends the Body plan loci).
     const legacy = (entry: typeof atlas.koi) => ({ ...entry, evidence: entry.evidence.slice(0, 72), stage: entry.stage.slice(0, 72) });
     const v16 = { ...rest, version: 16, atlas: { ...atlas, koi: legacy(atlas.koi), axolotl: legacy(atlas.axolotl) } };
     const migrated = decodeSave(JSON.stringify(v16));
-    expect(migrated.version).toBe(18); expect(migrated.genesisModel).toBe(1); expect(migrated.atlas.koi.evidence).toHaveLength(78);
+    expect(migrated.version).toBe(19); expect(migrated.genesisModel).toBe(1); expect(migrated.bodyPlan).toBe(1); expect(migrated.atlas.koi.evidence).toHaveLength(78);
     expect(migrated.fish).toEqual(world.fish); expect(migrated.credits).toBe(world.credits); expect(migrated.shop).toEqual(world.shop);
     expect(migrated.goldfishShop.listings).toHaveLength(GOLDFISH_SHOP_SIZE);
     expect(migrated.atlas.goldfish.stage.every(stage => stage === 0)).toBe(true);
     expect(roundTrip(migrated)).toEqual(migrated);
-    // A runtime saved at v16 rebases onto v18, keeps the stock its own replay delivered and moves to Genesis model 2.
+    // A runtime saved at v16 rebases onto v19, keeps the stock its own replay delivered and moves to Genesis model 2.
     const runtime = createRuntime(migrated, 'legacy');
     const stored = { ...runtime, world: v16, checkpoint: { ...runtime.checkpoint, world: v16 } };
     const restored = decodeRuntime(JSON.stringify(stored));
-    expect(restored.world.version).toBe(18); expect(restored.world.fish).toEqual(world.fish); expect(restored.world.genesisModel).toBe(2);
+    expect(restored.world.version).toBe(19); expect(restored.world.fish).toEqual(world.fish); expect(restored.world.genesisModel).toBe(2);
+    expect(restored.world.bodyPlan).toBe(2);
+  });
+
+  it('replays a world v18 journal with module-free goldfish births, then breeds goldfish modules after the rebase', () => {
+    const { world } = goldfishPair();
+    let runtime = createRuntime({ ...world, bodyPlan: 1 }, 'gf-v18');
+    const run = (payload: Command) => { runtime = executeCommand(runtime, commandEnvelope(runtime, payload)); };
+    const breed = (mother: Fish, father: Fish) => run({ type: 'breed', motherId: mother.id, fatherId: father.id, tankId: 'tank-2', timestamp: NOW, genomeVersion: GENOME_VERSION, count: 8 });
+    const goldfish = () => runtime.world.fish.filter(f => f.species === 'goldfish' && f.status === 'living');
+    breed(goldfish().find(f => f.sex === 'F' && f.generation === 0)!, goldfish().find(f => f.sex === 'M' && f.generation === 0)!);
+    const young = goldfish().filter(f => f.generation === 1);
+    expect(young.length).toBeGreaterThan(0);
+    expect(young.every(f => f.genome.genesis?.model === 2 && f.genome.genesis.modules!.maternal.length === 0)).toBe(true);
+    // The same journal stored as a world v18 save: no body-plan field.
+    const v18 = (candidate: World) => { const { bodyPlan: _plan, ...rest } = candidate; return { ...rest, version: 18 }; };
+    const stored = { ...runtime, world: v18(runtime.world), checkpoint: { ...runtime.checkpoint, world: v18(runtime.checkpoint.world) } };
+    const restored = decodeRuntime(JSON.stringify(stored));
+    expect(restored.world.version).toBe(19); expect(restored.world.bodyPlan).toBe(2); expect(restored.world.fish).toEqual(runtime.world.fish);
+    runtime = restored;
+    const before = new Set(young.map(f => f.id));
+    breed(goldfish().find(f => f.sex === 'F' && f.generation === 0)!, goldfish().find(f => f.sex === 'M' && f.generation === 0)!);
+    const later = goldfish().filter(f => f.generation === 1 && !before.has(f.id));
+    expect(later.length).toBeGreaterThan(0);
+    expect(later.every(f => f.genome.genesis!.modules!.maternal.length === 4)).toBe(true);
+    expect(decodeRuntime(JSON.stringify(runtime)).world).toEqual(runtime.world);
   });
 
   it('rejects a goldfish whose species does not match its genome', () => {

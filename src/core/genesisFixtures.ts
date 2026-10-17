@@ -3,7 +3,10 @@ import { axolotlFounderGenome, type AxolotlGenome } from './axolotlGenetics';
 import { GENOME_LOCI, type GenomeLocus } from './catalog';
 import { express, founderGenome } from './genetics';
 import { AXOLOTL_LOAD, KOI_LOAD, NOVEL_ID_MIN, type Channel, type DefectKind } from './genesis';
+import { goldfishFounderGenome, type GoldfishGenome, type GoldfishVariety } from './goldfishGenetics';
+import { VARIETY_TEMPLATES, withGoldfishAlleles } from './goldfishShop';
 import { somaticFor } from './modules';
+import { hash } from './random';
 import type { CreatureGenome, Genome, Phenotype, Species } from './types';
 
 /**
@@ -96,12 +99,16 @@ export const GENESIS_FOUNDER_SAMPLE: readonly GenesisFixture[] = [
  * Genesis model 2 fixtures (renderer v9, R-203): the same clean founders with module genes set on both homologs, and one
  * development seed chosen for each somatic mark. Model 2 genomes only; everything older never draws these layers.
  */
-const model2 = <T extends Genome | AxolotlGenome>(genome: T, modules: number[], dev = genome.genesis!.dev): T =>
+const model2 = <T extends Genome | AxolotlGenome | GoldfishGenome>(genome: T, modules: number[], dev = genome.genesis!.dev): T =>
   ({ ...genome, genesis: { ...genome.genesis!, dev, model: 2 as const, modules: { maternal: [...modules], paternal: [...modules] } } });
 /** The first development seed (from a fixed start) that develops the requested somatic mark at fixture canalization. */
 const devWith = (kind: 'mosaic' | 'birthmark', canalization: number) => { for (let dev = 1; dev < 100000; dev++) if (somaticFor(dev, canalization)?.kind === kind) return dev; return 1; };
 const NONE = [0, 0, 0, 0, 0, 0];
 const koiCanalization = express(koi({})).genesis!.canalization;
+/** A goldfish breed standard on the fixtures-board founder background, with the board's clean eyes, head and swim bladder. */
+const GOLDFISH_CLEAN = { gf_eye_program: [0, 0], gf_bubble_program: [0, 0], gf_pompon: [0, 0], gf_pearlscale: [1, 1], gf_hood_a: [1, 1], gf_hood_b: [1, 1],
+  gf_dorsal_loss_a: [0, 0], gf_dorsal_loss_b: [0, 0], gf_color_break: [4, 4], gf_albino: [0, 0], gf_swim_bladder: [4, 4] } as const;
+const goldfish = (variety: GoldfishVariety) => withGoldfishAlleles(goldfishFounderGenome(hash(`goldfish-board:${variety}`)), { ...GOLDFISH_CLEAN, ...VARIETY_TEMPLATES[variety] } as never);
 export const GENESIS2_FIXTURES: readonly GenesisFixture[] = [
   make('genesis2-koi-twin-sail', 'Twin sail', 'koi', model2(koi({ alleles: { dorsal_height: [5, 5] } }), [3, 3, 0, 0, 0, 0]), 51, 'Dorsal duplication module past its threshold: a second dorsal fin behind the first.'),
   make('genesis2-koi-lionhead', 'Lionhead koi', 'koi', model2(koi({}), [0, 0, 3, 3, 0, 0]), 52, 'Wen module: a raspberry hood over the head.'),
@@ -113,5 +120,10 @@ export const GENESIS2_FIXTURES: readonly GenesisFixture[] = [
   make('genesis2-axo-polydactyl', 'Polydactyl', 'axolotl', model2(axolotl({}), [0, 0, 3, 0, 0, 0]), 62, 'Polydactyly module: extra digits on every foot.'),
   make('genesis2-axo-crested', 'Crested', 'axolotl', model2(axolotl({}), [0, 0, 0, 1, 3, 3]), 63, 'Dominant crest module: a membrane crest along the back.'),
   make('genesis2-axo-dragon', 'Dragon axolotl', 'axolotl', model2(axolotl({ alleles: { axo_frill_program: [5, 4] } }), [1, 3, 3, 1, 3, 3]), 64, 'Sail crest, dorsal crest, four rami and extra digits.'),
+  // Body-plan set 2 (world v19): goldfish fin modules.
+  make('genesis2-gf-twin-dorsal', 'Twin-dorsal ryukin', 'goldfish', model2(goldfish('ryukin'), [3, 3, 0, 0]), 71, 'Dorsal duplication module past its threshold: a second, smaller dorsal fin behind the first.'),
+  make('genesis2-gf-four-wing', 'Four-winged shubunkin', 'goldfish', model2(goldfish('shubunkin'), [0, 0, 1, 3]), 72, 'Two recessive pectoral copies: a second pectoral pair behind the first.'),
+  make('genesis2-gf-full-rig', 'Full-rig veiltail', 'goldfish', model2(goldfish('veiltail'), [3, 3, 1, 3]), 73, 'Both fin modules on a veiltail: second dorsal fin and second pectoral pair.'),
+  make('genesis2-gf-masked', 'Ranchu, masked dorsal module', 'goldfish', model2(goldfish('ranchu'), [3, 3, 0, 0]), 74, 'The same dorsal liability as the twin-dorsal ryukin: without a dorsal fin it stays hidden.'),
 ];
 

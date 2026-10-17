@@ -93,6 +93,8 @@ const moduleAtlas = (species: Species): AtlasLocus[] => moduleLoci(species).map(
 const KOI_FULL = [...KOI_ATLAS, ...moduleAtlas('koi')], AXOLOTL_FULL = [...AXOLOTL_ATLAS, ...moduleAtlas('axolotl')], GOLDFISH_FULL = [...GOLDFISH_ATLAS, ...moduleAtlas('goldfish')];
 export const atlasLoci = (species: Species): readonly AtlasLocus[] => species === 'koi' ? KOI_FULL : species === 'axolotl' ? AXOLOTL_FULL : GOLDFISH_FULL;
 export const isModuleLocus = (index: number) => index >= MODULE_INDEX_OFFSET;
+/** Body plan loci are observed only under Genesis model 2, and goldfish ones only from body-plan set 2 (world v19). */
+export const observesModules = (world: Pick<World, 'genesisModel' | 'bodyPlan'>, species: Species) => world.genesisModel === 2 && (species !== 'goldfish' || world.bodyPlan >= 2);
 
 /** The two allele IDs a fish carries at an atlas index: a locus array position, or a Body plan module gene. */
 export function atlasAlleles(fish: Pick<Fish, 'genome' | 'species'>, index: number): [number, number] | null {

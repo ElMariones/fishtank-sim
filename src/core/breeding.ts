@@ -1,5 +1,5 @@
 import { SPECIES_INFO } from './species';
-import { MAX_ALLELE_RECORDS, newAlleleRecords, observeFamily, recordLethal } from './atlas';
+import { MAX_ALLELE_RECORDS, newAlleleRecords, observeFamily, observesModules, recordLethal } from './atlas';
 import { withDiscoveries } from './codex';
 import { MUTATION_RATE } from './catalog';
 import { ADULT_FROM, eggLife, isEgg, lifeStage, maturityAge } from './development';
@@ -200,7 +200,7 @@ export function advanceClutches(world: World): World {
       if (hatched && next.atlas) {
         const mother = next.fish.find(member => member.id === clutch.motherId), father = next.fish.find(member => member.id === clutch.fatherId);
         const living = members.filter(member => member.status === 'living');
-        if (mother && father) next = withDiscoveries({ ...next, atlas: observeFamily(next.atlas, mother, father, living, next.genesisModel === 2).atlas }, living);
+        if (mother && father) next = withDiscoveries({ ...next, atlas: observeFamily(next.atlas, mother, father, living, observesModules(next, mother.species)).atlas }, living);
       }
       continue;
     }
@@ -223,7 +223,7 @@ export function advanceClutches(world: World): World {
     for (let k = 0; k < attempts; k++) {
       // Genesis eggs are seeded by their place in the clutch, so a non-viable egg never repeats its genome.
       const birthSeed = genesis ? hash(`${next.seed}:spawn:${clutch.id}:egg:${k}`) : hash(`${next.seed}:spawn:${clutch.id}:${nextId}`);
-      const trace = emptyTrace(), result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, clutch.genomeVersion, trace, next.genesisModel), sex: Fish['sex'] = hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M';
+      const trace = emptyTrace(), result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, clutch.genomeVersion, trace, next.genesisModel, next.bodyPlan), sex: Fish['sex'] = hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M';
       const development = genesis ? express(result.genome).genesis : undefined;
       if (development && !development.viable) {
         nonviable++;
