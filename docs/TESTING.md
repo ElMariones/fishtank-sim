@@ -1,5 +1,18 @@
 # Testing and verification
 
+## Sell all fish in an aquarium
+
+17 October 2026, Windows 11, Node via the checkout's npm scripts.
+
+- `npx vitest run`: **359 tests in 52 files pass** (358 before, plus one in `tests/economy.test.ts`: with scarce demand,
+  `clear-batch` pays exactly `planBestSales`, sells the planned fish, rehomes the rest, writes sale and rehome ledger
+  entries and survives save decoding; eggs, duplicates and courting members reject the whole batch). `npm run build`
+  passes (the existing >500 kB chunk warning remains).
+- Browser (in-app, isolated port 5176 with fresh storage; the user's own save on 5173 was not opened): The Koi Garden ⋯
+  menu shows **Sell all fish…** with the count; the review listed 6 koi, buyers and ◈ 378; confirming sold all six,
+  credits went from ◈ 1,200 to ◈ 1,578, the tank showed 0/60 and the toast reported the sale. The no-buyer rehome
+  branch was not reached in the browser (every starter koi had a buyer); it is covered by the unit test.
+
 ## FS-130 goldfish
 
 16 October 2026, Windows 11, Node via the checkout's npm scripts.

@@ -162,6 +162,29 @@ describe('FS-501 ledger and rehoming', () => {
     expect(() => applyCommand(courting, { type: 'rehome-batch', fishIds: [fishId(2)] })).toThrow('courting');
   });
 
+  it('clears a batch: fish with a buyer sell at the planned prices, the rest are rehomed', () => {
+    const cross: Command = { type: 'breed', motherId: fishId(1), fatherId: fishId(2), tankId: 'tank-2', timestamp: NOW, genomeVersion: 3 };
+    const hatched = advanceWorld(applyCommand(createWorld(NOW), cross), 0, 4 * DAY);
+    const ids = hatched.fish.filter(f => f.status === 'living' && f.tankId === 'tank-2' && f.parents).map(f => f.id);
+    // Exhaust demand so some fish find no buyer: the plan then splits into sales and leftovers.
+    const scarce: World = { ...hatched, market: { ...hatched.market, demand: Object.fromEntries(Object.keys(hatched.market.demand).map((k, i) => [k, i === 0 ? 2 : 0])) as World['market']['demand'] } };
+    const plan = planBestSales(scarce, ids);
+    expect(plan.sales.length).toBeGreaterThan(0);
+    expect(plan.unsold.length).toBeGreaterThan(0);
+    const order = [...plan.sales.map(s => s.fishId), ...plan.unsold];
+    const cleared = applyCommand(scarce, { type: 'clear-batch', fishIds: order, priceModel: 2 });
+    expect(cleared.credits).toBe(scarce.credits + plan.total);
+    expect(plan.sales.every(s => cleared.fish.find(f => f.id === s.fishId)!.status === 'sold')).toBe(true);
+    expect(plan.unsold.every(id => cleared.fish.find(f => f.id === id)!.status === 'rehomed')).toBe(true);
+    expect(cleared.ledger.entries.slice(-2).map(e => e.reason)).toEqual(['sale', 'rehome']);
+    expect(decodeSave(JSON.stringify(cleared)).fish.filter(f => f.status === 'rehomed')).toHaveLength(plan.unsold.length);
+    // A rejected batch changes nothing: one egg or courting member blocks the whole command.
+    expect(() => applyCommand(applyCommand(createWorld(NOW), cross), { type: 'clear-batch', fishIds: [fishId(7)], priceModel: 2 })).toThrow('Eggs cannot');
+    expect(() => applyCommand(hatched, { type: 'clear-batch', fishIds: [fishId(7), fishId(7)], priceModel: 2 })).toThrow('only be cleared once');
+    const courting = applyCommand(hatched, { type: 'pair', motherId: fishId(1), fatherId: fishId(2), nurseryId: 'tank-2', size: 8, timestamp: NOW, genomeVersion: 3 });
+    expect(() => applyCommand(courting, { type: 'clear-batch', fishIds: [fishId(7), fishId(2)], priceModel: 2 })).toThrow('courting');
+  });
+
   it('migrates older worlds and keeps pre-economy journals replaying at the lab quote', () => {
     const world = createWorld(NOW), fish = world.fish[0];
     const legacy = applyCommand(world, { type: 'sell', fishId: fish.id });

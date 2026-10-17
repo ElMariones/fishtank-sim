@@ -166,6 +166,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [moveTarget, setMoveTarget] = useState('');
   const [movedTo, setMovedTo] = useState<string | null>(null);
   const [rehomeId, setRehomeId] = useState<string | null>(null);
+  const [clearOpen, setClearOpen] = useState(false);
   const [showMarket, setShowMarket] = useState(false);
   const [showShop, setShowShop] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -312,6 +313,10 @@ export function App({ initial }: { initial: LoadedSession }) {
   const salePlan = useMemo(() => planBestSales(world, saleIds ? saleIds.split(',') : [], traitCache), [world, saleIds, traitCache]);
   const batchTotal = salePlan.total;
   const rehomeBatch = batch.filter(f => !isEgg(f.life) && !courtingClutchOf(world, f.id));
+  // Clearing the aquarium: every hatched, non-courting, non-favorite resident; buyers take who they want, the rest are rehomed.
+  const clearable = batchSaleCandidates(residents, favoriteIds).filter(f => !courtingClutchOf(world, f.id));
+  const clearIds = clearable.map(f => f.id).join(',');
+  const clearPlan = useMemo(() => clearOpen ? planBestSales(world, clearIds ? clearIds.split(',') : [], traitCache) : null, [clearOpen, world, clearIds, traitCache]);
   const freePlaces = (id: string) => {
     const home = world.tanks.find(t => t.id === id);
     return home ? home.capacity - living.filter(f => f.tankId === id).length - reservedPlaces(world, id) : 0;
@@ -528,6 +533,17 @@ export function App({ initial }: { initial: LoadedSession }) {
     }
   }
 
+  /** One command sells every clearable resident that has a buyer, in the reviewed order, and rehomes the rest. */
+  function clearTank() {
+    if (!clearPlan) return;
+    const order = [...clearPlan.sales.map(sale => sale.fishId), ...clearPlan.unsold], sold = clearPlan.sales.length, rehomed = clearPlan.unsold.length;
+    const parts = [sold ? `${sold} sold for ◈ ${clearPlan.total.toLocaleString()}` : '', rehomed ? `${rehomed} with no buyer rehomed` : ''].filter(Boolean).join(' and ');
+    if (order.length && run({ type: 'clear-batch', fishIds: order, priceModel: PRICE_MODEL }, `${tank.name} cleared: ${parts}. Their archived profiles remain in the family tree.`)) {
+      setBatchIds([]); setBatchReview(null); setSaleId(null); setRehomeId(null);
+    }
+    setClearOpen(false);
+  }
+
   /** A shop listing becomes a founder in the chosen tank (FS-502); the collection then shows it. */
   function buyListing(listing: Listing, destinationId: string) {
     const next = run({ type: 'buy-listing', listingId: listing.id, tankId: destinationId, timestamp: new Date().toISOString() },
@@ -645,6 +661,7 @@ export function App({ initial }: { initial: LoadedSession }) {
     { id: 'care', label: 'Care controls', icon: 'drop', shortcut: '3', onSelect: () => { setWorkspace('care'); focusSoon('workspace-panel'); } },
     { id: 'habitat', label: 'Habitat & expansion', icon: 'leaf', shortcut: '4', onSelect: () => { setWorkspace('habitat'); focusSoon('workspace-panel'); } },
     { id: 'shop', label: 'Buy stock for this tank', icon: 'shop', onSelect: () => openDrawer('shop') },
+    { id: 'clear', label: 'Sell all fish…', icon: 'coins', tone: 'brass', hint: clearable.length ? `${clearable.length} · no buyer → rehomed` : 'Nothing to sell', disabled: initial.readOnly || !!aquascape || !clearable.length, onSelect: () => setClearOpen(true) },
     { id: 'switch', label: 'Switch aquarium', icon: 'tank', items: world.tanks.map(t => ({ id: `t-${t.id}`, label: t.name, checked: t.id === tank.id, onSelect: () => openTank(t.id) })) },
   ];
 
@@ -1031,6 +1048,16 @@ export function App({ initial }: { initial: LoadedSession }) {
       <ul className="dialog-list">{salePlan.sales.map(sale => { const f = world.fish.find(member => member.id === sale.fishId)!;
         return <li key={f.id}><SexMark sex={f.sex} /><span>{f.name}<small>{f.id} · G{f.generation} · {sale.offer.buyerName}</small></span><span>◈ {sale.offer.amount}</span></li>; })}</ul>
       <div className="dialog-total"><span>Total</span><strong>◈ {batchTotal.toLocaleString()}</strong></div>
+    </Dialog>
+    <Dialog open={clearOpen && !!clearPlan && clearable.length > 0} onClose={() => setClearOpen(false)} fallbackFocus={() => document.getElementById('collection')} tone="brass" icon="coins" wide
+      title={`Sell all fish in ${tank.name}?`}
+      description={clearPlan ? `${clearPlan.sales.length ? `${clearPlan.sales.length} sell to their best NPC buyers for ◈ ${clearPlan.total.toLocaleString()}` : 'No NPC buyer wants any of them today'}${clearPlan.unsold.length ? `; ${clearPlan.unsold.length} with no buyer ${clearPlan.unsold.length === 1 ? 'is' : 'are'} rehomed for free` : ''}. Genomes and family links stay in the archive.${residents.length > clearable.length ? ` ${residents.length - clearable.length} ${residents.length - clearable.length === 1 ? 'favorite, egg or courting animal stays' : 'favorites, eggs or courting animals stay'}.` : ''}` : undefined}
+      actions={<><button className="quiet" onClick={() => setClearOpen(false)}>Cancel</button><button className="confirm" disabled={initial.readOnly} onClick={clearTank}><Icon name="coins" size={16} />Sell {clearPlan?.sales.length ?? 0}{clearPlan?.unsold.length ? ` · rehome ${clearPlan.unsold.length}` : ''}{clearPlan?.total ? ` · ◈ ${clearPlan.total.toLocaleString()}` : ''}</button></>}>
+      {clearPlan ? <ul className="dialog-list">{clearPlan.sales.map(sale => { const f = world.fish.find(member => member.id === sale.fishId)!;
+        return <li key={f.id}><SexMark sex={f.sex} /><span>{f.name}<small>{f.id} · G{f.generation} · {sale.offer.buyerName}</small></span><span>◈ {sale.offer.amount}</span></li>; })}
+        {clearPlan.unsold.map(id => { const f = world.fish.find(member => member.id === id)!;
+        return <li key={f.id}><SexMark sex={f.sex} /><span>{f.name}<small>{f.id} · G{f.generation} · no buyer today</small></span><span>Rehomed</span></li>; })}</ul> : null}
+      {clearPlan?.sales.length ? <div className="dialog-total"><span>Total</span><strong>◈ {clearPlan.total.toLocaleString()}</strong></div> : null}
     </Dialog>
     <Dialog open={batchReview === 'rehome' && rehomeBatch.length > 0} onClose={() => setBatchReview(null)} fallbackFocus={() => document.getElementById('collection')} icon="home" wide title={`Rehome ${rehomeBatch.length} animals outside your aquarium?`}
       description={`They leave for new homes. No credits change, and their genomes and family links stay in the archive.${batch.length > rehomeBatch.length ? ` ${batch.length - rehomeBatch.length} selected ${batch.length - rehomeBatch.length === 1 ? 'animal is an egg or courting and stays' : 'animals are eggs or courting and stay'}.` : ''}`}

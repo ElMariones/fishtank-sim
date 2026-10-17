@@ -115,6 +115,7 @@ export type Command =
   | { type: 'sell'; fishId: string; priceModel?: PriceModel }
   | { type: 'sell-batch'; fishIds: string[]; priceModel?: PriceModel }
   | { type: 'rehome-batch'; fishIds: string[] }
+  | { type: 'clear-batch'; fishIds: string[]; priceModel: PriceModel }
   | { type: 'buy'; tankId: string; timestamp: string; genomeVersion?: GenomeVersion; species?: Species }
   | { type: 'buy-listing'; listingId: string; tankId: string; timestamp: string }
   | { type: 'buy-axolotl-listing'; listingId: string; tankId: string; timestamp: string }
@@ -159,6 +160,7 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('sell'), fishId: fishIdSchema, priceModel: priceModelSchema }).strict(),
   z.object({ type: z.literal('sell-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING), priceModel: priceModelSchema }).strict(),
   z.object({ type: z.literal('rehome-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING) }).strict(),
+  z.object({ type: z.literal('clear-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING), priceModel: z.union([z.literal(1), z.literal(2)]) }).strict(),
   z.object({ type: z.literal('buy'), tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema, species: z.enum(['koi', 'axolotl', 'goldfish']).optional() }).strict(),
   z.object({ type: z.literal('buy-listing'), listingId: z.string().regex(/^LS-\d{6,16}$/), tankId: tankIdSchema, timestamp: z.string().datetime() }).strict(),
   z.object({ type: z.literal('buy-axolotl-listing'), listingId: z.string().regex(/^AX-\d{6,16}$/), tankId: tankIdSchema, timestamp: z.string().datetime() }).strict(),
@@ -551,6 +553,22 @@ export function applyCommand(world: World, command: Command): World {
       for (const fish of batch) if (courtingClutchOf(next, fish.id)) throw new Error(`${fish.name} is courting. Cancel the courtship before rehoming.`);
       for (const fish of batch) fish.status = 'rehomed';
       next.ledger = recordEntry(next.ledger, 'rehome', 0, batch.length, `${names(batch)} rehomed`);
+      break;
+    }
+    case 'clear-batch': {
+      // Quick clearing: fish with a buyer sell in the given order, the rest are rehomed. Every member is validated first,
+      // so a rejected batch changes nothing. Unsold fish use up no demand, so splitting the order keeps every price.
+      if (new Set(command.fishIds).size !== command.fishIds.length) throw new Error('Each fish can only be cleared once.');
+      const batch = command.fishIds.map(getFish);
+      if (batch.some(member => isEgg(member.life))) throw new Error('Eggs cannot be sold or rehomed. Wait until they hatch.');
+      for (const fish of batch) if (courtingClutchOf(next, fish.id)) throw new Error(`${fish.name} is courting. Cancel the courtship before clearing.`);
+      const unsold = new Set(planSales(next, command.fishIds, undefined, command.priceModel).unsold);
+      const sold = batch.filter(fish => !unsold.has(fish.id)), rehomed = batch.filter(fish => unsold.has(fish.id));
+      if (sold.length) sell(sold, command.priceModel);
+      if (rehomed.length) {
+        for (const fish of rehomed) fish.status = 'rehomed';
+        next.ledger = recordEntry(next.ledger, 'rehome', 0, rehomed.length, `${names(rehomed)} rehomed`);
+      }
       break;
     }
     case 'claim-relief': {
