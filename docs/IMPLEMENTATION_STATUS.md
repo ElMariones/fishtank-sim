@@ -2,7 +2,7 @@
 
 **Updated:** 17 October 2026 (R-201–R-204 Genesis model 2) · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
 
-## Reset all, Expositorium display aquariums, aquascaping set 2 — DONE, 17 October 2026 (user request)
+## Reset all, Expositorium display aquariums, aquascaping set 2 — DONE, pushed `8dd88cc`, 17 October 2026 (user request)
 
 No world version change: every addition is an optional field or a new command, and older saves and journals decode and
 replay unchanged. ADR-082.
@@ -32,7 +32,7 @@ replay unchanged. ADR-082.
   Grow LED, Aurora and every new multiply lighting. `paintFront` now takes an upper canvas: the multiply becomes a CSS
   `mix-blend-mode: multiply` tint layer between the two front canvases, in the same order as the Canvas 2D path.
 
-## Goldfish body-plan modules — DONE, committed `f58fabe`, 17 October 2026 (follow-up to R-203)
+## Goldfish body-plan modules — DONE, pushed `f58fabe`, 17 October 2026 (follow-up to R-203)
 
 World v19 · body-plan set 2 · goldfish anatomy v1 (optional module fins). ADR-081.
 
