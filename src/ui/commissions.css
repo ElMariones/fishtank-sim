@@ -1,0 +1,113 @@
+/*
+ * Commissions desk (world v20), on Deepwater tokens. Letters read as warm paper on the dark water column; tier hues
+ * match the Codex (uncommon kelp, rare tide, epic gene, legendary brass).
+ */
+.desk { --paper: #f3ead8; --paper-ink: #2b2418; --paper-2: #e6d9bf; --tier: var(--kelp); max-width: 1500px; margin: 0 auto; padding: 32px; color: var(--fg-1); }
+.desk .tier-1, .desk.tier-1 { --tier: var(--kelp); }
+.desk .tier-2 { --tier: var(--tide); }
+.desk .tier-3 { --tier: var(--gene); }
+.desk .tier-4 { --tier: var(--brass); }
+.desk-kicker { display: block; font-size: 11px; letter-spacing: .18em; font-weight: 700; color: var(--brass); }
+.desk-heading { display: flex; gap: 28px; align-items: flex-end; justify-content: space-between; margin-bottom: 24px; }
+.desk-heading h1 { font: 400 clamp(26px, 3vw, 42px)/1.12 var(--font-display); margin: 10px 0; color: #f2e6cc; max-width: 22ch; }
+.desk-heading p { color: var(--fg-2); font-size: 13px; line-height: 1.7; max-width: 68ch; }
+.desk-reputation { display: grid; gap: 6px; min-width: 260px; padding: 18px 20px; border: 1px solid var(--brass-a30); border-radius: var(--r-xl); background: linear-gradient(135deg, var(--brass-a12), transparent 70%), var(--ink-3); }
+.desk-reputation strong { font: 400 22px/1.2 var(--font-display); color: #f2e6cc; }
+.desk-reputation meter { width: 100%; height: 8px; }
+.desk-reputation small { color: var(--fg-3); font-size: 12px; }
+.desk-note { display: flex; gap: 10px; align-items: center; padding: 12px 16px; margin-bottom: 18px; border: 1px solid var(--line-2); border-radius: 10px; color: var(--fg-2); background: var(--ink-3); font-size: 13px; }
+
+.desk-layout { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 22px; align-items: start; }
+.desk-board { position: sticky; top: 16px; display: grid; gap: 10px; }
+.desk-board-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13px; }
+.desk-board-head span, .desk-post { color: var(--fg-3); font-size: 12px; }
+.desk-board ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.desk-envelope { position: relative; overflow: hidden; display: grid; gap: 5px; width: 100%; text-align: left; padding: 14px 16px 16px; border: 1px solid var(--line-2); border-left: 3px solid var(--tier); border-radius: 12px; background: var(--ink-3); color: var(--fg-1); transition: border-color var(--dur-2), background var(--dur-2), transform var(--dur-2); }
+.desk-envelope:hover { background: var(--ink-4); }
+.desk-envelope.current { border-color: var(--tier); background: linear-gradient(110deg, color-mix(in srgb, var(--tier) 14%, transparent), transparent 60%), var(--ink-4); }
+.desk-envelope.active::after { content: 'ACCEPTED'; position: absolute; right: 12px; bottom: 16px; font-size: 9px; letter-spacing: .16em; color: var(--tier); opacity: .8; }
+.desk-envelope-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.desk-tier { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--tier); }
+.desk-envelope strong { font: 400 18px/1.25 var(--font-display); }
+.desk-envelope small { color: var(--fg-3); font-size: 12px; }
+.desk-envelope-foot { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--fg-2); }
+.desk-envelope-foot b { color: var(--brass); font-weight: 600; }
+.desk-envelope.active .desk-envelope-foot span { padding-right: 70px; }
+.desk-envelope-foot .urgent { color: var(--rose); }
+.desk-deadline { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--line-1); }
+.desk-deadline i { display: block; height: 100%; background: var(--tier); opacity: .7; }
+.desk-empty { display: grid; justify-items: center; gap: 8px; padding: 34px 18px; text-align: center; border: 1px dashed var(--line-3); border-radius: 14px; color: var(--fg-2); }
+.desk-empty .icon { color: var(--brass); }
+.desk-empty small { color: var(--fg-3); line-height: 1.6; }
+
+.desk-letter { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr); gap: 20px; align-items: start; animation: desk-arrive var(--dur-3, 320ms) var(--ease-out, ease-out); }
+.desk-letter-empty { display: block; padding: 40px; color: var(--fg-3); border: 1px dashed var(--line-2); border-radius: var(--r-xl); }
+@keyframes desk-arrive { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.desk-paper { position: relative; padding: 28px 30px 24px; border-radius: 6px 6px 18px 6px; color: var(--paper-ink); background:
+  radial-gradient(ellipse at 100% 0, color-mix(in srgb, var(--tier) 22%, transparent), transparent 55%),
+  repeating-linear-gradient(0deg, transparent 0 27px, rgb(80 60 30 / .06) 27px 28px), linear-gradient(170deg, var(--paper), var(--paper-2));
+  box-shadow: 0 30px 60px -30px rgb(0 0 0 / .9), 0 0 0 1px rgb(255 240 210 / .25) inset; }
+.desk-paper header { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; padding-bottom: 14px; border-bottom: 1px solid rgb(80 60 30 / .18); }
+.desk-paper .desk-kicker { color: #8b6a2e; }
+.desk-paper h2 { font: 400 clamp(22px, 2.2vw, 30px)/1.15 var(--font-display); margin: 6px 0 0; color: var(--paper-ink); }
+.desk-reward { display: grid; justify-items: end; gap: 2px; text-align: right; }
+.desk-reward small { font-size: 10px; letter-spacing: .14em; color: #7a6a4e; }
+.desk-reward b { font: 600 24px/1.1 var(--font-display); color: #7a5410; }
+.desk-prose { font: 400 15px/1.75 var(--font-display); padding: 16px 0 6px; }
+.desk-prose p { margin: 0 0 10px; }
+.desk-codex { display: flex; gap: 8px; align-items: flex-start; font: 400 13px/1.6 var(--font-body, inherit); padding: 10px 12px; border-radius: 8px; background: rgb(80 60 30 / .07); color: #4a3e2a; }
+.desk-codex .icon { margin-top: 3px; flex: none; }
+.desk-sign { font-style: italic; }
+.desk-sign small { display: block; font-style: normal; font-size: 12px; color: #6f624a; }
+.desk-paper h3 { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: #8b6a2e; margin: 10px 0 8px; }
+.desk-terms { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
+.desk-terms li { display: flex; gap: 8px; align-items: baseline; }
+.desk-terms .icon { color: #8b6a2e; flex: none; }
+.desk-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid rgb(80 60 30 / .18); }
+.desk-actions small { flex-basis: 100%; color: #6f624a; font-size: 12px; }
+.desk-paper button.quiet { color: #4a3e2a; border-color: rgb(80 60 30 / .3); background: transparent; }
+.desk-paper button.quiet:hover:not(:disabled) { background: rgb(80 60 30 / .08); }
+.desk-accepted { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: #2f6b4c; font-weight: 600; }
+
+.desk-candidates { display: grid; gap: 10px; padding: 18px; border: 1px solid var(--line-2); border-radius: var(--r-xl); background: var(--ink-2); }
+.desk-candidates h3 { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--fg-3); margin: 4px 0 0; }
+.desk-candidates > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.desk-candidates > ul > li { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 12px; padding: 10px; border: 1px solid var(--line-1); border-radius: 12px; background: var(--ink-3); }
+.desk-candidates > ul > li.ready { border-color: var(--lume-a30); background: linear-gradient(110deg, var(--lume-a10), transparent 70%), var(--ink-3); }
+.desk-candidates strong { display: inline-block; margin-right: 6px; }
+.desk-candidates small { color: var(--fg-3); font-size: 12px; }
+.desk-candidates li button:not(.desk-portrait):not(.link-button) { margin-top: 8px; }
+.desk-portrait { padding: 0; border: 0; background: none; border-radius: 8px; overflow: hidden; align-self: start; }
+.desk-portrait canvas { width: 112px; height: auto; display: block; }
+.desk-clauses { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; }
+.desk-clauses li { display: inline-flex; gap: 4px; align-items: center; }
+.desk-clauses .met { color: var(--kelp); }
+.desk-clauses .missed { color: var(--fg-3); }
+.desk-leads { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
+.desk-leads li { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 8px 10px; border-radius: 8px; background: var(--ink-3); }
+.desk-leads b { color: var(--lume); grid-row: span 2; align-self: center; font-size: 16px; }
+.desk-hint { color: var(--fg-3); font-size: 12px; line-height: 1.6; margin: 0; }
+.desk-dialog { display: grid; justify-items: center; gap: 10px; }
+.desk-dialog canvas { max-width: 260px; width: 100%; height: auto; }
+
+.desk-history { margin-top: 32px; }
+.desk-history h2 { font: 400 22px/1.2 var(--font-display); margin-bottom: 12px; color: #f2e6cc; }
+.desk-history table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.desk-history th, .desk-history td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line-1); vertical-align: top; }
+.desk-history thead th { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--fg-3); font-weight: 600; }
+.desk-history tbody th small { display: block; color: var(--fg-3); font-weight: 400; font-size: 11px; }
+.desk-history .gain { color: var(--kelp); }
+.desk-history .loss { color: var(--rose); }
+.desk-status { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--line-3); color: var(--fg-2); }
+.desk-status.delivered { color: var(--kelp); border-color: rgb(92 217 158 / .4); }
+.desk-status.expired, .desk-status.withdrawn { color: var(--rose); border-color: rgb(255 111 142 / .35); }
+
+@media (max-width: 1180px) { .desk-letter { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 820px) {
+  .desk { padding: 20px 14px; }
+  .desk-heading { flex-direction: column; align-items: stretch; }
+  .desk-layout { grid-template-columns: minmax(0, 1fr); }
+  .desk-board { position: static; }
+  .desk-paper { padding: 22px 18px; }
+}
+@media (prefers-reduced-motion: reduce) { .desk-letter { animation: none; } .desk-envelope { transition: none; } }

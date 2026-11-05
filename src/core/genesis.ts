@@ -120,6 +120,8 @@ export const KOI_SCALE: NovelScale = { min: -0.75, max: 5.9, step: [0.35, 1.6], 
 export const AXOLOTL_SCALE: NovelScale = { min: -1.35, max: 1.35, step: [0.08, 0.42], effect: 0.28 };
 /** Goldfish quantitative alleles share the axolotl −1…1 effect scale. */
 export const GOLDFISH_SCALE: NovelScale = AXOLOTL_SCALE;
+/** Guppy quantitative alleles share the same −1…1 effect scale (world v20). */
+export const GUPPY_SCALE: NovelScale = AXOLOTL_SCALE;
 
 /** A deterministic novel allele ID for one mutation event. */
 export const novelId = (seed: number, copy: string, locus: number) => NOVEL_ID_MIN + hash(`genesis:novel:${seed}:${copy}:${locus}`) % NOVEL_ID_SPAN;
@@ -206,7 +208,10 @@ export const AXOLOTL_LOAD: readonly LoadSite[] = catalogFor(AXOLOTL_KINDS, 'axol
 /** Goldfish load (world v17): curled-gill and eye defects replace some dwarf and eye sites, fin erosion stays. */
 const GOLDFISH_KINDS: readonly DefectKind[] = KOI_KINDS.map((kind, i) => kind === 'dwarf' && i > 20 ? 'gill' : kind === 'pigment' && i > 30 ? 'eye' : kind);
 export const GOLDFISH_LOAD: readonly LoadSite[] = catalogFor(GOLDFISH_KINDS, 'goldfish-load');
-export const loadCatalog = (species: 'koi' | 'axolotl' | 'goldfish') => species === 'koi' ? KOI_LOAD : species === 'axolotl' ? AXOLOTL_LOAD : GOLDFISH_LOAD;
+/** Guppy load (world v20): no gill sites; eye and fin defects matter more on small, long-finned fish. */
+const GUPPY_KINDS: readonly DefectKind[] = KOI_KINDS.map((kind, i) => kind === 'dwarf' && i > 20 ? 'fins' : kind === 'spine' && i > 30 ? 'eye' : kind);
+export const GUPPY_LOAD: readonly LoadSite[] = catalogFor(GUPPY_KINDS, 'guppy-load');
+export const loadCatalog = (species: 'koi' | 'axolotl' | 'goldfish' | 'guppy') => species === 'koi' ? KOI_LOAD : species === 'axolotl' ? AXOLOTL_LOAD : species === 'guppy' ? GUPPY_LOAD : GOLDFISH_LOAD;
 
 /**
  * About 1.6 hidden recessives per founder chromosome copy (a few founders carry none, a few carry four). A founder never

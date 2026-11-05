@@ -4,6 +4,8 @@ import { isAxolotlGenome } from './axolotlGenetics';
 import { newAxolotlName } from './axolotlNames';
 import { isGoldfishGenome } from './goldfishGenetics';
 import { newGoldfishName } from './goldfishNames';
+import { isGuppyGenome } from './guppyGenetics';
+import { newGuppyName } from './guppyNames';
 import { hash, random } from './random';
 import type { AccentColor, BaseColor, BodyMotif, DotColor, FinMotif, Fish, IrisColor, NamingModel, Phenotype, ScaleType, World } from './types';
 
@@ -279,6 +281,7 @@ export const takenNames = (world: World) => new Set([...world.fish.map(member =>
 export function newFishName(key: string, fish: Pick<Fish, 'sex' | 'genome'>, taken: Set<string>): string {
   if (isAxolotlGenome(fish.genome)) return newAxolotlName(key, fish.sex, fish.genome, taken);
   if (isGoldfishGenome(fish.genome)) return newGoldfishName(key, fish.sex, fish.genome, taken);
+  if (isGuppyGenome(fish.genome)) return newGuppyName(key, fish.sex, fish.genome, taken);
   const name = generateName(key, nameTags(fish.sex, express(fish.genome)), taken);
   taken.add(name);
   return name;

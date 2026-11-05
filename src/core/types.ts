@@ -6,6 +6,9 @@ import type { AxolotlGenome, AxolotlPhenotype } from './axolotlGenetics';
 import type { AxolotlLocus } from './axolotlCatalog';
 import type { GoldfishGenome, GoldfishPhenotype } from './goldfishGenetics';
 import type { GoldfishRecessive } from './goldfishCatalog';
+import type { GuppyGenome, GuppyPhenotype } from './guppyGenetics';
+import type { GuppyRecessive } from './guppyCatalog';
+import type { CommissionState } from './commissions';
 import type { GenesisBlock, GenesisTraits } from './genesis';
 import type { AlleleRecord, AtlasState } from './atlas';
 import type { BodyPlanSet } from './modules';
@@ -21,9 +24,9 @@ export type Genome = { version: 1 | 2 | 3 | 4; maternal: number[]; paternal: num
  * Species is explicit on persistent animals/clutches; koi keeps its historic genome byte shape while axolotls (world v13)
  * and goldfish (world v17) each own a separate registry.
  */
-export type Species = 'koi' | 'axolotl' | 'goldfish';
-export const SPECIES: readonly Species[] = ['koi', 'axolotl', 'goldfish'];
-export type CreatureGenome = Genome | AxolotlGenome | GoldfishGenome;
+export type Species = 'koi' | 'axolotl' | 'goldfish' | 'guppy';
+export const SPECIES: readonly Species[] = ['koi', 'axolotl', 'goldfish', 'guppy'];
+export type CreatureGenome = Genome | AxolotlGenome | GoldfishGenome | GuppyGenome;
 export type Mutation = {
   locus: number; copy: 'maternal' | 'paternal'; from: number; to: number;
   /** World v13 axolotl mutations persist their species-local stable locus ID; koi mutations intentionally omit it. */
@@ -52,7 +55,8 @@ export type Fish = {
 };
 /** Why a pairing is refused or a courtship is paused (FS-401). */
 export type BlockerCode = 'role' | 'species' | 'unavailable' | 'immature' | 'condition' | 'cooldown' | 'busy' | 'apart' | 'water' | 'nursery-missing' | 'nursery-full' | 'nursery-busy' | 'limit';
-export type ClutchStage = 'courting' | 'incubating' | 'hatched' | 'cancelled';
+/** `gestating` (world v20): a livebearer mother carries the brood until birth; the nursery places stay reserved. */
+export type ClutchStage = 'courting' | 'gestating' | 'incubating' | 'hatched' | 'cancelled';
 /**
  * Clutch record (FS-402). While courting it reserves `size` places in the nursery. When courtship completes those places
  * become tracked eggs with consecutive IDs from `firstFishId`. Records are kept after hatching as the clutch's history.
@@ -83,6 +87,8 @@ export type Clutch = {
    * eggs are laid, and eggs homozygous for a lethal recessive never develop. Members are `laid` consecutive IDs.
    */
   outcome?: { laid: number; nonviable: number; causes: string[] };
+  /** Livebearers (guppies, world v20): the day courtship ended in mating, and the gestation length in days. */
+  gestation?: { matedDay: number; days: number };
 };
 /** Water model v1 state for one tank (FS-301). Units are explicit; values are game approximations, not care advice. */
 export type WaterState = {
@@ -124,7 +130,7 @@ export type Tank = {
 export type BuyerId = 'petShop' | 'longFin' | 'pondKeeper' | 'miniature' | 'colorCollector';
 /** Economy model v1 NPC demand (FS-501): how many more fish each buyer will take; it recovers at game-day boundaries. */
 export type MarketState = { model: 1; demand: Record<BuyerId, number> };
-export type LedgerReason = 'sale' | 'stock' | 'equipment' | 'waterChange' | 'rehome' | 'competitionEntry' | 'competitionPrize' | 'competitionPurchase' | 'research';
+export type LedgerReason = 'sale' | 'stock' | 'equipment' | 'waterChange' | 'rehome' | 'competitionEntry' | 'competitionPrize' | 'competitionPurchase' | 'research' | 'commission';
 /** One credit change: `amount` is signed, `fish` counts the fish involved, `detail` is short readable text. */
 export type LedgerEntry = { seq: number; reason: LedgerReason; amount: number; fish: number; detail: string };
 /** Credits always equal `opening` plus every total; only the latest entries are kept. */
@@ -159,6 +165,15 @@ export type GoldfishListing = {
   carries: { locus: GoldfishRecessive; allele: number } | null;
 };
 export type GoldfishShopState = { model: 1; nextListing: number; refreshedDay: number; listings: GoldfishListing[] };
+export type GuppyListingCategory = 'founder' | 'strain' | 'carrier';
+/** A guppy shop specimen (world v20): fixed from arrival until it is bought or leaves. Sex always agrees with the genome. */
+export type GuppyListing = {
+  id: string; category: GuppyListingCategory; name: string; sex: 'F' | 'M'; genome: GuppyGenome; birthSeed: number; price: number;
+  expiresDay: number; note: string;
+  /** For documented carriers: the recessive locus carried as one hidden copy, and the variant allele. */
+  carries: { locus: GuppyRecessive; allele: number } | null;
+};
+export type GuppyShopState = { model: 1; nextListing: number; refreshedDay: number; listings: GuppyListing[] };
 /** How new fish are named: 1 numbered ("Fry 12"), 2 generated from name parts (ADR-055), 3 parts true to the fish's traits (ADR-056). */
 export type NamingModel = 1 | 2 | 3;
 /** A bloodline's standard (FS-604), taken from its foundation fish when it was registered and never changed after. */
@@ -182,7 +197,7 @@ export type ReliefState = { model: 1; claims: number; cooldownDays: number };
  * Older saves migrate with defaults.
  */
 export type World = {
-  version: 19; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
+  version: 20; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
   market: MarketState; ledger: Ledger; shop: ShopState; naming: NamingModel; relief: ReliefState;
   /** Registered bloodlines and the next registry number (world v12). */
   bloodlines: Bloodline[]; nextBloodlineId: number;
@@ -208,6 +223,10 @@ export type World = {
    * they never read, and move to the current set together with model 2.
    */
   bodyPlan: BodyPlanSet;
+  /** Persistent guppy stock (world v20), a fourth counter. */
+  guppyShop: GuppyShopState;
+  /** Commission letters from NPC clients (world v20). */
+  commissions: CommissionState;
 };
 /**
  * Development v2 inherited marking anchor, derived from one phased two-locus haplotype block.
@@ -250,7 +269,7 @@ export type Phenotype = {
    * Absent means the historic koi phenotype. Axolotls and goldfish carry their independent expressed phenotype alongside
    * shared motion/life projections.
    */
-  species?: 'axolotl' | 'goldfish'; axolotl?: AxolotlPhenotype; goldfish?: GoldfishPhenotype;
+  species?: 'axolotl' | 'goldfish' | 'guppy'; axolotl?: AxolotlPhenotype; goldfish?: GoldfishPhenotype; guppy?: GuppyPhenotype;
   length: number; depth: number; taper: number; curve: number; head: number; snout: number;
   eye: number; eyePosition: number; iris: number; pupil: number; mouth: number; barbel: number;
   tail: number; spread: number; fork: number; dorsal: number; pectoral: number; finPigment: number;

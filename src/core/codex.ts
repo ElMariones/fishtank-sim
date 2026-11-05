@@ -1,5 +1,6 @@
 import { express } from './genetics';
 import { GOLDFISH_VARIETY_LABELS, GOLDFISH_VARIETY_RARITY, type GoldfishVariety } from './goldfishGenetics';
+import { GUPPY_STRAIN_LABELS, GUPPY_STRAIN_RARITY, type GuppyStrain } from './guppyGenetics';
 import type { Fish, Phenotype, Species, World } from './types';
 
 /**
@@ -22,6 +23,7 @@ export type CodexEntry = { key: string; species: Species; name: string; tier: Co
 const koi = (key: string, name: string, tier: CodexTier, text: string, test: (p: Phenotype) => boolean): CodexEntry => ({ key: `koi:${key}`, species: 'koi', name, tier, text, test });
 const axo = (key: string, name: string, tier: CodexTier, text: string, test: (p: Phenotype) => boolean): CodexEntry => ({ key: `axolotl:${key}`, species: 'axolotl', name, tier, text, test });
 const gold = (key: string, name: string, tier: CodexTier, text: string, test: (p: Phenotype) => boolean): CodexEntry => ({ key: `goldfish:${key}`, species: 'goldfish', name, tier, text, test });
+const gup = (key: string, name: string, tier: CodexTier, text: string, test: (p: Phenotype) => boolean): CodexEntry => ({ key: `guppy:${key}`, species: 'guppy', name, tier, text, test });
 
 const g = (p: Phenotype) => p.genesis;
 const m = (p: Phenotype) => p.genesis?.modules;
@@ -93,7 +95,52 @@ const GOLDFISH_ENTRIES: CodexEntry[] = [
   gold('full-rig', 'Full Rig', 4, 'Both fin modules on one fish: a second dorsal fin and a second pectoral pair.', p => p.species === 'goldfish' && (m(p)?.secondDorsal ?? 0) > 0 && (m(p)?.doublePectoral ?? 0) > 0),
 ];
 
-export const CODEX: readonly CodexEntry[] = [...KOI_ENTRIES, ...AXOLOTL_ENTRIES, ...GOLDFISH_ENTRIES];
+// Guppies (world v20). Male strains show only on males; the female entries reward reading the hidden sex chromosome.
+const STRAIN_TEXT: Partial<Record<GuppyStrain, string>> = {
+  endler: 'A small, bright male with orange spots and a short tail, close to the wild form.',
+  'full-red': 'Red carotenoid color over the whole tail and most of the body, with no tail pattern.',
+  'full-black': 'Dense melanophores and black edging over a dark body.',
+  moscow: 'The Moscow Y program: a dark, iridescent front half. Passed only father to son.',
+  tuxedo: 'Half-black: the rear half of the body is black.',
+  snakeskin: 'Snakeskin: a chain-link pattern of dark rings over the body and tail.',
+  'king-cobra': 'Snakeskin with heavy black edging or the armatus Y program.',
+  mosaic: 'Mosaic tail: irregular dark blotches over color.',
+  grass: 'Grass tail: fine, even dark speckles.',
+  lace: 'Lace tail: a fine net pattern.',
+  leopard: 'Leopard tail: round dark spots on a bright fin.',
+  tiger: 'Tiger tail: bold dark bands across the fin.',
+  'metal-head': 'Metal head: bright iridophores cover the head.',
+  'japan-blue': 'Asian Blau: blue iridescence with little red.',
+  pingu: 'The pingu Y program: red-orange body flanks.',
+  maculatus: 'The maculatus Y program: a black dorsal spot and red marks.',
+};
+const STRAINS = (Object.keys(STRAIN_TEXT) as GuppyStrain[]);
+const guppyTier = (rarity: number): CodexTier => Math.max(1, Math.min(3, rarity)) as CodexTier;
+const gp = (p: Phenotype) => p.guppy;
+const GUPPY_ENTRIES: CodexEntry[] = [
+  ...STRAINS.map(strain => gup(`strain-${strain}`, GUPPY_STRAIN_LABELS[strain], guppyTier(GUPPY_STRAIN_RARITY[strain]), STRAIN_TEXT[strain]!, p => gp(p)?.strain.id === strain)),
+  gup('blond', 'Blond', 1, 'Two recessive blond copies: fewer, smaller melanophores.', p => gp(p)?.color.base === 'blond'),
+  gup('golden', 'Golden', 2, 'Two recessive golden copies: a warm, light body.', p => gp(p)?.color.base === 'golden'),
+  gup('blue', 'Blue', 2, 'Two recessive blue copies: no yellow or red pigment cells.', p => gp(p)?.color.base === 'blue'),
+  gup('albino', 'Albino', 3, 'Two recessive albino copies: no melanin, red eyes.', p => gp(p)?.color.base === 'albino'),
+  gup('delta', 'Delta tail', 2, 'A wide, long triangular tail on a male.', p => gp(p)?.sex === 'M' && gp(p)?.tail.shape === 'delta'),
+  gup('double-sword', 'Double Sword', 2, 'Long top and bottom sword rays on a male.', p => gp(p)?.sex === 'M' && gp(p)?.tail.shape === 'double-sword'),
+  gup('lyre', 'Lyretail', 2, 'Top and bottom extensions that curve like a lyre.', p => gp(p)?.sex === 'M' && gp(p)?.tail.shape === 'lyre'),
+  gup('pin', 'Pintail', 2, 'A short tail drawn out into a single central pin.', p => gp(p)?.sex === 'M' && gp(p)?.tail.shape === 'pin'),
+  gup('dumbo', 'Dumbo', 2, 'Two recessive copies grow huge "elephant ear" pectoral fins.', p => (gp(p)?.fins.dumbo ?? 0) > 0),
+  gup('swallow', 'Swallow', 3, 'Two recessive copies stretch the dorsal and pelvic fins into streamers.', p => (gp(p)?.fins.swallow ?? 0) > 0),
+  gup('ribbon', 'Ribbon', 3, 'A dominant copy lengthens the fins. A ribbon male cannot sire: his gonopodium is too long.', p => (gp(p)?.fins.ribbon ?? 0) > 0),
+  gup('painted-female', 'Painted Female', 3, 'A female who leaks a Y color program as a tail tint. Only a rare crossover can move a program onto an X.',
+    p => gp(p)?.sex === 'F' && (gp(p)?.color.programs.length ?? 0) > 0 && (gp(p)?.color.leak ?? 0) >= 0.2),
+  gup('twin-flag', 'Twin Flag', 3, 'A duplicated dorsal fin: a second, smaller flag behind the first.', p => p.species === 'guppy' && (m(p)?.secondDorsal ?? 0) > 0),
+  gup('mosaic-mark', 'Mosaic', 3, 'A somatic patch of differently colored skin. Never inherited.', p => p.species === 'guppy' && g(p)?.somatic?.kind === 'mosaic'),
+  gup('birthmark', 'Birthmarked', 1, 'A small unique mark from development. Never inherited.', p => p.species === 'guppy' && g(p)?.somatic?.kind === 'birthmark'),
+  gup('albino-full-red', 'Albino Full Red', 4, 'Two albino copies under a full red male: a red fish with ruby eyes.', p => gp(p)?.strain.id === 'full-red' && gp(p)?.color.base === 'albino'),
+  gup('dumbo-moscow', 'Dumbo Moscow', 4, 'A Moscow male with dumbo pectorals: a Y program and two recessive copies together.', p => gp(p)?.strain.id === 'moscow' && (gp(p)?.fins.dumbo ?? 0) > 0),
+  gup('platinum-delta', 'Metal Head Delta', 3, 'A metal-head male with a delta tail.', p => gp(p)?.strain.id === 'metal-head' && gp(p)?.tail.shape === 'delta'),
+];
+
+export const CODEX: readonly CodexEntry[] = [...KOI_ENTRIES, ...AXOLOTL_ENTRIES, ...GOLDFISH_ENTRIES, ...GUPPY_ENTRIES];
 export const CODEX_BY_KEY = new Map(CODEX.map(entry => [entry.key, entry]));
 export const codexFor = (species: Species) => CODEX.filter(entry => entry.species === species);
 

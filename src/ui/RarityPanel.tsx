@@ -3,6 +3,7 @@ import { genotypeVisible } from '../core/atlas';
 import { carriedAlleles, alleleName } from '../core/genesisView';
 import { express, modulesOf } from '../core/genetics';
 import { GOLDFISH_RECESSIVES } from '../core/goldfishCatalog';
+import { GUPPY_RECESSIVES } from '../core/guppyCatalog';
 import { moduleLoci } from '../core/modules';
 import { RARITY_NOTE, rarityOf, tierRank, type RarityTier } from '../core/rarity';
 import type { Fish, World } from '../core/types';
@@ -18,6 +19,8 @@ export const TIER_TEXT: Record<RarityTier, string> = {
 function hiddenPotential(world: World, fish: Fish): string[] {
   const p = express(fish.genome), notes: string[] = [];
   if (p.goldfish?.carriers.length) notes.push(`Carries one hidden copy of ${p.goldfish.carriers.map(id => GOLDFISH_RECESSIVES[id]).join(', ')}`);
+  if (p.guppy?.carriers.length) notes.push(`Carries one hidden copy of ${p.guppy.carriers.map(id => GUPPY_RECESSIVES[id]).join(', ')}`);
+  if (p.guppy?.sex === 'F' && p.guppy.color.programs.length) notes.push(`Carries a color program on an X, hidden (${p.guppy.color.programs.join(', ')}); her sons can show it`);
   if (p.axolotl?.pigmentation.carriers.length) notes.push(`Carries one hidden ${p.axolotl.pigmentation.carriers.join(', ')} copy`);
   if (fish.genome.genesis) {
     const loci = moduleLoci(fish.species), modules = modulesOf(fish.genome);

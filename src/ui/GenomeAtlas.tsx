@@ -12,6 +12,7 @@ import { families, familyRatios } from '../core/segregation';
 import type { GenomeLocus } from '../core/catalog';
 import type { Species, World } from '../core/types';
 import { GOLDFISH_LOCUS_NOTES, type GoldfishLocus } from '../core/goldfishCatalog';
+import { GUPPY_LOCUS_NOTES, type GuppyLocus } from '../core/guppyCatalog';
 import { SPECIES_INFO } from '../core/species';
 import type { Command } from '../core/world';
 import { FishPortrait } from './FishPortrait';
@@ -23,6 +24,7 @@ const TABS: [Tab, string][] = [['chromosomes', 'Chromosomes'], ['registry', 'All
 const note = (species: Species, id: string) => id.startsWith('module:') ? moduleLoci(species).find(locus => `module:${locus.id}` === id)?.note ?? ''
   : species === 'koi' ? KOI_LOCUS_NOTES[id as GenomeLocus]
   : species === 'goldfish' ? GOLDFISH_LOCUS_NOTES[id as GoldfishLocus] ?? ''
+  : species === 'guppy' ? GUPPY_LOCUS_NOTES[id as GuppyLocus] ?? ''
   : AXOLOTL_LOCUS_NOTES[id as AxolotlLocus] ?? AXOLOTL_DEV_NOTES[id as AxolotlDevLocus] ?? '';
 const TIER_CLASS: Record<CodexTier, string> = { 1: 'uncommon', 2: 'rare', 3: 'epic', 4: 'legendary' };
 const percent = (value: number) => `${(value * 100).toFixed(value < 0.1 ? 1 : 0)}%`;
@@ -47,7 +49,7 @@ export function GenomeAtlas({ world, readOnly, onRun, onInspect }: { world: Worl
       </div>
       <div className="atlas-controls">
         <div className="segmented" role="group" aria-label="Species">
-          {(['koi', 'goldfish', 'axolotl'] as const).map(value => <button key={value} aria-pressed={species === value} onClick={() => setSpecies(value)}>{SPECIES_INFO[value].title}</button>)}
+          {(['koi', 'goldfish', 'guppy', 'axolotl'] as const).map(value => <button key={value} aria-pressed={species === value} onClick={() => setSpecies(value)}>{SPECIES_INFO[value].title}</button>)}
         </div>
         <button className="quiet" disabled={readOnly} onClick={() => onRun({ type: 'set-atlas-mode', mode: discovery ? 'scientist' : 'discovery' }, discovery ? 'Scientist mode: every locus is shown.' : 'Discovery mode: only what you have learned is shown.')}>
           <Icon name={discovery ? 'eye' : 'search'} size={15} />{discovery ? 'Switch to scientist mode' : 'Switch to discovery mode'}</button>

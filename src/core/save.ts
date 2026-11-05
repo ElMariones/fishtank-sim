@@ -10,6 +10,10 @@ import { CODEX_BY_KEY, emptyCodex } from './codex';
 import { GOLDFISH_LOCI_COUNT, GOLDFISH_RECESSIVES } from './goldfishCatalog';
 import { goldfishGenomeProblem, isGoldfishGenome } from './goldfishGenetics';
 import { GOLDFISH_SHOP_SIZE, goldfishListingProblem, initialGoldfishShop } from './goldfishShop';
+import { GUPPY_LOCI_COUNT, GUPPY_RECESSIVES } from './guppyCatalog';
+import { guppyGenomeProblem, guppySex, isGuppyGenome } from './guppyGenetics';
+import { GUPPY_SHOP_SIZE, guppyListingProblem, initialGuppyShop } from './guppyShop';
+import { CLIENT_BY_ID, initialCommissions, MAX_ACTIVE, MAX_COMMISSION_HISTORY, MAX_OFFERS, POST_EVERY_DAYS } from './commissions';
 import { ALL_CHANNELS, ALLELE_KINDS, MAX_LOAD_PER_COPY, MAX_NOVEL_PER_GENOME, NOVEL_ID_MIN } from './genesis';
 import { AXOLOTL_V2_LOCI_COUNT } from './axolotlCatalog';
 import { genomeProblem } from './registry';
@@ -113,7 +117,7 @@ const market = z.object({
 const credits = z.number().int().min(-1e12).max(1e12);
 const ledger = z.object({
   model: z.literal(1), opening: z.number().int().min(0).max(1e9), next: z.number().int().positive(),
-  totals: z.object({ sale: credits, stock: credits, equipment: credits, waterChange: credits, rehome: credits, competitionEntry: credits.default(0), competitionPrize: credits.default(0), competitionPurchase: credits.default(0), research: credits.optional() }).strict(),
+  totals: z.object({ sale: credits, stock: credits, equipment: credits, waterChange: credits, rehome: credits, competitionEntry: credits.default(0), competitionPrize: credits.default(0), competitionPurchase: credits.default(0), research: credits.optional(), commission: credits.optional() }).strict(),
   entries: z.array(z.object({
     seq: z.number().int().positive(), reason: z.enum(LEDGER_REASONS), amount: z.number().int().min(-1e9).max(1e9),
     fish: z.number().int().min(0).max(MAX_LIVING), detail: z.string().max(120),
@@ -194,9 +198,9 @@ const event = z.object({ id: z.string().max(100), name: z.string().max(100), cit
 const score = z.number().min(0).max(100);
 const competitionRun = z.object({ event, participants: z.array(z.object({ fish: competitionFish, owner: z.string().min(1).max(60), isPlayer: z.boolean(), scores: z.object({ presentation: score, pattern: score, condition: score }).strict(), total: score, rank: z.number().int().min(1).max(10), comment: z.string().max(1000), askingPrice: z.number().int().positive().max(100000), negotiation: z.object({ attempts: z.number().int().min(0).max(3), counter: z.number().int().positive().max(100000).nullable(), status: z.enum(['open', 'declined', 'purchased']) }).strict() }).strict()).min(9).max(10), phase: z.enum(['exhibition', 'results']), enteredDay: z.number().int().min(0).max(10000000) }).strict();
 const circuit = z.object({ model: z.literal(1), day: z.number().int().min(0).max(10000000), active: competitionRun.nullable(), history: z.array(competitionRun).max(MAX_COMPETITION_HISTORY) }).strict();
-const currentLedger = ledger.extend({ totals: z.object({ sale: credits, stock: credits, equipment: credits, waterChange: credits, rehome: credits, competitionEntry: credits, competitionPrize: credits, competitionPurchase: credits, research: credits.optional() }).strict() });
+const currentLedger = ledger.extend({ totals: z.object({ sale: credits, stock: credits, equipment: credits, waterChange: credits, rehome: credits, competitionEntry: credits, competitionPrize: credits, competitionPurchase: credits, research: credits.optional(), commission: credits.optional() }).strict() });
 /** World v16 adds research (sequencing) to the ledger. */
-const ledgerV16 = ledger.extend({ totals: z.object({ sale: credits, stock: credits, equipment: credits, waterChange: credits, rehome: credits, competitionEntry: credits, competitionPrize: credits, competitionPurchase: credits, research: credits }).strict() });
+const ledgerV16 = ledger.extend({ totals: z.object({ sale: credits, stock: credits, equipment: credits, waterChange: credits, rehome: credits, competitionEntry: credits, competitionPrize: credits, competitionPurchase: credits, research: credits, commission: credits.optional() }).strict() });
 const mutationV16 = mutationV13.extend({ from: z.number().int().min(0).max(NOVEL_MAX), to: z.number().int().min(0).max(NOVEL_MAX) }).strict();
 const fishV16 = z.object({ ...fishRecordV13, mutations: z.array(mutationV16).max(Math.max(GENOME_LOCI.length, AXOLOTL_V2_LOCI_COUNT) * 2), status: z.enum(['living', 'sold', 'rehomed']), life, breeding, origins }).strict();
 const competitionRunV16 = competitionRun.extend({ participants: z.array(competitionRun.shape.participants.element.extend({ fish: fishV16 }).strict()).min(9).max(10) }).strict();
@@ -237,7 +241,49 @@ const goldfishListing = z.object({
 const goldfishShop = z.object({
   model: z.literal(1), nextListing: z.number().int().positive(), refreshedDay: z.number().int().min(0).max(1e12), listings: z.array(goldfishListing).max(GOLDFISH_SHOP_SIZE),
 }).strict();
+// ── World v20: guppies and commissions ──
+const SPECIES_V20 = z.enum(['koi', 'axolotl', 'goldfish', 'guppy']);
+/** Guppy genome v1 (world v20): Genesis-native, with an XY sex chromosome; validation also rejects a maternal Y. */
+const guppyGenome = z.object({
+  species: z.literal('guppy'), version: z.literal(1), maternal: genesisAlleles(GUPPY_LOCI_COUNT), paternal: genesisAlleles(GUPPY_LOCI_COUNT), genesis: genesisBlock,
+}).strict().superRefine((value, context) => { const problem = guppyGenomeProblem(value); if (problem) context.addIssue({ code: 'custom', message: problem }); });
+const creatureGenomeV20 = z.union([guppyGenome, goldfishGenome, axolotlGenome, genome]);
+const fishV20 = fishV17.extend({ species: SPECIES_V20, genome: creatureGenomeV20 }).strict();
+const clutchV20 = clutchV17.extend({
+  species: SPECIES_V20,
+  gestation: z.object({ matedDay: z.number().int().min(0).max(10_000_000), days: z.number().int().min(1).max(60) }).strict().optional(),
+}).strict();
+const eventV20 = event.extend({ species: SPECIES_V20 }).strict();
+const competitionRunV20 = competitionRun.extend({ event: eventV20, participants: z.array(competitionRun.shape.participants.element.extend({ fish: fishV20 }).strict()).min(9).max(10) }).strict();
+const circuitV20 = circuit.extend({ active: competitionRunV20.nullable(), history: z.array(competitionRunV20).max(MAX_COMPETITION_HISTORY) }).strict();
+const alleleRecordsV20 = z.array(alleleRecords.element.extend({ species: SPECIES_V20 }).strict()).max(MAX_ALLELE_RECORDS);
+const atlasV20 = atlasV18.extend({ guppy: atlasSpeciesV18 }).strict();
+const ledgerV20 = ledger.extend({ totals: ledgerV16.shape.totals.extend({ commission: credits }).strict() });
+const guppyListing = z.object({
+  id: z.string().regex(/^GP-\d{6,16}$/), category: z.enum(['founder', 'strain', 'carrier']), name: z.string().min(1).max(32), sex: z.enum(['F', 'M']),
+  genome: guppyGenome, birthSeed: z.number().int().min(0).max(4294967295), price: z.number().int().positive().max(1e6), expiresDay: z.number().int().min(0).max(1e12),
+  note: z.string().max(120), carries: z.object({ locus: z.enum(Object.keys(GUPPY_RECESSIVES) as [keyof typeof GUPPY_RECESSIVES, ...(keyof typeof GUPPY_RECESSIVES)[]]), allele: z.number().int().min(4).max(5) }).strict().nullable(),
+}).strict();
+const guppyShop = z.object({
+  model: z.literal(1), nextListing: z.number().int().positive(), refreshedDay: z.number().int().min(0).max(1e12), listings: z.array(guppyListing).max(GUPPY_SHOP_SIZE),
+}).strict();
+const gameDay = z.number().int().min(-POST_EVERY_DAYS).max(10_000_000);
+const commission = z.object({
+  id: z.string().regex(/^CM-\d{6}$/), clientId: z.string().max(40), species: SPECIES_V20, entry: z.string().max(60), sex: z.enum(['F', 'M']).nullable(),
+  minGeneration: z.number().int().min(1).max(50), tier: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]), reward: z.number().int().min(0).max(1e6),
+  postedDay: gameDay, dueDay: gameDay,
+  status: z.enum(['offer', 'active', 'delivered', 'expired', 'declined', 'withdrawn']), acceptedDay: gameDay.nullable(), closedDay: gameDay.nullable(),
+  fishId: fishIdSchema.nullable(), fishName: z.string().max(32).nullable(), reputation: z.number().int().min(-1000).max(1000),
+}).strict();
+const commissions = z.object({
+  model: z.literal(1), nextId: z.number().int().positive().max(999999), refreshedDay: gameDay, reputation: z.number().int().min(0).max(1_000_000),
+  board: z.array(commission).max(MAX_OFFERS + MAX_ACTIVE), history: z.array(commission).max(MAX_COMMISSION_HISTORY),
+}).strict();
 const schema = z.discriminatedUnion('version', [
+  // World v20 adds guppies (genome, clutch gestation, shop counter and atlas, appended last) and commission letters.
+  z.object({ ...worldV13, version: z.literal(20), fish: z.array(fishV20).max(MAX_RECORDS), clutches: z.array(clutchV20).max(MAX_RECORDS), ledger: ledgerV20, shop: shopV16,
+    axolotlShop: axolotlShopV16, circuit: circuitV20, alleles: alleleRecordsV20, atlas: atlasV20, goldfishShop, genesisModel: z.union([z.literal(1), z.literal(2)]), codex,
+    bodyPlan: z.union([z.literal(1), z.literal(2)]), guppyShop, commissions }),
   // World v19 adds the body-plan set (goldfish module genes from set 2).
   z.object({ ...worldV13, version: z.literal(19), fish: z.array(fishV17).max(MAX_RECORDS), clutches: z.array(clutchV17).max(MAX_RECORDS), ledger: ledgerV16, shop: shopV16,
     axolotlShop: axolotlShopV16, circuit: circuitV17, alleles: alleleRecordsV17, atlas: atlasV18, goldfishShop, genesisModel: z.union([z.literal(1), z.literal(2)]), codex,
@@ -313,7 +359,8 @@ export function decodeSave(raw: string): World {
   const genesisFields = (old: Omit<World, 'version' | 'alleles' | 'atlas'>): World => ({
     ...old, version: 16, ledger: { ...old.ledger, totals: { ...old.ledger.totals, research: 0 } }, alleles: [], atlas: initialAtlas('scientist'),
   } as unknown as World);
-  if (parsed.version === 19) world = parsed as unknown as World;
+  if (parsed.version === 20) world = parsed as unknown as World;
+  else if (parsed.version === 19) world = parsed as unknown as World;
   else if (parsed.version === 18) world = parsed as unknown as World;
   else if (parsed.version === 17) world = parsed as unknown as World;
   else if (parsed.version === 16) world = parsed as unknown as World;
@@ -370,7 +417,17 @@ export function decodeSave(raw: string): World {
     world = { ...old, version: 18, atlas: { ...old.atlas, koi: padSpecies(old.atlas.koi), axolotl: padSpecies(old.atlas.axolotl), goldfish: padSpecies(old.atlas.goldfish) }, genesisModel: 1, codex: emptyCodex() } as unknown as World;
   }
   // Worlds v1-v18 open at body-plan set 1: their goldfish births replay without module genes; the runtime rebases them to set 2.
-  if (parsed.version < 19) world = { ...(world as unknown as Omit<World, 'bodyPlan'>), version: 19, bodyPlan: 1 } as World;
+  if (parsed.version < 19) world = { ...(world as unknown as Omit<World, 'bodyPlan'>), version: 19, bodyPlan: 1 } as unknown as World;
+  // Worlds v1-v19 predate guppies and commissions: the guppy atlas opens empty, commission income opens at zero, the guppy
+  // counter opens with a day-0 delivery and the commission board opens empty (appended last). When the runtime rebases an
+  // older world it keeps the stock and letters its own replay produced instead.
+  if (parsed.version < 20) {
+    const old = world as unknown as Omit<World, 'guppyShop' | 'commissions'>;
+    world = {
+      ...old, version: 20, ledger: { ...old.ledger, totals: { ...old.ledger.totals, commission: 0 } }, atlas: { ...old.atlas, guppy: emptySpecies() },
+      guppyShop: initialGuppyShop(old.seed), commissions: initialCommissions(),
+    } as World;
+  }
   world.tanks = world.tanks.map(tank => ({ ...tank, decorations: decorationsOf(tank) }));
   if (world.tanks.filter(isDisplay).length > MAX_DISPLAYS || world.tanks.filter(t => !isDisplay(t)).length > MAX_TANKS) throw new Error('Too many aquariums.');
   if (world.tanks.every(isDisplay)) throw new Error('A world needs at least one working aquarium.');
@@ -384,7 +441,9 @@ export function decodeSave(raw: string): World {
   if (ids.size !== world.fish.length || tanks.size !== world.tanks.length) throw new Error('Duplicate records in save.');
   for (const member of world.fish) {
     if (!tanks.has(member.tankId) || Number(member.id.slice(4)) >= world.nextId) throw new Error('Invalid record reference.');
-    if ((member.species === 'axolotl') !== isAxolotlGenome(member.genome) || (member.species === 'goldfish') !== isGoldfishGenome(member.genome)) throw new Error('Species does not match its genome.');
+    if ((member.species === 'axolotl') !== isAxolotlGenome(member.genome) || (member.species === 'goldfish') !== isGoldfishGenome(member.genome)
+      || (member.species === 'guppy') !== isGuppyGenome(member.genome)) throw new Error('Species does not match its genome.');
+    if (member.species === 'guppy' && member.sex !== guppySex(member.genome as never)) throw new Error('A guppy’s sex does not match its sex chromosome.');
     if (member.mutations.some(mutation => mutation.locus >= member.genome.maternal.length)) throw new Error('Mutation record is outside the genome.');
     for (const mutation of member.mutations) {
       if (member.species === 'axolotl') {
@@ -396,6 +455,7 @@ export function decodeSave(raw: string): World {
       }
       if (member.species === 'koi' && mutation.locusId !== undefined) throw new Error('Koi mutation record cannot carry an axolotl locus ID.');
       if (member.species === 'goldfish' && mutation.locusId !== undefined) throw new Error('Goldfish mutation record cannot carry an axolotl locus ID.');
+      if (member.species === 'guppy' && mutation.locusId !== undefined) throw new Error('Guppy mutation record cannot carry an axolotl locus ID.');
     }
     const originIssue = originProblem(member, ids);
     if (originIssue) throw new Error(originIssue);
@@ -412,7 +472,13 @@ export function decodeSave(raw: string): World {
       || mother.species !== entry.species || father.species !== entry.species
       || !tanks.has(entry.tankId) || !tanks.has(entry.nurseryId)) throw new Error('Invalid clutch record.');
     clutchIds.add(entry.id);
-    if (entry.stage === 'courting' || entry.stage === 'cancelled') {
+    if (entry.stage === 'gestating' && (!entry.gestation || entry.spawnedDay !== null)) throw new Error('Invalid brood record.');
+    if (entry.gestation && entry.species !== 'guppy') throw new Error('Only livebearers carry a brood.');
+    if (entry.stage === 'gestating') {
+      // A mother carrying a brood holds her nursery places; her mate is already free.
+      if (entry.firstFishId !== null || entry.progress !== 1 || courtingNurseries.has(entry.nurseryId) || courtingParents.has(entry.motherId)) throw new Error('Invalid brood record.');
+      courtingNurseries.add(entry.nurseryId); courtingParents.add(entry.motherId);
+    } else if (entry.stage === 'courting' || entry.stage === 'cancelled') {
       if (entry.firstFishId !== null || entry.spawnedDay !== null) throw new Error('A clutch without eggs lists egg records.');
       if (entry.stage === 'courting') {
         if (courtingNurseries.has(entry.nurseryId) || courtingParents.has(entry.motherId) || courtingParents.has(entry.fatherId)) throw new Error('Overlapping courtships in save.');
@@ -477,6 +543,24 @@ export function decodeSave(raw: string): World {
     if (problem) throw new Error(problem);
     listingIds.add(entry.id);
   }
+  for (const entry of world.guppyShop.listings) {
+    const sequence = Number(entry.id.slice(3));
+    if (listingIds.has(entry.id) || !Number.isSafeInteger(sequence) || sequence < 1 || sequence >= world.guppyShop.nextListing
+      || entry.expiresDay <= world.guppyShop.refreshedDay) throw new Error('Invalid guppy shop listing.');
+    const problem = guppyListingProblem(entry);
+    if (problem) throw new Error(problem);
+    listingIds.add(entry.id);
+  }
+  const letters = world.commissions, letterIds = new Set<string>();
+  for (const entry of [...letters.board, ...letters.history]) {
+    const definition = CODEX_BY_KEY.get(entry.entry);
+    if (letterIds.has(entry.id) || Number(entry.id.slice(3)) >= letters.nextId || !definition || definition.species !== entry.species || definition.tier !== entry.tier
+      || !CLIENT_BY_ID.has(entry.clientId)) throw new Error('Invalid commission record.');
+    letterIds.add(entry.id);
+  }
+  if (letters.board.some(entry => entry.status !== 'offer' && entry.status !== 'active') || letters.history.some(entry => entry.status === 'offer' || entry.status === 'active')
+    || letters.board.filter(entry => entry.status === 'offer').length > MAX_OFFERS || letters.board.filter(entry => entry.status === 'active').length > MAX_ACTIVE) throw new Error('Invalid commission board.');
+  for (const entry of letters.history) if (entry.status === 'delivered' && (!entry.fishId || ids.get(entry.fishId)?.status !== 'sold' || ids.get(entry.fishId)?.species !== entry.species)) throw new Error('A delivered commission names no delivered animal.');
   validateCircuit(world);
   const alleleIds = new Set<number>();
   for (const record of world.alleles) {

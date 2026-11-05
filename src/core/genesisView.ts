@@ -80,6 +80,7 @@ export const FINS_TEXT: Record<Species, Record<'standard' | 'veil' | 'butterfly'
   koi: { standard: 'Standard fins', veil: 'Veil fins (one dominant copy)', butterfly: 'Butterfly fins (two copies)' },
   axolotl: { standard: 'Standard crest', veil: 'Frilled crest (one dominant copy)', butterfly: 'Sail crest (two copies)' },
   goldfish: { standard: 'Standard-length fins', veil: 'Long fins (one dominant copy)', butterfly: 'Veil-length fins (two copies)' },
+  guppy: { standard: 'Short tail', veil: 'Long tail', butterfly: 'Very long tail' },
 };
 
 

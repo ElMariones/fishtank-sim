@@ -19,6 +19,8 @@ export type TankAbsence = {
   tankId: string; name: string; residents: number;
   /** Eggs laid into this tank by clutches during the absence (FS-402). */
   eggsLaid: number;
+  /** Live fry born into this tank during the absence (guppies, world v20). Optional so older summaries stay valid. */
+  liveBorn?: number;
   eggsHatched: number; becameJuvenile: number; becameAdult: number; lengthGainedCm: number;
   conditionBefore: number | null; conditionAfter: number | null;
   /** Fish whose condition ended the absence lower than it started. */
@@ -59,10 +61,10 @@ export function absenceObserver(start: World) {
     const started = new Map(start.fish.map(f => [f.id, f]));
     const tanks = end.tanks.map((tank): TankAbsence => {
       const residents = end.fish.filter(f => f.status === 'living' && f.tankId === tank.id);
-      let eggsLaid = 0, eggsHatched = 0, becameJuvenile = 0, becameAdult = 0, lengthGainedCm = 0, declined = 0, beforeSum = 0, afterSum = 0, compared = 0;
+      let eggsLaid = 0, liveBorn = 0, eggsHatched = 0, becameJuvenile = 0, becameAdult = 0, lengthGainedCm = 0, declined = 0, beforeSum = 0, afterSum = 0, compared = 0;
       for (const member of residents) {
         const was = started.get(member.id);
-        if (!was) { eggsLaid++; continue; }
+        if (!was) { if (member.species === 'guppy') liveBorn++; else eggsLaid++; continue; }
         const potential = metabolicPotential(member.genome), from = lifeStage(was.life, potential), to = lifeStage(member.life, potential);
         if (from === 'egg' && to !== 'egg') eggsHatched++;
         if (to === 'juvenile' && from !== 'juvenile') becameJuvenile++;
@@ -77,7 +79,7 @@ export function absenceObserver(start: World) {
         return reasons.length ? `${pairName}: courtship paused. ${reasons.join(' ')}` : `${pairName}: courting, ${Math.round(entry.progress * 100)}% complete.`;
       });
       return {
-        tankId: tank.id, name: tank.name, residents: residents.length, eggsLaid, eggsHatched, becameJuvenile, becameAdult, lengthGainedCm, courtships,
+        tankId: tank.id, name: tank.name, residents: residents.length, eggsLaid, ...(liveBorn ? { liveBorn } : {}), eggsHatched, becameJuvenile, becameAdult, lengthGainedCm, courtships,
         conditionBefore: compared ? beforeSum / compared : null, conditionAfter: compared ? afterSum / compared : null, declined,
         limitDays: [...(limitDays.get(tank.id) ?? new Map<string, number>())].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([cause, days]) => ({ cause, days })),
         unexplainedDeclines: unexplained.get(tank.id) ?? 0,
@@ -92,4 +94,4 @@ export function absenceObserver(start: World) {
 
 /** A tank with nothing to report: no hatching, stage change, decline, limiting cause or waiting warning. */
 export const quietTank = (tank: TankAbsence) =>
-  !tank.eggsLaid && !tank.eggsHatched && !tank.becameJuvenile && !tank.becameAdult && !tank.declined && !tank.limitDays.length && !tank.warnings.length && !tank.courtships.length;
+  !tank.eggsLaid && !tank.liveBorn && !tank.eggsHatched && !tank.becameJuvenile && !tank.becameAdult && !tank.declined && !tank.limitDays.length && !tank.warnings.length && !tank.courtships.length;

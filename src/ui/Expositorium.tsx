@@ -5,7 +5,7 @@ import type { Fish } from '../core/types';
 import { DISPLAY_CAPACITY } from '../core/world';
 import { Icon } from './Icon';
 
-const SPECIES = { koi: 'Koi', axolotl: 'Axolotl', goldfish: 'Goldfish' } as const;
+const SPECIES = { koi: 'Koi', axolotl: 'Axolotl', goldfish: 'Goldfish', guppy: 'Guppy' } as const;
 
 /**
  * Expositorium overlay for a display aquarium: one plaque per resident, a spotlight toggle and a visual treat. Plaques

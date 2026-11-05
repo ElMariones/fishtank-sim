@@ -4,6 +4,8 @@ import { advanceRelief } from './recovery';
 import { refreshShop } from './shop';
 import { refreshAxolotlShop } from './axolotlShop';
 import { refreshGoldfishShop } from './goldfishShop';
+import { refreshGuppyShop } from './guppyShop';
+import { advanceCommissions } from './commissions';
 import { CARE_RATES, closeCareDay, integrateTank, type CareLoad } from './care';
 import { CONDITION_RESPONSE, developDay, environmentFor, nutritionFactor, type ConditionRates, type Environment } from './development';
 import { express, metabolicPotential } from './genetics';
@@ -149,8 +151,9 @@ export function advanceWorld(world: World, fromTick: number, toTick: number, onD
     current = integrateTanks(current, cursor, end);
     if (end === boundary) {
       // Development first, then breeding (FS-402): eggs laid at this boundary start developing at the next one. NPC
-      // demand recovers (FS-501), the shop delivers (FS-502) and the koi rescue's wait counts down (FS-504) last.
-      const developed = developResidents(current), day = boundary / TICKS_PER_GAME_DAY, bred = advanceRelief(refreshGoldfishShop(refreshAxolotlShop(refreshShop(recoverDemand(advanceClutches(developed.world)), day), day), day));
+      // demand recovers (FS-501), the shop delivers (FS-502) and the koi rescue's wait counts down (FS-504); commission
+      // letters lapse or arrive (world v20) last.
+      const developed = developResidents(current), day = boundary / TICKS_PER_GAME_DAY, bred = advanceCommissions(advanceRelief(refreshGuppyShop(refreshGoldfishShop(refreshAxolotlShop(refreshShop(recoverDemand(advanceClutches(developed.world)), day), day), day), day)), day);
       const dated = { ...bred, circuit: { ...bred.circuit, day } };
       onDay?.({ tick: boundary, before: current, after: dated, environments: developed.environments });
       current = dated;

@@ -1,6 +1,36 @@
 # Implementation status
 
-**Updated:** 17 October 2026 (R-201–R-204 Genesis model 2) · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
+**Updated:** 5 November 2026 (guppies and Commissions, world v20) · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
+
+## Guppies and Commissions — implemented, 5 November 2026 (user request)
+
+World v20 · guppy genome v1 · guppy naming v1 · commissions model 1. ADR-083, ADR-084. Report:
+[FS-131](research/FS-131-GUPPY.md).
+
+- **Guppies, the fourth species** (`guppyCatalog.ts`, `guppyGenetics.ts`, `guppyNames.ts`, `guppyShop.ts`,
+  `guppyAnatomy.ts`, `rendering/guppy.ts`). 72 loci on 12 chromosomes; chromosome 12 (`GP-SEX`) is an XY sex
+  chromosome. A male's Y sits on his paternal homolog, his Y color program (maculatus, Moscow, armatus, pingu) always
+  goes to his sons, and double sword crosses onto the X at the Winge rate (1.5%). Male color is sex-limited: females
+  carry it and show only a small leak. Recessive blond, golden, albino and blue bases; dominant Asian Blau; half-black;
+  snakeskin; six tail patterns; ribbon males cannot sire. Saves reject a recorded sex that disagrees with the genome.
+- **Livebearing.** Pairing a female moves the clutch to `gestating` (5–10 game days, counted in clutch days); the father
+  is free again and the brood cannot be cancelled. Fry are born live into the nursery. Gravid females swell and show a
+  gravid spot. Young males stay grey until their color onset and color up over 8 game days; daughters stay grey.
+- **Integration.** Shop counter (5 listings: founders, 16 strain templates, documented carriers), names, buyers' wants,
+  show classes, Atlas and 34 Codex entries, rarity, Genome view with X/Y copies labelled by parent, breeding planner
+  prediction split into sons and daughters, collection filters and icon, absence report ("live fry born"), Pixi and
+  Canvas renderers, portraits and picking.
+- **Commissions** (`commissions.ts`, `Commissions.tsx`, `commissions.css`, rail entry, G then M). Weekly letters from
+  eight fictional clients ask for one bred animal that shows a Codex entry, sometimes of a given sex and generation.
+  Up to 3 offers and 2 active letters; deadlines 24–80 days by tier; rewards from ◈ 220 to ◈ 980 plus a reputation
+  bonus. Delivery archives the animal as sold, books a `commission` ledger entry and raises reputation (Newcomer,
+  Trusted, Renowned, Master), which unlocks harder tiers. Withdrawing or missing a deadline costs reputation. Posting
+  is deterministic and only happens in Genesis model 2 worlds. The desk shows the letter, a terms checklist, the closest
+  animals in the lab with ticked clauses, breeding leads labelled as estimates, and a correspondence history.
+- **Compatibility.** v19 saves migrate with an empty guppy Atlas, a fresh guppy counter, an empty letter board and a
+  zero commission total; their fish and journals are unchanged.
+- **Limits.** Balance is untuned. No sperm storage or repeat broods. Leads are estimates from a small sample.
+  Commissions are local NPC letters, not other players.
 
 ## Reset all, Expositorium display aquariums, aquascaping set 2 — DONE, pushed `8dd88cc`, 17 October 2026 (user request)
 

@@ -4,6 +4,7 @@ import { isNovel, type AlleleKind, type NovelAllele } from './genesis';
 import { AXOLOTL_V2_REGISTRY } from './axolotlCatalog';
 import { GENOME_LOCI } from './catalog';
 import { GOLDFISH_LOCUS_REGISTRY } from './goldfishCatalog';
+import { GUPPY_LOCUS_REGISTRY } from './guppyCatalog';
 import { alleleLabel } from './registry';
 import type { Species, World } from './types';
 
@@ -79,7 +80,7 @@ export function registryRows(world: Pick<World, 'alleles' | 'fish' | 'atlas'>, s
 /** A catalog allele's label at a locus, for any species. */
 export function registryAlleleLabel(species: Species, locus: number, allele: number): string {
   if (species === 'koi') return GENOME_LOCI[locus] ? alleleLabel(GENOME_LOCI[locus], allele) : `A${allele}`;
-  const entry = species === 'axolotl' ? AXOLOTL_V2_REGISTRY[locus] : GOLDFISH_LOCUS_REGISTRY[locus];
+  const entry = species === 'axolotl' ? AXOLOTL_V2_REGISTRY[locus] : species === 'guppy' ? GUPPY_LOCUS_REGISTRY[locus] : GOLDFISH_LOCUS_REGISTRY[locus];
   return entry?.alleles[allele]?.label ?? `A${allele}`;
 }
 

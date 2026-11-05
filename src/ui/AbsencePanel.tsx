@@ -6,6 +6,7 @@ const plural = (count: number, one: string, many = `${one}s`) => `${count} ${cou
 function changes(tank: TankAbsence): string {
   const parts = [plural(tank.residents, 'fish', 'fish')];
   if (tank.eggsLaid) parts.push(`${plural(tank.eggsLaid, 'egg')} laid`);
+  if (tank.liveBorn) parts.push(`${plural(tank.liveBorn, 'live fry', 'live fry')} born`);
   if (tank.eggsHatched) parts.push(`${plural(tank.eggsHatched, 'egg')} hatched`);
   if (tank.becameJuvenile) parts.push(`${tank.becameJuvenile} became juvenile`);
   if (tank.becameAdult) parts.push(`${tank.becameAdult} reached adulthood`);

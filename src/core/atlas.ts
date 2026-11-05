@@ -7,6 +7,8 @@ import { LOCUS_REGISTRY } from './registry';
 import type { AxolotlGenome } from './axolotlGenetics';
 import { GOLDFISH_LOCUS_REGISTRY } from './goldfishCatalog';
 import { goldfishDominance, goldfishPair, type GoldfishGenome } from './goldfishGenetics';
+import { GUPPY_LOCUS_REGISTRY } from './guppyCatalog';
+import { guppyDominance, guppyPair, type GuppyGenome } from './guppyGenetics';
 import type { Fish, Genome, Species, World } from './types';
 import { modulesOf } from './genetics';
 import { moduleLoci, MODULE_INDEX_OFFSET } from './modules';
@@ -32,7 +34,7 @@ export type AtlasSpecies = {
   defects: number[];
 };
 /** World v17 adds the goldfish atlas; older worlds gain it empty. */
-export type AtlasState = { model: 1; mode: AtlasMode; koi: AtlasSpecies; axolotl: AtlasSpecies; goldfish: AtlasSpecies; sequenced: string[] };
+export type AtlasState = { model: 1; mode: AtlasMode; koi: AtlasSpecies; axolotl: AtlasSpecies; goldfish: AtlasSpecies; sequenced: string[]; guppy: AtlasSpecies };
 /** A named open-ended allele. Its value and effects live in every genome that carries it; this holds the name. */
 export type AlleleRecord = { id: number; species: Species; locus: number; origin: string; name: string; named: boolean };
 
@@ -54,7 +56,7 @@ export const emptySpecies = (): AtlasSpecies => ({ evidence: Array(ATLAS_LOCI).f
 /** World v18 migration: a 72-locus atlas gains the Body plan loci at zero evidence. */
 export const padSpecies = (entry: AtlasSpecies): AtlasSpecies => entry.evidence.length >= ATLAS_LOCI ? entry
   : { ...entry, evidence: [...entry.evidence, ...Array(ATLAS_LOCI - entry.evidence.length).fill(0)], stage: [...entry.stage, ...Array(ATLAS_LOCI - entry.stage.length).fill(0)] };
-export const initialAtlas = (mode: AtlasMode): AtlasState => ({ model: 1, mode, koi: emptySpecies(), axolotl: emptySpecies(), sequenced: [], goldfish: emptySpecies() });
+export const initialAtlas = (mode: AtlasMode): AtlasState => ({ model: 1, mode, koi: emptySpecies(), axolotl: emptySpecies(), sequenced: [], goldfish: emptySpecies(), guppy: emptySpecies() });
 
 export type AtlasLocus = {
   index: number; id: string; label: string; chromosome: number; chromosomeLabel: string; position: number;
@@ -85,13 +87,23 @@ export const GOLDFISH_ATLAS: readonly AtlasLocus[] = GOLDFISH_LOCUS_REGISTRY.map
   index, id: entry.id, label: entry.label, chromosome: GOLDFISH_CHROMOSOME_IDS.indexOf(entry.chromosomeId) + 1, chromosomeLabel: entry.chromosomeLabel,
   position: index % 6, dominance: goldfishDominance(index), categorical: goldfishDominance(index) === null, visibility: GOLDFISH_VISIBILITY[entry.chromosomeId] ?? 0.6,
 }));
+const GUPPY_VISIBILITY: Record<string, number> = {
+  'GP-BODY': 0.7, 'GP-TAIL': 1, 'GP-FIN': 0.9, 'GP-BASE': 1, 'GP-IRI': 0.9, 'GP-CARO': 0.9, 'GP-TPAT': 0.9, 'GP-MARK': 0.9,
+  'GP-LIFE': 0.35, 'GP-BEH': 0.4, 'GP-DEV': 0.6, 'GP-SEX': 0.8,
+};
+const GUPPY_CHROMOSOME_IDS = ['GP-BODY', 'GP-TAIL', 'GP-FIN', 'GP-BASE', 'GP-IRI', 'GP-CARO', 'GP-TPAT', 'GP-MARK', 'GP-LIFE', 'GP-BEH', 'GP-DEV', 'GP-SEX'];
+export const GUPPY_ATLAS: readonly AtlasLocus[] = GUPPY_LOCUS_REGISTRY.map((entry, index) => ({
+  index, id: entry.id, label: entry.label, chromosome: GUPPY_CHROMOSOME_IDS.indexOf(entry.chromosomeId) + 1, chromosomeLabel: entry.chromosomeLabel,
+  position: index % 6, dominance: guppyDominance(index), categorical: guppyDominance(index) === null, visibility: GUPPY_VISIBILITY[entry.chromosomeId] ?? 0.6,
+}));
 /** Chromosome 13, Body plan (world v18): module loci follow the 72 locus arrays in Atlas numbering. */
 const moduleAtlas = (species: Species): AtlasLocus[] => moduleLoci(species).map((entry, k) => ({
   index: MODULE_INDEX_OFFSET + k, id: `module:${entry.id}`, label: entry.label, chromosome: 13, chromosomeLabel: 'Body plan', position: k,
   dominance: null, categorical: true, visibility: 0.9,
 }));
 const KOI_FULL = [...KOI_ATLAS, ...moduleAtlas('koi')], AXOLOTL_FULL = [...AXOLOTL_ATLAS, ...moduleAtlas('axolotl')], GOLDFISH_FULL = [...GOLDFISH_ATLAS, ...moduleAtlas('goldfish')];
-export const atlasLoci = (species: Species): readonly AtlasLocus[] => species === 'koi' ? KOI_FULL : species === 'axolotl' ? AXOLOTL_FULL : GOLDFISH_FULL;
+const GUPPY_FULL = [...GUPPY_ATLAS, ...moduleAtlas('guppy')];
+export const atlasLoci = (species: Species): readonly AtlasLocus[] => species === 'koi' ? KOI_FULL : species === 'axolotl' ? AXOLOTL_FULL : species === 'guppy' ? GUPPY_FULL : GOLDFISH_FULL;
 export const isModuleLocus = (index: number) => index >= MODULE_INDEX_OFFSET;
 /** Body plan loci are observed only under Genesis model 2, and goldfish ones only from body-plan set 2 (world v19). */
 export const observesModules = (world: Pick<World, 'genesisModel' | 'bodyPlan'>, species: Species) => world.genesisModel === 2 && (species !== 'goldfish' || world.bodyPlan >= 2);
@@ -113,6 +125,10 @@ function values(fish: Fish): (index: number) => [number, number] | null {
 }
 function valuesAt(fish: Fish): (index: number) => [number, number] | null {
   const genome = fish.genome;
+  if (fish.species === 'guppy') {
+    const guppy = genome as GuppyGenome, pair = guppyPair(guppy);
+    return index => index < guppy.maternal.length ? pair(index).map(r => r.value) as [number, number] : null;
+  }
   if (fish.species === 'goldfish') {
     const goldfish = genome as GoldfishGenome, pair = goldfishPair(goldfish);
     return index => index < goldfish.maternal.length ? pair(index).map(r => r.value) as [number, number] : null;

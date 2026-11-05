@@ -2,7 +2,8 @@ import { SPECIES_INFO } from './species';
 import { MAX_ALLELE_RECORDS, newAlleleRecords, observeFamily, observesModules, recordLethal } from './atlas';
 import { withDiscoveries } from './codex';
 import { MUTATION_RATE } from './catalog';
-import { ADULT_FROM, eggLife, isEgg, lifeStage, maturityAge } from './development';
+import { ADULT_FROM, eggLife, INCUBATION_DAYS, isEgg, lifeStage, maturityAge } from './development';
+import { expressGuppy, guppySex, isGuppyGenome } from './guppyGenetics';
 import { express, inherit, metabolicPotential } from './genetics';
 import { newFishName, takenNames } from './names';
 import { childOrigins, emptyTrace } from './origins';
@@ -32,7 +33,15 @@ export const SPAWNING_TEMPERATURE = [18, 28] as const;
 /** Real milliseconds per game day at 1×, used only to date eggs from the pairing timestamp. */
 export const MS_PER_GAME_DAY = 60_000;
 export const BLOCKER_CODES = ['role', 'species', 'unavailable', 'immature', 'condition', 'cooldown', 'busy', 'apart', 'water', 'nursery-missing', 'nursery-full', 'nursery-busy', 'limit'] as const satisfies readonly BlockerCode[];
-export const CLUTCH_STAGES = ['courting', 'incubating', 'hatched', 'cancelled'] as const satisfies readonly ClutchStage[];
+export const CLUTCH_STAGES = ['courting', 'gestating', 'incubating', 'hatched', 'cancelled'] as const satisfies readonly ClutchStage[];
+/** A guppy is born live and free-swimming at about this length (world v20). */
+export const LIVEBIRTH_LENGTH_CM = 0.7;
+/** Livebearers (guppies) carry their brood instead of laying eggs. */
+export const isLivebearer = (species: Fish['species']) => species === 'guppy';
+/** A newborn livebearer: past the egg stage from its first day. */
+export const livebirthLife = (): Fish['life'] => ({ model: 1, ageDays: INCUBATION_DAYS, lengthCm: LIVEBIRTH_LENGTH_CM, condition: 1 });
+/** A new animal's sex: a guppy's comes from its sex chromosome; other species keep their historical draw. */
+export const sexFor = (genome: Fish['genome'], birthSeed: number): Fish['sex'] => isGuppyGenome(genome) ? guppySex(genome) : hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M';
 
 export const idleBreeding = (): BreedingState => ({ model: 1, cooldownDays: 0 });
 export type Blocker = { code: BlockerCode; fishId?: string; message: string; fix: string };
@@ -45,12 +54,15 @@ export const clutchId = (n: number) => `CL-${n.toString().padStart(6, '0')}`;
 const pct = (value: number) => `${Math.round(value * 100)}%`;
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
-/** Nursery places held by courting clutches, in one tank or across the world. */
+/** True while a clutch holds its nursery: courting, or a livebearer mother carrying her brood. */
+export const holdsNursery = (clutch: Pick<Clutch, 'stage'>) => clutch.stage === 'courting' || clutch.stage === 'gestating';
+/** Nursery places held by courting clutches and broods being carried, in one tank or across the world. */
 export const reservedPlaces = (world: Pick<World, 'clutches'>, nurseryId?: string) =>
-  world.clutches.reduce((sum, clutch) => clutch.stage === 'courting' && (nurseryId === undefined || clutch.nurseryId === nurseryId) ? sum + clutch.size : sum, 0);
+  world.clutches.reduce((sum, clutch) => holdsNursery(clutch) && (nurseryId === undefined || clutch.nurseryId === nurseryId) ? sum + clutch.size : sum, 0);
 
+/** The courtship a fish is in, or the brood a livebearer mother is carrying (her mate is free once they have mated). */
 export const courtingClutchOf = (world: Pick<World, 'clutches'>, id: string) =>
-  world.clutches.find(clutch => clutch.stage === 'courting' && (clutch.motherId === id || clutch.fatherId === id));
+  world.clutches.find(clutch => (clutch.stage === 'courting' && (clutch.motherId === id || clutch.fatherId === id)) || (clutch.stage === 'gestating' && clutch.motherId === id));
 
 /** The tracked eggs a clutch laid: consecutive IDs from its first fish (a Genesis clutch records how many). */
 export function clutchMembers(world: Pick<World, 'fish'>, clutch: Clutch): Fish[] {
@@ -91,6 +103,8 @@ export function pairingBlockers(world: World, request: PairRequest, limits: Popu
     code: 'species', message: `${mother.name} is ${SPECIES_INFO[mother.species].a} and ${father.name} is ${SPECIES_INFO[father.species].a}; only members of the same species can breed.`,
     fix: `Choose ${SPECIES_INFO[mother.species].a} partner.`,
   }];
+  const sireProblem = cannotSire(father);
+  if (sireProblem) blockers.push({ code: 'role', fishId: father.id, message: sireProblem, fix: 'Choose a male without ribbon fins.' });
 
   for (const parent of [mother, father]) {
     const potential = metabolicPotential(parent.genome), stage = lifeStage(parent.life, potential), waiting = daysToMaturity(parent);
@@ -114,7 +128,8 @@ export function pairingBlockers(world: World, request: PairRequest, limits: Popu
       fix: 'Wait for the rest to end, or choose another fish.',
     });
     const courting = courtingClutchOf(world, parent.id);
-    if (courting) {
+    if (courting?.stage === 'gestating') blockers.push({ code: 'busy', fishId: parent.id, message: `${parent.name} is carrying a brood.`, fix: 'Wait until she gives birth.' });
+    else if (courting) {
       const partner = byId.get(courting.motherId === parent.id ? courting.fatherId : courting.motherId);
       blockers.push({ code: 'busy', fishId: parent.id, message: `${parent.name} is already courting ${partner?.name ?? 'another fish'}.`, fix: 'Cancel that courtship, or wait until it spawns.' });
     }
@@ -126,10 +141,10 @@ export function pairingBlockers(world: World, request: PairRequest, limits: Popu
   const nursery = world.tanks.find(tank => tank.id === request.nurseryId);
   if (!nursery) blockers.push({ code: 'nursery-missing', message: 'Choose a nursery tank for the eggs.', fix: 'Pick one of your tanks.' });
   else {
-    const holder = world.clutches.find(clutch => clutch.stage === 'courting' && clutch.nurseryId === nursery.id);
+    const holder = world.clutches.find(clutch => holdsNursery(clutch) && clutch.nurseryId === nursery.id);
     if (holder) blockers.push({
       code: 'nursery-busy', message: `${nursery.name} is already reserved for ${byId.get(holder.motherId)?.name ?? holder.motherId} × ${byId.get(holder.fatherId)?.name ?? holder.fatherId}.`,
-      fix: 'Choose another nursery, or wait until that clutch spawns.',
+      fix: holder.stage === 'gestating' ? 'Choose another nursery, or wait until that brood is born.' : 'Choose another nursery, or wait until that clutch spawns.',
     });
     const residents = world.fish.filter(member => member.status === 'living' && member.tankId === nursery.id).length;
     const free = nursery.capacity - residents - reservedPlaces(world, nursery.id);
@@ -173,10 +188,26 @@ export function courtshipBlockers(world: World, pair: Pick<Clutch, 'motherId' | 
   return blockers;
 }
 
-/** Progress per game day: faster for fertile pairs, bounded so every courtship takes two to four game days. */
+/** Why a male cannot sire, or null. A ribbon guppy male's lengthened gonopodium cannot transfer sperm. */
+export function cannotSire(father: Fish): string | null {
+  if (!isGuppyGenome(father.genome)) return null;
+  return expressGuppy(father.genome).health.canSire ? null : `${father.name} is a ribbon male: his lengthened gonopodium cannot sire. Breed ribbon through his sisters.`;
+}
+
+/**
+ * Progress per game day: faster for fertile pairs, bounded so every courtship takes two to four game days. Guppy females
+ * choose (world v20): a male's appeal (orange area, display, tail) against her choosiness speeds or slows courtship.
+ */
 export function courtshipRate(mother: Fish, father: Fish): number {
   const fertility = (metabolicPotential(mother.genome).fertility + metabolicPotential(father.genome).fertility) / 2;
-  return clamp(COURTSHIP_PER_DAY * fertility / 0.6, COURTSHIP_RATE_LIMITS[0], COURTSHIP_RATE_LIMITS[1]);
+  const choice = isGuppyGenome(mother.genome) && isGuppyGenome(father.genome) ? mateChoice(mother, father) : 1;
+  return clamp(COURTSHIP_PER_DAY * fertility / 0.6 * choice, COURTSHIP_RATE_LIMITS[0], COURTSHIP_RATE_LIMITS[1]);
+}
+
+/** Guppy mate choice multiplier, 0.55–1.45: an appealing male wins a choosy female quickly; a plain one slowly. */
+export function mateChoice(mother: Fish, father: Fish): number {
+  const female = expressGuppy(mother.genome as never), male = expressGuppy(father.genome as never);
+  return clamp(1 + (male.behavior.appeal - 0.45) * (0.4 + 1.2 * female.behavior.choosiness), 0.55, 1.45);
 }
 
 /**
@@ -186,7 +217,7 @@ export function courtshipRate(mother: Fish, father: Fish): number {
  */
 export function advanceClutches(world: World): World {
   const resting = world.fish.some(member => member.breeding.cooldownDays > 0);
-  if (!resting && !world.clutches.some(clutch => clutch.stage === 'courting' || clutch.stage === 'incubating')) return world;
+  if (!resting && !world.clutches.some(clutch => clutch.stage === 'courting' || clutch.stage === 'incubating' || clutch.stage === 'gestating')) return world;
   let next: World = {
     ...world, clutches: [...world.clutches],
     fish: resting ? world.fish.map(member => member.breeding.cooldownDays > 0 ? { ...member, breeding: { ...member.breeding, cooldownDays: member.breeding.cooldownDays - 1 } } : member) : world.fish,
@@ -204,18 +235,47 @@ export function advanceClutches(world: World): World {
       }
       continue;
     }
+    if (clutch.stage === 'gestating') {
+      // A livebearer mother carries the brood whatever the water does; a mother lost before birth loses the brood.
+      const mother = next.fish.find(member => member.id === clutch.motherId), father = next.fish.find(member => member.id === clutch.fatherId);
+      if (!mother || mother.status !== 'living' || !father) { next.clutches[i] = { ...clutch, days, stage: 'cancelled', blockers: ['unavailable'] }; continue; }
+      const gestation = clutch.gestation!;
+      if (days - gestation.matedDay < gestation.days) { next.clutches[i] = { ...clutch, days, blockers: [] }; continue; }
+      next = spawn(next, i, clutch, days, clutch.progress, mother, father);
+      continue;
+    }
     if (clutch.stage !== 'courting') continue;
     const blockers = courtshipBlockers(next, clutch);
     if (blockers.length) { next.clutches[i] = { ...clutch, days, blockers: [...new Set(blockers.map(blocker => blocker.code))] }; continue; }
     const mother = next.fish.find(member => member.id === clutch.motherId)!, father = next.fish.find(member => member.id === clutch.fatherId)!;
     const progress = Math.min(1, clutch.progress + courtshipRate(mother, father));
-    const nursery = next.tanks.find(tank => tank.id === clutch.nurseryId);
     if (progress < 1) { next.clutches[i] = { ...clutch, days, progress, blockers: [] }; continue; }
+    if (isLivebearer(clutch.species)) {
+      // Mating ends courtship: the father rests, the mother carries the brood, and the nursery stays reserved.
+      const days_ = isGuppyGenome(mother.genome) ? expressGuppy(mother.genome).life.gestationDays : 7;
+      next = { ...next, fish: next.fish.map(member => member.id === father.id ? { ...member, breeding: { model: 1 as const, cooldownDays: COOLDOWN_DAYS.M } } : member) };
+      next.clutches[i] = { ...clutch, days, progress, blockers: [], stage: 'gestating', gestation: { matedDay: days, days: days_ } };
+      continue;
+    }
+    next = spawn(next, i, clutch, days, progress, mother, father);
+  }
+  return next;
+}
+
+/**
+ * Courtship's end for egg layers, or birth for livebearers: the brood becomes tracked animals in the nursery and both
+ * parents rest. Eggs incubate; live-born fry are already free-swimming, so a livebearer clutch is complete at once.
+ */
+function spawn(world: World, i: number, clutch: Clutch, days: number, progress: number, mother: Fish, father: Fish): World {
+  let next = world;
+  {
+    const nursery = next.tanks.find(tank => tank.id === clutch.nurseryId);
     const residents = nursery ? next.fish.filter(member => member.status === 'living' && member.tankId === nursery.id).length : 0;
     if (!nursery || residents + reservedPlaces(next, nursery.id) > nursery.capacity) {
       next.clutches[i] = { ...clutch, days, progress, blockers: [nursery ? 'nursery-full' : 'nursery-missing'] };
-      continue;
+      return next;
     }
+    const live = clutch.stage === 'gestating';
     const bornAt = new Date(Date.parse(clutch.pairedAt) + days * MS_PER_GAME_DAY).toISOString(), eggs: Fish[] = [], taken = takenNames(next);
     const genesis = clutch.genomeVersion === 4, attempts = genesis ? eggsLaid(mother, father, clutch.size) : clutch.size;
     const causes = new Set<string>(), lethalSites: number[] = [];
@@ -223,7 +283,7 @@ export function advanceClutches(world: World): World {
     for (let k = 0; k < attempts; k++) {
       // Genesis eggs are seeded by their place in the clutch, so a non-viable egg never repeats its genome.
       const birthSeed = genesis ? hash(`${next.seed}:spawn:${clutch.id}:egg:${k}`) : hash(`${next.seed}:spawn:${clutch.id}:${nextId}`);
-      const trace = emptyTrace(), result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, clutch.genomeVersion, trace, next.genesisModel, next.bodyPlan), sex: Fish['sex'] = hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M';
+      const trace = emptyTrace(), result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, clutch.genomeVersion, trace, next.genesisModel, next.bodyPlan), sex = sexFor(result.genome, birthSeed);
       const development = genesis ? express(result.genome).genesis : undefined;
       if (development && !development.viable) {
         nonviable++;
@@ -233,17 +293,23 @@ export function advanceClutches(world: World): World {
       eggs.push({
         id: fishId(nextId), name: newFishName(`${next.seed}:fish:${nextId}`, { sex, genome: result.genome }, taken), sex, species: clutch.species, ...result, birthSeed,
         generation: Math.max(mother.generation, father.generation) + 1, parents: [mother.id, father.id], bornAt, tankId: nursery.id,
-        status: 'living', life: eggLife(), breeding: idleBreeding(), origins: childOrigins(fishId(nextId), mother, father, trace, result.mutations),
+        status: 'living', life: live ? livebirthLife() : eggLife(), breeding: idleBreeding(), origins: childOrigins(fishId(nextId), mother, father, trace, result.mutations),
       });
       nextId++;
     }
-    const rested = next.fish.map(member => member.id === mother.id || member.id === father.id ? { ...member, breeding: { model: 1 as const, cooldownDays: COOLDOWN_DAYS[member.sex] } } : member);
-    next = { ...next, nextId, fish: [...rested, ...eggs] };
+    // A livebearer's mate already rested at mating; at birth only the mother rests.
+    const rested = next.fish.map(member => member.id === mother.id || (!live && member.id === father.id) ? { ...member, breeding: { model: 1 as const, cooldownDays: COOLDOWN_DAYS[member.sex] } } : member);
+    next = { ...next, nextId, fish: [...rested, ...eggs], clutches: next.clutches };
     if (genesis) next = withGenesisRecords(next, eggs, clutch.species, lethalSites);
     next.clutches[i] = {
-      ...clutch, days, progress, blockers: [], stage: eggs.length ? 'incubating' : 'hatched', spawnedDay: days, firstFishId: eggs[0]?.id ?? null,
+      ...clutch, days, progress, blockers: [], stage: eggs.length && !live ? 'incubating' : 'hatched', spawnedDay: days, firstFishId: eggs[0]?.id ?? null,
       ...(genesis ? { outcome: { laid: eggs.length, nonviable, causes: [...causes].sort() } } : {}),
     };
+    // Live-born fry are hatched from birth, so the Atlas and Codex learn from the brood now.
+    if (live && eggs.length && next.atlas) {
+      const born = next.fish.filter(member => eggs.some(egg => egg.id === member.id));
+      next = withDiscoveries({ ...next, atlas: observeFamily(next.atlas, mother, father, born, observesModules(next, mother.species)).atlas }, born);
+    }
   }
   return next;
 }
@@ -263,6 +329,10 @@ export function withGenesisRecords(world: World, newborn: readonly Fish[], speci
 export function breedingStatus(world: World, fish: Fish): string {
   if (fish.status !== 'living') return 'Not available';
   const courting = courtingClutchOf(world, fish.id);
+  if (courting?.stage === 'gestating') {
+    const left = courting.gestation ? Math.max(0, courting.gestation.days - (courting.days - courting.gestation.matedDay)) : 0;
+    return `Carrying a brood · birth in ${plural(Math.max(1, left), 'game day')}`;
+  }
   if (courting) {
     const partner = world.fish.find(member => member.id === (courting.motherId === fish.id ? courting.fatherId : courting.motherId));
     return `Courting ${partner?.name ?? 'a partner'} · ${pct(courting.progress)}${courting.blockers.length ? ' · paused' : ''}`;
@@ -296,6 +366,10 @@ export function fastBreedingBlockers(world: World, request: FastBreedRequest, li
   if (mother && father && mother.species !== father.species) blockers.push({
     code: 'species', message: `${mother.name} and ${father.name} are different species; only members of the same species can breed.`, fix: 'Choose two animals of the same species.',
   });
+  else if (father && father.status === 'living' && father.sex === 'M') {
+    const sireProblem = cannotSire(father);
+    if (sireProblem) blockers.push({ code: 'role', fishId: father.id, message: sireProblem, fix: 'Choose a male without ribbon fins.' });
+  }
   const tank = world.tanks.find(t => t.id === request.tankId);
   if (!tank) blockers.push({ code: 'nursery-missing', message: 'Choose where the offspring will spawn.', fix: 'Pick one of your tanks.' });
   else {

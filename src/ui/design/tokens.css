@@ -47,6 +47,8 @@
   --axolotl: #f0a6ff;
   /* Goldfish are lantern orange. */
   --goldfish: #ffab5c;
+  /* Guppies are carnival magenta. */
+  --guppy: #ff6fb5;
   --moss: #b5d86a;
   --moss-2: #86a944;
   --moss-ink: #1a2406;
@@ -78,6 +80,7 @@
   --kelp-a14: rgb(92 217 158 / .14);
   --axolotl-a14: rgb(240 166 255 / .14);
   --goldfish-a14: rgb(255 171 92 / .14);
+  --guppy-a14: rgb(255 111 181 / .14);
   --moss-a12: rgb(181 216 106 / .12);
   --moss-a30: rgb(181 216 106 / .32);
 

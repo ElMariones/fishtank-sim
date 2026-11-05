@@ -1,6 +1,6 @@
 # Fishtank Sim
 
-**A living aquarium and genetics sandbox.** Breed koi, goldfish and axolotls whose looks and behavior come from inherited (synthetic) genomes. Every animal is drawn from its genes, every child keeps a permanent family record, and a rare trait can be followed across generations.
+**A living aquarium and genetics sandbox.** Breed koi, goldfish, guppies and axolotls whose looks and behavior come from inherited (synthetic) genomes. Every animal is drawn from its genes, every child keeps a permanent family record, and a rare trait can be followed across generations.
 
 ![The Koi Garden in the Deepwater interface: a framed planted aquarium with koi and river-stone cairns, the navigation rail with aquarium swatches, the calendar in the top bar, and the selected koi's specimen sheet in the inspector](docs/screenshots/aquarium.jpg)
 
@@ -11,7 +11,9 @@
 - **Genesis genetics.** Alleles have dominance, a development chromosome adds epistatic switches (ghost pigment, veil fins, glow, fluorescence, plume gills, extra digits), every animal carries hidden recessive load that inbreeding exposes, outcrossing restores hybrid vigor, and mutations can create brand-new alleles named after the fish they arose in. Behavior and life history decide food competition, maturity, clutch size and recovery.
 - **Genome Atlas.** In discovery mode you work out what each locus does by breeding: segregating clutches identify traits and their inheritance, recombination maps them, and sequencing reveals a genotype and its hidden load.
 - **Heritable genetics.** Koi genomes carry up to 72 loci on 12 synthetic chromosomes (body shape, color, patterns, fins, structure and behavior), with phased chromosomes, crossover and mutation. Axolotls have their own separate 72-locus genome covering limbs, gills, pigment morphs, patterns and temperament.
-- **Three species, one tank.** Koi, goldfish and axolotls share aquariums, water and care, but each species only breeds with its own kind.
+- **Four species, one tank.** Koi, goldfish, guppies and axolotls share aquariums, water and care, but each species only breeds with its own kind.
+- **Guppies.** Livebearers with an XY sex chromosome: a father's Y color program goes to every son, color shows on males only (daughters carry it hidden), and a rare crossover moves a Y gene onto the X. Females carry broods for a few game days and give birth to live fry; sons color up as they mature. Strains include Moscow, tuxedo, snakeskin, king cobra, mosaic, grass, lace, leopard, Japan blue and pingu.
+- **Commissions.** Weekly letters from NPC clients ask for one bred animal that shows a named Codex phenotype, sometimes of a given sex and generation, with a deadline. Deliver it to earn credits and reputation, which unlocks harder, better-paid letters.
 - **Goldfish.** A 72-locus goldfish genome anchored to real goldfish genes (recessive twin tail, telescope and celestial eyes from one gene, incompletely dominant transparent scales, dominant long fins, polygenic dorsal loss). Fish are named as one of 22 varieties (oranda, ranchu, ryukin, black moor, bubble eye…), hatch bronze and color up on a genetic schedule, and pay for extreme forms with buoyancy and vision trade-offs. See the [goldfish report](docs/research/FS-130-GOLDFISH.md).
 - **Breeding.** Pair two healthy adults that share a tank. Courtship takes a few game days, reserves places in a nursery tank, pauses with a reason if something goes wrong, and ends in a tracked clutch of eggs. An optional fast mode skips courtship for quicker experiments.
 - **Offspring prediction.** Exact single-locus odds and sampled adult-trait ranges before you breed, plus breeding goals that rank candidates for up to four traits.

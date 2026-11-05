@@ -3,6 +3,8 @@ import { AXOLOTL_LOCUS_REGISTRY, axolotlAlleleLabel } from './axolotlCatalog';
 import { isAxolotlGenome } from './axolotlGenetics';
 import { GOLDFISH_LOCUS_REGISTRY, goldfishAlleleLabelAt, goldfishLabelAt } from './goldfishCatalog';
 import { isGoldfishGenome } from './goldfishGenetics';
+import { GUPPY_LOCUS_REGISTRY, guppyAlleleLabelAt, guppyLabelAt } from './guppyCatalog';
+import { isGuppyGenome } from './guppyGenetics';
 import { alleleLabel, LOCUS_REGISTRY } from './registry';
 import type { AlleleOrigin, Fish, Mutation, World } from './types';
 
@@ -84,6 +86,12 @@ export type OriginSummary = {
 export type MutationNotebook = { living: number; records: number; origins: OriginSummary[] };
 
 function originLabels(first: Fish, mutation: Mutation, locus: number): Pick<OriginSummary, 'locusId' | 'locusLabel' | 'change' | 'structural'> {
+  if (isGuppyGenome(first.genome)) {
+    return {
+      locusId: GUPPY_LOCUS_REGISTRY[locus]?.id ?? `gp-locus-${locus}`, locusLabel: guppyLabelAt(locus),
+      change: `P${mutation.from} → P${mutation.to} (${guppyAlleleLabelAt(locus, mutation.from)} → ${guppyAlleleLabelAt(locus, mutation.to)})`, structural: false,
+    };
+  }
   if (isGoldfishGenome(first.genome)) {
     return {
       locusId: GOLDFISH_LOCUS_REGISTRY[locus]?.id ?? `gf-locus-${locus}`, locusLabel: goldfishLabelAt(locus),
@@ -151,7 +159,7 @@ export function originProblem(member: Fish, byId: ReadonlyMap<string, Fish>): st
     positions.add(key);
     const first = byId.get(parsed.fishId), mutation = first?.mutations.find(m => m.locus === parsed.locus && m.copy === parsed.copy);
     if (!first || !mutation || parsed.locus !== origin.locus) return 'A mutation origin names no recorded mutation.';
-    if (first.species !== member.species || isAxolotlGenome(first.genome) !== isAxolotlGenome(member.genome) || isGoldfishGenome(first.genome) !== isGoldfishGenome(member.genome)) return 'A mutation origin cannot cross species.';
+    if (first.species !== member.species || isAxolotlGenome(first.genome) !== isAxolotlGenome(member.genome) || isGoldfishGenome(first.genome) !== isGoldfishGenome(member.genome) || isGuppyGenome(first.genome) !== isGuppyGenome(member.genome)) return 'A mutation origin cannot cross species.';
     if (member.genome[origin.copy][origin.locus] !== mutation.to) return 'A carried mutation origin does not match the allele.';
     if (first.id === member.id ? parsed.copy !== origin.copy : !member.parents) return 'A founder cannot inherit a mutation origin.';
   }

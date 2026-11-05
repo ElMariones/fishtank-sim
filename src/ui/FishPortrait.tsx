@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useRef } from 'react';
 import { portraitFrame, type Extent } from '../core/anatomy';
 import { axolotlPortraitFrame } from '../core/axolotlAnatomy';
 import { goldfishPortraitFrame } from '../core/goldfishAnatomy';
+import { guppyPortraitFrame } from '../core/guppyAnatomy';
 import { INCUBATION_DAYS, isEgg, lifeStage } from '../core/development';
 import { express, metabolicPotential } from '../core/genetics';
 import type { Fish, Genome, Phenotype } from '../core/types';
@@ -52,13 +53,13 @@ function queuePaint(run: () => void) {
 export type PortraitView = 'current' | 'adult';
 
 /** Memoized: a parent re-render with the same fish record and view never rebuilds or repaints the portrait. */
-export const FishPortrait = memo(function FishPortrait({ fish, large = false, shared, view = 'adult' }: { fish: Fish; large?: boolean; shared?: Extent; view?: PortraitView }) {
+export const FishPortrait = memo(function FishPortrait({ fish, large = false, shared, view = 'adult', gravid = 0 }: { fish: Fish; large?: boolean; shared?: Extent; view?: PortraitView; gravid?: number }) {
   const adult = useMemo(() => adultOf(fish.genome), [fish.genome]);
   if (view === 'current' && isEgg(fish.life)) {
     return <EggPortrait seed={fish.birthSeed} progress={Math.min(1, fish.life.ageDays / INCUBATION_DAYS)} large={large}
       label={`${fish.name}, incubating egg, day ${fish.life.ageDays} of ${INCUBATION_DAYS}`} />;
   }
-  const phenotype = view === 'current' ? currentPhenotype(adult, fish) : adult;
+  const phenotype = view === 'current' ? currentPhenotype(adult, fish, gravid) : adult;
   const label = view === 'current'
     ? `${fish.name}, ${lifeStage(fish.life, metabolicPotential(fish.genome))} at ${fish.life.lengthCm.toFixed(1)} cm, current appearance`
     : `${fish.name}, generation ${fish.generation}, adult genetic potential`;
@@ -77,7 +78,8 @@ export function PhenotypePortrait({ phenotype, seed, label, large = false, share
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
     const sharedExtent = sharedWidth && sharedHeight ? { width: sharedWidth, height: sharedHeight } : undefined;
     const draw = (target: CanvasRenderingContext2D) => {
-      const frame = phenotype.species === 'goldfish' && phenotype.goldfish ? goldfishPortraitFrame(phenotype.goldfish, w, h)
+      const frame = phenotype.species === 'guppy' && phenotype.guppy ? guppyPortraitFrame(phenotype.guppy, w, h)
+        : phenotype.species === 'goldfish' && phenotype.goldfish ? goldfishPortraitFrame(phenotype.goldfish, w, h)
         : phenotype.species === 'axolotl' && phenotype.axolotl
         ? axolotlPortraitFrame(phenotype.axolotl, w, h)
         : portraitFrame(phenotype, w, h, sharedExtent);

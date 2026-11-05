@@ -8,6 +8,7 @@ import { tankEnvironment, tankLoad } from '../core/habitat';
 import { absenceObserver } from '../core/absence';
 import { calendarLabel } from '../core/competitions';
 import { AnimalHonors, Competitions, TrophyRoom } from './Competitions';
+import { Commissions } from './Commissions';
 import { describeBehavior, type BehaviorSummary } from '../simulation/behavior';
 import { AbsencePanel } from './AbsencePanel';
 import { CarePanel } from './CarePanel';
@@ -42,9 +43,10 @@ import { advanceRuntime, commandEnvelope, executeCommand } from '../core/runtime
 import { OnboardingGuide } from './OnboardingGuide';
 import type { LoadedSession } from '../persistence/session';
 import { downloadText, SavePanel } from './SavePanel';
-import type { AxolotlListing, Clutch, Fish, GoldfishListing, Listing, World } from '../core/types';
+import type { AxolotlListing, Clutch, Fish, GoldfishListing, GuppyListing, Listing, World } from '../core/types';
 import { SPECIES_INFO } from '../core/species';
 import { GoldfishGenomeView, GoldfishTraitPanel } from './GoldfishGenetics';
+import { GuppyGenomeView, GuppyTraitPanel } from './GuppyGenetics';
 import { TICKS_PER_GAME_DAY } from '../core/water';
 import { COHORT_SIZE, isDisplay, type Command } from '../core/world';
 import { ShowcasePlaques } from './Expositorium';
@@ -91,10 +93,10 @@ const descriptorLabel = new Map(GOAL_DESCRIPTORS.map(descriptor => [descriptor.k
 const RAIL_KEY = 'fishtank:rail-compact';
 type SexFilter = 'all' | Fish['sex'];
 type SpeciesFilter = 'all' | Fish['species'];
-type View = 'aquarium' | 'fixtures' | 'research' | 'competitions' | 'trophies' | 'atlas';
+type View = 'aquarium' | 'fixtures' | 'research' | 'competitions' | 'commissions' | 'trophies' | 'atlas';
 type Workspace = 'collection' | 'breeding' | 'care' | 'habitat';
 const WORKSPACES: Workspace[] = ['collection', 'breeding', 'care', 'habitat'];
-const VIEW_TITLES: Record<View, string> = { aquarium: '', research: 'Research studies', competitions: 'Competition circuit', trophies: 'Trophy room', fixtures: 'Visual fixtures', atlas: 'Genome Atlas' };
+const VIEW_TITLES: Record<View, string> = { aquarium: '', research: 'Research studies', competitions: 'Competition circuit', commissions: 'Commissions', trophies: 'Trophy room', fixtures: 'Visual fixtures', atlas: 'Genome Atlas' };
 
 function readPreferences(world: World) {
   let raw: string | null = null;
@@ -102,7 +104,7 @@ function readPreferences(world: World) {
   return decodePreferences(raw, new Set(world.fish.map(f => f.id)));
 }
 function readFlag(key: string) { try { return localStorage.getItem(key) === '1'; } catch { return false; } }
-const VIEWS: View[] = ['aquarium', 'atlas', 'competitions', 'trophies', 'research', 'fixtures'];
+const VIEWS: View[] = ['aquarium', 'atlas', 'competitions', 'commissions', 'trophies', 'research', 'fixtures'];
 const viewFromHash = (): View => { const hash = location.hash.replace(/^#\/?/, '') as View; return VIEWS.includes(hash) ? hash : 'aquarium'; };
 const typing = (target: EventTarget | null) => target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
 
@@ -250,6 +252,8 @@ export function App({ initial }: { initial: LoadedSession }) {
   const living = world.fish.filter(f => f.status === 'living');
   const residents = useMemo(() => world.fish.filter(f => f.tankId === tank.id && f.status === 'living'), [world.fish, tank.id]);
   const swimmers = useMemo(() => residents.filter(f => !isEgg(f.life)), [residents]);
+  // Guppy mothers carrying a brood swell as birth nears.
+  const broods = useMemo(() => new Map(world.clutches.filter(c => c.stage === 'gestating' && c.gestation).map(c => [c.motherId, Math.min(1, Math.max(0.15, (c.days - c.gestation!.matedDay) / c.gestation!.days))])), [world.clutches]);
   // A tank switch shows the new aquarium at once; the collection of up to 60 portraits follows in a deferred render.
   const collectionTankId = useDeferredValue(tank.id), collectionPending = collectionTankId !== tank.id;
   const collectionResidents = useMemo(() => collectionTankId === tank.id ? residents : world.fish.filter(f => f.tankId === collectionTankId && f.status === 'living'), [residents, world.fish, collectionTankId, tank.id]);
@@ -297,7 +301,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const favoriteFiltered = favoritesOnly ? inCohort.filter(f => favoriteIds.has(f.id)) : inCohort;
   const sexCounts = { all: favoriteFiltered.length, F: favoriteFiltered.filter(f => f.sex === 'F').length, M: favoriteFiltered.filter(f => f.sex === 'M').length };
   const sexFiltered = sexFilter === 'all' ? favoriteFiltered : favoriteFiltered.filter(f => f.sex === sexFilter);
-  const speciesCounts = { all: sexFiltered.length, koi: sexFiltered.filter(f => f.species === 'koi').length, axolotl: sexFiltered.filter(f => f.species === 'axolotl').length, goldfish: sexFiltered.filter(f => f.species === 'goldfish').length };
+  const speciesCounts = { all: sexFiltered.length, koi: sexFiltered.filter(f => f.species === 'koi').length, axolotl: sexFiltered.filter(f => f.species === 'axolotl').length, goldfish: sexFiltered.filter(f => f.species === 'goldfish').length, guppy: sexFiltered.filter(f => f.species === 'guppy').length };
   const sort: CollectionSort = preferences.sort === 'goal' && !goal ? 'newest' : preferences.sort;
   const collection = sortCollection(speciesFilter === 'all' ? sexFiltered : sexFiltered.filter(f => f.species === speciesFilter), sort, goal);
   const pageSize = 60;
@@ -381,12 +385,12 @@ export function App({ initial }: { initial: LoadedSession }) {
       setRuntime(next);
       const summary = observer.summarize(next.world);
       setAbsence(summary);
-      const born = next.world.fish.length - start.world.fish.length;
+      const newcomers = next.world.fish.slice(start.world.fish.length), fry = newcomers.filter(f => f.species === 'guppy').length, born = newcomers.length - fry;
       dayRef.current = Math.floor(next.tick / TICKS_PER_GAME_DAY);
       // Genesis: eggs that never developed, and what the Genome Atlas learned from hatched clutches.
       const failed = next.world.clutches.filter(clutch => clutch.outcome && !start.world.clutches.some(old => old.id === clutch.id && old.outcome)).reduce((sum, clutch) => sum + clutch.outcome!.nonviable, 0);
-      const learned = (['koi', 'axolotl', 'goldfish'] as const).reduce((sum, species) => { const a = atlasProgress(next.world, species), b = atlasProgress(start.world, species); return sum + a.identified - b.identified + a.characterized - b.characterized + a.mapped - b.mapped; }, 0);
-      setNotice(`${calendarLabel(dayRef.current)}. ${days} day${days === 1 ? '' : 's'} simulated${born ? ` · ${born} new eggs` : ''}${failed ? ` · ${failed} egg${failed === 1 ? '' : 's'} never developed (lethal recessives)` : ''}${learned ? ` · the Genome Atlas made ${learned} discover${learned === 1 ? 'y' : 'ies'}` : ''}. Growth, hatching, courtship and care updated in every aquarium.`, failed ? 'warn' : 'success');
+      const learned = (['koi', 'axolotl', 'goldfish', 'guppy'] as const).reduce((sum, species) => { const a = atlasProgress(next.world, species), b = atlasProgress(start.world, species); return sum + a.identified - b.identified + a.characterized - b.characterized + a.mapped - b.mapped; }, 0);
+      setNotice(`${calendarLabel(dayRef.current)}. ${days} day${days === 1 ? '' : 's'} simulated${born ? ` · ${born} new eggs` : ''}${fry ? ` · ${fry} live fry born` : ''}${failed ? ` · ${failed} egg${failed === 1 ? '' : 's'} never developed (lethal recessives)` : ''}${learned ? ` · the Genome Atlas made ${learned} discover${learned === 1 ? 'y' : 'ies'}` : ''}. Growth, hatching, courtship and care updated in every aquarium.`, failed ? 'warn' : 'success');
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Could not advance the calendar.', 'warn');
     } finally {
@@ -569,6 +573,16 @@ export function App({ initial }: { initial: LoadedSession }) {
     setSexFilter('all'); setSpeciesFilter('axolotl'); setFavoritesOnly(false); setCohortKey('all'); setBirthKey('all'); setCollectionPage(0);
   }
 
+  /** A guppy shop listing (world v20): its listed genome, sex and name join the chosen tank. */
+  function buyGuppyListing(listing: GuppyListing, destinationId: string) {
+    const next = run({ type: 'buy-guppy-listing', listingId: listing.id, tankId: destinationId, timestamp: new Date().toISOString() },
+      `${listing.name} the guppy joined ${tankName(destinationId)} for ◈ ${listing.price}. ${listing.note.replace(/^./, c => c.toUpperCase())}.`);
+    if (!next) return;
+    const newcomer = next.fish[next.fish.length - 1];
+    setSelectedId(newcomer.id); setTankId(destinationId); setShowArchived(false); setQuery('');
+    setSexFilter('all'); setSpeciesFilter('guppy'); setFavoritesOnly(false); setCohortKey('all'); setBirthKey('all'); setCollectionPage(0);
+  }
+
   /** A goldfish shop listing (world v17): its listed genome, sex and name join the chosen tank. */
   function buyGoldfishListing(listing: GoldfishListing, destinationId: string) {
     const next = run({ type: 'buy-goldfish-listing', listingId: listing.id, tankId: destinationId, timestamp: new Date().toISOString() },
@@ -677,6 +691,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const paletteCommands: PaletteCommand[] = paletteOpen ? [
     { id: 'v-aquarium', label: 'Aquarium', group: 'Go to', icon: 'tank', run: () => setView('aquarium') },
     { id: 'v-competitions', label: 'Competition circuit', group: 'Go to', icon: 'trophy', run: () => setView('competitions') },
+    { id: 'v-commissions', label: 'Commissions · letters from clients', group: 'Go to', icon: 'letter', run: () => setView('commissions') },
     { id: 'v-trophies', label: 'Trophy room', group: 'Go to', icon: 'medal', run: () => setView('trophies') },
     { id: 'v-atlas', label: 'Genome Atlas', group: 'Go to', icon: 'dna', run: () => setView('atlas') },
     { id: 'v-research', label: 'Research studies', group: 'Go to', icon: 'flask', run: () => setView('research') },
@@ -699,7 +714,7 @@ export function App({ initial }: { initial: LoadedSession }) {
     { id: 'a-rail', label: railCompact ? 'Expand navigation' : 'Collapse navigation', group: 'Actions', icon: 'sidebar', run: () => setRailCompact(v => !v) },
     ...world.tanks.map((t, i) => ({ id: `t-${t.id}`, label: t.name, group: 'Aquariums', icon: 'tank' as IconName, hint: `Aquarium ${i + 1} · ${living.filter(f => f.tankId === t.id).length}/${t.capacity}`, run: () => openTank(t.id) })),
     ...world.fish.filter(f => f.status === 'living').concat(world.fish.filter(f => f.status !== 'living')).map(f => ({
-      id: `f-${f.id}`, label: f.name, group: f.status === 'living' ? 'Animals' : 'Archive', icon: (f.species === 'axolotl' ? 'leaf' : f.species === 'goldfish' ? 'goldfish' : 'fish') as IconName,
+      id: `f-${f.id}`, label: f.name, group: f.status === 'living' ? 'Animals' : 'Archive', icon: (f.species === 'axolotl' ? 'leaf' : f.species === 'goldfish' ? 'goldfish' : f.species === 'guppy' ? 'guppy' : 'fish') as IconName,
       hint: `${f.id} · G${f.generation} · ${f.status === 'living' ? tankName(f.tankId) : f.status}`, keywords: `${f.id} ${f.species} ${f.sex === 'F' ? 'female' : 'male'}`,
       run: () => { setView('aquarium'); select(f.id, true); },
     })),
@@ -713,7 +728,7 @@ export function App({ initial }: { initial: LoadedSession }) {
     const key = event.key;
     if (performance.now() - goPrefix.current < 900) {
       goPrefix.current = 0;
-      const target = ({ a: 'aquarium', c: 'competitions', t: 'trophies', r: 'research', l: 'atlas' } as Record<string, View>)[key.toLowerCase()];
+      const target = ({ a: 'aquarium', c: 'competitions', m: 'commissions', t: 'trophies', r: 'research', l: 'atlas' } as Record<string, View>)[key.toLowerCase()];
       if (target) { event.preventDefault(); setView(target); return; }
     }
     if (key === 'g') { goPrefix.current = performance.now(); return; }
@@ -759,9 +774,10 @@ export function App({ initial }: { initial: LoadedSession }) {
         notices={notices} unread={unread} onReadNotices={() => setReadNotice(notices[0]?.id ?? 0)} onClearNotices={() => { setNotices([]); setReadNotice(noticeSeq.current); }} />
       <Drawer open={showSaves} label="Saves" icon="save" eyebrow="Your world" onClose={() => openDrawer(null)}><SavePanel runtime={runtime} session={initial.session} blocked={blocked} readOnly={initial.readOnly} onBusy={value => { saveBusy.current = value; }} onSaved={() => { setBlocked(false); setSaveError(''); }} /></Drawer>
       <Drawer open={showMarket} label="Buyers and ledger" icon="coins" eyebrow="Economy" onClose={() => openDrawer(null)}><MarketPanel world={world} readOnly={initial.readOnly} traitCache={traitCache} onClaimRelief={claimRelief} onClose={() => openDrawer(null)} /></Drawer>
-      <Drawer open={showShop && view === 'aquarium'} label="NPC shop" icon="shop" eyebrow="New bloodlines" wide onClose={() => openDrawer(null)}><ShopPanel world={world} tank={tank} day={gameDay} readOnly={initial.readOnly} traitCache={traitCache} onBuy={buyListing} onBuyAxolotl={buyAxolotlListing} onBuyGoldfish={buyGoldfishListing} onClose={() => openDrawer(null)} onRecovery={openRecovery} /></Drawer>
+      <Drawer open={showShop && view === 'aquarium'} label="NPC shop" icon="shop" eyebrow="New bloodlines" wide onClose={() => openDrawer(null)}><ShopPanel world={world} tank={tank} day={gameDay} readOnly={initial.readOnly} traitCache={traitCache} onBuy={buyListing} onBuyAxolotl={buyAxolotlListing} onBuyGoldfish={buyGoldfishListing} onBuyGuppy={buyGuppyListing} onClose={() => openDrawer(null)} onRecovery={openRecovery} /></Drawer>
       {view === 'atlas' ? <div className="view-frame" key="atlas"><GenomeAtlas world={world} readOnly={initial.readOnly || blocked} onRun={run} onInspect={id => { setView('aquarium'); select(id, true); }} /></div>
         : view === 'competitions' ? <div className="view-frame" key="competitions"><Competitions world={world} readOnly={initial.readOnly || blocked || advancing} onCommand={command => run(command, 'Competition record updated.') !== null} /></div>
+        : view === 'commissions' ? <div className="view-frame" key="commissions"><Commissions world={world} readOnly={initial.readOnly || blocked || advancing} onRun={run} onInspect={id => { setView('aquarium'); select(id, true); }} /></div>
         : view === 'trophies' ? <div className="view-frame" key="trophies"><TrophyRoom world={world} onInspect={id => { setView('aquarium'); select(id, true); }} /></div>
         : view === 'fixtures' ? <div className="view-frame" key="fixtures"><Suspense fallback={<p className="loading-card" role="status">Loading visual fixtures…</p>}><VisualFixtureLab onClose={() => setView('aquarium')} /></Suspense></div>
         : view === 'research' ? <div className="view-frame" key="research"><Suspense fallback={<p className="loading-card" role="status">Loading research…</p>}><ResearchLab onClose={() => setView('aquarium')} /></Suspense></div>
@@ -796,7 +812,7 @@ export function App({ initial }: { initial: LoadedSession }) {
           </div>
           <div className="aquarium-frame">
             <div className={`aquarium ${aquascape ? 'is-editing' : ''}`} aria-label="Live aquarium" role="group">
-              <TankCanvas fish={swimmers} eggs={eggsHere} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={1} feedSignal={feedSignal} onBehavior={setBehavior} tanks={world.tanks} preview={aquascape} editing={!!aquascape} display={isDisplay(tank)} spotlight={spotlight} />
+              <TankCanvas fish={swimmers} eggs={eggsHere} broods={broods} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={1} feedSignal={feedSignal} onBehavior={setBehavior} tanks={world.tanks} preview={aquascape} editing={!!aquascape} display={isDisplay(tank)} spotlight={spotlight} />
               {aquascape ? <><AquascapeOverlay store={aquascape} saved={decorationsOf(tank)} /><span className="editing-badge"><Icon name="brush" size={14} />Aquascaping · time and fish wait until you apply or cancel</span></> : null}
               {aquascape ? null : <TankHud status={activeStatus} tank={tank} warnings={warningCount} paused={paused} onCare={() => { setWorkspace('care'); focusSoon('workspace-panel'); }} />}
               {eggsHere && !aquascape ? <span className="egg-badge"><Icon name="egg" size={13} />{eggsHere} eggs incubating</span> : null}
@@ -865,7 +881,7 @@ export function App({ initial }: { initial: LoadedSession }) {
               <input type="search" name="collection-search" autoComplete="off" spellCheck={false} aria-label="Search fish" placeholder="Search by name or ID…" value={query} onChange={e => setQuery(e.target.value)} />
               {query ? <button className="bare search-clear" aria-label="Clear search" onClick={() => setQuery('')}><Icon name="close" size={14} /></button> : null}</label>
             <div className="sex-filter species-filter" role="group" aria-label="Show animals by species">
-              {(['all', 'koi', 'goldfish', 'axolotl'] as const).map(value => <button key={value} aria-pressed={speciesFilter === value} onClick={() => setSpeciesFilter(value)}>
+              {(['all', 'koi', 'goldfish', 'guppy', 'axolotl'] as const).map(value => <button key={value} aria-pressed={speciesFilter === value} onClick={() => setSpeciesFilter(value)}>
                 {value === 'all' ? 'All' : SPECIES_INFO[value].titles}<span className="filter-count">{speciesCounts[value]}</span>
               </button>)}
             </div>
@@ -935,13 +951,13 @@ export function App({ initial }: { initial: LoadedSession }) {
               <button aria-pressed={heroView === 'current'} onClick={() => setHeroView('current')}>{fish.status === 'living' ? 'Now' : 'Last recorded'}</button>
               <button aria-pressed={heroView === 'adult'} onClick={() => setHeroView('adult')}>Adult potential</button>
             </div>
-            <FishPortrait fish={fish} large view={heroView} />
+            <FishPortrait fish={fish} large view={heroView} gravid={broods.get(fish.id) ?? 0} />
             <span className="hero-caption">{heroView === 'adult' ? 'Adult genetic potential · a preview, not how this animal looks today' : `${fish.status === 'living' ? 'Now' : 'Last recorded'} · ${lifeSummary(fish)}`}</span>
           </div>
           <div className="fish-title"><h2 ref={inspectorHeading} tabIndex={-1}>{fish.name}</h2><SexMark sex={fish.sex} withLabel /></div>
           <div className="fish-tags">
             <span className="generation">G{fish.generation}</span>
-            <span className={`chip ${fish.species}`}><Icon name={fish.species === 'axolotl' ? 'leaf' : fish.species === 'goldfish' ? 'goldfish' : 'fish'} size={13} />{SPECIES_INFO[fish.species].title}</span>
+            <span className={`chip ${fish.species}`}><Icon name={fish.species === 'axolotl' ? 'leaf' : fish.species === 'goldfish' ? 'goldfish' : fish.species === 'guppy' ? 'guppy' : 'fish'} size={13} />{SPECIES_INFO[fish.species].title}</span>
             <span className="chip">{fish.parents ? 'Bred here' : 'Founder stock'}</span>
             {favoriteIds.has(fish.id) ? <span className="chip brass"><Icon name="star" size={12} filled />Favorite</span> : null}
             {fish.status !== 'living' ? <span className="chip warn">{fish.status === 'sold' ? 'Sold' : 'Rehomed'}</span> : null}
@@ -958,7 +974,7 @@ export function App({ initial }: { initial: LoadedSession }) {
                 <span className="ring" style={{ '--value': c, '--ring': ring } as React.CSSProperties}>{wholePercent(c)}</span>
                 <span><small>Condition</small><b>{selectedLimits.length ? 'Limited' : c >= 0.7 ? 'Thriving' : 'Recovering'}</b></span></div>; })()}
             <div className="vital"><span><small>Size</small><b className="mono">{fish.life.lengthCm.toFixed(fish.life.lengthCm < 10 ? 1 : 0)} cm</b>
-              <span className="bar tide"><span style={{ width: `${Math.round(growthShare(fish) * 100)}%` }} /></span><small>of {p.adultLengthCm.toFixed(0)} cm potential</small></span></div>
+              <span className="bar tide"><span style={{ width: `${Math.round(growthShare(fish) * 100)}%` }} /></span><small>of {p.adultLengthCm.toFixed(p.adultLengthCm < 10 ? 1 : 0)} cm potential</small></span></div>
             <div className="vital brass"><span><small>Best offer</small><b className="mono">{fish.status !== 'living' ? '—' : offers[0] ? `◈ ${offers[0].amount}` : '—'}</b>
               <small>{fish.status !== 'living' ? 'Archived' : offers[0] ? offers[0].buyerName : isEgg(fish.life) ? 'Eggs cannot be sold' : 'No buyer today'}</small></span></div>
             <div className="vital gene"><span><small>Pedigree F</small><b className="mono">{percent(currentF)}</b><small>{percent(heterozygosity(fish.genome))} heterozygous</small></span></div>
@@ -992,7 +1008,7 @@ export function App({ initial }: { initial: LoadedSession }) {
                 <span>{name}</span><span className="bar gene"><span style={{ width: `${Math.round(value * 100)}%` }} /></span><span className="mono">{Math.round(value * 100)}</span></div>)}</div>
             <RarityPanel world={world} fish={fish} />
             <GenesisPanel world={world} fish={fish} readOnly={initial.readOnly || blocked} onRun={run} />
-            {fish.species === 'goldfish' ? <GoldfishTraitPanel fish={fish} genotypeKnown={genotypeVisible(world, fish)} /> : fish.species === 'axolotl' ? <AxolotlTraitPanel fish={fish} genotypeKnown={genotypeVisible(world, fish)} /> : koiGenome ? <>
+            {fish.species === 'guppy' ? <GuppyTraitPanel fish={fish} genotypeKnown={genotypeVisible(world, fish)} /> : fish.species === 'goldfish' ? <GoldfishTraitPanel fish={fish} genotypeKnown={genotypeVisible(world, fish)} /> : fish.species === 'axolotl' ? <AxolotlTraitPanel fish={fish} genotypeKnown={genotypeVisible(world, fish)} /> : koiGenome ? <>
               <div className="trait-block appearance-block"><div className="block-title"><Icon name="brush" size={15} /><span className="eyebrow">Appearance · genome v{koiGenome.version}</span></div>{koiGenome.version === 1 ? <p className="help-copy">Genome v1 fish carry no Color or Ornament chromosomes and keep the classic look. Their offspring carry both chromosomes, where a new mutation can appear.</p> : null}<dl className="appearance-traits">{appearanceRows.map(row => <div key={row.trait}><dt>{row.trait}</dt><dd>{row.value}</dd></div>)}</dl></div>
               <div className="trait-block appearance-block structure-block"><div className="block-title"><Icon name="layers" size={15} /><span className="eyebrow">Structure · genome v{koiGenome.version}</span></div>{koiGenome.version < 3 ? <p className="help-copy">Genome v{koiGenome.version} fish carry no Structure chromosome and keep a standard tail, dorsal fin and two barbels. Their offspring carry it, where a rare structural mutation can appear.</p> : null}<dl className="appearance-traits">{describeStructure(koiGenome).map(row => <div key={row.trait}><dt>{row.trait}</dt><dd>{row.value}{row.carrier && genotypeVisible(world, fish) ? <span className="rarity carrier">hidden copy</span> : null}</dd></div>)}</dl></div>
             </> : null}
@@ -1008,6 +1024,7 @@ export function App({ initial }: { initial: LoadedSession }) {
           </div> : null}
           {tab === 'Genome' && fish.species === 'axolotl' ? <div className="genome-view inspector-panel"><div className="genome-fingerprint"><span>Axolotl genome checksum</span><code>{fingerprint(fish.genome)}</code></div><AxolotlGenomeView fish={fish} world={world} />{notebook ? <MutationOrigins fish={fish} notebook={notebook} onSelect={id => select(id, true)} /> : null}</div> : null}
           {tab === 'Genome' && fish.species === 'goldfish' ? <div className="genome-view inspector-panel"><div className="genome-fingerprint"><span>Goldfish genome checksum</span><code>{fingerprint(fish.genome)}</code></div><GoldfishGenomeView fish={fish} world={world} />{notebook ? <MutationOrigins fish={fish} notebook={notebook} onSelect={id => select(id, true)} /> : null}</div> : null}
+          {tab === 'Genome' && fish.species === 'guppy' ? <div className="genome-view inspector-panel"><div className="genome-fingerprint"><span>Guppy genome checksum</span><code>{fingerprint(fish.genome)}</code></div><GuppyGenomeView fish={fish} world={world} />{notebook ? <MutationOrigins fish={fish} notebook={notebook} onSelect={id => select(id, true)} /> : null}</div> : null}
           {tab === 'Genome' && fish.species === 'koi' ? <div className="genome-view inspector-panel">
             <div className="genome-fingerprint"><span>Genome checksum</span><code>{fingerprint(fish.genome)}</code></div>
             <div className="allele-legend"><span><i className="allele-dot m" />Copy from mother</span><span><i className="allele-dot p" />Copy from father</span><span><b>*</b> new mutation</span><span><b>◆</b> inherited mutation</span></div>
@@ -1098,7 +1115,7 @@ export function App({ initial }: { initial: LoadedSession }) {
     <Dialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} icon="command" wide title="Keyboard shortcuts" description="Fishtank is a local genetics lab: synthetic genomes, local saves, NPC buyers and shows. Your world is saved only in this browser; the typefaces load from Google Fonts.">
       <div className="shortcut-grid">{([
         ['Search and commands', ['Ctrl', 'K']], ['Search (anywhere)', ['/']], ['Advance one day', ['.']], ['Feed this aquarium', ['F']], ['Pause or play swimming', ['M']],
-        ['Previous / next aquarium', ['[', ']']], ['Collection · Breeding · Care · Habitat', ['1', '4']], ['Go to aquarium / competitions / trophies', ['G', 'A']],
+        ['Previous / next aquarium', ['[', ']']], ['Collection · Breeding · Care · Habitat', ['1', '4']], ['Go to aquarium / competitions / commissions / trophies', ['G', 'A']],
         ['Card or tank actions', ['Shift', 'F10']], ['Close a menu, dialog or drawer', ['Esc']],
       ] as const).map(([text, keys]) => <div key={text}><span>{text}</span><span>{keys.map(k => <kbd key={k}>{k}</kbd>)}</span></div>)}</div>
       <p className="help-copy">Version 0.1 research lab · <a className="link-button" href="https://github.com/ElMariones/fishtank-sim" target="_blank" rel="noreferrer">project repository</a></p>

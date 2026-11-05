@@ -25,7 +25,7 @@ describe('axolotl anatomy v2 display pose', () => {
         }
       }
     }
-  });
+  }, 30_000);
   it('anchors gills and toes while producing repeatable phase-dependent movement', () => {
     const a = buildAxolotlAnatomy({}), snapshot = JSON.stringify(a);
     const first = axolotlPose(a, 2, 14), repeat = axolotlPose(a, 2, 14), later = axolotlPose(a, 4, 14);

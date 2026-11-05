@@ -16,6 +16,8 @@ import {
   expressGoldfish, goldfishFingerprint, goldfishHeterozygosity, inheritGoldfish, isGoldfishGenome, type GoldfishGenome, type GoldfishPhenotype,
 } from './goldfishGenetics';
 import { GOLDFISH_DEFAULT_MUTATION_RATE } from './goldfishCatalog';
+import { expressGuppy, guppyFingerprint, guppyHeterozygosity, inheritGuppy, isGuppyGenome, type GuppyGenome, type GuppyPhenotype } from './guppyGenetics';
+import { GUPPY_DEFAULT_MUTATION_RATE } from './guppyCatalog';
 import type { CreatureGenome, Genome, Mutation, Phenotype, Species } from './types';
 import { upgradeChild } from './genesis2';
 import { BODY_PLAN_SET, latentModules, moduleLoci, type BodyPlanSet } from './modules';
@@ -82,6 +84,7 @@ const LOCUS_BLOCKS = [LOCUS_REGISTRY.slice(0, LOCI.length), LOCUS_REGISTRY.slice
 export function inherit(mother: Genome, father: Genome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace, model?: GenesisModel, bodyPlan?: BodyPlanSet): { genome: Genome; mutations: Mutation[] };
 export function inherit(mother: AxolotlGenome, father: AxolotlGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace, model?: GenesisModel, bodyPlan?: BodyPlanSet): { genome: AxolotlGenome; mutations: Mutation[] };
 export function inherit(mother: GoldfishGenome, father: GoldfishGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace, model?: GenesisModel, bodyPlan?: BodyPlanSet): { genome: GoldfishGenome; mutations: Mutation[] };
+export function inherit(mother: GuppyGenome, father: GuppyGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace, model?: GenesisModel, bodyPlan?: BodyPlanSet): { genome: GuppyGenome; mutations: Mutation[] };
 export function inherit(mother: CreatureGenome, father: CreatureGenome, seed: number, mutationRate?: number, version?: GenomeVersion, trace?: InheritanceTrace, model?: GenesisModel, bodyPlan?: BodyPlanSet): { genome: CreatureGenome; mutations: Mutation[] };
 /**
  * `model` is the world's Genesis model (world v18). Model 2 runs the model 1 meiosis unchanged and then adds module genes
@@ -100,7 +103,8 @@ export function inherit(mother: CreatureGenome, father: CreatureGenome, seed: nu
   return { genome, mutations: result.mutations };
 }
 
-export const speciesOf = (genome: CreatureGenome): Species => isGoldfishGenome(genome) ? 'goldfish' : isAxolotlGenome(genome) ? 'axolotl' : 'koi';
+export const speciesOf = (genome: CreatureGenome): Species => (genome as { species?: unknown }).species === 'guppy' ? 'guppy'
+  : isGoldfishGenome(genome) ? 'goldfish' : isAxolotlGenome(genome) ? 'axolotl' : 'koi';
 /**
  * A genome's module genes: its own under Genesis model 2, otherwise the latent genotype read from its fingerprint. A model 2
  * genome born under an older body-plan set (a goldfish from a world v18 journal) carries fewer module loci than the current
@@ -115,6 +119,13 @@ export function modulesOf(genome: CreatureGenome): ModuleCopies {
 }
 
 function inheritModel1(mother: CreatureGenome, father: CreatureGenome, seed: number, mutationRate: number, requested?: GenomeVersion, trace?: InheritanceTrace): { genome: CreatureGenome; mutations: Mutation[] } {
+  const motherGuppy = isGuppyGenome(mother), fatherGuppy = isGuppyGenome(father);
+  if (motherGuppy !== fatherGuppy) throw new Error('Different species cannot produce offspring.');
+  if (motherGuppy && fatherGuppy) {
+    // Guppies are Genesis-native livebearers with an XY sex chromosome; their own baseline rate applies.
+    const result = inheritGuppy(mother, father, seed, mutationRate === MUTATION_RATE ? GUPPY_DEFAULT_MUTATION_RATE : mutationRate, trace);
+    return { genome: result.genome, mutations: result.mutations };
+  }
   const motherGoldfish = isGoldfishGenome(mother), fatherGoldfish = isGoldfishGenome(father);
   if (motherGoldfish !== fatherGoldfish) throw new Error('Different species cannot produce offspring.');
   if (motherGoldfish && fatherGoldfish) {
@@ -255,6 +266,34 @@ function goldfishCompatibilityPhenotype(goldfish: GoldfishPhenotype): Phenotype 
   };
 }
 
+/**
+ * Guppies read through the shared phenotype for motion, life, care and the compatibility surfaces; the renderer, names,
+ * shows, buyers and commissions read the independent guppy phenotype in `guppy`.
+ */
+function guppyCompatibilityPhenotype(guppy: GuppyPhenotype): Phenotype {
+  const b = guppy.body, c = guppy.color, male = guppy.sex === 'M';
+  return {
+    species: 'guppy', guppy,
+    length: b.length, depth: b.depth, taper: 0.12, curve: 0, head: 0.22, snout: 0.03,
+    eye: 0.05, eyePosition: 0.25, iris: c.iris.h, pupil: 0.55, mouth: 0.03, barbel: 0,
+    tail: male ? 0.3 * (0.5 + guppy.tail.length) : 0.18, spread: male ? guppy.tail.spread : 0.3, fork: 0, dorsal: guppy.fins.dorsal * 0.2,
+    pectoral: 0.08, finPigment: male ? c.redAmount : c.leak,
+    red: male ? c.redAmount : 0, yellow: clamp((c.body.h - 20) / 30) * 0.5, black: c.melanin * 0.5, white: c.base === 'albino' ? 0.6 : 0,
+    metallic: male ? c.iriAmount : c.iriAmount * 0.2, translucency: 0.25,
+    frequency: 3 + Math.round(guppy.pattern.coverage * 10), patternScale: guppy.pattern.scale, warp: 0,
+    symmetry: guppy.pattern.symmetry, edge: guppy.pattern.edge, speckle: c.iriAmount * 0.4,
+    adultLengthCm: guppy.adultLengthCm, growth: guppy.growth, longevity: guppy.longevity,
+    metabolism: guppy.metabolism, oxygen: guppy.oxygen, fertility: guppy.fertility,
+    speed: guppy.speed, turning: guppy.turning, activity: guppy.activity, social: guppy.social,
+    bold: guppy.bold, curious: guppy.curious,
+    markings: [],
+    // Compatibility-only neutral koi surfaces. Species-specific UI and rendering never read these as guppy loci.
+    appearance: { base: ['classic'], accent: ['classic'], dots: ['ink'], iris: ['natural'], shimmer: c.iriAmount, scales: 'smooth', patches: 0, motifs: [], density: guppy.pattern.coverage, motifScale: guppy.pattern.scale, contrast: 0.5, reach: 0, finMotifs: [] },
+    structure: { tail: 'standard', lobeBalance: 1, spread: 0, dorsal: 'normal', barbels: 0, rays: 1 },
+    genesis: guppy.genesis,
+  };
+}
+
 const genesisCache = new WeakMap<object, Phenotype>();
 
 /**
@@ -266,7 +305,8 @@ export function express(genome: CreatureGenome): Phenotype {
   if ((genome as Genome).genesis) {
     const cached = genesisCache.get(genome);
     if (cached) return cached;
-    const phenotype = isGoldfishGenome(genome) ? goldfishCompatibilityPhenotype(expressGoldfish(genome))
+    const phenotype = isGuppyGenome(genome) ? guppyCompatibilityPhenotype(expressGuppy(genome))
+      : isGoldfishGenome(genome) ? goldfishCompatibilityPhenotype(expressGoldfish(genome))
       : isAxolotlGenome(genome) ? axolotlCompatibilityPhenotype(expressAxolotl(genome)) : expressKoiGenesis(genome as Genome, koiCore);
     genesisCache.set(genome, phenotype);
     return phenotype;
@@ -352,6 +392,7 @@ export function metabolicPotential(genome: CreatureGenome): { adultLengthCm: num
 export const moduleTail = (modules: ModuleCopies | undefined) => modules ? `|m${modules.maternal.join('')}/${modules.paternal.join('')}` : '';
 
 export function fingerprint(genome: CreatureGenome): string {
+  if (isGuppyGenome(genome)) return guppyFingerprint(genome);
   if (isGoldfishGenome(genome)) return goldfishFingerprint(genome);
   if (isAxolotlGenome(genome)) return axolotlFingerprint(genome);
   const tail = genome.genesis ? `|d${genome.genesis.dev}${moduleTail(genome.genesis.modules)}` : '';
@@ -360,6 +401,7 @@ export function fingerprint(genome: CreatureGenome): string {
 
 /** Share of carried loci that are heterozygous; genome v1 fish are assayed over their 48 loci. */
 export function heterozygosity(genome: CreatureGenome): number {
+  if (isGuppyGenome(genome)) return guppyHeterozygosity(genome);
   if (isGoldfishGenome(genome)) return goldfishHeterozygosity(genome);
   if (isAxolotlGenome(genome)) return axolotlHeterozygosity(genome);
   if (genome.genesis) return koiGenesisHeterozygosity(genome);

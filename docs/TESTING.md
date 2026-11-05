@@ -1,5 +1,41 @@
 # Testing and verification
 
+## Guppies and Commissions (world v20)
+
+5 November 2026, Windows 11, Node via the checkout's npm scripts.
+
+- `npx vitest run`: **417 tests in 58 files pass**. New:
+  - `tests/guppyGenetics.test.ts` (10): valid founders with the Y on the paternal homolog; a maternal Y rejected; a 1:1
+    sex ratio in 600 young with the father's Y program in every son; double sword moving to the X at 0.4–3.5% in 6 000
+    births; sex-limited color; albino segregating about 1:3 from two carriers; ribbon males unable to sire; finite,
+    framed, pickable anatomy for every strain template and both sexes; drawing through `drawFish`; a newborn male grey
+    until color onset and a gravid female swelling.
+  - `tests/guppyIntegration.test.ts` (6): a world v20 with a valid guppy counter; atomic listing purchase; a save with a
+    sex that disagrees with the genome rejected; fast breeding of live fry; courting → gestating → born through the
+    calendar, with cancellation rejected while gestating and the runtime replaying; v19 → v20 migration.
+  - `tests/commissions.test.ts` (7): deterministic posting and none in research worlds; the active limit rejected
+    atomically; free decline and charged withdrawal; delivery pays, archives as sold, books the ledger and raises
+    reputation; a founder rejected atomically; expiry and weekly posting; a forged delivered letter rejected on load.
+  - Changed facts only: world version 20 and 24 circuit events in `competitions`; `commission: 0` in `economy`; the v16
+    and v18 fixtures in `goldfishIntegration` strip the v20 fields.
+- Load-dependent timeouts: on two full runs, different heavy tests (`axolotlPose`, `limits`, `breeding`, `structure`,
+  `economy`) went past vitest's 5 s default while the dev server and browser were running. Each passes alone
+  (`limits` record-cap test: 2.2 s). Measured to rule out this change: creating a live world costs about 12 ms against
+  8 ms for a research world, posting letters under 1 ms, decoding a save about 7 ms. `limits` and `axolotlPose` now
+  declare 30 s like `economy`. The next full run passed 417/417 in 28 s.
+- `npm run build`: strict TypeScript and the production build pass (the chunk-size warning was already there).
+- Browser, isolated dev server on port 5199 (`fishtank-guppy` in `.claude/launch.json`), fresh world:
+  - Commissions desk: three letters, Accept with toast, active envelope with deadline bar, expiry at the deadline into
+    the history with the reputation change, zero-day wording ("Due today", "Offer ends today").
+  - Guppy counter: bought a strain male and a founder female; portraits of both; the female's card says what she
+    carries for her sons.
+  - Paired them: courting → "Carrying a brood" with a countdown and a swollen, spotted female → 18 live fry.
+  - After 26 game days the sons had colored up (tuxedo, orange) and the daughters were grey. Atlas guppy Codex 4 of 34.
+  - No console errors. Copy fixes found here: repeated "tail" in program names, "3.3 of 3 cm" rounding, "eggs" wording
+    for live births, "Offer ends in 0 days".
+- Not covered: delivering a commission in the browser (covered by the unit test), phone widths, the Canvas 2D fallback
+  renderer with guppies, and a long playtest of commission balance.
+
 ## Reset all, Expositorium and aquascaping set 2
 
 17 October 2026, Windows 11, Node via the checkout's npm scripts.

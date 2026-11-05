@@ -1,9 +1,10 @@
 import { AXOLOTL_V2_REGISTRY } from './axolotlCatalog';
 import {
-  ALL_CHANNELS, AXOLOTL_SCALE, EXTRA_CHANNELS, GOLDFISH_SCALE, isNovel, KOI_SCALE,
+  ALL_CHANNELS, AXOLOTL_SCALE, EXTRA_CHANNELS, GOLDFISH_SCALE, GUPPY_SCALE, isNovel, KOI_SCALE,
   type AlleleKind, type Channel, type GenesisBlock, type ModuleCopies, type NovelAllele, type NovelScale,
 } from './genesis';
 import { GOLDFISH_LOCUS_REGISTRY } from './goldfishCatalog';
+import { GUPPY_LOCUS_REGISTRY } from './guppyCatalog';
 import { inheritModules, type BodyPlanSet, type ModuleMutation } from './modules';
 import { clamp, hash, random } from './random';
 import type { Species } from './types';
@@ -24,12 +25,12 @@ export const GENESIS_MODEL_2 = 2 as const;
 export const LEAP_SHARE = 0.12;
 export const REGULATORY_SHARE = 0.12;
 
-export const scaleFor = (species: Species): NovelScale => species === 'koi' ? KOI_SCALE : species === 'axolotl' ? AXOLOTL_SCALE : GOLDFISH_SCALE;
+export const scaleFor = (species: Species): NovelScale => species === 'koi' ? KOI_SCALE : species === 'axolotl' ? AXOLOTL_SCALE : species === 'guppy' ? GUPPY_SCALE : GOLDFISH_SCALE;
 
 /** The value of a catalog allele on its locus' scale (koi alleles are their own level; the others read their registry). */
 export function catalogValue(species: Species, locus: number, allele: number): number {
   if (species === 'koi') return allele;
-  const entry = species === 'axolotl' ? AXOLOTL_V2_REGISTRY[locus] : GOLDFISH_LOCUS_REGISTRY[locus];
+  const entry = species === 'axolotl' ? AXOLOTL_V2_REGISTRY[locus] : species === 'guppy' ? GUPPY_LOCUS_REGISTRY[locus] : GOLDFISH_LOCUS_REGISTRY[locus];
   return entry?.alleles[allele]?.effect ?? 0;
 }
 

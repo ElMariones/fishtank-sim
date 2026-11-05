@@ -12,6 +12,7 @@ import { SPECIES_INFO } from '../core/species';
 import { expressGoldfish, goldfishTailText, isGoldfishGenome } from '../core/goldfishGenetics';
 import { GOLDFISH_RECESSIVES } from '../core/goldfishCatalog';
 import { GoldfishOffspringPrediction } from './GoldfishGenetics';
+import { GuppyOffspringPrediction } from './GuppyGenetics';
 import { genotypeVisible, locusStage } from '../core/atlas';
 import { daysToMaturity } from '../core/breeding';
 import { loadRisk } from '../core/genesisView';
@@ -43,7 +44,7 @@ export function BreedingPlanner({ fish, tanks, goal, onGoal, motherId, fatherId,
   const match = (f: Fish) => goal ? percent(goal.direction === 'higher' ? goalValue(f, goal) : 1 - goalValue(f, goal)) : '';
   const home = (f: Fish) => tanks.find(t => t.id === f.tankId)?.name ?? 'Unknown tank';
   return <div className="breeding-planner">
-    <div className="planner-scope"><label>Species<select aria-label="Breeding species" value={species} onChange={e => chooseSpecies(e.target.value as Species)}><option value="koi">Koi</option><option value="goldfish">Goldfish</option><option value="axolotl">Axolotl</option></select></label></div>
+    <div className="planner-scope"><label>Species<select aria-label="Breeding species" value={species} onChange={e => chooseSpecies(e.target.value as Species)}><option value="koi">Koi</option><option value="goldfish">Goldfish</option><option value="guppy">Guppy</option><option value="axolotl">Axolotl</option></select></label></div>
     {species === 'koi' ? <>
     <div className="planner-heading"><strong>Build your koi breeding goal</strong><span>Up to four equally weighted traits</span></div>
     {traits.map((trait, index) => <div className="planner-trait" key={index}>
@@ -57,7 +58,8 @@ export function BreedingPlanner({ fish, tanks, goal, onGoal, motherId, fatherId,
     </div>)}
     <div className="planner-tools"><button id="planner-add-goal" disabled={traits.length >= 4} onClick={() => setTraits([...traits, { descriptor: GOAL_DESCRIPTORS.find(d => !traits.some(t => t.descriptor === d.key))!.key, direction: 'higher' }])}>＋ Add goal</button>
       {goal ? <button className="quiet" onClick={() => onGoal(null)}>Clear goals</button> : <span>Start with a shape, a Genome 2 appearance, or a behavior trait.</span>}</div>
-    </> : species === 'goldfish' ? <div className="planner-heading"><strong>Breed goldfish</strong><span>Independent 72-locus inheritance · varieties, recessive odds and colors previewed below</span></div>
+    </> : species === 'guppy' ? <div className="planner-heading"><strong>Breed guppies</strong><span>XY livebearers · sons inherit their father’s Y and its color; daughters carry it hidden</span></div>
+      : species === 'goldfish' ? <div className="planner-heading"><strong>Breed goldfish</strong><span>Independent 72-locus inheritance · varieties, recessive odds and colors previewed below</span></div>
       : <div className="planner-heading"><strong>Breed axolotls</strong><span>Independent 66-locus inheritance · morphology, pigment, pattern and behavior previewed below</span></div>}
     <div className="planner-scope"><label>Find parents in<select aria-label="Find parents in" value={scope} onChange={e => setScope(e.target.value)}><option value="all">All tanks</option>{tanks.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label>
       <label>Search candidates<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Name or fish ID" /></label></div>
@@ -94,8 +96,10 @@ export function BreedingPlanner({ fish, tanks, goal, onGoal, motherId, fatherId,
         genotypesKnown={!world || (genotypeVisible(world, selectedMother) && genotypeVisible(world, selectedFather))} /> : null}
     {species === 'goldfish' && selectedMother?.species === 'goldfish' && selectedFather?.species === 'goldfish'
       ? <GoldfishOffspringPrediction mother={selectedMother} father={selectedFather} world={world} /> : null}
+    {species === 'guppy' && selectedMother?.species === 'guppy' && selectedFather?.species === 'guppy'
+      ? <GuppyOffspringPrediction mother={selectedMother} father={selectedFather} world={world} /> : null}
     {species === 'axolotl' && selectedMother?.species === 'axolotl' && selectedFather?.species === 'axolotl'
       ? <AxolotlOffspringPrediction mother={selectedMother.genome} father={selectedFather.genome} /> : null}
-    <p className="help-copy">{species === 'koi' ? 'Match ranks expressed adult traits, not offspring odds. Target copies reveal hidden carriers; a blend can match both colors. Combined goals average their scores. Leaders are ranked individually; review the pair’s pedigree F below.' : species === 'goldfish' ? 'Goldfish use their own genome and linkage map. Koi breeding goals never apply to them; review the goldfish recessive odds and sampled variety mix for this pair instead. Dorsal-fin loss weighs the mother’s copies more, so swapping the parents’ roles changes the odds.' : 'Axolotls use their own genome and linkage map. Koi breeding goals and koi allele odds are never applied to them; review the axolotl-specific offspring ranges for this pair instead.'} Filtering keeps your selected parents.</p>
+    <p className="help-copy">{species === 'koi' ? 'Match ranks expressed adult traits, not offspring odds. Target copies reveal hidden carriers; a blend can match both colors. Combined goals average their scores. Leaders are ranked individually; review the pair’s pedigree F below.' : species === 'guppy' ? 'Guppies use their own genome and linkage map. A male’s color comes mostly from the Y he inherits from his father, so pick sires for color and dams for size, fertility and the recessives they carry. Mated females carry the brood for several days and give birth to live fry; ribbon males cannot sire.' : species === 'goldfish' ? 'Goldfish use their own genome and linkage map. Koi breeding goals never apply to them; review the goldfish recessive odds and sampled variety mix for this pair instead. Dorsal-fin loss weighs the mother’s copies more, so swapping the parents’ roles changes the odds.' : 'Axolotls use their own genome and linkage map. Koi breeding goals and koi allele odds are never applied to them; review the axolotl-specific offspring ranges for this pair instead.'} Filtering keeps your selected parents.</p>
   </div>;
 }

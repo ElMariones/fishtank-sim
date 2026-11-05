@@ -1,6 +1,8 @@
 import { axolotlFounderGenome } from './axolotlGenetics';
 import { goldfishFounderGenome } from './goldfishGenetics';
 import { goldfishShowGenome } from './goldfishShop';
+import { guppyFounderGenome } from './guppyGenetics';
+import { guppyShowGenome } from './guppyShop';
 import { SPECIES_INFO } from './species';
 import { adultLife, lifeStage } from './development';
 import { express, founderGenome, metabolicPotential } from './genetics';
@@ -29,7 +31,8 @@ const pick = <T>(values: readonly T[], rng: () => number) => values[Math.floor(r
 export function competitionSchedule(seed: number, day: number): CompetitionEvent[] {
   const window = Math.floor(day / 30), year = Math.floor(day / CALENDAR_YEAR_DAYS) + 1;
   // Goldfish shows (world v17) join the calendar; each event's draws are keyed by its own ID, so koi and axolotl shows are unchanged.
-  return COMPETITION_TIERS.flatMap((tier, level) => (['koi', 'axolotl', 'goldfish'] as const).map(species => {
+  // Guppy shows (world v20) join the same way.
+  return COMPETITION_TIERS.flatMap((tier, level) => (['koi', 'axolotl', 'goldfish', 'guppy'] as const).map(species => {
     const id = `SHOW-${window}-${tier}-${species}`, rng = random(hash(`${seed}:circuit:1:${id}`));
     return { id, name: `${pick(titles, rng)} ${pick(suffixes, rng)}`, city: pick(cities, rng), venue: pick(venues, rng), tier, species, year,
       opensDay: window * 30, closesDay: (window + 1) * 30, fee: fees[level], prizes: [fees[level] * 5, fees[level] * 3, fees[level] * 2] as [number, number, number], theme: Math.floor(rng() * 4) };
@@ -51,6 +54,19 @@ const round = (value: number) => Math.round(value * 10) / 10;
 export function competitionScores(fish: Fish, event: CompetitionEvent): CompetitionParticipant['scores'] {
   const p = express(fish.genome), a = p.axolotl;
   const style = random(hash(`${event.id}:judges`))();
+  if (p.guppy) {
+    // Guppies are judged against their strain's standard. Males show tail and color; females are judged as a female class
+    // on body, finnage and the faint color they leak. No rarity enters.
+    const gp = p.guppy, g = gp.genesis, c = gp.color, male = gp.sex === 'M';
+    const tailQuality = male ? clamp(0.4 * gp.tail.rays + 0.3 * gp.tail.spread + 0.3 * gp.tail.length) * (1 - g.finFray) : clamp(gp.body.depth / 0.36) * (1 - g.finFray);
+    const presentation = 46 + 28 * gp.strain.standard + 12 * gp.pattern.symmetry + 12 * tailQuality + (gp.fins.dumbo || gp.fins.swallow ? 3 : 0);
+    const richness = male ? clamp(0.45 * c.iriAmount + 0.35 * c.redAmount + 0.2 * c.melanin * c.edging) : clamp(c.leak * 2 + 0.3 * c.iriAmount * 0.2);
+    const pattern = 46 + 26 * richness + 12 * gp.pattern.edge + 8 * (1 - Math.abs(gp.pattern.scale * 6 - style)) + 6 * gp.pattern.coverage;
+    const visible = g.defects.filter(d => !d.rescued && !['lethal', 'frail', 'subfertile'].includes(d.kind)).length;
+    const presence = 10 * (male ? gp.behavior.display - 0.5 : gp.bold - 0.5) + 6 * (gp.activity - 0.5) - 7 * visible;
+    const novelty = Math.min(6, 2 * g.novelAlleles) - 4 * g.depigment;
+    return { presentation: round(clamp(presentation + presence, 0, 100)), pattern: round(clamp(pattern + novelty, 0, 100)), condition: round(fish.life.condition * 100) };
+  }
   if (p.goldfish) {
     // Goldfish are judged against their own variety's standard, fin carriage and color richness; no rarity enters.
     const gf = p.goldfish, g = gf.genesis, c = gf.color;
@@ -91,9 +107,11 @@ export function competitionNpc(seed: number, event: CompetitionEvent, fishId: st
     const birthSeed = hash(`${seed}:${event.id}:${fishId}:candidate:${attempt}`);
     // Genesis worlds (shop model 3) field Genesis rivals; older worlds keep the rivals their journals recorded.
     // Goldfish rivals are always goldfish genome v1; from the entry tier up they are show-bred to a variety.
-    const genome = event.species === 'koi' ? founderGenome(birthSeed, genesis ? 4 : 3) : event.species === 'goldfish' ? (level ? goldfishShowGenome(birthSeed) : goldfishFounderGenome(birthSeed))
-      : axolotlFounderGenome(birthSeed, genesis ? 2 : 1);
     const sex = birthSeed % 2 ? 'F' : 'M';
+    // Guppy rivals' sex comes from their genome; from the entry tier up the males are show-bred to a strain.
+    const genome = event.species === 'koi' ? founderGenome(birthSeed, genesis ? 4 : 3) : event.species === 'goldfish' ? (level ? goldfishShowGenome(birthSeed) : goldfishFounderGenome(birthSeed))
+      : event.species === 'guppy' ? (level ? guppyShowGenome(birthSeed, sex) : guppyFounderGenome(birthSeed, sex))
+      : axolotlFounderGenome(birthSeed, genesis ? 2 : 1);
     const fish: Fish = { id: fishId, name: newFishName(`${event.id}:${fishId}:${attempt}`, { sex, genome }, new Set()), sex, species: event.species, genome, birthSeed,
       generation: 0, parents: null, bornAt: '2026-01-01T00:00:00.000Z', tankId: 'competition', status: 'living', mutations: [], origins: [], life: adultLife(genome), breeding: { model: 1, cooldownDays: 0 } };
     fish.life.condition = 0.78 + level * 0.03 + (hash(`${birthSeed}:condition`) % 700) / 10000;

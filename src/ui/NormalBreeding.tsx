@@ -1,9 +1,10 @@
 import { CLUTCH_SIZES, clutchMembers, courtshipBlockers, courtshipRate, pairingBlockers, reservedPlaces, type ClutchSize } from '../core/breeding';
 import { INCUBATION_DAYS, isEgg } from '../core/development';
+import { expressGuppy, isGuppyGenome } from '../core/guppyGenetics';
 import type { Clutch, World } from '../core/types';
 import { MAX_LIVING, MAX_RECORDS } from '../core/world';
 
-const STAGE_TEXT: Record<Clutch['stage'], string> = { courting: 'Courting', incubating: 'Eggs incubating', hatched: 'Hatched', cancelled: 'Cancelled' };
+const STAGE_TEXT: Record<Clutch['stage'], string> = { courting: 'Courting', incubating: 'Eggs incubating', hatched: 'Hatched', cancelled: 'Cancelled', gestating: 'Carrying a brood' };
 const pct = (value: number) => `${Math.round(value * 100)}%`;
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
@@ -20,25 +21,28 @@ export function NormalBreeding({ world, motherId, fatherId, nurseryId, size, rea
   const blockers = pairingBlockers(world, { motherId, fatherId, nurseryId, size }, { maxLiving: MAX_LIVING, maxRecords: MAX_RECORDS });
   const mother = world.fish.find(f => f.id === motherId), father = world.fish.find(f => f.id === fatherId);
   const ready = !blockers.length && mother && father;
+  // Guppies are livebearers: the mother carries the brood and gives birth to live fry, so there are no eggs to tend.
+  const live = mother?.species === 'guppy' || (!mother && father?.species === 'guppy');
+  const young = live ? 'fry' : 'eggs';
   const pauses = ready ? courtshipBlockers(world, { motherId, fatherId }) : [];
-  const active = world.clutches.filter(clutch => clutch.stage === 'courting' || clutch.stage === 'incubating');
+  const active = world.clutches.filter(clutch => clutch.stage === 'courting' || clutch.stage === 'gestating' || clutch.stage === 'incubating');
   const finished = world.clutches.filter(clutch => clutch.stage === 'hatched' || clutch.stage === 'cancelled').slice(-3).reverse();
 
   return <div className="normal-breeding">
     <div className="pairing-options">
-      <label>Nursery for the eggs<select value={nurseryId} onChange={event => onNursery(event.target.value)}>
+      <label>Nursery for the {young}<select value={nurseryId} onChange={event => onNursery(event.target.value)}>
         {world.tanks.map(tank => {
           const free = tank.capacity - world.fish.filter(f => f.status === 'living' && f.tankId === tank.id).length - reservedPlaces(world, tank.id);
           return <option key={tank.id} value={tank.id}>{tank.name} · {plural(Math.max(0, free), 'free place')}</option>;
         })}
       </select></label>
-      <label>Tracked eggs<select value={size} onChange={event => onSize(Number(event.target.value) as ClutchSize)}>
-        {CLUTCH_SIZES.map(option => <option key={option} value={option}>{option} eggs</option>)}
+      <label>{live ? 'Brood size' : 'Tracked eggs'}<select value={size} onChange={event => onSize(Number(event.target.value) as ClutchSize)}>
+        {CLUTCH_SIZES.map(option => <option key={option} value={option}>{option} {young}</option>)}
       </select></label>
     </div>
     {blockers.length
       ? <ul className="blocker-list" aria-label="Why this pair cannot court yet">{blockers.map((blocker, i) => <li key={`${blocker.code}-${i}`}>{blocker.message}<small>{blocker.fix}</small></li>)}</ul>
-      : ready ? <p className="pairing-ready">Ready: {mother.name} and {father.name} can court in {tankName(mother.tankId)}. Courtship takes about {plural(Math.ceil(1 / courtshipRate(mother, father)), 'game day')} while nothing pauses it. Starting reserves {size} places in {tankName(nurseryId)} now; the eggs hatch {INCUBATION_DAYS} game days after they are laid.</p> : null}
+      : ready ? <p className="pairing-ready">Ready: {mother.name} and {father.name} can court in {tankName(mother.tankId)}. Courtship takes about {plural(Math.ceil(1 / courtshipRate(mother, father)), 'game day')} while nothing pauses it. Starting reserves {size} places in {tankName(nurseryId)} now; {live ? `after mating ${mother.name} carries the brood for about ${mother.species === 'guppy' && isGuppyGenome(mother.genome) ? expressGuppy(mother.genome).life.gestationDays : 7} game days, then gives birth to live fry.` : `the eggs hatch ${INCUBATION_DAYS} game days after they are laid.`}</p> : null}
     {pauses.length ? <ul className="blocker-list soft" aria-label="Courtship would pause right now">{pauses.map((blocker, i) => <li key={`${blocker.code}-${i}`}>Courtship would pause now: {blocker.message}<small>{blocker.fix}</small></li>)}</ul> : null}
     <div className="breed-action"><button className="primary" disabled={readOnly || !ready} onClick={onPair}>Start courtship · reserve {size} places</button></div>
     {active.length || finished.length ? <section aria-labelledby="clutches-title">
@@ -54,8 +58,13 @@ export function NormalBreeding({ world, motherId, fatherId, nurseryId, size, rea
               <small>{pct(clutch.progress)} after {plural(clutch.days, 'game day')} · {clutch.size} places reserved</small>
               {paused.length ? <small className="clutch-paused">Paused: {paused.map(blocker => `${blocker.message} ${blocker.fix}`).join(' ')}</small> : null}
             </> : null}
+            {clutch.stage === 'gestating' && clutch.gestation ? <>
+              <progress max={clutch.gestation.days} value={Math.min(clutch.gestation.days, clutch.days - clutch.gestation.matedDay)} aria-label={`Brood ${clutch.days - clutch.gestation.matedDay} of ${clutch.gestation.days} days`} />
+              <small>Birth in {plural(Math.max(0, clutch.gestation.days - (clutch.days - clutch.gestation.matedDay)), 'game day')} · {clutch.size} places reserved · the father is free again</small>
+            </> : null}
             {clutch.stage === 'incubating' ? <small>{incubating} of {clutch.size} eggs still incubating · laid after {plural(clutch.spawnedDay ?? 0, 'game day')} of courtship</small> : null}
-            {clutch.stage === 'hatched' ? <small>{clutch.size} eggs hatched · laid after {plural(clutch.spawnedDay ?? 0, 'game day')} of courtship</small> : null}
+            {clutch.stage === 'hatched' && clutch.species === 'guppy' ? <small>{clutch.size} live fry born after {plural(clutch.spawnedDay ?? 0, 'game day')}</small> : null}
+            {clutch.stage === 'hatched' && clutch.species !== 'guppy' ? <small>{clutch.size} eggs hatched · laid after {plural(clutch.spawnedDay ?? 0, 'game day')} of courtship</small> : null}
           </div>
           <div className="clutch-actions">
             {clutch.stage === 'courting' ? <button className="quiet" disabled={readOnly} onClick={() => onCancel(clutch)}>Cancel courtship</button> : null}

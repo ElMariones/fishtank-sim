@@ -3,6 +3,7 @@ import { metabolicPotential } from './genetics';
 import { clamp } from './random';
 import type { Genome, LifeState, Motif, Phenotype } from './types';
 import type { GoldfishColor, GoldfishPhenotype } from './goldfishGenetics';
+import type { GuppyPhenotype } from './guppyGenetics';
 import { defaultWater } from './water';
 
 /**
@@ -25,8 +26,11 @@ export const JUVENILE_HEAD_LIMIT = 0.5;
 /** Scale textures appear once pigment is half revealed. */
 export const SCALE_REVEAL = 0.5;
 
-/** `color` is the goldfish color break, 0 bronze juvenile … 1 adult color; absent for other species (treated as 1). */
-export type Maturity = { body: number; pigment: number; color?: number };
+/**
+ * `color` is the goldfish color break, 0 bronze juvenile … 1 adult color, or a young guppy male's color-up; absent for
+ * other species (treated as 1). `gravid` is a guppy mother's brood swelling, 0–1 (stage appearance only).
+ */
+export type Maturity = { body: number; pigment: number; color?: number; gravid?: number };
 export const ADULT_MATURITY: Maturity = { body: 1, pigment: 1 };
 
 const smooth = (t: number) => { const x = clamp(t); return x * x * (3 - 2 * x); };
@@ -52,6 +56,18 @@ export function goldfishMaturity(life: LifeState, p: GoldfishPhenotype): Maturit
   if (isEgg(life)) return { ...base, color: 0 };
   const color = p.color.broken ? quantize(smooth((life.ageDays - INCUBATION_DAYS - p.color.breakDay) / COLOR_BREAK_DAYS)) : 1;
   return { ...base, color };
+}
+
+/** Days over which a young male guppy goes from his mother's grey to full color, from his genetic onset day. */
+export const GUPPY_COLOR_UP_DAYS = 8;
+/**
+ * Guppy maturity: fry are born live (no egg stage shown), grey and translucent. A male colors up from his genetic onset
+ * day over GUPPY_COLOR_UP_DAYS; females never do, showing only their leak. `gravid` quantizes a brood's progress.
+ */
+export function guppyMaturity(life: LifeState, p: GuppyPhenotype, gravid = 0): Maturity {
+  const base = appearanceMaturity(life, p.adultLengthCm);
+  const color = p.sex === 'M' ? quantize(smooth((life.ageDays - INCUBATION_DAYS - p.color.onsetDay) / GUPPY_COLOR_UP_DAYS)) : 1;
+  return { ...base, color, ...(gravid > 0 ? { gravid: quantize(Math.min(1, gravid)) } : {}) };
 }
 
 const mixColor = (a: GoldfishColor, b: GoldfishColor, t: number): GoldfishColor => {
@@ -87,8 +103,10 @@ function stageGoldfish(gf: GoldfishPhenotype, body: number, pigment: number, col
 /** The appearance a fish shows at a maturity. Full maturity returns the adult phenotype itself; nothing genetic changes. */
 export function stagePhenotype(p: Phenotype, maturity: Maturity): Phenotype {
   const b = clamp(maturity.body), g = clamp(maturity.pigment), h = HATCHLING_PROPORTIONS, k = clamp(maturity.color ?? 1);
-  if (b === 1 && g === 1 && k === 1) return p;
+  const gravid = clamp(maturity.gravid ?? 0);
+  if (b === 1 && g === 1 && k === 1 && gravid === 0) return p;
   const toward = (ratio: number, adult: number) => adult * (ratio + (1 - ratio) * b);
+  if (p.species === 'guppy' && p.guppy) return { ...p, guppy: stageGuppy(p.guppy, b, g, k, gravid), depth: toward(0.8, p.depth) };
   if (p.species === 'goldfish' && p.goldfish) return { ...p, goldfish: stageGoldfish(p.goldfish, b, g, k), depth: toward(0.78, p.depth) };
   if (p.species === 'axolotl' && p.axolotl) {
     const ax = p.axolotl, m = ax.morphology, pigment = ax.pigmentation;
@@ -141,6 +159,25 @@ export function stagePhenotype(p: Phenotype, maturity: Maturity): Phenotype {
     red: p.red * g, black: p.black * g, metallic: p.metallic * g, finPigment: p.finPigment * g, speckle: p.speckle * g,
     translucency: pale + (p.translucency - pale) * g,
     appearance: { ...a, shimmer: a.shimmer * g, contrast: a.contrast * g, motifs: reveal(a.motifs), finMotifs: reveal(a.finMotifs), scales: g >= SCALE_REVEAL ? a.scales : 'smooth' },
+  };
+}
+
+/**
+ * Guppy stage appearance: fry are slim with big eyes and short clear fins; a male's tail, dorsal and color grow in as he
+ * matures and colors up (expression rises from the female leak to 1). The genome is never modified.
+ */
+function stageGuppy(gp: GuppyPhenotype, body: number, pigment: number, color: number, gravid: number): GuppyPhenotype {
+  const male = gp.sex === 'M', c = gp.color;
+  const up = male ? Math.min(color, body) : 1;
+  const expression = male ? c.leak * pigment + (1 - c.leak * pigment) * up : c.expression * pigment;
+  const grow = (ratio: number, adult: number) => adult * (ratio + (1 - ratio) * (male ? up : body));
+  return {
+    ...gp,
+    body: { ...gp.body, depth: gp.body.depth * (0.82 + 0.18 * body), gonopodium: gp.body.gonopodium * up },
+    tail: { ...gp.tail, length: grow(0.25, gp.tail.length), spread: grow(0.4, gp.tail.spread), top: grow(0.3, gp.tail.top), bottom: grow(0.3, gp.tail.bottom), shape: male && up < 0.5 ? 'round' : gp.tail.shape },
+    fins: { ...gp.fins, dorsal: grow(0.45, gp.fins.dorsal), pelvic: grow(0.6, gp.fins.pelvic), dumbo: gp.fins.dumbo * body },
+    color: { ...c, expression, orangeSpots: male && up < 0.35 ? 0 : c.orangeSpots, blackSpots: male && up < 0.35 ? 0 : c.blackSpots },
+    ...(gravid > 0 && !male ? { gravid } : {}),
   };
 }
 

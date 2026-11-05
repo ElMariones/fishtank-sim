@@ -39,7 +39,16 @@ const GOLDFISH: RatioTrait[] = [
   { id: 'second-dorsal', label: 'Second dorsal fin', classify: p => (m(p)?.secondDorsal ? 'twin dorsal' : 'single') },
   { id: 'pectorals', label: 'Pectoral pairs', classify: p => (m(p)?.doublePectoral ? 'two pairs' : 'one pair') },
 ];
-export const RATIO_TRAITS: Record<Species, RatioTrait[]> = { koi: KOI, axolotl: AXOLOTL, goldfish: GOLDFISH };
+const GUPPY: RatioTrait[] = [
+  { id: 'sex', label: 'Sex', classify: p => (p.guppy?.sex === 'M' ? 'male' : 'female') },
+  { id: 'base', label: 'Base color', classify: p => p.guppy?.color.base ?? 'wild' },
+  { id: 'dumbo', label: 'Pectoral fins', classify: p => (p.guppy?.fins.dumbo ? 'dumbo' : 'standard') },
+  { id: 'swallow', label: 'Swallow fins', classify: p => (p.guppy?.fins.swallow ? 'swallow' : 'standard') },
+  { id: 'ribbon', label: 'Ribbon fins', classify: p => (p.guppy?.fins.ribbon ? 'ribbon' : 'standard') },
+  { id: 'tuxedo', label: 'Half-black', classify: p => (p.guppy?.color.halfBlack ? 'tuxedo' : 'plain body') },
+  { id: 'second-dorsal', label: 'Second dorsal flag', classify: p => (m(p)?.secondDorsal ? 'twin flag' : 'single') },
+];
+export const RATIO_TRAITS: Record<Species, RatioTrait[]> = { koi: KOI, axolotl: AXOLOTL, goldfish: GOLDFISH, guppy: GUPPY };
 
 export type Hypothesis = { ratio: string; text: string; chi: number; fits: boolean };
 export type TraitRatio = { trait: RatioTrait; counts: [string, number][]; total: number; best: Hypothesis | null; others: Hypothesis[] };

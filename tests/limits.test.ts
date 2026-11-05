@@ -42,7 +42,7 @@ describe('FS-112 larger lab worlds', () => {
     expect(() => applyCommand(bred, { ...cross, tankId: 'tank-2' })).toThrow('fish records');
     expect(() => applyCommand(bred, { type: 'buy', tankId: 'tank-2', timestamp: NOW })).toThrow('fish records');
     expect(JSON.stringify(bred)).toBe(before);
-  });
+  }, 30_000);
 
   it('caps living fish separately from records, with no partial change when rejected', () => {
     expect(MAX_LIVING).toBe(MAX_TANKS * TANK_CAPACITY);

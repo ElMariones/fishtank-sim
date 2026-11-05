@@ -5,4 +5,5 @@ export const SPECIES_INFO: Record<Species, { one: string; many: string; a: strin
   koi: { one: 'koi', many: 'koi', a: 'a koi', title: 'Koi', titles: 'Koi', latin: 'Koi · Cyprinus rubrofuscus' },
   axolotl: { one: 'axolotl', many: 'axolotls', a: 'an axolotl', title: 'Axolotl', titles: 'Axolotls', latin: 'Axolotl · Ambystoma mexicanum' },
   goldfish: { one: 'goldfish', many: 'goldfish', a: 'a goldfish', title: 'Goldfish', titles: 'Goldfish', latin: 'Goldfish · Carassius auratus' },
+  guppy: { one: 'guppy', many: 'guppies', a: 'a guppy', title: 'Guppy', titles: 'Guppies', latin: 'Guppy · Poecilia reticulata' },
 };

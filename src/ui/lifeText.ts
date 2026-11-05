@@ -12,7 +12,7 @@ export function lifeSummary(fish: Fish): string {
     return `Egg · hatches in ${days} game day${days === 1 ? '' : 's'}`;
   }
   const length = fish.life.lengthCm;
-  return `${STAGE_LABELS[stage]} · ${length.toFixed(length < 10 ? 1 : 0)} of ${potential.adultLengthCm.toFixed(0)} cm`;
+  return `${STAGE_LABELS[stage]} · ${length.toFixed(length < 10 ? 1 : 0)} of ${potential.adultLengthCm.toFixed(potential.adultLengthCm < 10 ? 1 : 0)} cm`;
 }
 
 /** Share of the genetic adult length reached so far, for growth bars. */

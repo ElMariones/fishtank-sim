@@ -3,6 +3,7 @@ import { axolotlColorName, axolotlFounderGenome } from './axolotlGenetics';
 import { GENOME_VERSION, MUTATION_RATE } from './catalog';
 import { express, founderGenome, inherit } from './genetics';
 import { goldfishFounderGenome } from './goldfishGenetics';
+import { guppyFounderGenome } from './guppyGenetics';
 import { SOMATIC_LABELS } from './modules';
 import { hash } from './random';
 import type { CreatureGenome, Phenotype, Species } from './types';
@@ -78,15 +79,28 @@ const GOLDFISH: Extractor[] = [
   { trait: 'Size', value: p => sizeClass(p.adultLengthCm, 9, 26) },
   { trait: 'Somatic mark', value: somatic },
 ];
-const EXTRACTORS: Record<Species, Extractor[]> = { koi: KOI, axolotl: AXOLOTL, goldfish: GOLDFISH };
+const GUPPY: Extractor[] = [
+  { trait: 'Strain', value: p => p.guppy?.strain.label ?? '—' },
+  { trait: 'Base color', value: p => p.guppy?.strain.baseLabel ?? '—' },
+  { trait: 'Tail', value: p => (p.guppy?.sex === 'M' ? p.guppy.strain.tailLabel : 'Female fan') },
+  { trait: 'Tail pattern', value: p => title(p.guppy?.pattern.tail.join(' and ') || 'plain') },
+  { trait: 'Fins', value: p => [p.guppy?.fins.dumbo ? 'Dumbo' : '', p.guppy?.fins.ribbon ? 'Ribbon' : '', p.guppy?.fins.swallow ? 'Swallow' : ''].filter(Boolean).join(', ') || 'Standard' },
+  { trait: 'Y program', value: p => title(p.guppy?.color.programs.join(' and ') || 'none') },
+  { trait: 'Body marks', value: p => (p.guppy?.color.halfBlack ? 'Half-black' : p.guppy?.color.snakeskin ? 'Snakeskin' : p.guppy?.color.metalHead ? 'Metal head' : 'Plain') },
+  { trait: 'Dorsal', value: p => (p.genesis?.modules?.secondDorsal ? 'Second dorsal flag' : 'Single dorsal') },
+  { trait: 'Size', value: p => sizeClass(p.adultLengthCm, 2.6, 6) },
+  { trait: 'Somatic mark', value: somatic },
+];
+const EXTRACTORS: Record<Species, Extractor[]> = { koi: KOI, axolotl: AXOLOTL, goldfish: GOLDFISH, guppy: GUPPY };
 
 /** Reference size: large enough that one sighting means "epic", small enough to build in a few hundred milliseconds. */
 export const REFERENCE_SIZE = 800;
 type Reference = { frequencies: Map<string, Map<string, number>>; scores: number[] };
 const references = new Map<Species, Reference>();
 
-function founderFor(species: Species, seed: number): CreatureGenome {
-  return species === 'koi' ? founderGenome(seed, GENOME_VERSION) : species === 'axolotl' ? axolotlFounderGenome(seed, 2) : goldfishFounderGenome(seed);
+function founderFor(species: Species, seed: number, sex: 'F' | 'M'): CreatureGenome {
+  return species === 'koi' ? founderGenome(seed, GENOME_VERSION) : species === 'axolotl' ? axolotlFounderGenome(seed, 2)
+    : species === 'guppy' ? guppyFounderGenome(seed, sex) : goldfishFounderGenome(seed);
 }
 
 /**
@@ -99,7 +113,7 @@ function build(species: Species): Reference {
   const counts = new Map<string, Map<string, number>>(EXTRACTORS[species].map(extractor => [extractor.trait, new Map()])), sampled: string[][] = [];
   for (let i = 0; i < REFERENCE_SIZE; i++) {
     // One unrelated pair per animal: siblings would share rare values and make the reference look less varied than stock.
-    const family = i, mother = founderFor(species, hash(`rarity:${species}:mother:${family}`)), father = founderFor(species, hash(`rarity:${species}:father:${family}`));
+    const family = i, mother = founderFor(species, hash(`rarity:${species}:mother:${family}`), 'F'), father = founderFor(species, hash(`rarity:${species}:father:${family}`), 'M');
     const genome = inherit(mother, father, hash(`rarity:${species}:child:${i}`), MUTATION_RATE, GENOME_VERSION, undefined, 2).genome, p = express(genome);
     sampled.push(EXTRACTORS[species].map(extractor => {
       const tally = counts.get(extractor.trait)!, value = extractor.value(p, genome);

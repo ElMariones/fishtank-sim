@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { anatomyFor } from '../core/anatomy';
 import { axolotlAnatomyFor } from '../core/axolotlAnatomy';
 import { goldfishAnatomyFor } from '../core/goldfishAnatomy';
+import { guppyAnatomyFor } from '../core/guppyAnatomy';
 import { hash, random } from '../core/random';
 import type { Fish, Tank } from '../core/types';
 import { drawEgg, drawFish } from '../rendering/fish';
@@ -31,7 +32,9 @@ function canvasRendererRequested(): boolean {
 }
 
 type Props = {
-  fish: Fish[]; eggs: number; tank: Tank; selectedId: string; onSelect: (id: string) => void; paused: boolean; speed: number; feedSignal: number;
+  fish: Fish[]; eggs: number; tank: Tank;
+  /** Guppy mothers carrying a brood: fish ID → brood progress 0–1 (drawn as a swelling belly). */
+  broods?: ReadonlyMap<string, number>; selectedId: string; onSelect: (id: string) => void; paused: boolean; speed: number; feedSignal: number;
   /** Called when the selected fish's behavior state, reasons or leader change; null when it is not swimming here. */
   onBehavior?: (behavior: BehaviorSummary | null) => void;
   /** A draft aquascape to draw instead of the saved one (FS-117 editor). Fish keep steering by the saved layout. */
@@ -304,7 +307,7 @@ export function TankCanvas(props: Props) {
         if (!fish) continue;
         const before = previous.current.get(actor.id) ?? actor, mix = (from: number, to: number) => from + (to - from) * blend;
         // Drawn at the current life stage (FS-306); the worker keeps steering with the adult phenotype's inherited movement.
-        const shown: Actor = { ...actor, x: mix(before.x, actor.x), y: mix(before.y, actor.y), vx: mix(before.vx, actor.vx), vy: mix(before.vy, actor.vy), phenotype: currentPhenotype(actor.phenotype, fish) };
+        const shown: Actor = { ...actor, x: mix(before.x, actor.x), y: mix(before.y, actor.y), vx: mix(before.vx, actor.vx), vy: mix(before.vy, actor.vy), phenotype: currentPhenotype(actor.phenotype, fish, current.broods?.get(actor.id) ?? 0) };
         const target = facingFor(shown), was = facings.current.get(actor.id) ?? target, turn = playing ? dt * TURN_PER_SECOND : 0;
         const facing = was + Math.max(-turn, Math.min(turn, target - was));
         facings.current.set(actor.id, facing);
@@ -313,7 +316,7 @@ export function TankCanvas(props: Props) {
         const axolotl = actor.phenotype.species === 'axolotl', goldfish = actor.phenotype.species === 'goldfish';
         const grounded = axolotl ? Math.max(0, Math.min(1, (shown.y - 0.78) / 0.06)) : 0;
         // Goldfish beat slower than koi and scull with their pectorals; long fins flow behind the stroke.
-        phase.tail = (phase.tail + dt * playing * (axolotl ? 1.2 + 3 * effort : goldfish ? 2 + 3.5 * effort + 1.2 * actor.phenotype.activity : 3 + 5 * effort + 2 * actor.phenotype.activity)) % PHASE_WRAP;
+        phase.tail = (phase.tail + dt * playing * (axolotl ? 1.2 + 3 * effort : actor.phenotype.species === 'guppy' ? 4.5 + 6 * effort + 2 * actor.phenotype.activity : goldfish ? 2 + 3.5 * effort + 1.2 * actor.phenotype.activity : 3 + 5 * effort + 2 * actor.phenotype.activity)) % PHASE_WRAP;
         phase.fin = (phase.fin + dt * playing * (axolotl ? 0.4 + effort * 4 : goldfish ? 3.5 + 2 * actor.phenotype.activity : 2.5 + 2 * actor.phenotype.activity)) % PHASE_WRAP;
         phases.current.set(actor.id, phase);
         const growth = visualGrowth(fish.life.lengthCm, actor.phenotype.adultLengthCm) * (current.display ? DISPLAY_SCALE : 1), pose = fishPose(shown, width, height, growth, facing);
@@ -387,7 +390,8 @@ function paintSpotlight(ctx: CanvasRenderingContext2D, pose: ReturnType<typeof f
 
 /** Selection: a soft glowing halo that breathes around the fish, and a name pill above it in the interface's typeface. */
 function paintSelection(ctx: CanvasRenderingContext2D, pose: ReturnType<typeof fishPose>, phenotype: Actor['phenotype'], name: string, time: number) {
-  const b = phenotype.species === 'goldfish' && phenotype.goldfish ? goldfishAnatomyFor(phenotype.goldfish).bounds
+  const b = phenotype.species === 'guppy' && phenotype.guppy ? guppyAnatomyFor(phenotype.guppy).bounds
+    : phenotype.species === 'goldfish' && phenotype.goldfish ? goldfishAnatomyFor(phenotype.goldfish).bounds
     : phenotype.species === 'axolotl' && phenotype.axolotl ? axolotlAnatomyFor(phenotype.axolotl).bounds : anatomyFor(phenotype).bounds;
   const length = pose.bodyLength, breathe = 0.75 + Math.sin(time * 2.4) * 0.25;
   ctx.save(); ctx.translate(pose.x, pose.y);

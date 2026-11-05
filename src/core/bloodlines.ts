@@ -27,7 +27,7 @@ const normalizedName = (name: string) => name.trim().toLocaleLowerCase('en');
 
 /** Descriptor means, the most common structure and origins every foundation fish carries. */
 export function captureStandard(foundation: readonly Fish[]): BloodlineStandard {
-  if (foundation.some(fish => fish.species === 'axolotl' || fish.species === 'goldfish' || 'species' in fish.genome)) {
+  if (foundation.some(fish => fish.species === 'axolotl' || fish.species === 'goldfish' || fish.species === 'guppy' || 'species' in fish.genome)) {
     throw new Error('Only koi can found a koi bloodline.');
   }
   const descriptors = Object.fromEntries(VISUAL_DESCRIPTORS.map(({ key }) => [key, 0])) as Record<VisualDescriptorKey, number>;
@@ -61,7 +61,7 @@ export function registrationProblem(world: Pick<World, 'fish' | 'bloodlines'>, n
   if (foundationIds.some(id => !byId.has(id))) return 'A foundation fish has no record in this aquarium.';
   if (foundationIds.some(id => {
     const fish = byId.get(id)!;
-    return fish.species === 'axolotl' || fish.species === 'goldfish' || 'species' in fish.genome;
+    return fish.species === 'axolotl' || fish.species === 'goldfish' || fish.species === 'guppy' || 'species' in fish.genome;
   })) return 'Only koi can found a koi bloodline.';
   if (foundationIds.some(id => byId.get(id)!.life.lengthCm === 0)) return 'Eggs cannot found a bloodline. Wait until they hatch.';
   return null;

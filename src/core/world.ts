@@ -3,7 +3,10 @@ import { savedDecorationsSchema, tankStyleSchema } from './tankSchema';
 import { piecePrice, styleCost, styleOf } from './aquascape';
 import { TANK_PRICE, TANK_UPGRADE_PRICE, decorationsOf, validateLayout, legacyDecorations, type Decoration, type TankStyle } from './tankManagement';
 import { GENOME_VERSION, MUTATION_RATE, RESEARCH_GENOME_VERSION, type GenomeVersion } from './catalog';
-import { CLUTCH_SIZES, clutchId, courtingClutchOf, idleBreeding, pairingBlockers, reservedPlaces, withGenesisRecords, type ClutchSize } from './breeding';
+import { cannotSire, CLUTCH_SIZES, clutchId, courtingClutchOf, idleBreeding, livebirthLife, pairingBlockers, reservedPlaces, sexFor, withGenesisRecords, type ClutchSize } from './breeding';
+import { acceptCommission, declineCommission, deliverCommission, initialCommissions, postOffers } from './commissions';
+import { initialGuppyShop } from './guppyShop';
+import { guppyFounderGenome } from './guppyGenetics';
 import { initialAtlas, MAX_SEQUENCED, observeFamily, observesModules, SEQUENCE_COST } from './atlas';
 import { BODY_PLAN_SET } from './modules';
 import { NOVEL_ID_MIN } from './genesis';
@@ -58,8 +61,9 @@ export const STOCK_PRICE = 250;
  * genome v3 shop stock (FS-601); v11 adds mutation origins to every fish (FS-603); v12 adds named
  * bloodlines (FS-604); v13 adds explicit species identity and independent axolotl genetics; v14 adds the persistent
  * axolotl shop. v15 adds the competition circuit, v16 Genesis genetics, and v17 goldfish with their own shop and atlas.
+ * v20 adds guppies (a livebearer with an XY sex chromosome) with their own shop and atlas, and commission letters.
  */
-export const WORLD_VERSION = 19;
+export const WORLD_VERSION = 20;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -87,6 +91,13 @@ function goldfishFounder(world: World, name: string, sex: Fish['sex'], timestamp
     generation: 0, parents: null, bornAt: iso(timestamp), tankId: world.tanks[0].id, status: 'living', mutations: [], life: adultLife(genome), breeding: idleBreeding(), origins: [] };
 }
 
+/** Guppy founders draw from their own namespace. Their sex is written into the genome (a male carries a Y). */
+function guppyFounder(world: World, name: string, sex: Fish['sex'], timestamp: string): Fish {
+  const birthSeed = hash(`${world.seed}:guppy-founder:${world.nextId}`), genome = guppyFounderGenome(birthSeed, sex);
+  return { id: id(world.nextId), name, sex, species: 'guppy', genome, birthSeed,
+    generation: 0, parents: null, bornAt: iso(timestamp), tankId: world.tanks[0].id, status: 'living', mutations: [], life: adultLife(genome), breeding: idleBreeding(), origins: [] };
+}
+
 function newTank(id: string, name: string, planted: boolean): Tank {
   const water = defaultWater();
   return { id, name, capacity: TANK_CAPACITY, planted, water, care: defaultCare(water), decorations: planted ? legacyDecorations() : [] };
@@ -98,17 +109,19 @@ function newTank(id: string, name: string, planted: boolean): Tank {
  * transparent scientist-mode atlas, so their recorded pacing stays valid.
  */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = RESEARCH_GENOME_VERSION): World {
-  const world: World = { version: 19, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
+  const world: World = { version: 20, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
   ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed, 0, shopModelFor(genomeVersion)), naming: NAMING_MODEL, relief: defaultRelief(), bloodlines: [], nextBloodlineId: 1,
     axolotlShop: initialAxolotlShop(seed, 0, genomeVersion >= 4 ? 2 : 1), circuit: initialCircuit(), alleles: [], atlas: initialAtlas(genomeVersion >= 4 ? 'discovery' : 'scientist'), goldfishShop: initialGoldfishShop(seed),
     // The live game (Genesis genomes) runs Genesis model 2; research harnesses keep model 1 so their evidence is unchanged.
-    genesisModel: genomeVersion >= 4 ? 2 : 1, codex: emptyCodex(), bodyPlan: genomeVersion >= 4 ? BODY_PLAN_SET : 1 };
+    genesisModel: genomeVersion >= 4 ? 2 : 1, codex: emptyCodex(), bodyPlan: genomeVersion >= 4 ? BODY_PLAN_SET : 1,
+    guppyShop: initialGuppyShop(seed), commissions: initialCommissions() };
   ['Haru', 'Sumi', 'Kohaku', 'Yuki', 'Akira', 'Momo'].forEach((name, i) => {
     world.fish.push(founder(world, name, i % 2 === 0 ? 'F' : 'M', timestamp, genomeVersion)); world.nextId++;
   });
-  return world;
+  // The live game opens with the first letters on the board; research worlds (model 1) never receive any.
+  return postOffers(world, 0);
 }
 
 export function quote(fish: Fish): number {
@@ -132,6 +145,10 @@ export type Command =
   | { type: 'buy-listing'; listingId: string; tankId: string; timestamp: string }
   | { type: 'buy-axolotl-listing'; listingId: string; tankId: string; timestamp: string }
   | { type: 'buy-goldfish-listing'; listingId: string; tankId: string; timestamp: string }
+  | { type: 'buy-guppy-listing'; listingId: string; tankId: string; timestamp: string }
+  | { type: 'accept-commission'; commissionId: string }
+  | { type: 'decline-commission'; commissionId: string }
+  | { type: 'deliver-commission'; commissionId: string; fishId: string }
   | { type: 'add-tank' }
   | { type: 'purchase-tank' }
   | { type: 'purchase-display' }
@@ -175,10 +192,14 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('sell-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING), priceModel: priceModelSchema }).strict(),
   z.object({ type: z.literal('rehome-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING) }).strict(),
   z.object({ type: z.literal('clear-batch'), fishIds: z.array(fishIdSchema).min(1).max(MAX_LIVING), priceModel: z.union([z.literal(1), z.literal(2)]) }).strict(),
-  z.object({ type: z.literal('buy'), tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema, species: z.enum(['koi', 'axolotl', 'goldfish']).optional() }).strict(),
+  z.object({ type: z.literal('buy'), tankId: tankIdSchema, timestamp: z.string().datetime(), genomeVersion: genomeVersionSchema, species: z.enum(['koi', 'axolotl', 'goldfish', 'guppy']).optional() }).strict(),
   z.object({ type: z.literal('buy-listing'), listingId: z.string().regex(/^LS-\d{6,16}$/), tankId: tankIdSchema, timestamp: z.string().datetime() }).strict(),
   z.object({ type: z.literal('buy-axolotl-listing'), listingId: z.string().regex(/^AX-\d{6,16}$/), tankId: tankIdSchema, timestamp: z.string().datetime() }).strict(),
   z.object({ type: z.literal('buy-goldfish-listing'), listingId: z.string().regex(/^GF-\d{6,16}$/), tankId: tankIdSchema, timestamp: z.string().datetime() }).strict(),
+  z.object({ type: z.literal('buy-guppy-listing'), listingId: z.string().regex(/^GP-\d{6,16}$/), tankId: tankIdSchema, timestamp: z.string().datetime() }).strict(),
+  z.object({ type: z.literal('accept-commission'), commissionId: z.string().regex(/^CM-\d{6}$/) }).strict(),
+  z.object({ type: z.literal('decline-commission'), commissionId: z.string().regex(/^CM-\d{6}$/) }).strict(),
+  z.object({ type: z.literal('deliver-commission'), commissionId: z.string().regex(/^CM-\d{6}$/), fishId: fishIdSchema }).strict(),
   z.object({ type: z.literal('add-tank') }).strict(),
   z.object({ type: z.literal('purchase-tank') }).strict(),
   z.object({ type: z.literal('purchase-display') }).strict(),
@@ -338,6 +359,8 @@ export function applyCommand(world: World, command: Command): World {
       if (mother.id === father.id || mother.sex !== 'F' || father.sex !== 'M') throw new Error('Choose a female and a male.');
       if (isEgg(mother.life) || isEgg(father.life)) throw new Error('Eggs cannot breed. Wait until they hatch.');
       if (mother.species !== father.species) throw new Error('Different species cannot breed with each other. Choose two members of the same species.');
+      const sireProblem = cannotSire(father);
+      if (sireProblem) throw new Error(sireProblem);
       room(offspring);
       space(command.tankId, offspring);
       // A pre-FS-113 command could only name genome v1 parents, which then produced genome v1 children.
@@ -354,11 +377,11 @@ export function applyCommand(world: World, command: Command): World {
         const trace = emptyTrace(), result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, version, trace, next.genesisModel, next.bodyPlan);
         const development = genesis ? express(result.genome).genesis : undefined;
         if (development && !development.viable) { lethal.push(...development.defects.filter(d => d.kind === 'lethal').map(d => d.site)); continue; }
-        const sex: Fish['sex'] = hash(`sex:${birthSeed}`) % 2 === 0 ? 'F' : 'M';
+        const sex = sexFor(result.genome, birthSeed);
         const name = newFishName(`${next.seed}:fish:${next.nextId}`, { sex, genome: result.genome }, taken);
         const child: Fish = { id: id(next.nextId), name, sex, species: mother.species,
           ...result, birthSeed, generation: Math.max(mother.generation, father.generation) + 1,
-          parents: [mother.id, father.id], bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', life: eggLife(), breeding: idleBreeding(),
+          parents: [mother.id, father.id], bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', life: mother.species === 'guppy' ? livebirthLife() : eggLife(), breeding: idleBreeding(),
           origins: childOrigins(id(next.nextId), mother, father, trace, result.mutations) };
         next.fish.push(child); born.push(child);
         next.nextId++;
@@ -392,7 +415,8 @@ export function applyCommand(world: World, command: Command): World {
       if (next.credits < STOCK_PRICE) throw new Error('You need 250 lab credits for unrelated stock.');
       room(1);
       const species = command.species ?? 'koi';
-      const fish = species === 'goldfish' ? goldfishFounder(next, '', next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp)
+      const fish = species === 'guppy' ? guppyFounder(next, '', next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp)
+        : species === 'goldfish' ? goldfishFounder(next, '', next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp)
         : species === 'axolotl'
         ? axolotlFounder(next, '', next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp, (command.genomeVersion ?? 3) >= 4 ? 2 : 1)
         : founder(next, '', next.nextId % 2 === 0 ? 'F' : 'M', command.timestamp, command.genomeVersion ?? 1);
@@ -451,6 +475,25 @@ export function applyCommand(world: World, command: Command): World {
       next.ledger = recordEntry(next.ledger, 'stock', -listing.price, 1, `${listing.name} from ${listing.id}`);
       break;
     }
+    case 'buy-guppy-listing': {
+      // A guppy shop specimen (world v20): the listed genome, sex and name become a guppy founder in the chosen tank.
+      const listing = next.guppyShop.listings.find(entry => entry.id === command.listingId);
+      if (!listing) throw new Error('That guppy is no longer in the shop.');
+      space(command.tankId, 1);
+      room(1);
+      afford(listing.price, `${listing.name} (${listing.id})`);
+      next.fish.push({
+        id: id(next.nextId), name: listing.name, sex: listing.sex, species: 'guppy', genome: listing.genome, birthSeed: listing.birthSeed, generation: 0, parents: null,
+        bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', mutations: [], life: adultLife(listing.genome), breeding: idleBreeding(), origins: [],
+      });
+      next.nextId++;
+      next.guppyShop = { ...next.guppyShop, listings: next.guppyShop.listings.filter(entry => entry.id !== listing.id) };
+      next.ledger = recordEntry(next.ledger, 'stock', -listing.price, 1, `${listing.name} from ${listing.id}`);
+      break;
+    }
+    case 'accept-commission': acceptCommission(next, command.commissionId); break;
+    case 'decline-commission': declineCommission(next, command.commissionId); break;
+    case 'deliver-commission': deliverCommission(next, command.commissionId, command.fishId); break;
     case 'purchase-tank': {
       if (next.tanks.filter(t => !isDisplay(t)).length >= MAX_TANKS) throw new Error('This lab supports up to eight tanks.');
       afford(TANK_PRICE, 'New aquarium');
@@ -571,6 +614,7 @@ export function applyCommand(world: World, command: Command): World {
     case 'cancel-clutch': {
       const clutch = next.clutches.find(entry => entry.id === command.clutchId);
       if (!clutch) throw new Error('Clutch not found.');
+      if (clutch.stage === 'gestating') throw new Error('A brood that is being carried cannot be cancelled. It will be born in a few days.');
       if (clutch.stage !== 'courting') throw new Error('Only a courtship can be cancelled; once laid, its eggs are tracked fish.');
       clutch.stage = 'cancelled'; clutch.blockers = [];
       break;

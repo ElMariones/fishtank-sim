@@ -126,7 +126,7 @@ export function decodeRuntime(raw: string): Runtime {
     // is omitted only while proving an old snapshot against its replay. Current v13 snapshots compare it normally.
     // World v14 adds the axolotl shop. An older snapshot has none to prove, so its replayed stock is left out.
     if (sourceVersion < 7) {
-      const records = { ...recordsOnly(candidate), circuit: null, alleles: null, atlas: null, goldfishShop: null };
+      const records = { ...recordsOnly(candidate), circuit: null, alleles: null, atlas: null, goldfishShop: null, guppyShop: null, commissions: null };
       return JSON.stringify(sourceVersion < 13 ? withoutSpecies(records) : records);
     }
     const named = staleNames ? withoutNamesWorld(candidate) : candidate;
@@ -140,7 +140,9 @@ export function decodeRuntime(raw: string): Runtime {
     // World v16 adds the allele registry and the Genome Atlas; an older snapshot has neither to prove.
     const genesis = sourceVersion < 16 ? { ...circuited, alleles: null, atlas: null } : circuited;
     // World v17 adds the goldfish counter. An older snapshot has none to prove, so its replayed stock is left out.
-    return JSON.stringify(sourceVersion < 17 ? { ...genesis, goldfishShop: null } : genesis);
+    const goldfish = sourceVersion < 17 ? { ...genesis, goldfishShop: null } : genesis;
+    // World v20 adds the guppy counter and commission letters. An older snapshot has neither to prove.
+    return JSON.stringify(sourceVersion < 20 ? { ...goldfish, guppyShop: null, commissions: null } : goldfish);
   };
   if (comparable(decodeSave(JSON.stringify(replayed.world))) !== comparable(world)) throw mismatch;
   const simulation = parsed.simulation ?? { version: 1 as const, tankTicks: Object.fromEntries(world.tanks.map(tank => [tank.id, parsed.tick])) };
@@ -157,6 +159,8 @@ export function decodeRuntime(raw: string): Runtime {
     if (sourceVersion < 14) world.axolotlShop = replayed.world.axolotlShop;
     // The same holds for the goldfish counter (world v17).
     if (sourceVersion < 17) world.goldfishShop = replayed.world.goldfishShop;
+    // And for the guppy counter and the commission board (world v20).
+    if (sourceVersion < 20) { world.guppyShop = replayed.world.guppyShop; world.commissions = replayed.world.commissions; }
     // Existing fish and listings keep their names; only fish named after the rebase use the current model.
     world.naming = NAMING_MODEL;
     // Listings already in the shop keep their genomes; deliveries after the rebase use genome v3 (FS-601).

@@ -2,6 +2,7 @@ import type { Application, Container, Matrix, Sprite, Texture } from 'pixi.js';
 import { anatomyFor } from '../core/anatomy';
 import { axolotlAnatomyFor } from '../core/axolotlAnatomy';
 import { goldfishAnatomyFor } from '../core/goldfishAnatomy';
+import { guppyAnatomyFor } from '../core/guppyAnatomy';
 import type { Phenotype } from '../core/types';
 import { drawFish, type SwimMotion } from './fish';
 import { effortBucket, groundedBucket, phaseBucket, sizeBucket, sizeOf, SPRITE_DETAIL_PX } from './lod';
@@ -34,9 +35,9 @@ const PADDING = 0.06;
 const identities = new WeakMap<Phenotype, number>();
 let nextIdentity = 1;
 const identityOf = (p: Phenotype) => { let id = identities.get(p); if (id === undefined) { id = nextIdentity++; identities.set(p, id); } return id; };
-const boundsOf = (p: Phenotype) => p.species === 'goldfish' && p.goldfish ? goldfishAnatomyFor(p.goldfish).bounds
+const boundsOf = (p: Phenotype) => p.species === 'guppy' && p.guppy ? guppyAnatomyFor(p.guppy).bounds : p.species === 'goldfish' && p.goldfish ? goldfishAnatomyFor(p.goldfish).bounds
   : p.species === 'axolotl' && p.axolotl ? axolotlAnatomyFor(p.axolotl).bounds : anatomyFor(p).bounds;
-const lengthOf = (p: Phenotype) => p.goldfish ? p.goldfish.body.length : p.length;
+const lengthOf = (p: Phenotype) => p.guppy ? p.guppy.body.length : p.goldfish ? p.goldfish.body.length : p.length;
 
 /**
  * The 2D affine matrix the Canvas renderer builds with translate(x, y) → scale(flip, 1) → rotate(angle) → scale(s).

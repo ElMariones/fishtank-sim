@@ -1,6 +1,7 @@
 import { describeAppearance } from './appearance';
 import { AXOLOTL_MORPH_RARITY, expressAxolotl, isAxolotlGenome } from './axolotlGenetics';
 import { expressGoldfish, isGoldfishGenome } from './goldfishGenetics';
+import { expressGuppy, isGuppyGenome } from './guppyGenetics';
 import { GOAL_BY_KEY } from './breedingGoals';
 import { isEgg, lifeStage, type LifeStage } from './development';
 import { express, metabolicPotential } from './genetics';
@@ -31,8 +32,8 @@ export const FOUNDER_RESALE_CAP = 150;
 export const HEALTHY_CONDITION = 0.7;
 export const BREEDER_BONUS = { perGeneration: 6, max: 30 } as const;
 export const STAGE_FACTOR: Record<LifeStage, number> = { egg: 0, fry: 0.25, juvenile: 0.6, adult: 1, elderly: 0.8 };
-export const LEDGER_REASONS = ['sale', 'stock', 'equipment', 'waterChange', 'rehome', 'competitionEntry', 'competitionPrize', 'competitionPurchase', 'research'] as const satisfies readonly LedgerReason[];
-export const LEDGER_LABELS: Record<LedgerReason, string> = { sale: 'Sales', stock: 'Unrelated stock', equipment: 'Equipment', waterChange: 'Water changes', rehome: 'Rehoming', competitionEntry: 'Competition entry', competitionPrize: 'Competition prizes', competitionPurchase: 'Competition purchases', research: 'Research (sequencing)' };
+export const LEDGER_REASONS = ['sale', 'stock', 'equipment', 'waterChange', 'rehome', 'competitionEntry', 'competitionPrize', 'competitionPurchase', 'research', 'commission'] as const satisfies readonly LedgerReason[];
+export const LEDGER_LABELS: Record<LedgerReason, string> = { sale: 'Sales', stock: 'Unrelated stock', equipment: 'Equipment', waterChange: 'Water changes', rehome: 'Rehoming', competitionEntry: 'Competition entry', competitionPrize: 'Competition prizes', competitionPurchase: 'Competition purchases', research: 'Research (sequencing)', commission: 'Commissions' };
 
 /** Traits buyers read. They depend only on the genome, so a cache keyed by fish ID stays valid. */
 export type SaleTraits = {
@@ -41,6 +42,8 @@ export type SaleTraits = {
   axolotlTail?: number;
   /** Goldfish only (any price model; no journal predates them): what goldfish buyers look for. */
   goldfish?: { finScore: number; hardy: boolean; buoyancy: boolean };
+  /** Guppies only (world v20): a male's tail and fin score, 0–1. Females score on their fins only. */
+  guppy?: { finScore: number; male: boolean };
   /** Genesis animals only: what buyers see of temperament and genetic load. */
   genesis?: { temperament: number; visibleDefects: number };
 };
@@ -121,6 +124,29 @@ function goldfishInterest(buyer: Buyer, traits: SaleTraits): number | null {
   }
 }
 
+/** Guppy adults at or below this length (small Endler-type males) interest the miniature keeper. */
+export const GUPPY_MINIATURE_CM = 2.8;
+/**
+ * Guppy buyers (world v20). The pond keeper does not take them; the long-fin collector wants big male tails and fancy
+ * fins; the miniature keeper the smallest males; the color collector rare strains and base colors.
+ */
+export const GUPPY_WANTS: Record<BuyerId, string> = {
+  petShop: 'any healthy guppy fry or adult',
+  longFin: 'guppies with a big delta or veil tail, swords, or long fancy fins',
+  pondKeeper: 'no guppies: they are too small for a pond',
+  miniature: `guppy adults of ${GUPPY_MINIATURE_CM} cm or less`,
+  colorCollector: 'an uncommon or rare guppy strain or base color',
+};
+function guppyInterest(buyer: Buyer, traits: SaleTraits): number | null {
+  const g = traits.guppy!;
+  switch (buyer.id) {
+    case 'longFin': return g.finScore > 0.45 ? clamp((g.finScore - 0.45) / 0.55) : null;
+    case 'pondKeeper': return null;
+    case 'miniature': return traits.adultLengthCm <= GUPPY_MINIATURE_CM ? clamp((GUPPY_MINIATURE_CM + 0.4 - traits.adultLengthCm) / 0.9) : null;
+    default: return buyer.interest(traits);
+  }
+}
+
 const RARITY_RANK = { uncommon: 1, rare: 2, 'very rare': 3 } as const;
 const STAGE_TEXT: Record<LifeStage, string> = { egg: 'Egg', fry: 'Fry', juvenile: 'Juvenile', adult: 'Adult', elderly: 'Elderly' };
 const percent = (value: number) => `${Math.round(value * 100)}%`;
@@ -128,6 +154,20 @@ const percent = (value: number) => `${Math.round(value * 100)}%`;
 export function saleTraits(fish: Fish, cache?: TraitCache): SaleTraits {
   const cached = cache?.get(fish.id);
   if (cached) return cached;
+  if (isGuppyGenome(fish.genome)) {
+    const p = expressGuppy(fish.genome), male = p.sex === 'M';
+    const fancy = 0.35 * Math.min(1, p.fins.dumbo + p.fins.swallow + 0.6 * p.fins.ribbon);
+    const tail = male ? 0.45 * p.tail.length + 0.35 * p.tail.spread + 0.2 * Math.max(p.tail.top, p.tail.bottom) : 0;
+    const finScore = Math.round(clamp(tail + fancy) * 1000) / 1000;
+    const plain: SaleTraits = {
+      tail: male ? 0.3 * (0.5 + p.tail.length) : 0.18, adultLengthCm: p.adultLengthCm, longevityYears: p.longevity, metabolism: p.metabolism,
+      rarity: p.strain.rarity, guppy: { finScore, male },
+    };
+    // Long tails already sell to the long-fin collector, so Genesis' fin rarity does not also make them a color prize.
+    const traits = { ...genesisSaleTraits(express(fish.genome), plain), rarity: plain.rarity };
+    cache?.set(fish.id, traits);
+    return traits;
+  }
   if (isGoldfishGenome(fish.genome)) {
     const p = expressGoldfish(fish.genome);
     const finScore = 0.32 * p.fins.long + 0.3 * Number(p.tail.butterfly) + 0.22 * Number(p.tail.veil) + 0.2 * clamp((p.fins.length - 1) / 1.2);
@@ -182,7 +222,7 @@ function genesisSaleTraits(p: ReturnType<typeof express>, base: SaleTraits): Sal
 
 function offerFrom(buyer: Buyer, fish: Fish, stage: LifeStage, traits: SaleTraits, demand: number, model: PriceModel): Offer | null {
   if (stage === 'egg' || (stage === 'fry' && !buyer.takesFry) || demand < 1) return null;
-  const interest = traits.goldfish ? goldfishInterest(buyer, traits)
+  const interest = traits.guppy ? guppyInterest(buyer, traits) : traits.goldfish ? goldfishInterest(buyer, traits)
     : model >= 2 && traits.axolotlTail !== undefined ? axolotlInterest(buyer, traits) : buyer.interest(traits);
   if (interest === null) return null;
   // Each step rounds the running price and records the change, so the terms always add up to the offer.
@@ -284,7 +324,7 @@ export function recoverDemand(world: World): World {
   return { ...world, market: { ...world.market, demand: Object.fromEntries(BUYERS.map(buyer => [buyer.id, Math.min(buyer.capacity, demand[buyer.id] + buyer.recovery)])) as Record<BuyerId, number> } };
 }
 
-export const openingLedger = (credits: number): Ledger => ({ model: 1, opening: credits, next: 1, totals: { sale: 0, stock: 0, equipment: 0, waterChange: 0, rehome: 0, competitionEntry: 0, competitionPrize: 0, competitionPurchase: 0, research: 0 }, entries: [] });
+export const openingLedger = (credits: number): Ledger => ({ model: 1, opening: credits, next: 1, totals: { sale: 0, stock: 0, equipment: 0, waterChange: 0, rehome: 0, competitionEntry: 0, competitionPrize: 0, competitionPurchase: 0, research: 0, commission: 0 }, entries: [] });
 
 export function recordEntry(ledger: Ledger, reason: LedgerReason, amount: number, fish: number, detail: string): Ledger {
   return {

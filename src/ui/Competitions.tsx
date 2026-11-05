@@ -11,7 +11,7 @@ type Props = { world: World; onCommand: (command: Command) => boolean; readOnly:
 const TIERS = ['amateur', 'entry', 'regional', 'national', 'pro', 'global'] as const;
 const title = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 const money = (amount: number) => `${amount.toLocaleString('en')} cr`;
-const speciesName = (species: Species) => species === 'koi' ? 'Koi' : species === 'goldfish' ? 'Goldfish' : 'Axolotl';
+const speciesName = (species: Species) => species === 'koi' ? 'Koi' : species === 'goldfish' ? 'Goldfish' : species === 'guppy' ? 'Guppy' : 'Axolotl';
 const ordinal = (rank: number) => rank === 1 ? '1st' : rank === 2 ? '2nd' : rank === 3 ? '3rd' : `${rank}th`;
 const judgeNames = ['Dr. Iris Vale', 'Ren Okada', 'Amara Rivers'];
 const judgeFields = ['Presentation', 'Pattern', 'Condition'];
@@ -38,7 +38,7 @@ export function Competitions({ world, onCommand, readOnly }: Props) {
   return <section className="circuit" aria-label="Competitions">
     <header className="circuit-heading"><div><span className="circuit-kicker">THE AQUATIC CIRCUIT</span><h1>A season to shine.</h1><p>Find your stage. Meet extraordinary animals. Build a legacy.</p></div><span className="circuit-date">{calendarLabel(day)}</span></header>
     <div className="circuit-intro"><span className="circuit-star" aria-hidden="true">✦</span><div><b>From your first ribbon to the world stage</b><p>Enter one or two animals. Every show has its own field, judging and prizes. Entry fees are per animal.</p></div><span className="circuit-local">Local NPC circuit</span></div>
-    <div className="circuit-toolbar"><div className="circuit-segments" aria-label="Competition species">{(['all', 'koi', 'goldfish', 'axolotl'] as const).map(value => <button key={value} aria-pressed={species === value} onClick={() => setSpecies(value)}>{value === 'all' ? 'All animals' : value === 'koi' ? 'Koi' : value === 'goldfish' ? 'Goldfish' : 'Axolotls'}</button>)}</div><label>Level<select value={tier} onChange={e => setTier(e.target.value)}><option value="all">All levels</option>{TIERS.map(value => <option key={value} value={value}>{title(value)}</option>)}</select></label><span>{events.length} shows this season</span></div>
+    <div className="circuit-toolbar"><div className="circuit-segments" aria-label="Competition species">{(['all', 'koi', 'goldfish', 'guppy', 'axolotl'] as const).map(value => <button key={value} aria-pressed={species === value} onClick={() => setSpecies(value)}>{value === 'all' ? 'All animals' : value === 'koi' ? 'Koi' : value === 'goldfish' ? 'Goldfish' : 'Axolotls'}</button>)}</div><label>Level<select value={tier} onChange={e => setTier(e.target.value)}><option value="all">All levels</option>{TIERS.map(value => <option key={value} value={value}>{title(value)}</option>)}</select></label><span>{events.length} shows this season</span></div>
     <div className="circuit-event-grid">{events.map(event => {
       const done = completed.has(event.id), open = day >= event.opensDay && day < event.closesDay;
       return <article className={`circuit-event tier-${event.tier}`} style={themeStyle(event)} key={event.id}>

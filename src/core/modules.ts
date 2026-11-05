@@ -75,6 +75,17 @@ export const GOLDFISH_MODULE_LOCI: readonly ModuleLocus[] = [
 ];
 
 /**
+ * Guppy module genes (world v20): a duplicated dorsal fin, a second smaller flag behind the first. Guppies arrived after
+ * body-plan set 2, so they have no set 1 history to replay.
+ */
+export const GUPPY_MODULE_LOCI: readonly ModuleLocus[] = [
+  { id: 'dorsal_duplication', label: 'Dorsal duplication', rule: 'liability', alleles: LIABILITY, weights: [0.86, 0.1, 0.03, 0.01],
+    note: 'Liability for a second dorsal flag behind the first. A threshold trait: copies add up with the modifier and developmental noise.' },
+  { id: 'dorsal_modifier', label: 'Dorsal duplication modifier', rule: 'modifier', alleles: LEVELS, weights: [0.45, 0.3, 0.17, 0.08],
+    note: 'Adds a little liability toward a second dorsal flag and sets its height.' },
+];
+
+/**
  * Body-plan sets. Set 1 is the R-203 registry (no goldfish module genes); set 2 adds the goldfish fin duplications. A world
  * v18 journal recorded goldfish births under set 1, so it replays there and moves to set 2 when the runtime rebases.
  */
@@ -82,7 +93,7 @@ export type BodyPlanSet = 1 | 2;
 export const BODY_PLAN_SET: BodyPlanSet = 2;
 const NO_LOCI: readonly ModuleLocus[] = [];
 export const moduleLoci = (species: Species, set: BodyPlanSet = BODY_PLAN_SET): readonly ModuleLocus[] =>
-  species === 'koi' ? KOI_MODULE_LOCI : species === 'axolotl' ? AXOLOTL_MODULE_LOCI : set >= 2 ? GOLDFISH_MODULE_LOCI : NO_LOCI;
+  species === 'koi' ? KOI_MODULE_LOCI : species === 'axolotl' ? AXOLOTL_MODULE_LOCI : species === 'guppy' ? GUPPY_MODULE_LOCI : set >= 2 ? GOLDFISH_MODULE_LOCI : NO_LOCI;
 /** Allele count per module locus, for validation. */
 export const moduleAlleleCounts = (species: Species): number[] => moduleLoci(species).map(locus => locus.alleles.length);
 /** Module loci follow the 72 locus arrays in Atlas numbering. */
@@ -164,6 +175,10 @@ export function expressModules(species: Species, copies: ModuleCopies, dev: numb
       traits.crest = round(clamp(0.38 + 0.1 * sum(4) + 0.06 * crestNoise, 0.3, 1));
       traits.crestReach = round(clamp(0.3 + 0.12 * sum(5), 0.3, 1));
     }
+  } else if (species === 'guppy') {
+    const dorsal = sum(0) + 0.35 * sum(1) + 0.7 * noise();
+    traits.liability = { 'second dorsal': round(dorsal / 3.4) };
+    if (dorsal >= 3.4) traits.secondDorsal = round(clamp(0.45 + 0.16 * (dorsal - 3.4) + 0.05 * sum(1), 0.4, 1));
   } else if (copies.maternal.length) {
     // Goldfish, body-plan set 2. A set 1 genome (empty module copies) expresses nothing and draws no noise.
     const dorsal = sum(0) + 0.35 * sum(1) + 0.7 * noise(), pec = noise();
@@ -241,6 +256,18 @@ export function bodyPlanFor(p: Phenotype): ModuleNode[] {
       node('pelvics', 'pelvic', 'Pelvic fins', 'body', 2),
       node('anal', 'anal', g.fins.analPaired ? 'Paired anal fins' : 'Anal fin', 'body', g.fins.analPaired ? 2 : 1, g.fins.analPaired ? 'duplication' : 'standard'),
       node('caudal', 'caudal', `Caudal fin (${lobes} lobe${lobes === 1 ? '' : 's'})`, 'body', lobes, lobes > 1 ? 'duplication' : 'standard'),
+    ];
+  }
+  if (p.species === 'guppy' && p.guppy) {
+    const g = p.guppy;
+    return [
+      node('body', 'body', 'Body', null, 1), node('head', 'head', 'Head', 'body', 1), node('eyes', 'eye', 'Eyes', 'head', 2),
+      node('dorsal', 'dorsal', g.fins.swallow ? 'Dorsal fin (swallow streamers)' : 'Dorsal fin', 'body', 1, g.fins.swallow ? 'transformation' : 'standard'),
+      ...(m.secondDorsal ? [node('dorsal-2', 'dorsal', 'Second dorsal flag', 'body', 1, 'duplication', m.secondDorsal)] : []),
+      node('pectorals', 'pectoral', g.fins.dumbo ? 'Dumbo pectoral fins' : 'Pectoral fins', 'body', 2, g.fins.dumbo ? 'transformation' : 'standard'),
+      node('pelvics', 'pelvic', g.fins.ribbon ? 'Ribbon pelvic fins' : 'Pelvic fins', 'body', 2, g.fins.ribbon ? 'transformation' : 'standard'),
+      node('anal', 'anal', g.sex === 'M' ? 'Gonopodium (modified anal fin)' : 'Anal fin', 'body', 1, g.sex === 'M' ? 'transformation' : 'standard'),
+      node('caudal', 'caudal', `Caudal fin (${g.sex === 'M' ? g.strain.tailLabel.toLowerCase() : 'short fan'})`, 'body', 1),
     ];
   }
   const s = p.structure, lobes = s.tail === 'standard' ? 1 : s.tail === 'paired' ? 2 : 3;
