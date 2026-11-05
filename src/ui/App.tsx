@@ -9,6 +9,7 @@ import { absenceObserver } from '../core/absence';
 import { calendarLabel } from '../core/competitions';
 import { AnimalHonors, Competitions, TrophyRoom } from './Competitions';
 import { Commissions } from './Commissions';
+import { GenomeEditor } from './GenomeEditor';
 import { describeBehavior, type BehaviorSummary } from '../simulation/behavior';
 import { AbsencePanel } from './AbsencePanel';
 import { CarePanel } from './CarePanel';
@@ -93,10 +94,10 @@ const descriptorLabel = new Map(GOAL_DESCRIPTORS.map(descriptor => [descriptor.k
 const RAIL_KEY = 'fishtank:rail-compact';
 type SexFilter = 'all' | Fish['sex'];
 type SpeciesFilter = 'all' | Fish['species'];
-type View = 'aquarium' | 'fixtures' | 'research' | 'competitions' | 'commissions' | 'trophies' | 'atlas';
+type View = 'aquarium' | 'fixtures' | 'research' | 'competitions' | 'commissions' | 'trophies' | 'atlas' | 'editor';
 type Workspace = 'collection' | 'breeding' | 'care' | 'habitat';
 const WORKSPACES: Workspace[] = ['collection', 'breeding', 'care', 'habitat'];
-const VIEW_TITLES: Record<View, string> = { aquarium: '', research: 'Research studies', competitions: 'Competition circuit', commissions: 'Commissions', trophies: 'Trophy room', fixtures: 'Visual fixtures', atlas: 'Genome Atlas' };
+const VIEW_TITLES: Record<View, string> = { aquarium: '', research: 'Research studies', competitions: 'Competition circuit', commissions: 'Commissions', editor: 'Genome Editor', trophies: 'Trophy room', fixtures: 'Visual fixtures', atlas: 'Genome Atlas' };
 
 function readPreferences(world: World) {
   let raw: string | null = null;
@@ -104,7 +105,7 @@ function readPreferences(world: World) {
   return decodePreferences(raw, new Set(world.fish.map(f => f.id)));
 }
 function readFlag(key: string) { try { return localStorage.getItem(key) === '1'; } catch { return false; } }
-const VIEWS: View[] = ['aquarium', 'atlas', 'competitions', 'commissions', 'trophies', 'research', 'fixtures'];
+const VIEWS: View[] = ['aquarium', 'atlas', 'editor', 'competitions', 'commissions', 'trophies', 'research', 'fixtures'];
 const viewFromHash = (): View => { const hash = location.hash.replace(/^#\/?/, '') as View; return VIEWS.includes(hash) ? hash : 'aquarium'; };
 const typing = (target: EventTarget | null) => target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
 
@@ -691,6 +692,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const paletteCommands: PaletteCommand[] = paletteOpen ? [
     { id: 'v-aquarium', label: 'Aquarium', group: 'Go to', icon: 'tank', run: () => setView('aquarium') },
     { id: 'v-competitions', label: 'Competition circuit', group: 'Go to', icon: 'trophy', run: () => setView('competitions') },
+    { id: 'v-editor', label: 'Genome Editor · splice bench', group: 'Go to', icon: 'splice', run: () => setView('editor') },
     { id: 'v-commissions', label: 'Commissions · letters from clients', group: 'Go to', icon: 'letter', run: () => setView('commissions') },
     { id: 'v-trophies', label: 'Trophy room', group: 'Go to', icon: 'medal', run: () => setView('trophies') },
     { id: 'v-atlas', label: 'Genome Atlas', group: 'Go to', icon: 'dna', run: () => setView('atlas') },
@@ -728,7 +730,7 @@ export function App({ initial }: { initial: LoadedSession }) {
     const key = event.key;
     if (performance.now() - goPrefix.current < 900) {
       goPrefix.current = 0;
-      const target = ({ a: 'aquarium', c: 'competitions', m: 'commissions', t: 'trophies', r: 'research', l: 'atlas' } as Record<string, View>)[key.toLowerCase()];
+      const target = ({ a: 'aquarium', c: 'competitions', m: 'commissions', t: 'trophies', r: 'research', l: 'atlas', e: 'editor' } as Record<string, View>)[key.toLowerCase()];
       if (target) { event.preventDefault(); setView(target); return; }
     }
     if (key === 'g') { goPrefix.current = performance.now(); return; }
@@ -777,6 +779,7 @@ export function App({ initial }: { initial: LoadedSession }) {
       <Drawer open={showShop && view === 'aquarium'} label="NPC shop" icon="shop" eyebrow="New bloodlines" wide onClose={() => openDrawer(null)}><ShopPanel world={world} tank={tank} day={gameDay} readOnly={initial.readOnly} traitCache={traitCache} onBuy={buyListing} onBuyAxolotl={buyAxolotlListing} onBuyGoldfish={buyGoldfishListing} onBuyGuppy={buyGuppyListing} onClose={() => openDrawer(null)} onRecovery={openRecovery} /></Drawer>
       {view === 'atlas' ? <div className="view-frame" key="atlas"><GenomeAtlas world={world} readOnly={initial.readOnly || blocked} onRun={run} onInspect={id => { setView('aquarium'); select(id, true); }} /></div>
         : view === 'competitions' ? <div className="view-frame" key="competitions"><Competitions world={world} readOnly={initial.readOnly || blocked || advancing} onCommand={command => run(command, 'Competition record updated.') !== null} /></div>
+        : view === 'editor' ? <div className="view-frame" key="editor"><GenomeEditor world={world} readOnly={initial.readOnly || blocked || advancing} focusId={selectedId} onRun={run} onInspect={id => { setView('aquarium'); select(id, true); }} /></div>
         : view === 'commissions' ? <div className="view-frame" key="commissions"><Commissions world={world} readOnly={initial.readOnly || blocked || advancing} onRun={run} onInspect={id => { setView('aquarium'); select(id, true); }} /></div>
         : view === 'trophies' ? <div className="view-frame" key="trophies"><TrophyRoom world={world} onInspect={id => { setView('aquarium'); select(id, true); }} /></div>
         : view === 'fixtures' ? <div className="view-frame" key="fixtures"><Suspense fallback={<p className="loading-card" role="status">Loading visual fixtures…</p>}><VisualFixtureLab onClose={() => setView('aquarium')} /></Suspense></div>
@@ -1115,7 +1118,7 @@ export function App({ initial }: { initial: LoadedSession }) {
     <Dialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} icon="command" wide title="Keyboard shortcuts" description="Fishtank is a local genetics lab: synthetic genomes, local saves, NPC buyers and shows. Your world is saved only in this browser; the typefaces load from Google Fonts.">
       <div className="shortcut-grid">{([
         ['Search and commands', ['Ctrl', 'K']], ['Search (anywhere)', ['/']], ['Advance one day', ['.']], ['Feed this aquarium', ['F']], ['Pause or play swimming', ['M']],
-        ['Previous / next aquarium', ['[', ']']], ['Collection · Breeding · Care · Habitat', ['1', '4']], ['Go to aquarium / competitions / commissions / trophies', ['G', 'A']],
+        ['Previous / next aquarium', ['[', ']']], ['Collection · Breeding · Care · Habitat', ['1', '4']], ['Go to aquarium / editor / competitions / commissions / trophies', ['G', 'A']],
         ['Card or tank actions', ['Shift', 'F10']], ['Close a menu, dialog or drawer', ['Esc']],
       ] as const).map(([text, keys]) => <div key={text}><span>{text}</span><span>{keys.map(k => <kbd key={k}>{k}</kbd>)}</span></div>)}</div>
       <p className="help-copy">Version 0.1 research lab · <a className="link-button" href="https://github.com/ElMariones/fishtank-sim" target="_blank" rel="noreferrer">project repository</a></p>

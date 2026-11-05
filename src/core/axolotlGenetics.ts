@@ -25,6 +25,7 @@ import {
 } from './genesis';
 import { expressModules, moduleAlleleCounts, somaticFor } from './modules';
 import { clamp, hash, random } from './random';
+import { latentSource } from './latentPin';
 
 export type AxolotlGenome = {
   species: 'axolotl';
@@ -198,7 +199,7 @@ export function axolotlFounderGenome(seed: number, version: AxolotlGenomeVersion
 /** A genome v1 parent's latent load, read deterministically from its fingerprint when it parents a v2 child. */
 export function latentAxolotlLoad(genome: AxolotlGenome): LoadCopies {
   if (genome.genesis) return genome.genesis.load;
-  const rng = random(hash(`axolotl:latent-load:${axolotlFingerprint(genome)}`));
+  const rng = random(hash(`axolotl:latent-load:${axolotlFingerprint(latentSource(genome))}`));
   return founderLoadPair(rng, AXOLOTL_LOAD);
 }
 

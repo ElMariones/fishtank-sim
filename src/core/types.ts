@@ -9,6 +9,7 @@ import type { GoldfishRecessive } from './goldfishCatalog';
 import type { GuppyGenome, GuppyPhenotype } from './guppyGenetics';
 import type { GuppyRecessive } from './guppyCatalog';
 import type { CommissionState } from './commissions';
+import type { GeneLab } from './geneLab';
 import type { GenesisBlock, GenesisTraits } from './genesis';
 import type { AlleleRecord, AtlasState } from './atlas';
 import type { BodyPlanSet } from './modules';
@@ -197,7 +198,7 @@ export type ReliefState = { model: 1; claims: number; cooldownDays: number };
  * Older saves migrate with defaults.
  */
 export type World = {
-  version: 20; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
+  version: 21; seed: number; nextId: number; nextClutchId: number; credits: number; fish: Fish[]; tanks: Tank[]; clutches: Clutch[];
   market: MarketState; ledger: Ledger; shop: ShopState; naming: NamingModel; relief: ReliefState;
   /** Registered bloodlines and the next registry number (world v12). */
   bloodlines: Bloodline[]; nextBloodlineId: number;
@@ -227,6 +228,8 @@ export type World = {
   guppyShop: GuppyShopState;
   /** Commission letters from NPC clients (world v20). */
   commissions: CommissionState;
+  /** Genome Editor (world v21): the gene vault and every germline edit. */
+  geneLab: GeneLab;
 };
 /**
  * Development v2 inherited marking anchor, derived from one phased two-locus haplotype block.

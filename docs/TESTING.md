@@ -1,5 +1,25 @@
 # Testing and verification
 
+## Genome Editor (world v21)
+
+6 November 2026, Windows 11, Node via the checkout's npm scripts.
+
+- `npx vitest run`: **426 tests in 59 files pass**. New `tests/geneLab.test.ts` (9): extraction charges ◈ 25 and leaves
+  the donor unchanged; a damaged sample, a full vault and the guppy sex locus are rejected without changing the world;
+  both-copy splices need fidelity 70 and then every child carries the allele while the parent genome stays as born; one
+  copy reaches 5–19 of 24 children and restoring stops transmission; other species, eggs and already-carried copies are
+  refused; a mutation origin follows a spliced allele into another lineage and the save validates; latent body-plan
+  genes are pinned; editor commands replay from the journal; v20 saves migrate with an empty vault. Version assertions
+  in the competition, goldfish and guppy suites moved to 21.
+- `npm run build`: passes (existing chunk-size warning only).
+- Browser (isolated port 5176, storage cleared): Genome Editor view at `#/editor`; selected a koi locus, played
+  Restriction Cut to integrity 45 and stored an unread cassette (◈ 1 200 → 1 175); per-copy splice reasons shown for a
+  recipient that already carried the allele; spliced into another koi after Sticky Ends 84 (one mistake cost a try) and
+  Anneal 25, fidelity 55 (◈ 1 135); the one-dose cassette left the vault, the band, badge and germline note updated, and
+  everything survived a reload with no console errors. Two visual fixes came from this pass (Sticky Ends letters under
+  the backbone, the thermocycler dial clipped). The pane was hidden for part of the run, which pauses animation frames,
+  so the Anneal locks were not played at speed and the dial fix was checked only in code.
+
 ## Guppies and Commissions (world v20)
 
 5 November 2026, Windows 11, Node via the checkout's npm scripts.

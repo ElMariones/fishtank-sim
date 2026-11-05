@@ -30,6 +30,7 @@ import { CARRIER_LOCI, initialShop, LISTING_GENOME, LISTING_PRICES, SHOP_SIZE } 
 import { AXOLOTL_SHOP_SIZE, AXOLOTL_SWITCHES, axolotlListingProblem, initialAxolotlShop } from './axolotlShop';
 import { defaultRelief, RELIEF_COOLDOWN_DAYS } from './recovery';
 import type { Fish, Tank, World } from './types';
+import { CASSETTE_ID_PATTERN, geneLabProblem, initialGeneLab, MAX_CASSETTES, MAX_DOSES, MAX_EDIT_RECORDS } from './geneLab';
 import { defaultWater, WATER_LIMITS } from './water';
 import { DISPLAY_CAPACITY, isDisplay, MAX_DISPLAYS, MAX_LIVING, MAX_RECORDS, MAX_TANKS } from './world';
 
@@ -279,7 +280,27 @@ const commissions = z.object({
   model: z.literal(1), nextId: z.number().int().positive().max(999999), refreshedDay: gameDay, reputation: z.number().int().min(0).max(1_000_000),
   board: z.array(commission).max(MAX_OFFERS + MAX_ACTIVE), history: z.array(commission).max(MAX_COMMISSION_HISTORY),
 }).strict();
+const novelAllele = genesisBlock.shape.novel.element;
+const copySchema = z.enum(['maternal', 'paternal']);
+const cassetteIdSchema = z.string().regex(CASSETTE_ID_PATTERN);
+/** Genome Editor (world v21): the gene vault and germline edits. `geneLabProblem` checks references and genomes. */
+const geneLab = z.object({
+  model: z.literal(1), nextCassette: z.number().int().positive().max(999999),
+  cassettes: z.array(z.object({
+    id: cassetteIdSchema, species: SPECIES_V20, locus: z.number().int().min(0).max(80), allele: z.number().int().min(0).max(NOVEL_MAX), novel: novelAllele.nullable(),
+    origin: z.string().regex(ORIGIN_ID_PATTERN).nullable(), donorId: fishIdSchema, donorCopy: copySchema, integrity: z.number().int().min(0).max(100),
+    doses: z.number().int().min(1).max(MAX_DOSES), label: z.string().min(1).max(32).nullable(),
+  }).strict()).max(MAX_CASSETTES),
+  edits: z.array(z.object({
+    fishId: fishIdSchema, locus: z.number().int().min(0).max(80), copy: copySchema, allele: z.number().int().min(0).max(NOVEL_MAX), novel: novelAllele.nullable(),
+    origin: z.string().regex(ORIGIN_ID_PATTERN).nullable(), cassetteId: cassetteIdSchema, fidelity: z.number().int().min(0).max(100),
+  }).strict()).max(MAX_EDIT_RECORDS),
+}).strict();
 const schema = z.discriminatedUnion('version', [
+  // World v21 appends the Genome Editor's gene vault and germline edits.
+  z.object({ ...worldV13, version: z.literal(21), fish: z.array(fishV20).max(MAX_RECORDS), clutches: z.array(clutchV20).max(MAX_RECORDS), ledger: ledgerV20, shop: shopV16,
+    axolotlShop: axolotlShopV16, circuit: circuitV20, alleles: alleleRecordsV20, atlas: atlasV20, goldfishShop, genesisModel: z.union([z.literal(1), z.literal(2)]), codex,
+    bodyPlan: z.union([z.literal(1), z.literal(2)]), guppyShop, commissions, geneLab }),
   // World v20 adds guppies (genome, clutch gestation, shop counter and atlas, appended last) and commission letters.
   z.object({ ...worldV13, version: z.literal(20), fish: z.array(fishV20).max(MAX_RECORDS), clutches: z.array(clutchV20).max(MAX_RECORDS), ledger: ledgerV20, shop: shopV16,
     axolotlShop: axolotlShopV16, circuit: circuitV20, alleles: alleleRecordsV20, atlas: atlasV20, goldfishShop, genesisModel: z.union([z.literal(1), z.literal(2)]), codex,
@@ -359,7 +380,8 @@ export function decodeSave(raw: string): World {
   const genesisFields = (old: Omit<World, 'version' | 'alleles' | 'atlas'>): World => ({
     ...old, version: 16, ledger: { ...old.ledger, totals: { ...old.ledger.totals, research: 0 } }, alleles: [], atlas: initialAtlas('scientist'),
   } as unknown as World);
-  if (parsed.version === 20) world = parsed as unknown as World;
+  if (parsed.version === 21) world = parsed as unknown as World;
+  else if (parsed.version === 20) world = parsed as unknown as World;
   else if (parsed.version === 19) world = parsed as unknown as World;
   else if (parsed.version === 18) world = parsed as unknown as World;
   else if (parsed.version === 17) world = parsed as unknown as World;
@@ -426,8 +448,10 @@ export function decodeSave(raw: string): World {
     world = {
       ...old, version: 20, ledger: { ...old.ledger, totals: { ...old.ledger.totals, commission: 0 } }, atlas: { ...old.atlas, guppy: emptySpecies() },
       guppyShop: initialGuppyShop(old.seed), commissions: initialCommissions(),
-    } as World;
+    } as unknown as World;
   }
+  // Worlds v1-v20 predate the Genome Editor: the vault opens empty and no germline is edited (appended last).
+  if (parsed.version < 21) world = { ...(world as unknown as Omit<World, 'geneLab'>), version: 21, geneLab: initialGeneLab() } as World;
   world.tanks = world.tanks.map(tank => ({ ...tank, decorations: decorationsOf(tank) }));
   if (world.tanks.filter(isDisplay).length > MAX_DISPLAYS || world.tanks.filter(t => !isDisplay(t)).length > MAX_TANKS) throw new Error('Too many aquariums.');
   if (world.tanks.every(isDisplay)) throw new Error('A world needs at least one working aquarium.');
@@ -568,6 +592,8 @@ export function decodeSave(raw: string): World {
     if (alleleIds.has(record.id) || !origin || origin.species !== record.species || !origin.mutations.some(m => m.to === record.id && m.locus === record.locus)) throw new Error('Invalid allele record.');
     alleleIds.add(record.id);
   }
+  const labIssue = geneLabProblem(world);
+  if (labIssue) throw new Error(labIssue);
   if (new Set(world.atlas.sequenced).size !== world.atlas.sequenced.length || world.atlas.sequenced.some(id => !ids.has(id))) throw new Error('Invalid sequencing record.');
   const codexKeys = new Set<string>();
   for (const entry of world.codex.entries) {

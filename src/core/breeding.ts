@@ -1,5 +1,6 @@
 import { SPECIES_INFO } from './species';
 import { MAX_ALLELE_RECORDS, newAlleleRecords, observeFamily, observesModules, recordLethal } from './atlas';
+import { germlineFish } from './geneLab';
 import { withDiscoveries } from './codex';
 import { MUTATION_RATE } from './catalog';
 import { ADULT_FROM, eggLife, INCUBATION_DAYS, isEgg, lifeStage, maturityAge } from './development';
@@ -231,7 +232,7 @@ export function advanceClutches(world: World): World {
       if (hatched && next.atlas) {
         const mother = next.fish.find(member => member.id === clutch.motherId), father = next.fish.find(member => member.id === clutch.fatherId);
         const living = members.filter(member => member.status === 'living');
-        if (mother && father) next = withDiscoveries({ ...next, atlas: observeFamily(next.atlas, mother, father, living, observesModules(next, mother.species)).atlas }, living);
+        if (mother && father) next = withDiscoveries({ ...next, atlas: observeFamily(next.atlas, germlineFish(next, mother), germlineFish(next, father), living, observesModules(next, mother.species)).atlas }, living);
       }
       continue;
     }
@@ -266,8 +267,10 @@ export function advanceClutches(world: World): World {
  * Courtship's end for egg layers, or birth for livebearers: the brood becomes tracked animals in the nursery and both
  * parents rest. Eggs incubate; live-born fry are already free-swimming, so a livebearer clutch is complete at once.
  */
-function spawn(world: World, i: number, clutch: Clutch, days: number, progress: number, mother: Fish, father: Fish): World {
+function spawn(world: World, i: number, clutch: Clutch, days: number, progress: number, parentMother: Fish, parentFather: Fish): World {
   let next = world;
+  // Gametes carry each parent's germline edits (world v21); with none, these are the parent records themselves.
+  const mother = germlineFish(world, parentMother), father = germlineFish(world, parentFather);
   {
     const nursery = next.tanks.find(tank => tank.id === clutch.nurseryId);
     const residents = nursery ? next.fish.filter(member => member.status === 'living' && member.tankId === nursery.id).length : 0;
@@ -277,7 +280,7 @@ function spawn(world: World, i: number, clutch: Clutch, days: number, progress: 
     }
     const live = clutch.stage === 'gestating';
     const bornAt = new Date(Date.parse(clutch.pairedAt) + days * MS_PER_GAME_DAY).toISOString(), eggs: Fish[] = [], taken = takenNames(next);
-    const genesis = clutch.genomeVersion === 4, attempts = genesis ? eggsLaid(mother, father, clutch.size) : clutch.size;
+    const genesis = clutch.genomeVersion === 4, attempts = genesis ? eggsLaid(parentMother, parentFather, clutch.size) : clutch.size;
     const causes = new Set<string>(), lethalSites: number[] = [];
     let nextId = next.nextId, nonviable = 0;
     for (let k = 0; k < attempts; k++) {

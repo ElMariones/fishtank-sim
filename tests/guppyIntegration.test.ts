@@ -23,7 +23,7 @@ function guppyPair() {
 describe('guppies in the world (v20)', () => {
   it('opens a valid guppy counter and an empty guppy atlas, and round-trips', () => {
     const world = createWorld(NOW, 271828, GENOME_VERSION);
-    expect(world.version).toBe(20);
+    expect(world.version).toBe(21);
     expect(world.guppyShop.listings).toHaveLength(GUPPY_SHOP_SIZE);
     for (const listing of world.guppyShop.listings) { expect(guppyListingProblem(listing)).toBeNull(); expect(listing.sex).toBe(guppySex(listing.genome)); }
     expect(world.atlas.guppy.stage.every(stage => stage === 0)).toBe(true);
@@ -90,7 +90,7 @@ describe('guppies in the world (v20)', () => {
     const { commission: _income, ...totals } = world.ledger.totals;
     const v19 = { ...rest, atlas, ledger: { ...world.ledger, totals }, version: 19 };
     const migrated = decodeSave(JSON.stringify(v19));
-    expect(migrated.version).toBe(20);
+    expect(migrated.version).toBe(21);
     expect(migrated.guppyShop.listings).toHaveLength(GUPPY_SHOP_SIZE);
     expect(migrated.commissions.board).toEqual([]);
     expect(migrated.ledger.totals.commission).toBe(0);

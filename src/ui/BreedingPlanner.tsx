@@ -16,18 +16,23 @@ import { GuppyOffspringPrediction } from './GuppyGenetics';
 import { genotypeVisible, locusStage } from '../core/atlas';
 import { daysToMaturity } from '../core/breeding';
 import { loadRisk } from '../core/genesisView';
+import { germlineFish } from '../core/geneLab';
 
 const groups = [...new Set(GOAL_DESCRIPTORS.map(d => d.group))];
 const percent = (n: number) => `${Math.round(n * 100)}%`;
 type Props = { fish: Fish[]; tanks: Tank[]; goal: BreedingGoal | null; onGoal: (goal: BreedingGoal | null) => void;
   motherId: string; fatherId: string; onMother: (id: string) => void; onFather: (id: string) => void;
   /** Genome Atlas state: in discovery mode genotype odds need sequenced parents and characterized loci. */
-  world?: Pick<World, 'atlas' | 'alleles'> };
+  world?: Pick<World, 'atlas' | 'alleles'> & Partial<Pick<World, 'geneLab'>> };
 
 export function BreedingPlanner({ fish, tanks, goal, onGoal, motherId, fatherId, onMother, onFather, world }: Props) {
   const [scope, setScope] = useState('all');
   const [query, setQuery] = useState('');
   const selectedMother = fish.find(f => f.id === motherId), selectedFather = fish.find(f => f.id === fatherId);
+  // Predictions read each parent as its gametes do: through its germline edits (Genome Editor, world v21).
+  const lab = world?.geneLab;
+  const germMother = useMemo(() => selectedMother && lab ? germlineFish({ geneLab: lab }, selectedMother) : selectedMother, [selectedMother, lab]);
+  const germFather = useMemo(() => selectedFather && lab ? germlineFish({ geneLab: lab }, selectedFather) : selectedFather, [selectedFather, lab]);
   const initialSpecies: Species = selectedMother?.species === selectedFather?.species ? selectedMother?.species ?? 'koi' : selectedMother?.species ?? selectedFather?.species ?? 'koi';
   const [species, setSpecies] = useState<Species>(initialSpecies);
   const traits: GoalTrait[] = goal ? [goal, ...(goal.secondary ?? [])] : [];
@@ -79,7 +84,7 @@ export function BreedingPlanner({ fish, tanks, goal, onGoal, motherId, fatherId,
       </div>;
     })}</div>
     {selectedMother && selectedFather && selectedMother.species === selectedFather.species && (selectedMother.genome.genesis || selectedFather.genome.genesis) ? (() => {
-      const risk = world ? loadRisk(world, selectedMother, selectedFather) : null, waits = [selectedMother, selectedFather].filter(parent => daysToMaturity(parent) > 0);
+      const risk = world ? loadRisk(world, germMother!, germFather!) : null, waits = [selectedMother, selectedFather].filter(parent => daysToMaturity(parent) > 0);
       return <div className="planner-odds genesis-pair"><strong>Genesis pair check</strong>
         {waits.length ? <p>{waits.map(parent => `${parent.name} matures in ${daysToMaturity(parent)} game days`).join(' · ')}. Normal courtship waits; fast breeding does not.</p> : <p>Both parents are mature.</p>}
         {risk ? <p>Genetic load: <b>{percent(risk.risk)}</b> of eggs expected to express a defect{risk.lethal ? <>, <b>{percent(risk.lethal)}</b> never to develop</> : null}.{risk.sites.length ? ` Shared recessives: ${risk.sites.join(', ')}.` : ' The parents share no recessive.'}</p>
@@ -87,19 +92,19 @@ export function BreedingPlanner({ fish, tanks, goal, onGoal, motherId, fatherId,
       </div>;
     })() : null}
     {species === 'koi' && selectedMother?.species === 'koi' && selectedFather?.species === 'koi' && traits.some(t => GOAL_BY_KEY.get(t.descriptor)?.locus) && (!world || (genotypeVisible(world, selectedMother) && genotypeVisible(world, selectedFather))) ? <div className="planner-odds"><strong>What this pair can pass on</strong>{traits.map(t => {
-      const odds = targetCopyOdds(selectedMother, selectedFather, t.descriptor);
+      const odds = targetCopyOdds(germMother!, germFather!, t.descriptor);
       return odds ? <p key={t.descriptor}>{GOAL_BY_KEY.get(t.descriptor)?.label}: <b>{percent(odds.atLeastOne)}</b> at least one copy · <b>{percent(odds.both)}</b> two copies</p> : null;
     })}<small>Exact single-locus copy odds before mutation. Dominance, blends and other genes determine the visible result; these are not combined-trait probabilities.</small></div> : null}
     {species === 'koi' && selectedMother?.species === 'koi' && selectedFather?.species === 'koi' && !isAxolotlGenome(selectedMother.genome) && !isAxolotlGenome(selectedFather.genome)
-      ? <OffspringPrediction mother={selectedMother.genome} father={selectedFather.genome} goals={traits.map(t => t.descriptor)}
+      ? <OffspringPrediction mother={germMother!.genome} father={germFather!.genome} goals={traits.map(t => t.descriptor)}
         knownLocus={world ? (index => locusStage(world, 'koi', index) >= 2) : undefined}
         genotypesKnown={!world || (genotypeVisible(world, selectedMother) && genotypeVisible(world, selectedFather))} /> : null}
     {species === 'goldfish' && selectedMother?.species === 'goldfish' && selectedFather?.species === 'goldfish'
-      ? <GoldfishOffspringPrediction mother={selectedMother} father={selectedFather} world={world} /> : null}
+      ? <GoldfishOffspringPrediction mother={germMother!} father={germFather!} world={world} /> : null}
     {species === 'guppy' && selectedMother?.species === 'guppy' && selectedFather?.species === 'guppy'
-      ? <GuppyOffspringPrediction mother={selectedMother} father={selectedFather} world={world} /> : null}
+      ? <GuppyOffspringPrediction mother={germMother!} father={germFather!} world={world} /> : null}
     {species === 'axolotl' && selectedMother?.species === 'axolotl' && selectedFather?.species === 'axolotl'
-      ? <AxolotlOffspringPrediction mother={selectedMother.genome} father={selectedFather.genome} /> : null}
+      ? <AxolotlOffspringPrediction mother={germMother!.genome} father={germFather!.genome} /> : null}
     <p className="help-copy">{species === 'koi' ? 'Match ranks expressed adult traits, not offspring odds. Target copies reveal hidden carriers; a blend can match both colors. Combined goals average their scores. Leaders are ranked individually; review the pair’s pedigree F below.' : species === 'guppy' ? 'Guppies use their own genome and linkage map. A male’s color comes mostly from the Y he inherits from his father, so pick sires for color and dams for size, fertility and the recessives they carry. Mated females carry the brood for several days and give birth to live fry; ribbon males cannot sire.' : species === 'goldfish' ? 'Goldfish use their own genome and linkage map. Koi breeding goals never apply to them; review the goldfish recessive odds and sampled variety mix for this pair instead. Dorsal-fin loss weighs the mother’s copies more, so swapping the parents’ roles changes the odds.' : 'Axolotls use their own genome and linkage map. Koi breeding goals and koi allele odds are never applied to them; review the axolotl-specific offspring ranges for this pair instead.'} Filtering keeps your selected parents.</p>
   </div>;
 }

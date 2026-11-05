@@ -20,6 +20,7 @@ import { expressGuppy, guppyFingerprint, guppyHeterozygosity, inheritGuppy, isGu
 import { GUPPY_DEFAULT_MUTATION_RATE } from './guppyCatalog';
 import type { CreatureGenome, Genome, Mutation, Phenotype, Species } from './types';
 import { upgradeChild } from './genesis2';
+import { latentSource } from './latentPin';
 import { BODY_PLAN_SET, latentModules, moduleLoci, type BodyPlanSet } from './modules';
 import {
   carriedNovel, createNovel, founderLoadPair, isNovel, KOI_LOAD, KOI_SCALE, NOVEL_SHARE, novelId, novelMap, transmitLoad, type GenesisModel, type LoadCopies,
@@ -65,7 +66,7 @@ export function founderGenome(seed: number, version: GenomeVersion = RESEARCH_GE
  */
 export function latentKoiLoad(genome: Genome): LoadCopies {
   if (genome.genesis) return genome.genesis.load;
-  const rng = random(hash(`genesis:latent-load:${fingerprint(genome)}`));
+  const rng = random(hash(`genesis:latent-load:${fingerprint(latentSource(genome))}`));
   return founderLoadPair(rng, KOI_LOAD);
 }
 
@@ -113,7 +114,7 @@ export const speciesOf = (genome: CreatureGenome): Species => (genome as { speci
 export function modulesOf(genome: CreatureGenome): ModuleCopies {
   const own = genome.genesis?.modules, species = speciesOf(genome);
   if (own && own.maternal.length >= moduleLoci(species).length) return own;
-  const latent = latentModules(species, fingerprint(genome));
+  const latent = latentModules(species, fingerprint(latentSource(genome)));
   if (!own) return latent;
   return { maternal: [...own.maternal, ...latent.maternal.slice(own.maternal.length)], paternal: [...own.paternal, ...latent.paternal.slice(own.paternal.length)] };
 }

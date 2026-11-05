@@ -1,6 +1,35 @@
 # Implementation status
 
-**Updated:** 5 November 2026 (guppies and Commissions, world v20) · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
+**Updated:** 6 November 2026 (Genome Editor, world v21) · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
+
+## Genome Editor (Splice Bench) — DONE, not yet committed, 6 November 2026 (user request)
+
+World v21 · gene lab model 1. ADR-085. Design spec: [GENOME_EDITOR.md](design/GENOME_EDITOR.md).
+
+- **Domain** (`geneLab.ts`, `latentPin.ts`). `extract-gene` copies one allele copy of a living donor into a gene
+  cassette (◈ 25, ledger `research`); `splice-gene` writes a cassette into one or both germline copies of a living
+  recipient of the same species (◈ 40 per copy). Edits live in `world.geneLab.edits`; the recipient's genome record and
+  look never change. Both birth paths (`spawn` in `breeding.ts`, the instant `breed`) and the breeding planner's
+  predictions read parents through `germlineFish`, so one edited copy reaches about half of the offspring and both
+  copies reach all of them. A cassette keeps a named allele's definition and a mutation origin, so the child still
+  traces the allele (◆). Also `discard-cassette`, `label-cassette`, `restore-germline`. Limits: 12 cassettes, 6 edited
+  copies per animal, 1 200 edit records. Refused: the guppy sex locus, loci the recipient's genome version lacks, named
+  alleles into pre-Genesis genomes, eggs, copies that already carry the allele. In Genesis model 2 worlds a founder's
+  germline may take a model 2 allele (children are upgraded at birth). Latent load and body-plan genes stay pinned to the
+  unedited genome.
+- **Minigames** (`ui/editor/Minigames.tsx`). Restriction Cut (timing: cut two recognition sites; integrity sets 1–3
+  doses), Sticky Ends (pair complementary bases against a timer, three tries), Anneal (lock a thermocycler needle in a
+  narrowing window three times; cassette integrity widens it). Fidelity = mean of the last two; 40 lands a splice, 70
+  both copies (otherwise the result offers one copy). Scores travel in the command; nothing is charged on failure.
+  Keyboard (Space, A/T/G/C) and pointer; slower under reduced motion.
+- **Screen** (`GenomeEditor.tsx`, `genomeEditor.css`, `ui/editor/EditorArt.tsx`, rail entry, G then E, palette). Species
+  filter and specimen list, portrait plate, a clickable 12-chromosome karyogram with maternal/paternal halves and ✂ on
+  edited copies, a locus card with per-copy actions and reasons, the gene vault with custom vial art (barcode per allele,
+  dose fill, integrity lamp), germline restore, and a gamete preview of inheritance. New glyphs: `splice`, `scissors`,
+  `cassette`, `vault`, `dial`, `restore`.
+- **Honesty.** Locus names follow the Atlas stage; alleles of unsequenced donors stay `??` (unread cassettes). One
+  disclosure: the bench refuses a splice into a copy that already carries the cassette's allele, which tells a
+  discovery-mode player that the copies match. Balance (costs, thresholds) is untuned.
 
 ## Guppies and Commissions — DONE, pushed `ebc606d`, 5 November 2026 (user request)
 

@@ -126,7 +126,7 @@ export function decodeRuntime(raw: string): Runtime {
     // is omitted only while proving an old snapshot against its replay. Current v13 snapshots compare it normally.
     // World v14 adds the axolotl shop. An older snapshot has none to prove, so its replayed stock is left out.
     if (sourceVersion < 7) {
-      const records = { ...recordsOnly(candidate), circuit: null, alleles: null, atlas: null, goldfishShop: null, guppyShop: null, commissions: null };
+      const records = { ...recordsOnly(candidate), circuit: null, alleles: null, atlas: null, goldfishShop: null, guppyShop: null, commissions: null, geneLab: null };
       return JSON.stringify(sourceVersion < 13 ? withoutSpecies(records) : records);
     }
     const named = staleNames ? withoutNamesWorld(candidate) : candidate;
@@ -142,7 +142,9 @@ export function decodeRuntime(raw: string): Runtime {
     // World v17 adds the goldfish counter. An older snapshot has none to prove, so its replayed stock is left out.
     const goldfish = sourceVersion < 17 ? { ...genesis, goldfishShop: null } : genesis;
     // World v20 adds the guppy counter and commission letters. An older snapshot has neither to prove.
-    return JSON.stringify(sourceVersion < 20 ? { ...goldfish, guppyShop: null, commissions: null } : goldfish);
+    const guppies = sourceVersion < 20 ? { ...goldfish, guppyShop: null, commissions: null } : goldfish;
+    // World v21 adds the gene vault; an older snapshot has none to prove.
+    return JSON.stringify(sourceVersion < 21 ? { ...guppies, geneLab: null } : guppies);
   };
   if (comparable(decodeSave(JSON.stringify(replayed.world))) !== comparable(world)) throw mismatch;
   const simulation = parsed.simulation ?? { version: 1 as const, tankTicks: Object.fromEntries(world.tanks.map(tank => [tank.id, parsed.tick])) };

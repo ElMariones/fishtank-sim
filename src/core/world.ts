@@ -6,6 +6,7 @@ import { GENOME_VERSION, MUTATION_RATE, RESEARCH_GENOME_VERSION, type GenomeVers
 import { cannotSire, CLUTCH_SIZES, clutchId, courtingClutchOf, idleBreeding, livebirthLife, pairingBlockers, reservedPlaces, sexFor, withGenesisRecords, type ClutchSize } from './breeding';
 import { acceptCommission, declineCommission, deliverCommission, initialCommissions, postOffers } from './commissions';
 import { initialGuppyShop } from './guppyShop';
+import { CASSETTE_ID_PATTERN, discardCassette, extractGene, germlineFish, initialGeneLab, labelCassette, restoreGermline, spliceGene } from './geneLab';
 import { guppyFounderGenome } from './guppyGenetics';
 import { initialAtlas, MAX_SEQUENCED, observeFamily, observesModules, SEQUENCE_COST } from './atlas';
 import { BODY_PLAN_SET } from './modules';
@@ -62,8 +63,9 @@ export const STOCK_PRICE = 250;
  * bloodlines (FS-604); v13 adds explicit species identity and independent axolotl genetics; v14 adds the persistent
  * axolotl shop. v15 adds the competition circuit, v16 Genesis genetics, and v17 goldfish with their own shop and atlas.
  * v20 adds guppies (a livebearer with an XY sex chromosome) with their own shop and atlas, and commission letters.
+ * v21 adds the Genome Editor: a gene vault and germline edits that every later birth reads.
  */
-export const WORLD_VERSION = 20;
+export const WORLD_VERSION = 21;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -109,14 +111,14 @@ function newTank(id: string, name: string, planted: boolean): Tank {
  * transparent scientist-mode atlas, so their recorded pacing stays valid.
  */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = RESEARCH_GENOME_VERSION): World {
-  const world: World = { version: 20, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
+  const world: World = { version: 21, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
   ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed, 0, shopModelFor(genomeVersion)), naming: NAMING_MODEL, relief: defaultRelief(), bloodlines: [], nextBloodlineId: 1,
     axolotlShop: initialAxolotlShop(seed, 0, genomeVersion >= 4 ? 2 : 1), circuit: initialCircuit(), alleles: [], atlas: initialAtlas(genomeVersion >= 4 ? 'discovery' : 'scientist'), goldfishShop: initialGoldfishShop(seed),
     // The live game (Genesis genomes) runs Genesis model 2; research harnesses keep model 1 so their evidence is unchanged.
     genesisModel: genomeVersion >= 4 ? 2 : 1, codex: emptyCodex(), bodyPlan: genomeVersion >= 4 ? BODY_PLAN_SET : 1,
-    guppyShop: initialGuppyShop(seed), commissions: initialCommissions() };
+    guppyShop: initialGuppyShop(seed), commissions: initialCommissions(), geneLab: initialGeneLab() };
   ['Haru', 'Sumi', 'Kohaku', 'Yuki', 'Akira', 'Momo'].forEach((name, i) => {
     world.fish.push(founder(world, name, i % 2 === 0 ? 'F' : 'M', timestamp, genomeVersion)); world.nextId++;
   });
@@ -168,7 +170,12 @@ export type Command =
   | { type: 'rename-bloodline'; bloodlineId: string; name: string }
   | { type: 'name-allele'; alleleId: number; name: string }
   | { type: 'sequence-fish'; fishId: string }
-  | { type: 'set-atlas-mode'; mode: 'discovery' | 'scientist' };
+  | { type: 'set-atlas-mode'; mode: 'discovery' | 'scientist' }
+  | { type: 'extract-gene'; fishId: string; locus: number; copy: 'maternal' | 'paternal'; integrity: number }
+  | { type: 'splice-gene'; cassetteId: string; fishId: string; copies: 'maternal' | 'paternal' | 'both'; fidelity: number }
+  | { type: 'discard-cassette'; cassetteId: string }
+  | { type: 'label-cassette'; cassetteId: string; label: string }
+  | { type: 'restore-germline'; fishId: string; locus: number; copy: 'maternal' | 'paternal' };
 
 const fishIdSchema = z.string().regex(/^FSH-\d{6}$/);
 /** Price model 1 sales predate species-aware axolotl offers; both stay valid so every recorded sale replays. */
@@ -228,6 +235,11 @@ export const commandSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('name-allele'), alleleId: z.number().int().min(NOVEL_ID_MIN).max(NOVEL_ID_MIN + 2_000_000_000), name: z.string().max(64) }).strict(),
   z.object({ type: z.literal('sequence-fish'), fishId: fishIdSchema }).strict(),
   z.object({ type: z.literal('set-atlas-mode'), mode: z.enum(['discovery', 'scientist']) }).strict(),
+  z.object({ type: z.literal('extract-gene'), fishId: fishIdSchema, locus: z.number().int().min(0).max(80), copy: z.enum(['maternal', 'paternal']), integrity: z.number().int().min(0).max(100) }).strict(),
+  z.object({ type: z.literal('splice-gene'), cassetteId: z.string().regex(CASSETTE_ID_PATTERN), fishId: fishIdSchema, copies: z.enum(['maternal', 'paternal', 'both']), fidelity: z.number().int().min(0).max(100) }).strict(),
+  z.object({ type: z.literal('discard-cassette'), cassetteId: z.string().regex(CASSETTE_ID_PATTERN) }).strict(),
+  z.object({ type: z.literal('label-cassette'), cassetteId: z.string().regex(CASSETTE_ID_PATTERN), label: z.string().max(64) }).strict(),
+  z.object({ type: z.literal('restore-germline'), fishId: fishIdSchema, locus: z.number().int().min(0).max(80), copy: z.enum(['maternal', 'paternal']) }).strict(),
 ]);
 
 /** Validate before mutation; rejected commands leave the original world untouched. */
@@ -371,10 +383,12 @@ export function applyCommand(world: World, command: Command): World {
         ? command.genomeVersion ?? (((mother.genome as Genome).version === 1 && (father.genome as Genome).version === 1) ? 1 : Math.max(2, (mother.genome as Genome).version, (father.genome as Genome).version) as GenomeVersion)
         : (command.genomeVersion ?? 3) >= 4 || mother.genome.genesis || father.genome.genesis ? 4 : 3;
       const genesis = version === 4, taken = takenNames(next), born: Fish[] = [], lethal: number[] = [];
+      // Gametes carry each parent's germline edits (world v21); with none, these are the parents themselves.
+      const germMother = germlineFish(next, mother), germFather = germlineFish(next, father);
       for (let i = 0; i < offspring; i++) {
         // Genesis eggs are seeded by their place in the cross, so a non-viable egg never repeats its genome.
         const birthSeed = hash(`${world.seed}:birth:${next.nextId}:${mother.id}:${father.id}${genesis ? `:egg:${i}` : ''}`);
-        const trace = emptyTrace(), result = inherit(mother.genome, father.genome, birthSeed, MUTATION_RATE, version, trace, next.genesisModel, next.bodyPlan);
+        const trace = emptyTrace(), result = inherit(germMother.genome, germFather.genome, birthSeed, MUTATION_RATE, version, trace, next.genesisModel, next.bodyPlan);
         const development = genesis ? express(result.genome).genesis : undefined;
         if (development && !development.viable) { lethal.push(...development.defects.filter(d => d.kind === 'lethal').map(d => d.site)); continue; }
         const sex = sexFor(result.genome, birthSeed);
@@ -382,14 +396,14 @@ export function applyCommand(world: World, command: Command): World {
         const child: Fish = { id: id(next.nextId), name, sex, species: mother.species,
           ...result, birthSeed, generation: Math.max(mother.generation, father.generation) + 1,
           parents: [mother.id, father.id], bornAt: iso(command.timestamp), tankId: command.tankId, status: 'living', life: mother.species === 'guppy' ? livebirthLife() : eggLife(), breeding: idleBreeding(),
-          origins: childOrigins(id(next.nextId), mother, father, trace, result.mutations) };
+          origins: childOrigins(id(next.nextId), germMother, germFather, trace, result.mutations) };
         next.fish.push(child); born.push(child);
         next.nextId++;
       }
       if (genesis) {
         // The lab shortcut images its embryos at once, so the atlas learns from the cross immediately.
         const recorded = withGenesisRecords(next, born, mother.species, lethal);
-        next.alleles = recorded.alleles; next.atlas = observeFamily(recorded.atlas, mother, father, born, observesModules(next, mother.species)).atlas;
+        next.alleles = recorded.alleles; next.atlas = observeFamily(recorded.atlas, germMother, germFather, born, observesModules(next, mother.species)).atlas;
         next.codex = withDiscoveries(next, born).codex;
       }
       break;
@@ -710,6 +724,11 @@ export function applyCommand(world: World, command: Command): World {
       next.ledger = recordEntry(next.ledger, 'research', -SEQUENCE_COST, 1, `Sequenced ${fish.name}`);
       break;
     }
+    case 'extract-gene': extractGene(next, command.fishId, command.locus, command.copy, command.integrity); break;
+    case 'splice-gene': spliceGene(next, command.cassetteId, command.fishId, command.copies, command.fidelity); break;
+    case 'discard-cassette': discardCassette(next, command.cassetteId); break;
+    case 'label-cassette': labelCassette(next, command.cassetteId, command.label); break;
+    case 'restore-germline': restoreGermline(next, command.fishId, command.locus, command.copy); break;
     case 'set-atlas-mode': {
       if (next.atlas.mode === command.mode) throw new Error(`The atlas is already in ${command.mode} mode.`);
       next.atlas.mode = command.mode;
