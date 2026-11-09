@@ -1,4 +1,6 @@
-import { competitionSchedule, createCompetitionRun, eligibility, initialCircuit, MAX_COMPETITION_HISTORY, negotiationFloor } from './competitions';
+import { competitionSchedule, createCompetitionRun, eligibility, initialCircuit, judgeFormat2, MAX_COMPETITION_HISTORY, negotiationFloor } from './competitions';
+import { tierUnlocked } from './circuitCareer';
+import { TACTIC_IDS, type TacticId } from './tournament';
 import { savedDecorationsSchema, tankStyleSchema } from './tankSchema';
 import { piecePrice, styleCost, styleOf } from './aquascape';
 import { TANK_PRICE, TANK_UPGRADE_PRICE, decorationsOf, validateLayout, legacyDecorations, type Decoration, type TankStyle } from './tankManagement';
@@ -64,8 +66,9 @@ export const STOCK_PRICE = 250;
  * axolotl shop. v15 adds the competition circuit, v16 Genesis genetics, and v17 goldfish with their own shop and atlas.
  * v20 adds guppies (a livebearer with an XY sex chromosome) with their own shop and atlas, and commission letters.
  * v21 adds the Genome Editor: a gene vault and germline edits that every later birth reads.
+ * v22 adds tournament format 2 (FS-133): briefs, special awards, show-day incidents and preparations on new runs.
  */
-export const WORLD_VERSION = 21;
+export const WORLD_VERSION = 22;
 const iso = (timestamp: string) => {
   if (!Number.isFinite(Date.parse(timestamp))) throw new Error('Invalid event timestamp.');
   return timestamp;
@@ -111,7 +114,7 @@ function newTank(id: string, name: string, planted: boolean): Tank {
  * transparent scientist-mode atlas, so their recorded pacing stays valid.
  */
 export function createWorld(timestamp: string, seed = 481516, genomeVersion: GenomeVersion = RESEARCH_GENOME_VERSION): World {
-  const world: World = { version: 21, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
+  const world: World = { version: 22, seed, nextId: 1, nextClutchId: 1, credits: 1200, fish: [], tanks: [
     newTank('tank-1', 'The Koi Garden', true),
     newTank('tank-2', 'Breeding Studio', false),
   ], clutches: [], market: defaultMarket(), ledger: openingLedger(1200), shop: initialShop(seed, 0, shopModelFor(genomeVersion)), naming: NAMING_MODEL, relief: defaultRelief(), bloodlines: [], nextBloodlineId: 1,
@@ -132,8 +135,8 @@ export function quote(fish: Fish): number {
 }
 
 export type Command =
-  | { type: 'enter-competition'; eventId: string; fishIds: string[] }
-  | { type: 'judge-competition' }
+  | { type: 'enter-competition'; eventId: string; fishIds: string[]; format?: 2 }
+  | { type: 'judge-competition'; tactic?: TacticId }
   | { type: 'close-competition' }
   | { type: 'competition-offer'; participantId: string; amount: number; tankId: string; timestamp: string }
   | { type: 'rename'; fishId: string; name: string }
@@ -188,8 +191,8 @@ const tankIdSchema = z.string().max(50);
 const requiredGenomeVersion = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]);
 const genomeVersionSchema = requiredGenomeVersion.optional();
 export const commandSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('enter-competition'), eventId: z.string().max(100), fishIds: z.array(fishIdSchema).min(1).max(2) }).strict(),
-  z.object({ type: z.literal('judge-competition') }).strict(),
+  z.object({ type: z.literal('enter-competition'), eventId: z.string().max(100), fishIds: z.array(fishIdSchema).min(1).max(2), format: z.literal(2).optional() }).strict(),
+  z.object({ type: z.literal('judge-competition'), tactic: z.enum(TACTIC_IDS).optional() }).strict(),
   z.object({ type: z.literal('close-competition') }).strict(),
   z.object({ type: z.literal('competition-offer'), participantId: fishIdSchema, amount: z.number().int().min(1).max(1e9), tankId: tankIdSchema, timestamp: z.string().datetime() }).strict(),
   z.object({ type: z.literal('rename'), fishId: fishIdSchema, name: z.string().trim().min(1).max(32) }).strict(),
@@ -301,6 +304,8 @@ export function applyCommand(world: World, command: Command): World {
       const event = competitionSchedule(next.seed, next.circuit.day).find(candidate => candidate.id === command.eventId);
       if (!event) throw new Error('This competition has closed. Choose a current event.');
       if (next.circuit.history.some(run => run.event.id === event.id)) throw new Error('You already entered this edition.');
+      // Format 2 (world v22) gates tiers behind licences earned from reputation; format-1 journals replay ungated.
+      if (command.format === 2 && !tierUnlocked(next, event.tier)) throw new Error(`You need a ${event.tier} licence. Earn reputation at lower tiers first.`);
       if (new Set(command.fishIds).size !== command.fishIds.length) throw new Error('Choose each animal only once.');
       const entrants = command.fishIds.map(getFish);
       for (const fish of entrants) {
@@ -310,17 +315,22 @@ export function applyCommand(world: World, command: Command): World {
       }
       const cost = event.fee * entrants.length;
       afford(cost, 'Competition entry');
-      next.circuit.active = createCompetitionRun(next, event, entrants);
+      next.circuit.active = createCompetitionRun(next, event, entrants, command.format);
       next.ledger = recordEntry(next.ledger, 'competitionEntry', -cost, entrants.length, event.name);
       break;
     }
     case 'judge-competition': {
       const run = next.circuit.active;
       if (!run || run.phase !== 'exhibition') throw new Error('There is no exhibition awaiting judging.');
+      if (!run.show && command.tactic) throw new Error('This show has no show-day preparations.');
+      if (run.show && !command.tactic) throw new Error('Choose a show-day preparation before judging.');
+      if (run.show) judgeFormat2(run, command.tactic!);
       const winners = run.participants.filter(p => p.isPlayer && p.rank <= 3);
-      const prize = winners.reduce((sum, p) => sum + run.event.prizes[p.rank - 1], 0);
+      // Format 2 pays the special award (one entry fee) when a player's animal wins it.
+      const award = run.show && run.participants.some(p => p.isPlayer && p.fish.id === run.show!.awardWinner) ? run.event.fee : 0;
+      const prize = winners.reduce((sum, p) => sum + run.event.prizes[p.rank - 1], 0) + award;
       run.phase = 'results'; next.credits += prize;
-      next.ledger = recordEntry(next.ledger, 'competitionPrize', prize, winners.length, run.event.name);
+      next.ledger = recordEntry(next.ledger, 'competitionPrize', prize, winners.length + (award ? 1 : 0), award ? `${run.event.name} · special award` : run.event.name);
       break;
     }
     case 'close-competition': {

@@ -1,0 +1,255 @@
+/*
+ * Tournament overhaul (FS-133). Layered after competitions.css; Deepwater tokens for neutrals, the circuit's brass palette
+ * for prestige, lume for "yours" and progress, rose for show-day hazards.
+ */
+.circuit-window-card { display:flex; align-items:center; gap:10px; padding:10px 14px; border:1px solid var(--line-3); border-radius:var(--r-lg); background:var(--glass); color:var(--brass-text); flex-shrink:0 }
+.circuit-window-card b { display:block; font-size:var(--t-sm); color:var(--fg-1) }
+.circuit-window-card small { display:block; font-size:var(--t-xs); color:var(--fg-2); margin-top:2px }
+.circuit-heading.compact { margin-bottom:20px }
+.circuit-heading.compact h1 { margin:8px 0 12px }
+.circuit-section-title h2 { display:flex; align-items:center; gap:8px }
+.circuit-section-title h2 svg { color:var(--brass) }
+.circuit-muted { font-size:var(--t-xs); color:var(--fg-3); line-height:1.6; margin-top:12px }
+.circuit .flip { transform:scaleX(-1) }
+.circuit-lock { width:13px; height:13px; flex-shrink:0 }
+
+/* Chips */
+.circuit-chip-row { display:flex; flex-wrap:wrap; gap:6px }
+.circuit-chip-row.center { justify-content:center; margin-top:16px }
+.circuit-chip { display:inline-flex; align-items:center; gap:5px; min-height:24px; padding:3px 9px; border-radius:var(--r-pill); font-size:var(--t-xs); line-height:1.35; color:var(--fg-2); background:rgb(160 225 225 / .05); border:1px solid var(--line-2) }
+.circuit-chip.brass { color:var(--brass-text); background:var(--brass-a12); border-color:var(--brass-a30) }
+.circuit-chip.lume { color:var(--lume-3); background:var(--lume-a10); border-color:var(--lume-a30) }
+.circuit-chip.rose { color:var(--rose-ink); background:var(--rose-a14); border-color:var(--rose-a30) }
+.circuit-chip.quiet { color:var(--fg-3) }
+
+/* Steps */
+.circuit-steps { display:flex; gap:6px; list-style:none; margin:0 0 22px; padding:0; counter-reset:none; flex-wrap:wrap }
+.circuit-steps li { display:flex; align-items:center; gap:8px; padding:6px 12px 6px 6px; border-radius:var(--r-pill); font-size:var(--t-xs); color:var(--fg-3); border:1px solid var(--line-2) }
+.circuit-steps li>span { display:grid; place-items:center; width:20px; height:20px; border-radius:50%; background:rgb(160 225 225 / .06); font-weight:700; font-size:11px }
+.circuit-steps li.current { color:var(--fg-1); border-color:var(--brass-a30); background:var(--brass-a12) }
+.circuit-steps li.current>span { background:var(--brass); color:var(--brass-ink) }
+.circuit-steps li.done { color:var(--lume-3) }
+.circuit-steps li.done>span { background:var(--lume-a16); color:var(--lume) }
+
+/* Career strip */
+.circuit-career { display:grid; grid-template-columns:auto minmax(200px,1.6fr) auto minmax(170px,1fr); gap:0; margin-bottom:26px; border:1px solid var(--brass-a30); border-radius:var(--r-xl); background:radial-gradient(90% 140% at 0% 0%,var(--brass-a12),transparent 60%),var(--glass); box-shadow:var(--sh-2); overflow:hidden }
+.circuit-career>div { padding:16px 20px; border-right:1px solid var(--line-2); min-width:0 }
+.circuit-career>div:last-child { border-right:0 }
+.circuit-career small { display:block; font-size:10px; letter-spacing:.16em; font-weight:700; color:var(--fg-3) }
+.circuit-licence { display:flex; align-items:center; gap:12px }
+.circuit-licence b { display:block; font:480 22px/1.2 var(--font-display); color:#f1e0bb; margin-top:3px }
+.circuit-licence-badge { display:grid; place-items:center; width:42px; height:42px; border-radius:50%; color:var(--brass-ink); background:var(--grad-brass); box-shadow:var(--glow-brass) }
+.circuit-licence-badge.tier-amateur,.circuit-licence-badge.tier-entry { filter:saturate(.45) brightness(.9) }
+.circuit-rep>div:first-child { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap }
+.circuit-rep>div:first-child small { width:100% }
+.circuit-rep b { font:480 26px/1.1 var(--font-display); color:var(--fg-1); font-variant-numeric:tabular-nums }
+.circuit-rep>div:first-child span { font-size:var(--t-xs); color:var(--fg-2) }
+.circuit-progress { position:relative; height:8px; margin-top:10px; border-radius:var(--r-pill); background:rgb(160 225 225 / .08); overflow:hidden }
+.circuit-progress i { position:absolute; inset:0 auto 0 0; border-radius:inherit; background:var(--grad-lume); box-shadow:var(--glow-lume); transition:width .9s var(--ease-out) }
+.circuit-progress.large { height:12px }
+.circuit-progress i.before { background:var(--brass); opacity:.55; box-shadow:none; z-index:1 }
+.circuit-season { display:flex; align-items:center; gap:14px; flex-wrap:wrap }
+.circuit-season small { width:100% }
+.circuit-season span { display:flex; align-items:center; gap:4px }
+.circuit-season b { font:480 20px var(--font-display); color:var(--fg-1) }
+.circuit-season .circuit-medal b { display:none }
+.circuit-rival b { display:block; font-size:var(--t-md); color:var(--fg-1); margin-top:6px }
+.circuit-rival span { display:block; font-size:var(--t-xs); color:var(--fg-2); margin-top:4px; line-height:1.5 }
+
+/* Recommendations */
+.circuit-recs { margin-bottom:28px }
+.circuit-rec-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px }
+.circuit-rec { display:grid; grid-template-columns:120px minmax(0,1fr); gap:14px; padding:14px; border:1px solid var(--line-3); border-radius:var(--r-xl); background:radial-gradient(80% 120% at 0% 50%,hsl(var(--show-hue) 45% 30% / .35),transparent 70%),#10232b; box-shadow:var(--sh-1); animation:circuit-reveal .45s var(--ease-out) both }
+.circuit-rec.band-podium { border-color:var(--lume-a30) }
+.circuit-rec-portrait { display:grid; place-items:center; align-self:start; border-radius:var(--r-md); background:rgb(2 12 16 / .45) }
+.circuit-rec-portrait .portrait { width:100%; height:auto; aspect-ratio:260/140; background:none }
+.circuit-rec-body { min-width:0; display:flex; flex-direction:column; gap:6px }
+.circuit-rec h3 { font:480 18px/1.2 var(--font-display); color:#f1e2c2 }
+.circuit-rec p { font-size:var(--t-xs); color:var(--fg-2) }
+.circuit-rec p b { color:var(--fg-1) }
+.circuit-rec button { margin-top:auto; align-self:flex-start; display:inline-flex; align-items:center; gap:4px; font-size:var(--t-xs) }
+
+/* Board toolbar */
+.circuit-toolbar { gap:12px }
+.circuit-tiers { display:flex; flex-wrap:wrap; gap:4px; padding:4px; border:1px solid var(--line-2); border-radius:10px; background:#0b1f27 }
+.circuit-tiers button { white-space:nowrap; flex-shrink:0; display:inline-flex; align-items:center; gap:5px; min-height:34px; padding:7px 12px; border:0; border-radius:8px; background:none; color:var(--fg-2); font-size:var(--t-sm) }
+.circuit-tiers button[aria-selected=true] { background:var(--brass-a12); color:var(--brass-text); box-shadow:inset 0 0 0 1px var(--brass-a30) }
+.circuit-tiers button.locked { color:var(--fg-4) }
+.circuit-tiers button.locked[aria-selected=true] { color:var(--fg-2) }
+
+/* Compact event cards */
+.circuit-event-grid { grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:14px }
+.circuit-event { min-height:0; padding:18px; gap:10px }
+.circuit-event:before { width:120px; height:120px; right:-30px; top:-20px }
+.circuit-event h2 { font-size:21px; margin:4px 0 0 }
+.circuit-badge { display:inline-flex; align-items:center; gap:5px }
+.circuit-event-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:4px 0 0!important; padding-top:12px; border-top:1px solid var(--line-2) }
+.circuit-event-stats>div { display:block!important; border:0!important; padding:0!important }
+.circuit-event-stats dt { font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--fg-3) }
+.circuit-event-stats dd { text-align:left!important; max-width:none!important; margin-top:4px!important; font-size:var(--t-md); font-variant-numeric:tabular-nums }
+.circuit-event-stats dd.gold { color:var(--brass-text) }
+.circuit-event-hint { font-size:var(--t-xs); line-height:1.5; color:var(--fg-2); min-height:2.9em }
+.circuit-event-hint b { color:var(--lume-3) }
+.circuit-event.is-locked { filter:saturate(.35); opacity:.72 }
+.circuit-event.is-locked:hover { transform:none }
+.circuit-event.is-done { opacity:.6 }
+
+/* Entry */
+.circuit-entrant { gap:5px; align-items:stretch!important; text-align:left!important; justify-content:flex-start }
+.circuit-entrant>strong { margin-top:4px }
+.circuit-entrant>span.circuit-band { margin-top:6px!important; font-size:var(--t-xs); color:var(--fg-2)!important }
+.circuit-band b { font:480 15px var(--font-display); color:var(--fg-1); margin-right:4px }
+.circuit-band.band-podium b,.circuit-band.band-podium { color:var(--lume-3)!important }
+.circuit-entrant small.circuit-warning { display:flex; gap:5px; align-items:flex-start }
+.circuit-bars { display:grid; gap:6px; margin-top:12px }
+.circuit-bars>div { display:grid; grid-template-columns:96px minmax(0,1fr) 36px; align-items:center; gap:8px; font-size:var(--t-xs); color:var(--fg-2) }
+.circuit-bars span small { margin-left:4px; color:var(--fg-4); font-size:10px }
+.circuit-bars i { height:6px; border-radius:var(--r-pill); background:rgb(160 225 225 / .08); overflow:hidden }
+.circuit-bars i b { display:block; height:100%; border-radius:inherit; background:var(--fg-3) }
+.circuit-bars em { font-style:normal; text-align:right; font-variant-numeric:tabular-nums; color:var(--fg-1) }
+.circuit-bars .focus { color:var(--brass-text) }
+.circuit-bars .focus i b { background:var(--grad-brass) }
+.circuit-bars.compact { margin-top:8px; gap:4px }
+.circuit-bars.compact>div { grid-template-columns:62px minmax(0,1fr) 30px; gap:6px; font-size:10px }
+.circuit-prize-list small { margin-left:auto; color:var(--lume-3); font-size:var(--t-xs) }
+.circuit-prize-list .circuit-kicker { margin-bottom:2px }
+.circuit-prize-list svg { color:var(--brass) }
+
+/* Preparation */
+.circuit-prep { margin-bottom:24px }
+.circuit-bulletin { display:flex; gap:16px; align-items:flex-start; padding:18px 20px; margin-bottom:22px; border:1px solid var(--rose-a30); border-radius:var(--r-xl); background:radial-gradient(70% 140% at 0% 0%,var(--rose-a14),transparent 65%),var(--glass); box-shadow:var(--sh-2); animation:circuit-reveal .4s var(--ease-out) both }
+.circuit-bulletin.incident-calm { border-color:var(--moss-a30); background:radial-gradient(70% 140% at 0% 0%,var(--moss-a12),transparent 65%),var(--glass) }
+.circuit-bulletin-icon { display:grid; place-items:center; width:46px; height:46px; flex-shrink:0; border-radius:50%; color:var(--rose-ink); background:var(--rose-a14); border:1px solid var(--rose-a30) }
+.incident-calm .circuit-bulletin-icon { color:var(--moss); background:var(--moss-a12); border-color:var(--moss-a30) }
+.circuit-bulletin h2 { font:480 24px/1.2 var(--font-display); color:#f1e2c2; margin:6px 0 }
+.circuit-bulletin p { font-size:var(--t-sm); color:var(--fg-2); line-height:1.6 }
+.circuit-counter-hint { display:flex; gap:6px; align-items:flex-start; margin-top:8px; color:var(--fg-1)!important }
+.circuit-counter-hint svg { color:var(--lume); flex-shrink:0; margin-top:3px }
+.circuit-tactics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px }
+.circuit-tactic { display:flex; flex-direction:column; align-items:flex-start; gap:8px; text-align:left; padding:16px; border:1px solid var(--line-3); border-radius:var(--r-lg); background:#10242c; transition:border-color var(--dur-2),background var(--dur-2),transform var(--dur-2) var(--ease-out) }
+.circuit-tactic:hover { transform:translateY(-2px); border-color:var(--line-4) }
+.circuit-tactic.selected { border-color:var(--lume); background:linear-gradient(160deg,var(--lume-a10),#10242c 70%); box-shadow:0 0 0 1px var(--lume-a30),var(--glow-lume) }
+.circuit-tactic-icon { display:grid; place-items:center; width:38px; height:38px; border-radius:50%; color:var(--brass-text); background:var(--brass-a12) }
+.circuit-tactic.selected .circuit-tactic-icon { color:var(--lume-ink); background:var(--lume) }
+.circuit-tactic strong { font:480 18px var(--font-display); color:var(--fg-1) }
+.circuit-tactic p { font-size:var(--t-xs); line-height:1.55; color:var(--fg-2) }
+.circuit-tactic ul { list-style:none; margin:4px 0 0; padding:8px 0 0; width:100%; border-top:1px solid var(--line-2); display:grid; gap:5px }
+.circuit-tactic li { display:flex; justify-content:space-between; gap:8px; font-size:var(--t-xs); color:var(--fg-2) }
+.circuit-tactic li b { font-weight:600; text-align:right; color:var(--fg-3) }
+.circuit-tactic li b.up { color:var(--lume-3) }
+.circuit-tactic li b.down { color:var(--rose-ink) }
+.circuit-tank-top b.rival { color:var(--rose-ink) }
+.circuit-show-controls .circuit-primary { display:inline-flex; align-items:center; gap:6px; padding-left:18px; padding-right:18px }
+
+/* Ceremony */
+.circuit-ceremony { scroll-margin-top:72px; margin:0 auto 30px; max-width:980px; padding:22px; border:1px solid var(--brass-a30); border-radius:var(--r-xl); background:radial-gradient(70% 90% at 50% 0%,hsl(var(--show-hue) 40% 25% / .4),transparent 70%),#0d2027; box-shadow:var(--sh-3) }
+.circuit-ceremony-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px }
+.circuit-ceremony-head h2 { font:480 30px/1.15 var(--font-display); color:#f2e2bd; margin:6px 0 }
+.circuit-ceremony-head p { font-size:var(--t-sm); color:var(--fg-2) }
+.circuit-ceremony-head button { flex-shrink:0 }
+.circuit-ceremony-progress { height:3px; margin:16px 0 18px; background:rgb(160 225 225 / .08); border-radius:var(--r-pill); overflow:hidden }
+.circuit-ceremony-progress i { display:block; height:100%; background:var(--grad-brass); transition:width .6s var(--ease-out) }
+.circuit-board { position:relative; list-style:none; margin:0; padding:0 }
+.circuit-board li { position:absolute; left:0; right:0; top:0; height:46px; display:grid; grid-template-columns:34px minmax(120px,1.2fr) auto minmax(80px,2fr) 52px; align-items:center; gap:12px; padding:0 14px; border:1px solid var(--line-2); border-radius:var(--r-md); background:#11262e; transition:transform .75s var(--ease-spring),border-color .4s,background .4s }
+.circuit-board li.is-player { border-color:var(--lume-a30); background:linear-gradient(90deg,var(--lume-a10),#11262e 60%) }
+.circuit-board li.podium.rank-1 { border-color:var(--brass); background:linear-gradient(90deg,var(--brass-a30),#11262e 70%); box-shadow:var(--glow-brass) }
+.circuit-board li.podium.rank-2,.circuit-board li.podium.rank-3 { border-color:var(--brass-a30) }
+.circuit-board-rank { font:480 18px var(--font-display); color:var(--fg-3); text-align:center }
+.podium .circuit-board-rank { color:var(--brass-text) }
+.circuit-board-name { min-width:0 }
+.circuit-board-name b { display:block; font-size:var(--t-sm); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.circuit-board-name small { display:block; font-size:var(--t-xs); color:var(--fg-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.circuit-board-bar { height:6px; border-radius:var(--r-pill); background:rgb(160 225 225 / .08); overflow:hidden; grid-column:4 }
+.circuit-board-bar i { display:block; height:100%; border-radius:inherit; background:var(--grad-brass); transition:width .9s var(--ease-out) }
+.is-player .circuit-board-bar i { background:var(--grad-lume) }
+.circuit-board-score { font:480 18px var(--font-display); text-align:right; font-variant-numeric:tabular-nums; color:var(--fg-1) }
+.circuit-delta { display:inline-block; padding:2px 7px; border-radius:var(--r-pill); font-size:var(--t-xs); font-weight:700; font-variant-numeric:tabular-nums; color:var(--fg-3); background:rgb(160 225 225 / .06); grid-column:3 }
+.circuit-delta.up { color:var(--lume-3); background:var(--lume-a10); animation:circuit-pop .45s var(--ease-spring) both }
+.circuit-delta.down { color:var(--rose-ink); background:var(--rose-a14); animation:circuit-pop .45s var(--ease-spring) both }
+
+/* Results */
+.circuit-your-show { margin-bottom:30px; padding:22px; border:1px solid var(--lume-a30); border-radius:var(--r-xl); background:radial-gradient(70% 120% at 0% 0%,var(--lume-a10),transparent 60%),var(--glass); box-shadow:var(--sh-2); animation:circuit-reveal .5s var(--ease-out) both }
+.circuit-your-show .circuit-section-title>span { color:var(--lume-3); font-weight:700 }
+.circuit-your-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:12px }
+.circuit-your-card { display:grid; grid-template-columns:auto 140px minmax(0,1fr); align-items:center; gap:14px; padding:14px; border:1px solid var(--line-3); border-radius:var(--r-lg); background:#10242c }
+.circuit-your-card.rank-1 { border-color:var(--brass); box-shadow:var(--glow-brass) }
+.circuit-your-card .portrait { width:100%; height:auto; aspect-ratio:260/140; background:none }
+.circuit-your-card h3 { font:480 22px/1.2 var(--font-display); color:#f1e2c2 }
+.circuit-your-card p { font-size:var(--t-sm); color:var(--fg-2); margin:4px 0 10px }
+.circuit-rep-change { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:16px; margin-top:16px; padding-top:16px; border-top:1px solid var(--line-2); font-size:var(--t-xs); color:var(--fg-2) }
+.circuit-rep-change small { display:block; font-size:10px; letter-spacing:.16em; font-weight:700; color:var(--fg-3) }
+.circuit-rep-change b { font:480 20px var(--font-display); color:var(--fg-1) }
+.circuit-rep-change .circuit-progress { margin:0 }
+.circuit-unlock { display:inline-flex; align-items:center; gap:4px; margin-left:8px; padding:2px 8px; border-radius:var(--r-pill); color:var(--brass-ink); background:var(--grad-brass); font-weight:700; animation:circuit-pop .6s var(--ease-spring) .4s both }
+.circuit-new-milestones { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px }
+.circuit-new-milestones span { display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:var(--r-pill); font-size:var(--t-xs); color:var(--fg-2); background:var(--brass-a12); border:1px solid var(--brass-a30); animation:circuit-pop .5s var(--ease-spring) both }
+.circuit-new-milestones svg { color:var(--brass) }
+.circuit-new-milestones b { color:var(--brass-text) }
+.circuit-results-cta { display:flex; align-items:center; flex-wrap:wrap; gap:14px; margin-top:18px }
+.circuit-results-cta button { display:inline-flex; align-items:center; gap:6px }
+.circuit-results-cta span { font-size:var(--t-xs); color:var(--fg-3) }
+.circuit-award-card { display:grid; grid-template-columns:auto minmax(0,1fr) 160px; align-items:center; gap:16px; max-width:760px; margin:0 auto 30px; padding:16px 20px; border:1px solid var(--brass-a30); border-radius:var(--r-xl); background:radial-gradient(60% 120% at 100% 50%,var(--brass-a12),transparent 70%),#10242c; color:var(--brass) }
+.circuit-award-card h3 { font:480 22px var(--font-display); color:#f1e2c2; margin:4px 0 }
+.circuit-award-card h3 small { font:var(--t-xs) var(--font-ui); color:var(--fg-2); margin-left:6px }
+.circuit-award-card p { font-size:var(--t-xs); color:var(--fg-2) }
+.circuit-award-card .portrait { width:100%; height:auto; aspect-ratio:260/140; background:none }
+.circuit-reviews { margin-top:0 }
+.circuit-reviews article.is-player { border-color:var(--lume-a30) }
+.circuit-rankings th small { color:var(--fg-4); font-size:10px }
+.circuit-rankings th.focus { color:var(--brass-text) }
+.circuit-inspection .circuit-bars { margin-top:14px }
+.circuit-title-badge { display:inline-flex; align-items:center; gap:4px; margin-left:8px; padding:1px 8px; border-radius:var(--r-pill); font-style:normal; font-size:10px; letter-spacing:.04em; color:var(--brass-ink); background:var(--grad-brass) }
+.circuit-animal-honors h3>span { float:none; margin-left:6px }
+
+/* Trophy room overview */
+.circuit-trophy-overview { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:18px; margin-bottom:26px }
+.circuit-trophy-overview>section { padding:18px; border:1px solid var(--line-2); border-radius:var(--r-xl); background:#10232b }
+.circuit-milestones { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px }
+.circuit-milestones li { display:flex; gap:10px; align-items:flex-start; padding:10px; border-radius:var(--r-md); border:1px solid var(--line-2); color:var(--fg-4) }
+.circuit-milestones li.done { color:var(--brass); border-color:var(--brass-a30); background:var(--brass-a12) }
+.circuit-milestones b { display:block; font-size:var(--t-sm); color:var(--fg-2) }
+.circuit-milestones li.done b { color:var(--fg-1) }
+.circuit-milestones small { display:block; font-size:var(--t-xs); color:var(--fg-3); margin-top:2px }
+.circuit-rival-table { width:100%; border-collapse:collapse; font-size:var(--t-sm) }
+.circuit-rival-table th { text-align:left; font-size:var(--t-xs); font-weight:500; color:var(--fg-3); padding:6px 4px; border-bottom:1px solid var(--line-3) }
+.circuit-rival-table td { padding:8px 4px; border-bottom:1px solid var(--line-2); font-variant-numeric:tabular-nums }
+.circuit-rival-table .up { color:var(--lume-3) }
+.circuit-rival-table .down { color:var(--rose-ink) }
+.circuit-trophy-overview .circuit-trophy-stats { margin-top:16px; padding:14px; grid-template-columns:repeat(4,minmax(0,1fr)) }
+.circuit-trophy-overview .circuit-trophy-stats strong { font-size:24px }
+.circuit-trophy-overview .circuit-trophy-stats>div { gap:8px }
+
+@keyframes circuit-pop { from { transform:scale(.6) } to { transform:scale(1) } }
+
+@media(max-width:1180px) {
+  .circuit-career { grid-template-columns:1fr 1fr }
+  .circuit-career>div:nth-child(2) { border-right:0 }
+  .circuit-career>div:nth-child(-n+2) { border-bottom:1px solid var(--line-2) }
+  .circuit-rec-grid { grid-template-columns:1fr 1fr }
+}
+@media(max-width:900px) {
+  .circuit-tactics,.circuit-rec-grid,.circuit-trophy-overview { grid-template-columns:1fr }
+  .circuit-award-card { grid-template-columns:auto minmax(0,1fr) }
+  .circuit-award-card .portrait { display:none }
+  .circuit-rep-change { grid-template-columns:1fr }
+}
+@media(max-width:650px) {
+  .circuit-heading { flex-direction:column }
+  .circuit-career { grid-template-columns:1fr }
+  .circuit-career>div { border-right:0; border-bottom:1px solid var(--line-2) }
+  .circuit-rec { grid-template-columns:90px minmax(0,1fr) }
+  .circuit-your-card { grid-template-columns:auto minmax(0,1fr) }
+  .circuit-your-card .portrait { display:none }
+  .circuit-your-grid { grid-template-columns:1fr }
+  .circuit-milestones { grid-template-columns:1fr }
+  .circuit-board li { grid-template-columns:26px minmax(0,1fr) auto 46px; gap:8px; padding:0 10px }
+  .circuit-board-bar { display:none }
+  .circuit-delta { grid-column:3 }
+  .circuit-ceremony { padding:16px 12px }
+  .circuit-ceremony-head { flex-direction:column }
+  .circuit-event-grid { grid-template-columns:1fr }
+  .circuit-tiers { width:100%; overflow-x:auto; flex-wrap:nowrap }
+  .circuit-segments { width:100%; overflow-x:auto }
+  .circuit-entrant-grid { grid-template-columns:repeat(2,minmax(0,1fr)) }
+}
+@media(prefers-reduced-motion:reduce) { .circuit-board li,.circuit-progress i { transition:none } }

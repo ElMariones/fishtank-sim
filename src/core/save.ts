@@ -1,4 +1,5 @@
 import { COMPETITION_TIERS, initialCircuit, MAX_COMPETITION_HISTORY, validateCircuit } from './competitions';
+import { AWARD_IDS, BRIEF_IDS, INCIDENT_IDS, TACTIC_IDS } from './tournament';
 import { savedDecorationsSchema, tankStyleSchema } from './tankSchema';
 import { decorationsOf, validateLayout } from './tankManagement';
 import { z } from 'zod';
@@ -296,7 +297,17 @@ const geneLab = z.object({
     origin: z.string().regex(ORIGIN_ID_PATTERN).nullable(), cassetteId: cassetteIdSchema, fidelity: z.number().int().min(0).max(100),
   }).strict()).max(MAX_EDIT_RECORDS),
 }).strict();
+/** Tournament format 2 (world v22): a run may carry its show format and each participant its published show-day adjustment. */
+const scoreDelta = z.number().min(-100).max(100);
+const showFormatSchema = z.object({ model: z.literal(2), brief: z.enum(BRIEF_IDS), award: z.enum(AWARD_IDS), incident: z.enum(INCIDENT_IDS), tactic: z.enum(TACTIC_IDS).nullable(), awardWinner: fishIdSchema.nullable() }).strict();
+const participantV22 = competitionRunV20.shape.participants.element.extend({ adjust: z.object({ presentation: scoreDelta, pattern: scoreDelta, condition: scoreDelta }).strict().optional() }).strict();
+const competitionRunV22 = competitionRunV20.extend({ participants: z.array(participantV22).min(9).max(10), show: showFormatSchema.optional() }).strict();
+const circuitV22 = circuit.extend({ active: competitionRunV22.nullable(), history: z.array(competitionRunV22).max(MAX_COMPETITION_HISTORY) }).strict();
 const schema = z.discriminatedUnion('version', [
+  // World v22 lets competition runs carry tournament format 2.
+  z.object({ ...worldV13, version: z.literal(22), fish: z.array(fishV20).max(MAX_RECORDS), clutches: z.array(clutchV20).max(MAX_RECORDS), ledger: ledgerV20, shop: shopV16,
+    axolotlShop: axolotlShopV16, circuit: circuitV22, alleles: alleleRecordsV20, atlas: atlasV20, goldfishShop, genesisModel: z.union([z.literal(1), z.literal(2)]), codex,
+    bodyPlan: z.union([z.literal(1), z.literal(2)]), guppyShop, commissions, geneLab }),
   // World v21 appends the Genome Editor's gene vault and germline edits.
   z.object({ ...worldV13, version: z.literal(21), fish: z.array(fishV20).max(MAX_RECORDS), clutches: z.array(clutchV20).max(MAX_RECORDS), ledger: ledgerV20, shop: shopV16,
     axolotlShop: axolotlShopV16, circuit: circuitV20, alleles: alleleRecordsV20, atlas: atlasV20, goldfishShop, genesisModel: z.union([z.literal(1), z.literal(2)]), codex,
@@ -380,7 +391,8 @@ export function decodeSave(raw: string): World {
   const genesisFields = (old: Omit<World, 'version' | 'alleles' | 'atlas'>): World => ({
     ...old, version: 16, ledger: { ...old.ledger, totals: { ...old.ledger.totals, research: 0 } }, alleles: [], atlas: initialAtlas('scientist'),
   } as unknown as World);
-  if (parsed.version === 21) world = parsed as unknown as World;
+  if (parsed.version === 22) world = parsed as unknown as World;
+  else if (parsed.version === 21) world = parsed as unknown as World;
   else if (parsed.version === 20) world = parsed as unknown as World;
   else if (parsed.version === 19) world = parsed as unknown as World;
   else if (parsed.version === 18) world = parsed as unknown as World;
@@ -451,7 +463,9 @@ export function decodeSave(raw: string): World {
     } as unknown as World;
   }
   // Worlds v1-v20 predate the Genome Editor: the vault opens empty and no germline is edited (appended last).
-  if (parsed.version < 21) world = { ...(world as unknown as Omit<World, 'geneLab'>), version: 21, geneLab: initialGeneLab() } as World;
+  if (parsed.version < 21) world = { ...(world as unknown as Omit<World, 'geneLab'>), version: 21 as never, geneLab: initialGeneLab() } as World;
+  // Worlds v1-v21 hold only format-1 shows; nothing changes but the version.
+  if (parsed.version < 22) world = { ...world, version: 22 };
   world.tanks = world.tanks.map(tank => ({ ...tank, decorations: decorationsOf(tank) }));
   if (world.tanks.filter(isDisplay).length > MAX_DISPLAYS || world.tanks.filter(t => !isDisplay(t)).length > MAX_TANKS) throw new Error('Too many aquariums.');
   if (world.tanks.every(isDisplay)) throw new Error('A world needs at least one working aquarium.');

@@ -156,7 +156,7 @@ describe('Genome Editor (world v21)', () => {
   it('migrates a world v20 save with an empty vault', () => {
     const world = live(), { geneLab: _lab, ...old } = world;
     const migrated = decodeSave(JSON.stringify({ ...old, version: 20 }));
-    expect(migrated.version).toBe(21);
+    expect(migrated.version).toBe(22);
     expect(migrated.geneLab).toEqual({ model: 1, nextCassette: 1, cassettes: [], edits: [] });
   });
 });

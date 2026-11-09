@@ -1,5 +1,28 @@
 # Testing and verification
 
+## Tournament overhaul (world v22)
+
+9 November 2026, Windows 11, Node via the checkout's npm scripts.
+
+- `npm test`: **437 tests in 60 files pass**. New `tests/tournament.test.ts` (11): stable brief/award/incident per event
+  (amateur is Grand Classic without heatwave or crowd); format-2 entry is atomic with base scores, empty comments and a
+  saved format; judging requires a preparation, every saved adjustment equals final minus raw score, totals follow the
+  brief weights, prizes plus the special award pay once, and saves round-trip for all three preparations; format-1
+  shows are unchanged and refuse a preparation; forged adjustments, incidents, preparations, award winners and comments
+  are rejected by `decodeSave`; licences gate format-2 tiers without partial changes; reputation, titles, milestones and
+  rivals derive from history; recommendations only list open, licensed, unentered shows; every incident × preparation
+  rule; runtime journal replay; v21 migration. Version assertions in four suites moved to 22.
+- `npm run build`: passes (existing chunk-size warning only).
+- Browser (isolated port 5176, 1280×900 and 375×812): board with career strip, one recommendation, locked tiers and
+  four species chips; entry sorted by fit with weighted bars; paid two koi into an amateur show (◈ 1 135 → 1 055);
+  late-transport bulletin and preparation previews; show day ran rounds 1–3 with rows reordering and auto-scroll, then
+  results: 1st and 2nd, Finest Colour award, +24 reputation, Entry licence unlocked, six milestones, scorecard effects.
+  A second run with show lighting showed the effective −0.5 (lighting +2.5 pattern, transport −3 condition). Trophy room
+  showed milestones, rivals and medals; no horizontal overflow at 375 px. Fixes from this pass: entrant cards were
+  centred, the scorecard showed +1.5 for a condition already capped at 100 (adjustments are now stored as effective
+  changes), preparation previews said "no change" for a protection (now "shielded"), tier tabs wrapped on mobile. The
+  pane throttles animations, so the round-4 badge pop was checked in code after making it scale-only.
+
 ## Genome Editor (world v21)
 
 6 November 2026, Windows 11, Node via the checkout's npm scripts.

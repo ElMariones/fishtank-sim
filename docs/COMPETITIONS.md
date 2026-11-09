@@ -1,5 +1,7 @@
 # Competition circuit and calendar
 
+> FS-133 (9 November 2026, world v22) adds tournament format 2 on top of this circuit: briefs, special awards, show-day incidents, preparations and a derived career. See [the overhaul design](design/TOURNAMENT_OVERHAUL.md).
+
 Design and implementation brief · 21 September 2026 · FS-122–127
 
 ## Player promise

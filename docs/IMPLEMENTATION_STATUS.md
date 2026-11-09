@@ -1,6 +1,34 @@
 # Implementation status
 
-**Updated:** 6 November 2026 (Genome Editor, world v21) · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
+**Updated:** 9 November 2026 (tournament overhaul, world v22) · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
+
+## Tournament overhaul (FS-133) — DONE, 9 November 2026 (user request)
+
+World v22 · tournament format 2. ADR-086. Critique and design: [TOURNAMENT_OVERHAUL.md](design/TOURNAMENT_OVERHAUL.md).
+
+- **Domain** (`tournament.ts`, `circuitCareer.ts`, `competitions.ts`). New entries send `format: 2`. Each event has a
+  seeded **judging brief** (Grand Classic, Form & Carriage, Colour Masters, Keeper's Cup: criterion weights), a **special
+  award** (Rising Star, Heavyweight, Spirit of the Show, Finest Colour; pays one entry fee) and a **show-day incident**
+  (calm, heatwave, flickering lights, roaring crowd, size-loving guest judge, late transport), all from the
+  `circuit:2` stream and known before entry. Entry stores base scores ranked by the brief and no comments; judging
+  requires a **preparation** (quiet acclimation, show lighting, spotlight staging) applied to the player's entrants,
+  applies the incident to every exhibit, re-ranks, writes personalised comments (name, variety/strain, brief, incident,
+  preparation) and picks the award winner. Each participant stores its effective `adjust`, published in the scorecard.
+  Format-1 runs and journals are unchanged.
+- **Career** (derived, never stored): reputation per placement and award, licences (Entry 10 → Global 400 reputation;
+  tiers already entered stay licensed), animal titles, 12 milestones, season medals and rival head-to-heads.
+  Format-2 entries are refused below the tier's licence. Projections and recommendations compare an animal's base
+  score under the brief with a sampled typical field (labelled estimates).
+- **Screens** (`Competitions.tsx`, new `tournament.css`). Board: career strip, "Recommended for your collection",
+  tier tabs with locks, species chips (fixes guppies labelled "Axolotls"), compact cards with brief, award, forecast,
+  your animal count and best projection. Entry: four-step indicator, animals sorted by fit with weighted mini-bars
+  and finish bands, prize/reputation table. Hall: show-day bulletin, preparation cards that preview each entrant's
+  exact change, rival tags. Show day: five-round live leaderboard (three criteria, show-day effects, podium) with skip
+  and reduced-motion paths. Results: "Your show" summary (placing, prize, award, reputation, titles, licence progress
+  and unlock, new milestones), podium, award card, judges' notes, open scorecard with effects. Trophy room: career
+  strip, milestones, rivals, guppy filter, titles in honours.
+- **Limits.** Balance (reputation thresholds, incident sizes, award pay) is untuned. The header credit counter moves
+  when judging commits, a moment before the ceremony reveals the placing.
 
 ## Genome Editor (Splice Bench) — DONE (commit 151d0ef), 6 November 2026 (user request)
 

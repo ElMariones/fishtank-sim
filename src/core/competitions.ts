@@ -9,12 +9,14 @@ import { express, founderGenome, metabolicPotential } from './genetics';
 import { newFishName } from './names';
 import { clamp, hash, random } from './random';
 import type { Fish, Species, World } from './types';
+import { awardWinner, judgeComment, scoreField, showFormat, type Scores, type ShowFormat, type TacticId } from './tournament';
 
 export const COMPETITION_TIERS = ['amateur', 'entry', 'regional', 'national', 'pro', 'global'] as const;
 export type CompetitionTier = typeof COMPETITION_TIERS[number];
 export type CompetitionEvent = { id: string; name: string; city: string; venue: string; tier: CompetitionTier; species: Species; year: number; opensDay: number; closesDay: number; fee: number; prizes: [number, number, number]; theme: number };
-export type CompetitionParticipant = { fish: Fish; owner: string; isPlayer: boolean; scores: { presentation: number; pattern: number; condition: number }; total: number; rank: number; comment: string; askingPrice: number; negotiation: { attempts: number; counter: number | null; status: 'open' | 'declined' | 'purchased' } };
-export type CompetitionRun = { event: CompetitionEvent; participants: CompetitionParticipant[]; phase: 'exhibition' | 'results'; enteredDay: number };
+export type CompetitionParticipant = { fish: Fish; owner: string; isPlayer: boolean; scores: { presentation: number; pattern: number; condition: number }; total: number; rank: number; comment: string; askingPrice: number; negotiation: { attempts: number; counter: number | null; status: 'open' | 'declined' | 'purchased' }; adjust?: Scores };
+/** `show` marks a format-2 run (FS-133, world v22): brief, special award, incident and preparation. Format-1 runs have none. */
+export type CompetitionRun = { event: CompetitionEvent; participants: CompetitionParticipant[]; phase: 'exhibition' | 'results'; enteredDay: number; show?: ShowFormat };
 export type CompetitionState = { model: 1; day: number; active: CompetitionRun | null; history: CompetitionRun[] };
 export const MAX_COMPETITION_HISTORY = 240;
 export const CALENDAR_YEAR_DAYS = 360;
@@ -23,7 +25,7 @@ const cities = ['Kyoto', 'Lisbon', 'Amsterdam', 'Singapore', 'Vancouver', 'Copen
 const venues = ['Glasshouse Pavilion', 'Botanical Conservatory', 'Riverside Hall', 'Pearl Conservatory', 'Harbour Aquarium', 'Water Garden', 'Crystal Atrium', 'Lotus Pavilion'];
 const titles = ['Moonlit Waters', 'The Glass Garden', 'Pearl of the River', 'The Gilded Fin', 'Sapphire Society', 'Northern Lights', 'The Lotus Crown', 'Coral & Silk', 'The Emerald Current', 'Silver Tide', 'Velvet Waters', 'Aurora Aquatic'];
 const suffixes = ['Showcase', 'Invitational', 'Championship', 'Exhibition', 'Classic', 'Cup'];
-const keepers = ['Mika Ito', 'Ines Duarte', 'Soren Holm', 'Amara Okafor', 'Ren Takahashi', 'Luca Moretti', 'Mei Chen', 'Elena Costa', 'Noor de Vries', 'Theo Laurent', 'Valeria Cruz', 'Ari Silva'];
+export const COMPETITION_KEEPERS = ['Mika Ito', 'Ines Duarte', 'Soren Holm', 'Amara Okafor', 'Ren Takahashi', 'Luca Moretti', 'Mei Chen', 'Elena Costa', 'Noor de Vries', 'Theo Laurent', 'Valeria Cruz', 'Ari Silva'];
 const fees = [40, 80, 160, 300, 550, 900];
 const pick = <T>(values: readonly T[], rng: () => number) => values[Math.floor(rng() * values.length)];
 
@@ -120,20 +122,54 @@ export function competitionNpc(seed: number, event: CompetitionEvent, fishId: st
   }
   return best!;
 }
-export function createCompetitionRun(world: World, event: CompetitionEvent, entrants: Fish[]): CompetitionRun {
+const askingPrice = (total: number, event: CompetitionEvent) => Math.round(240 + total * 3 + COMPETITION_TIERS.indexOf(event.tier) * 100);
+export function createCompetitionRun(world: World, event: CompetitionEvent, entrants: Fish[], format?: 2): CompetitionRun {
   const fish = [...entrants.map(member => structuredClone(member))];
   for (let index = 0; index < 8; index++) {
     if (world.nextId > 999999) throw new Error('Animal identifiers exhausted. Export your world.');
     fish.push(competitionNpc(world.seed, event, `FSH-${String(world.nextId++).padStart(6, '0')}`, world.shop.model >= 3));
   }
+  const ownerOf = (member: Fish, index: number) => index < entrants.length ? 'You' : COMPETITION_KEEPERS[hash(`${event.id}:${member.id}:owner`) % COMPETITION_KEEPERS.length];
+  if (format === 2) {
+    // Format 2: base scores ranked by the brief; judging applies the incident and the player's preparation.
+    const show: ShowFormat = { ...showFormat(world.seed, event), tactic: null, awardWinner: null };
+    const field = scoreField(event, show, fish.map((member, index) => ({ fish: member, isPlayer: index < entrants.length, owner: ownerOf(member, index) })));
+    const participants: CompetitionParticipant[] = field.map((entry, index) => ({ fish: entry.fish, owner: entry.owner, isPlayer: entry.isPlayer, scores: entry.scores, total: entry.total, rank: index + 1,
+      comment: '', askingPrice: askingPrice(entry.total, event), negotiation: { attempts: 0, counter: null, status: 'open' }, adjust: entry.adjust }));
+    return { event, participants, phase: 'exhibition', enteredDay: world.circuit.day, show };
+  }
   const participants: CompetitionParticipant[] = fish.map((member, index) => {
     const scores = competitionScores(member, event), total = totalOf(scores);
-    return { fish: member, owner: index < entrants.length ? 'You' : keepers[hash(`${event.id}:${member.id}:owner`) % keepers.length], isPlayer: index < entrants.length,
-      scores, total, rank: 0, comment: '', askingPrice: Math.round(240 + total * 3 + COMPETITION_TIERS.indexOf(event.tier) * 100), negotiation: { attempts: 0, counter: null, status: 'open' } };
+    return { fish: member, owner: ownerOf(member, index), isPlayer: index < entrants.length,
+      scores, total, rank: 0, comment: '', askingPrice: askingPrice(total, event), negotiation: { attempts: 0, counter: null, status: 'open' } };
   });
   participants.sort((a, b) => b.total - a.total || a.fish.id.localeCompare(b.fish.id));
   participants.forEach((participant, index) => { participant.rank = index + 1; participant.comment = commentFor(participant.fish, event, participant.scores, participant.rank); });
   return { event, participants, phase: 'exhibition', enteredDay: world.circuit.day };
+}
+/** Judges a format-2 run in place: applies the incident and preparation, re-ranks, writes comments and the special award. */
+export function judgeFormat2(run: CompetitionRun, tactic: TacticId): void {
+  const show = run.show!, byId = new Map(run.participants.map(p => [p.fish.id, p]));
+  const field = scoreField(run.event, show, run.participants.map(p => ({ fish: p.fish, isPlayer: p.isPlayer, owner: p.owner })), tactic);
+  show.tactic = tactic;
+  run.participants = field.map((entry, index) => ({ ...byId.get(entry.fish.id)!, scores: entry.scores, total: entry.total, rank: index + 1, comment: judgeComment(run.event, show, entry, index + 1), adjust: entry.adjust }));
+  show.awardWinner = awardWinner(show.award, field);
+  run.phase = 'results';
+}
+/** What a saved participant must equal: format 1 recomputes FS-124 scores; format 2 replays the brief, incident and preparation. */
+function expectedField(seed: number, run: CompetitionRun, event: CompetitionEvent): { id: string; scores: Scores; total: number; comment: string; askingPrice: number; adjust?: Scores }[] {
+  if (!run.show) return run.participants.map((p, index) => {
+    const scores = competitionScores(p.fish, event), total = totalOf(scores);
+    return { id: p.fish.id, scores, total, comment: commentFor(p.fish, event, scores, index + 1), askingPrice: askingPrice(total, event) };
+  });
+  const show = run.show, format = showFormat(seed, event), results = run.phase === 'results';
+  if (show.brief !== format.brief || show.award !== format.award || show.incident !== format.incident || (show.tactic === null) === results || (show.awardWinner === null) === results) throw new Error('Invalid show format.');
+  const entries = run.participants.map(p => ({ fish: p.fish, isPlayer: p.isPlayer, owner: p.owner }));
+  const base = new Map(scoreField(event, show, entries).map(entry => [entry.fish.id, entry.total]));
+  const field = scoreField(event, show, entries, results ? show.tactic! : undefined);
+  if (results && show.awardWinner !== awardWinner(show.award, field)) throw new Error('Invalid special award.');
+  return field.map((entry, index) => ({ id: entry.fish.id, scores: entry.scores, total: entry.total, adjust: entry.adjust,
+    comment: results ? judgeComment(event, show, entry, index + 1) : '', askingPrice: askingPrice(base.get(entry.fish.id)!, event) }));
 }
 export function negotiationFloor(event: CompetitionEvent, participant: CompetitionParticipant): number {
   return Math.ceil(participant.askingPrice * (0.72 + (hash(`${event.id}:${participant.fish.id}:reserve`) % 160) / 1000));
@@ -153,12 +189,13 @@ export function validateCircuit(world: World): void {
     seen.add(event.id);
     const players = run.participants.filter(p => p.isPlayer), localIds = new Set<string>();
     if (players.length < 1 || players.length > 2 || run.participants.length !== players.length + 8) throw new Error('Invalid competition field.');
+    const expected = expectedField(world.seed, run, event);
     for (const [index, participant] of run.participants.entries()) {
-      const fish = participant.fish, owned = world.fish.find(member => member.id === fish.id), scores = competitionScores(fish, event);
+      const fish = participant.fish, owned = world.fish.find(member => member.id === fish.id), want = expected[index];
       if (localIds.has(fish.id) || Number(fish.id.slice(4)) >= world.nextId || eligibility(fish, event) || (fish.species !== 'koi') !== ('species' in fish.genome)) throw new Error('Invalid competition participant.');
       localIds.add(fish.id);
-      if (participant.rank !== index + 1 || JSON.stringify(scores) !== JSON.stringify(participant.scores) || participant.total !== totalOf(scores)
-        || participant.comment !== commentFor(fish, event, scores, participant.rank) || participant.askingPrice !== Math.round(240 + participant.total * 3 + COMPETITION_TIERS.indexOf(event.tier) * 100)) throw new Error('Invalid competition scores.');
+      if (participant.rank !== index + 1 || want.id !== fish.id || JSON.stringify(want.scores) !== JSON.stringify(participant.scores) || participant.total !== want.total
+        || participant.comment !== want.comment || participant.askingPrice !== want.askingPrice || JSON.stringify(want.adjust) !== JSON.stringify(participant.adjust)) throw new Error('Invalid competition scores.');
       const previous = run.participants[index - 1];
       if (previous && (previous.total < participant.total || (previous.total === participant.total && previous.fish.id.localeCompare(fish.id) > 0))) throw new Error('Invalid competition ranking.');
       if (participant.isPlayer) {
@@ -171,7 +208,7 @@ export function validateCircuit(world: World): void {
           const expected = competitionNpc(world.seed, event, fish.id);
           if (!sameCompetitionIdentity(fish, expected) || JSON.stringify(fish.life) !== JSON.stringify(expected.life) || fish.name !== expected.name || fish.tankId !== expected.tankId || fish.status !== expected.status || fish.breeding.cooldownDays !== 0) throw new Error('Invalid competition NPC snapshot.');
         }
-        if (participant.owner !== keepers[hash(`${event.id}:${fish.id}:owner`) % keepers.length]) throw new Error('Invalid competition keeper.');
+        if (participant.owner !== COMPETITION_KEEPERS[hash(`${event.id}:${fish.id}:owner`) % COMPETITION_KEEPERS.length]) throw new Error('Invalid competition keeper.');
         const n = participant.negotiation;
         if ((n.status === 'purchased') !== !!owned || (owned && !sameCompetitionIdentity(fish, owned))) throw new Error('Invalid competition transfer.');
         if ((n.attempts === 0 && (n.counter !== null || n.status !== 'open')) || (n.status === 'declined' && n.attempts !== 3) || (n.status === 'open' && n.attempts === 3)
