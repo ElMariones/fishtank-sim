@@ -1,5 +1,28 @@
 # Testing and verification
 
+## Specimen Studio (FS-134)
+
+9 November 2026, Windows 11, Node via the checkout's npm scripts.
+
+- `npm test`: **445 tests in 61 files pass**. New `tests/specimen.test.ts` (8): deterministic five-axis appraisal for
+  every species that leaves the world unchanged, with inbreeding lowering only diversity; grade floors and stars;
+  founder, lab-bred, outbred and close-kin marks from records; stable curator notes without `undefined`/`NaN`; karyotype
+  in registry order for all four species, hidden in discovery mode and complete in scientist mode; three-generation
+  pedigree rows and full siblings; defensive journal decoding and removal of empty entries; zoom about the pointer
+  within limits and 1–2–5 scale bars.
+- `npm run build`: passes (existing chunk-size warning only).
+- Browser (isolated port 5201, 1280×800 and 375×812; a world with 20 eggs of Haru × Sumi advanced five days):
+  opened the studio from the Inspect button and `I`; Daylight, Night, Blueprint and Contrast lenses; wheel zoom about
+  the cursor to 223 % stayed crisp; a ruler measured 9.3 mm on a 9.5 mm fry (pointer events dispatched directly,
+  because the pane's drag tool did not deliver pointer moves); compare drew the fry next to its 62 cm mother at one
+  scale; karyogram in scientist mode; honours marks; a journal note with the "Show prospect" tag persisted in
+  `fishtank:specimen-journal`. Photo export (anchor click intercepted, so no file was written) produced
+  `haru-fsh-000001.png`, 1600×1215, with the plate band (name, details, studio mark, lens and zoom). Phone layout: the
+  stage keeps its height above the compare row and tabs, and the toolbar fits one row with Photo visible.
+- Fixed during verification: `setPointerCapture` threw for a pointer the browser could not capture and aborted the
+  gesture (now guarded); on narrow screens the scrolling panel squeezed the stage column so the stage overlapped the
+  tabs; the phone toolbar overflowed (zoom −/+ hidden there, pinch zooms).
+
 ## Tournament overhaul (world v22)
 
 9 November 2026, Windows 11, Node via the checkout's npm scripts.

@@ -1,6 +1,29 @@
 # Implementation status
 
-**Updated:** 9 November 2026 (tournament overhaul, world v22) · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
+**Updated:** 9 November 2026 (Specimen Studio, world v22 unchanged) · **Build:** 0.1.0 research lab. M1 FS-101–112 are DONE; FS-111 pooled five observers (54/60, above chance in every mode), so M1's roadmap gate is met. M2 FS-201–206 are DONE (`bd175ed`, `6a69695`). FS-113 (user request) adds genome v2 color and ornament genetics and is DONE (`2436fbf`). M3 is delivered through FS-307. M4 is delivered through FS-406. M5 is delivered through FS-505. M6 is delivered through FS-605. The 18 September user-requested axolotl species expansion is DONE in the current continuation: world v13, an independent 66-locus axolotl genome, renderer/anatomy, names, breeding, saves, mixed tanks and species-aware UI/tests.
+
+## Specimen Studio (FS-134) — IMPLEMENTED, awaiting push, 9 November 2026 (user request)
+
+No world or save version change; read-only apart from the favourite toggle and a device-local journal. ADR-087. Design
+spec: [SPECIMEN_STUDIO.md](design/SPECIMEN_STUDIO.md).
+
+- **Entry points.** Inspect button in the inspector heading, a magnifier on the hero portrait, double-click a fish in
+  the tank, `I`, the fish menu ("Inspect in studio"; the old entry is now "Show profile") and the command palette.
+- **Stage** (`SpecimenStage.tsx`). The animal alone at true scale (silhouette measured so snout to tail equals
+  `lengthCm`), pan, wheel/pinch zoom about the pointer (50–800 %), double-click zoom, keyboard navigation, a ruler in
+  mm/cm, a life-stage scrubber from hatchling to adult, four lenses (Daylight, Night, Blueprint with dimension lines,
+  Contrast), freeze and flip, a true-scale comparison with parents, siblings, offspring or tank mates, and a PNG photo
+  with a specimen plate.
+- **Dossier** (`SpecimenStudio.tsx`). Profile (curator notes, facts, temperament, features by rarity tier), Appraisal
+  (grade S–D, stars, five-axis radar against the parents' average, market offers and show prospects), Genome
+  (karyogram of every locus, maternal/paternal stripes, filters, locus card; hidden in discovery mode until sequenced),
+  Lineage (three-generation tree, siblings, offspring), Honours (16 derived studio marks plus existing honours) and
+  Journal (tags, notes, judges' commentary). `[`/`]` step through the tank or archive; any relative opens in place.
+- **Domain** (`src/core/specimen.ts`). Pure functions with no React, Canvas or storage. The appraisal reuses
+  `competitionScores` under a neutral event id; it is labelled as neither a judge's score nor a price.
+- **Limits.** Appraisal weights and grade floors are calibrated on founders and F1 koi only (median 63, S at 82). The
+  journal does not travel with save exports. Photo export uses the browser's download; the plate's fonts fall back to
+  system fonts if the web fonts have not loaded.
 
 ## Tournament overhaul (FS-133) — DONE, pushed `8ce9e45`, 9 November 2026 (user request)
 

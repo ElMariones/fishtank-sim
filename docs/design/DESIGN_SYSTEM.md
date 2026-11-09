@@ -18,6 +18,7 @@ aquarium is the stage; everything else is a bench around it.
 | `src/ui/design/panels.css` | Breeding, care gauges, habitat offers, guide, calendar report, recovery, market, shop, saves. |
 | `src/ui/design/research.css` | Visual fixtures and research studies. |
 | `src/ui/competitions.css` | The circuit's own tier-tinted palette, now on the shared type and button tokens. |
+| `src/ui/specimen/specimen.css` | Specimen Studio: stage HUD, toolbar, dossier, karyogram, pedigree tree, marks and journal. Canvas drawing and the exported photo plate use literal colours. |
 
 ## Foundations
 
@@ -62,6 +63,8 @@ aquarium is the stage; everything else is a bench around it.
 
 - Shortcuts (ignored while typing or while a menu, popover, dialog, drawer or the palette is open; `[`/`]` also wait while an aquascape draft is open): `.` next day, `F` feed, `M` motion, `1–4` workspace
   tabs, `[`/`]` previous/next aquarium, `G` then `A`/`C`/`T`/`R` views, `?` shortcuts, Ctrl K palette.
+- `I` opens the Specimen Studio for the selected animal (also a double-click in the tank). Inside it: `[`/`]` previous/next
+  animal, Escape closes; with the stage focused `+`/`-`/`0`, arrows, Space freeze, `F` flip, `M` ruler, `L` lens.
 - The open view is in the address (`#/competitions`…), so Back, Forward and bookmarks work.
 - Collection selection is a mode: the check appears on hover, when checked or while selecting; in selection mode a card
   click toggles it and shift-click extends a range. The dock floats at the bottom and ends after each batch action.

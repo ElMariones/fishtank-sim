@@ -34,7 +34,9 @@ function canvasRendererRequested(): boolean {
 type Props = {
   fish: Fish[]; eggs: number; tank: Tank;
   /** Guppy mothers carrying a brood: fish ID → brood progress 0–1 (drawn as a swelling belly). */
-  broods?: ReadonlyMap<string, number>; selectedId: string; onSelect: (id: string) => void; paused: boolean; speed: number; feedSignal: number;
+  broods?: ReadonlyMap<string, number>; selectedId: string; onSelect: (id: string) => void;
+  /** Double-clicking a fish opens it in the Specimen Studio (FS-134). */
+  onInspect?: (id: string) => void; paused: boolean; speed: number; feedSignal: number;
   /** Called when the selected fish's behavior state, reasons or leader change; null when it is not swimming here. */
   onBehavior?: (behavior: BehaviorSummary | null) => void;
   /** A draft aquascape to draw instead of the saved one (FS-117 editor). Fish keep steering by the saved layout. */
@@ -350,6 +352,13 @@ export function TankCanvas(props: Props) {
     };
   }, []);
 
+  /** The fish under a pointer event on the tank canvas, using the painted poses. */
+  const pickAt = (event: { currentTarget: HTMLCanvasElement; clientX: number; clientY: number }) => {
+    const rect = event.currentTarget.getBoundingClientRect(), shown = painted.current, byId = new Map(shown.map(entry => [entry.actor.id, entry]));
+    return pickActor(shown.map(entry => entry.actor), rect.width, rect.height, event.clientX - rect.left, event.clientY - rect.top, 6,
+      actor => byId.get(actor.id)?.growth ?? 1, actor => byId.get(actor.id)?.facing ?? facingFor(actor));
+  };
+
   return <>
     <div ref={glHostRef} className="tank-layer tank-fish-host" aria-hidden="true" hidden={renderer === 'canvas'} data-renderer={renderer} />
     <canvas ref={frontRef} className="tank-layer tank-front-layer" aria-hidden="true" hidden={renderer === 'canvas'} />
@@ -358,13 +367,11 @@ export function TankCanvas(props: Props) {
     <canvas ref={canvasRef} className="tank-canvas" data-renderer={renderer} role="img" aria-label={`${props.tank.name}, ${props.fish.length} swimming fish${props.eggs ? ` and ${props.eggs} incubating eggs` : ''}. Select a fish using the collection below.`}
       onClick={event => {
         if (props.editing) return;
-        const rect = event.currentTarget.getBoundingClientRect(), shown = painted.current, byId = new Map(shown.map(entry => [entry.actor.id, entry]));
-        const x = event.clientX - rect.left, y = event.clientY - rect.top;
-        const id = pickActor(shown.map(entry => entry.actor), rect.width, rect.height, x, y, 6,
-          actor => byId.get(actor.id)?.growth ?? 1, actor => byId.get(actor.id)?.facing ?? facingFor(actor));
+        const id = pickAt(event);
         // Clicking open water taps the glass: nearby fish are startled, and shy ones look for cover.
-        if (id) props.onSelect(id); else client.current?.startle(x / rect.width, y / rect.height);
-      }} />
+        if (id) props.onSelect(id); else { const rect = event.currentTarget.getBoundingClientRect(); client.current?.startle((event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height); }
+      }}
+      onDoubleClick={event => { if (props.editing || !props.onInspect) return; const id = pickAt(event); if (id) props.onInspect(id); }} />
     {loadingTank === props.tank.id && workerState.status !== 'failed' ? <div className="tank-loading" role="status" aria-live="polite">
       <span className="tank-loading-bubbles" aria-hidden="true"><i /><i /><i /></span><span>Filling {props.tank.name}…</span>
     </div> : null}

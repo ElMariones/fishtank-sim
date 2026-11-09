@@ -91,6 +91,7 @@ A first-session guide above the aquarium walks through these steps. **Ctrl K** s
 | [Architecture](docs/ARCHITECTURE.md) | Source map, data model, command contracts, worker strategy |
 | [UX specification](docs/UX_SPEC.md) | Aquarium, inspector, breeding, family, market and recovery flows |
 | [UI review](docs/design/UI_REVIEW.md) and [design system](docs/design/DESIGN_SYSTEM.md) | The FS-128 audit and the Deepwater tokens, components and conventions |
+| [Specimen Studio](docs/design/SPECIMEN_STUDIO.md) | The Inspect view: true-scale stage, lenses, ruler, appraisal, karyogram, lineage, marks and journal |
 | [Tournament overhaul](docs/design/TOURNAMENT_OVERHAUL.md) | Critique of the original circuit, format 2 (briefs, awards, incidents, preparations) and the derived career |
 | [Competition circuit](docs/COMPETITIONS.md) and [visual design](docs/design/COMPETITION_UI.md) | Calendar, entry, exhibition, judging, NPC negotiation and lasting honors |
 | [Balance and experiments](docs/BALANCE.md) | Implemented constants and tuning experiments |

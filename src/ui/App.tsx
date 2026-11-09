@@ -67,6 +67,7 @@ import { isAxolotlGenome } from '../core/axolotlGenetics';
 import { LocusTip } from './LocusTip';
 import { KOI_EXPRESSION_NOTES, KOI_LOCUS_NOTES } from '../core/locusNotes';
 import { TankCanvas } from './TankCanvas';
+import { SpecimenStudio } from './specimen/SpecimenStudio';
 import { growthShare, lifeSummary } from './lifeText';
 import { CommandPalette, ToastStack, type Notice, type NoticeTone, type PaletteCommand } from './kit/Feedback';
 import { MenuButton, Select, useContextMenu, type MenuEntry } from './kit/Menu';
@@ -189,6 +190,8 @@ export function App({ initial }: { initial: LoadedSession }) {
   const [focusRequest, setFocusRequest] = useState(0);
   const [breedingOpen, setBreedingOpen] = useState(true);
   const [heroView, setHeroView] = useState<PortraitView>('current');
+  /** The animal open in the Specimen Studio (FS-134), or null. */
+  const [studioId, setStudioId] = useState<string | null>(null);
   const [absence, setAbsence] = useState(initial.absence);
   const [fastTankId, setFastTankId] = useState(initial.runtime.world.tanks[0].id);
   const [fastCount, setFastCount] = useState(COHORT_SIZE);
@@ -409,6 +412,9 @@ export function App({ initial }: { initial: LoadedSession }) {
     if (focusInspector) setFocusRequest(n => n + 1);
     return true;
   }
+
+  /** Opens the Specimen Studio on one animal; it also becomes the selection so the inspector follows on close. */
+  function openStudio(id: string) { if (focusFish(id)) { markGuide('select'); setStudioId(id); } }
 
   /** The player's own selection, which also completes the guide's first step (FS-504). */
   function select(id: string, focusInspector = false, trail: string[] = []) { if (focusFish(id, focusInspector, trail)) markGuide('select'); }
@@ -657,7 +663,8 @@ export function App({ initial }: { initial: LoadedSession }) {
     const livingTarget = target.status === 'living', favorite = favoriteIds.has(target.id);
     return [
       { type: 'heading', id: 'h', label: target.name },
-      { id: 'inspect', label: 'Inspect', icon: 'eye', onSelect: () => select(target.id, true) },
+      { id: 'studio', label: 'Inspect in studio', icon: 'search', tone: 'lume', shortcut: 'I', onSelect: () => openStudio(target.id) },
+      { id: 'inspect', label: 'Show profile', icon: 'eye', onSelect: () => select(target.id, true) },
       { id: 'family', label: 'Open family tree', icon: 'family', onSelect: () => { select(target.id, true); setTab('Family'); } },
       { id: 'genome', label: 'Read genome', icon: 'dna', tone: 'gene', onSelect: () => { select(target.id, true); setTab('Genome'); } },
       { type: 'separator', id: 's1' },
@@ -702,6 +709,7 @@ export function App({ initial }: { initial: LoadedSession }) {
     { id: 'w-breeding', label: 'Breeding planner', group: 'Go to', icon: 'heart', shortcut: '2', run: () => goWorkspace('breeding') },
     { id: 'w-care', label: 'Care controls', group: 'Go to', icon: 'drop', shortcut: '3', run: () => goWorkspace('care') },
     { id: 'w-habitat', label: 'Habitat & expansion', group: 'Go to', icon: 'leaf', shortcut: '4', run: () => goWorkspace('habitat') },
+    ...(fish ? [{ id: 'a-studio', label: `Inspect ${fish.name} in the Specimen Studio`, group: 'Actions', icon: 'search' as IconName, shortcut: 'I', run: () => openStudio(fish.id) }] : []),
     { id: 'a-feed', label: `Feed ${tank.name}`, group: 'Actions', icon: 'food', shortcut: 'F', run: feed },
     { id: 'a-day', label: 'Advance one day', group: 'Actions', icon: 'clock', shortcut: '.', run: () => void skipDays(1) },
     { id: 'a-week', label: 'Advance one week', group: 'Actions', icon: 'calendar', run: () => void skipDays(7) },
@@ -724,7 +732,7 @@ export function App({ initial }: { initial: LoadedSession }) {
   const shortcut = useRef<(event: KeyboardEvent) => void>(() => {});
   const goPrefix = useRef(0);
   shortcut.current = event => {
-    const layered = document.querySelector('.dialog, .menu, .palette, .popover, .drawer-root');
+    const layered = document.querySelector('.dialog, .menu, .palette, .popover, .drawer-root, .studio-root');
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); if (!document.querySelector('.dialog')) setPaletteOpen(v => !v); return; }
     if (event.ctrlKey || event.metaKey || event.altKey || typing(event.target) || layered) return;
     const key = event.key;
@@ -739,6 +747,7 @@ export function App({ initial }: { initial: LoadedSession }) {
     else if (key === '.') { event.preventDefault(); void skipDays(1); }
     else if (view === 'aquarium' && (key === 'f' || key === 'F')) { event.preventDefault(); if (!aquascape) feed(); }
     else if (view === 'aquarium' && (key === 'm' || key === 'M')) { event.preventDefault(); setPaused(v => !v); }
+    else if ((key === 'i' || key === 'I') && fish) { event.preventDefault(); openStudio(fish.id); }
     else if (view === 'aquarium' && /^[1-4]$/.test(key) && !aquascape) { event.preventDefault(); setWorkspace(WORKSPACES[Number(key) - 1]); }
     else if ((key === '[' || key === ']') && !aquascape) {
       event.preventDefault();
@@ -815,7 +824,7 @@ export function App({ initial }: { initial: LoadedSession }) {
           </div>
           <div className="aquarium-frame">
             <div className={`aquarium ${aquascape ? 'is-editing' : ''}`} aria-label="Live aquarium" role="group">
-              <TankCanvas fish={swimmers} eggs={eggsHere} broods={broods} tank={tank} selectedId={selectedId} onSelect={select} paused={paused} speed={1} feedSignal={feedSignal} onBehavior={setBehavior} tanks={world.tanks} preview={aquascape} editing={!!aquascape} display={isDisplay(tank)} spotlight={spotlight} />
+              <TankCanvas fish={swimmers} eggs={eggsHere} broods={broods} tank={tank} selectedId={selectedId} onSelect={select} onInspect={openStudio} paused={paused} speed={1} feedSignal={feedSignal} onBehavior={setBehavior} tanks={world.tanks} preview={aquascape} editing={!!aquascape} display={isDisplay(tank)} spotlight={spotlight} />
               {aquascape ? <><AquascapeOverlay store={aquascape} saved={decorationsOf(tank)} /><span className="editing-badge"><Icon name="brush" size={14} />Aquascaping · time and fish wait until you apply or cancel</span></> : null}
               {aquascape ? null : <TankHud status={activeStatus} tank={tank} warnings={warningCount} paused={paused} onCare={() => { setWorkspace('care'); focusSoon('workspace-panel'); }} />}
               {eggsHere && !aquascape ? <span className="egg-badge"><Icon name="egg" size={13} />{eggsHere} eggs incubating</span> : null}
@@ -945,6 +954,7 @@ export function App({ initial }: { initial: LoadedSession }) {
           <div className="inspector-heading">
             <span className="eyebrow">Specimen <span className="mono">{fish.id.slice(4)}</span></span>
             <span className="inspector-heading-actions">
+              <button className="btn-sm inspect-button" onClick={() => openStudio(fish.id)} data-tip="Isolate in the Specimen Studio (I)"><Icon name="search" size={14} />Inspect</button>
               <button className="quiet icon-button btn-sm back-to-card" onClick={returnToCollection} aria-label="Back to this card in the collection" data-tip="Find in collection"><Icon name="grid" size={15} /></button>
               <MenuButton className="quiet icon-button btn-sm" items={fishMenu(fish)} label={`${fish.name} actions`} ariaLabel={`${fish.name} actions`} tip="Actions" placement="bottom-end"><Icon name="more" size={17} /></MenuButton>
             </span>
@@ -954,7 +964,8 @@ export function App({ initial }: { initial: LoadedSession }) {
               <button aria-pressed={heroView === 'current'} onClick={() => setHeroView('current')}>{fish.status === 'living' ? 'Now' : 'Last recorded'}</button>
               <button aria-pressed={heroView === 'adult'} onClick={() => setHeroView('adult')}>Adult potential</button>
             </div>
-            <FishPortrait fish={fish} large view={heroView} gravid={broods.get(fish.id) ?? 0} />
+            <span className="hero-open" onClick={() => openStudio(fish.id)}><FishPortrait fish={fish} large view={heroView} gravid={broods.get(fish.id) ?? 0} /></span>
+            <button className="hero-inspect" onClick={() => openStudio(fish.id)} aria-label={`Inspect ${fish.name} in the Specimen Studio`}><Icon name="search" size={13} />Inspect</button>
             <span className="hero-caption">{heroView === 'adult' ? 'Adult genetic potential · a preview, not how this animal looks today' : `${fish.status === 'living' ? 'Now' : 'Last recorded'} · ${lifeSummary(fish)}`}</span>
           </div>
           <div className="fish-title"><h2 ref={inspectorHeading} tabIndex={-1}>{fish.name}</h2><SexMark sex={fish.sex} withLabel /></div>
@@ -1117,12 +1128,18 @@ export function App({ initial }: { initial: LoadedSession }) {
     </Dialog>
     <Dialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} icon="command" wide title="Keyboard shortcuts" description="Fishtank is a local genetics lab: synthetic genomes, local saves, NPC buyers and shows. Your world is saved only in this browser; the typefaces load from Google Fonts.">
       <div className="shortcut-grid">{([
+        ['Inspect the selected animal in the studio', ['I']], ['Studio: zoom · fit · flip · freeze · ruler · lens', ['+', '0']], ['Studio: previous / next specimen', ['[', ']']],
         ['Search and commands', ['Ctrl', 'K']], ['Search (anywhere)', ['/']], ['Advance one day', ['.']], ['Feed this aquarium', ['F']], ['Pause or play swimming', ['M']],
         ['Previous / next aquarium', ['[', ']']], ['Collection · Breeding · Care · Habitat', ['1', '4']], ['Go to aquarium / editor / competitions / commissions / trophies', ['G', 'A']],
         ['Card or tank actions', ['Shift', 'F10']], ['Close a menu, dialog or drawer', ['Esc']],
       ] as const).map(([text, keys]) => <div key={text}><span>{text}</span><span>{keys.map(k => <kbd key={k}>{k}</kbd>)}</span></div>)}</div>
       <p className="help-copy">Version 0.1 research lab · <a className="link-button" href="https://github.com/ElMariones/fishtank-sim" target="_blank" rel="noreferrer">project repository</a></p>
     </Dialog>
+    {studioId && world.fish.some(f => f.id === studioId) ? <SpecimenStudio world={world} fishId={studioId}
+      onClose={last => { setStudioId(null); focusFish(last, true); }}
+      onOpenInspector={(id, next) => { setStudioId(null); setView('aquarium'); focusFish(id, true); setTab(next); }}
+      isFavorite={id => favoriteIds.has(id)} onToggleFavorite={id => setPreferences(current => toggleFavorite(current, id))}
+      inbreeding={id => pedigree.inbreeding(id)} founders={id => pedigree.founders([id]).founders.length} offers={target => offersFor(world, target, traitCache)} /> : null}
     <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={paletteCommands} />
     <ToastStack notices={notices} />
     {cardMenu.node}
